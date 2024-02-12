@@ -26,15 +26,15 @@ trait HasPacketDecoder
         $flags = $data[0] >> 2;
 
         // Connless special case
-        if ($flags & Network::PACKETFLAG_CONNLESS) {
-            return new static(
-                flags: $flags,
-                ack: 0,
-                numChunks: 0,
-                rawPayload: [],
-                chunks: [],
-            );
-        }
+        // if ($flags & Network::PACKETFLAG_CONNLESS) {
+        //     return new static(
+        //         flags: $flags,
+        //         ack: 0,
+        //         numChunks: 0,
+        //         rawPayload: [],
+        //         chunks: [],
+        //     );
+        // }
 
         // Any other packet
         $ack        = ($data[0] & 0b11) << 8 | $data[1];

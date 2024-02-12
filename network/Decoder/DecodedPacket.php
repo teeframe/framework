@@ -51,7 +51,7 @@ class DecodedPacket
             throw new \Exception('You can\'t get control message from non-control packet');
         }
 
-        return array_slice($this->rawPayload, static::HEADER_SIZE_CONNLESS)[0];
+        return $this->rawPayload[0];
     }
 
     public function getControlMessageExtra(): int
@@ -60,6 +60,6 @@ class DecodedPacket
             throw new \Exception('You can\'t get control message from non-control packet');
         }
 
-        return implode('', array_map('chr', array_slice($this->rawPayload, static::HEADER_SIZE_CONNLESS + 1)));
+        return implode('', array_map('chr', array_slice($this->rawPayload, 1)));
     }
 }

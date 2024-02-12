@@ -6,7 +6,7 @@ class Network
 {
     // Packet Flags
     const PACKETFLAG_CONTROL     = 1;
-    const PACKETFLAG_CONNLESS    = 2;
+    const PACKETFLAG_CONNLESS    = 2; // Only used for: server listing, server registering
     const PACKETFLAG_RESEND      = 4;
     const PACKETFLAG_COMPRESSION = 8;
 

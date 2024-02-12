@@ -14,6 +14,11 @@ class Console
         echo $this->newLine($message, 32);
     }
 
+    public function warn(string $message): void
+    {
+        echo $this->newLine($message, 33);
+    }
+
     public function error(string $message): void
     {
         echo $this->newLine($message, 31);

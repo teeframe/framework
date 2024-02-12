@@ -44,6 +44,13 @@ class ServerSocket extends Server
             return;
         }
 
+        // Connless package
+        if ($packet->getFlags() & Network::PACKETFLAG_CONNLESS) {
+            Instance::$console->warn('Connless package received');
+
+            return;
+        }
+
         // Known client (found it slot connection)
         if ($slotConnection = $this->tryToMatchSlotConnection($clientInfo)) {
             if ($slotConnection->state === SlotConnection::STATE_CONNECTING) {
