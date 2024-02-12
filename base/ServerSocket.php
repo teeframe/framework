@@ -3,7 +3,6 @@
 namespace Base;
 
 use Network\Decoder\DecodedPacket;
-use Network\Encoder\PackageChunkEncoder;
 use Network\Encoder\PackageEncoder;
 use Network\Enums\Network;
 use Swoole\Server;
@@ -59,11 +58,8 @@ class ServerSocket extends Server
         }
 
         // Server is full...
-        PackageEncoder::make(
-            flags: Network::PACKETFLAG_CONTROL,
-            ack: 0,
-            chunks: [PackageChunkEncoder::make(Network::CTRLMSG_CLOSE)->addString('The server is full')]
-        )->send($clientInfo['address'], $clientInfo['port']);
+        PackageEncoder::makeControlMessage(Network::CTRLMSG_CLOSE, 'The server is full')
+            ->send($clientInfo['address'], $clientInfo['port']);
     }
 
     public function tryToMatchSlotConnection(array $clientInfo): SlotConnection|false

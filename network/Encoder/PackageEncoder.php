@@ -3,18 +3,26 @@
 namespace Network\Encoder;
 
 use Base\Instance;
-use Helpers\IsMakeable;
 use Network\Enums\Network;
 
 class PackageEncoder
 {
-    use IsMakeable;
-
     /**
      * @param  array<int, PackageChunkEncoder>  $chunks
      */
     public function __construct(protected int $flags, protected int $ack = 0, protected array $chunks = [])
     {
+    }
+
+    public static function makeControlMessage(int $flags, string $extra = '')
+    {
+        $chunks = [];
+
+        if ($extra !== '') {
+            $chunks[] = (new PackageChunkEncoder($flags))->addString($extra);
+        }
+
+        return new static(Network::PACKETFLAG_CONTROL, 0, $chunks);
     }
 
     public function send(string $address, int $port)
