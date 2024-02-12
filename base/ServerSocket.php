@@ -43,7 +43,7 @@ class ServerSocket extends Server
             return;
         }
 
-        // Already connected client
+        // Known client (found it slot connection)
         if ($slotConnection = $this->tryToMatchSlotConnection($clientInfo)) {
             $slotConnection->feed($packet);
 

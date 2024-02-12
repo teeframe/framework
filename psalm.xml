@@ -10,6 +10,7 @@
 >
     <projectFiles>
         <directory name="base" />
+        <directory name="game" />
         <directory name="helpers" />
         <directory name="network" />
         <ignoreFiles>

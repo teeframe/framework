@@ -14,7 +14,6 @@ class DecodedPacket
         protected int $numChunks,
         protected array $rawPayload,
         protected array $chunks,
-        // protected int $dataSize,
     ) {
     }
 
@@ -39,6 +38,11 @@ class DecodedPacket
     public function getChunks(): array
     {
         return $this->chunks;
+    }
+
+    public function getSize(): int
+    {
+        return count($this->rawPayload);
     }
 
     public function getControlMessage(): int

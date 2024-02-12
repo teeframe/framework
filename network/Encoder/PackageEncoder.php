@@ -14,12 +14,12 @@ class PackageEncoder
     {
     }
 
-    public static function makeControlMessage(int $flags, string $extra = '')
+    public static function makeControlMessage(int $message, string $extra = '')
     {
-        $chunks = [];
+        $chunks = [new PackageChunkEncoder($message)];
 
         if ($extra !== '') {
-            $chunks[] = (new PackageChunkEncoder($flags))->addString($extra);
+            $chunks[0]->addString($extra);
         }
 
         return new static(Network::PACKETFLAG_CONTROL, 0, $chunks);

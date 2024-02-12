@@ -5,6 +5,7 @@
     "autoload": {
         "psr-4": {
             "Base\\": "base/",
+            "Game\\": "game/",
             "Helpers\\": "helpers/",
             "Network\\": "network/"
         }

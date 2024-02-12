@@ -28,7 +28,6 @@ trait HasPacketDecoder
                 numChunks: 0,
                 rawPayload: [],
                 chunks: [],
-                // dataSize: count($data) - self::HEADER_SIZE_CONNLESS,
             );
         }
 
@@ -43,7 +42,6 @@ trait HasPacketDecoder
             numChunks: $numChunks,
             rawPayload: $rawPayload,
             chunks: static::decodeChunksFromPayload($rawPayload),
-            // dataSize: count($data) - self::HEADER_SIZE_DEFAULT // TODO: Verify if this is correct even without token
         );
     }
 
@@ -67,10 +65,10 @@ trait HasPacketDecoder
             $message = $payload[$pointer + $headerSize];
             $message >>= 1;
 
-            // +1 to skip the message byte
+            $headerSize += 1; // +1 to skip the message byte
 
-            $chunks[] = new DecodedPacketChunk($flags, $sequence, $message, array_slice($payload, $pointer + $headerSize + 1));
-            $pointer += $headerSize + $size + 1;
+            $chunks[] = new DecodedPacketChunk($flags, $sequence, $message, array_slice($payload, $pointer + $headerSize));
+            $pointer += $headerSize + $size;
         } while ($pointer < count($payload));
 
         return $chunks;
