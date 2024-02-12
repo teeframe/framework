@@ -44,7 +44,7 @@ class SlotConnection
     {
     }
 
-    public function startConnection(string $address, int $port)
+    public function startConnection(string $address, int $port): void
     {
         $this->state          = static::STATE_CONNECTING;
         $this->clientAddress  = $address;
@@ -57,7 +57,7 @@ class SlotConnection
         Instance::$console->info('got connection, sending accept');
     }
 
-    public function completeConnection(DecodedPacket $packet)
+    public function completeConnection(DecodedPacket $packet): void
     {
         foreach ($packet->getChunks() as $chunk) {
             if ($chunk->getMessage() === Protocol::INFO) {
@@ -80,7 +80,7 @@ class SlotConnection
         }
     }
 
-    public function feedConnection(DecodedPacket $packet)
+    public function feedConnection(DecodedPacket $packet): bool
     {
         if ($this->sequence >= $this->peerAck) {
             if ($packet->getAck() < $this->peerAck || $packet->getAck() > $this->sequence) {

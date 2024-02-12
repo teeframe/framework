@@ -17,4 +17,11 @@
             <directory name="vendor" />
         </ignoreFiles>
     </projectFiles>
+    <issueHandlers>
+        <UnsafeInstantiation>
+            <errorLevel type="suppress">
+                <directory name="network" />
+            </errorLevel>
+        </UnsafeInstantiation>
+    </issueHandlers>
 </psalm>
