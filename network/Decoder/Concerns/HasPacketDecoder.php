@@ -7,13 +7,18 @@ use Network\Enums\Network;
 
 trait HasPacketDecoder
 {
-    const HEADER_SIZE_DEFAULT       = 7;
-    const HEADER_SIZE_CONNLESS      = 6;
-    const HEADER_SIZE_WITHOUT_TOKEN = 3;
+    const HEADER_SIZE_DEFAULT          = 7;
+    const HEADER_SIZE_DEFAULT_NO_TOKEN = 3;
+    const HEADER_SIZE_CONNLESS         = 6;
+
+    // Size limits
+    const MINIMUM_PACKET_SIZE       = 3;
+    const MAXIMUM_PACKET_SIZE       = 1400;
+    const MINIMUM_PACKET_CHUNK_SIZE = 3;
 
     public static function decodeFromRaw(string $rawBuffer): static|false
     {
-        if (strlen($rawBuffer) < 3 || strlen($rawBuffer) > 1400) {
+        if (strlen($rawBuffer) < static::MINIMUM_PACKET_SIZE || strlen($rawBuffer) > static::MAXIMUM_PACKET_SIZE) {
             return false; // TOO SMALL || TO BIG
         }
 
@@ -34,7 +39,7 @@ trait HasPacketDecoder
         // Any other packet
         $ack        = ($data[0] & 0b11) << 8 | $data[1];
         $numChunks  = $data[2];
-        $rawPayload = array_slice($data, static::HEADER_SIZE_WITHOUT_TOKEN);
+        $rawPayload = array_slice($data, static::HEADER_SIZE_DEFAULT_NO_TOKEN);
 
         return new static(
             flags: $flags,
@@ -54,7 +59,7 @@ trait HasPacketDecoder
 
         // TODO: handle sequence stuff
 
-        do {
+        while (count($payload) > $pointer + static::MINIMUM_PACKET_CHUNK_SIZE) {
             $flags = ($payload[$pointer + 0] >> 6) & 3;
             $size  = (($payload[$pointer + 0] & 0x3F) << 4) | ($payload[$pointer + 1] & 0xF);
 
@@ -71,7 +76,7 @@ trait HasPacketDecoder
 
             $chunks[] = new DecodedPacketChunk($flags, $sequence, $message, array_slice($payload, $pointer + $headerSize));
             $pointer += $headerSize + $size;
-        } while ($pointer < count($payload));
+        }
 
         return $chunks;
     }

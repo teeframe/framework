@@ -24,9 +24,10 @@ class ServerSocket extends Server
 
     public function start(): bool
     {
-        Instance::$server = $this;
+        Instance::$server  = $this;
+        Instance::$console = new Console;
 
-        echo 'Server started on '.$this->host.':'.$this->port.PHP_EOL;
+        Instance::$console->info("Server started on {$this->host}:{$this->port}");
 
         return parent::start();
     }
@@ -56,7 +57,7 @@ class ServerSocket extends Server
 
         // New client (and slot available)
         if ($slotConnection = $this->getAvailableSlotConnection()) {
-            $slotConnection->connect($clientInfo['address'], $clientInfo['port']);
+            $slotConnection->startConnection($clientInfo['address'], $clientInfo['port']);
 
             return;
         }

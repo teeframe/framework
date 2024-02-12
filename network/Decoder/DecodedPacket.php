@@ -53,4 +53,13 @@ class DecodedPacket
 
         return array_slice($this->rawPayload, static::HEADER_SIZE_CONNLESS)[0];
     }
+
+    public function getControlMessageExtra(): int
+    {
+        if (! ($this->flags & Network::PACKETFLAG_CONTROL)) {
+            throw new \Exception('You can\'t get control message from non-control packet');
+        }
+
+        return implode('', array_map('chr', array_slice($this->rawPayload, static::HEADER_SIZE_CONNLESS + 1)));
+    }
 }

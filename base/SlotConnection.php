@@ -43,7 +43,7 @@ class SlotConnection
     {
     }
 
-    public function connect(string $address, int $port)
+    public function startConnection(string $address, int $port)
     {
         $this->state          = static::STATE_CONNECTING;
         $this->clientAddress  = $address;
@@ -52,7 +52,8 @@ class SlotConnection
         $this->lastRecvTime   = time();
         $this->lastUpdateTime = time();
 
-        $this->sendControlMessage(Network::CTRLMSG_CONNECT);
+        $this->sendControlMessage(Network::CTRLMSG_CONNECTACCEPT);
+        Instance::$console->info('got connection, sending accept');
     }
 
     public function completeConnection(DecodedPacket $packet)
@@ -61,13 +62,74 @@ class SlotConnection
             if ($chunk->getMessage() === Protocol::INFO) {
                 $version = $chunk->extractString();
 
-                echo $version.PHP_EOL;
+                if ($version !== '0.6 626fce9a778df4d4') {
+                    $this->sendControlMessage(Network::CTRLMSG_CLOSE, 'Wrong client version');
+                    $this->state = static::STATE_EMPTY;
+
+                    return;
+                }
             }
         }
     }
 
     public function feedConnection(DecodedPacket $packet)
     {
+        if ($this->sequence >= $this->peerAck) {
+            if ($packet->getAck() < $this->peerAck || $packet->getAck() > $this->sequence) {
+                return false;
+            }
+        } else {
+            if ($packet->getAck() < $this->peerAck && $packet->getAck() > $this->sequence) {
+                return false;
+            }
+        }
+
+        $this->peerAck = $packet->getAck();
+
+        if ($packet->getFlags() & Network::PACKETFLAG_RESEND) {
+            return $this->handleResendPacket($packet);
+        }
+        if ($packet->getFlags() & Network::PACKETFLAG_CONTROL) {
+            return $this->handleControlMessagePacket($packet);
+        }
+
+        return $this->handleDefaultPacket($packet);
+    }
+
+    public function handleResendPacket(DecodedPacket $packet): bool
+    {
+        return true;
+    }
+
+    public function handleControlMessagePacket(DecodedPacket $packet): bool
+    {
+        $message = $packet->getControlMessage();
+
+        if ($message === Network::CTRLMSG_KEEPALIVE) {
+            return true;
+        }
+        if ($message === Network::CTRLMSG_CLOSE) {
+            $this->remoteClosed = true;
+            $this->state        = static::STATE_EMPTY;
+
+            Instance::$console->info('Closed reason='.$packet->getControlMessageExtra());
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public function handleDefaultPacket(DecodedPacket $packet): bool
+    {
+        // if ($this->state === NetConnState::ONLINE) {
+        //     $this->lastRecvTime = time();
+
+        //     Console::info('connected client');
+        //     // AckChunks
+        // }
+
+        return true;
     }
 
     public function addChunk(PackageEncoder $chunk): static
