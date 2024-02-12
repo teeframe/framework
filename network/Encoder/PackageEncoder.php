@@ -3,10 +3,13 @@
 namespace Network\Encoder;
 
 use Base\Instance;
+use Helpers\IsMakeable;
 use Network\Enums\Network;
 
 class PackageEncoder
 {
+    use IsMakeable;
+
     /**
      * @param  array<int, PackageChunkEncoder>  $chunks
      */

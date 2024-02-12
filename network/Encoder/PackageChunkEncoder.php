@@ -3,9 +3,12 @@
 namespace Network\Encoder;
 
 use Helpers\IntegerHelper;
+use Helpers\IsMakeable;
 
 class PackageChunkEncoder
 {
+    use IsMakeable;
+
     public function __construct(protected int $message, protected array $payload = [])
     {
     }

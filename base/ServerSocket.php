@@ -58,8 +58,12 @@ class ServerSocket extends Server
             return;
         }
 
-        (new PackageEncoder(Network::PACKETFLAG_CONTROL, 0, [(new PackageChunkEncoder(Network::CTRLMSG_CLOSE))->addString('The server is full')]))->send($clientInfo['address'], $clientInfo['port']);
-
+        // Server is full...
+        PackageEncoder::make(
+            flags: Network::PACKETFLAG_CONTROL,
+            ack: 0,
+            chunks: [PackageChunkEncoder::make(Network::CTRLMSG_CLOSE)->addString('The server is full')]
+        )->send($clientInfo['address'], $clientInfo['port']);
     }
 
     public function tryToMatchSlotConnection(array $clientInfo): SlotConnection|false
@@ -81,11 +85,11 @@ class ServerSocket extends Server
 
     public function getAvailableSlotConnection(): SlotConnection|false
     {
-        // foreach ($this->slotConnections as $connection) {
-        //     if ($connection->state === SlotConnection::STATE_EMPTY) {
-        //         return $connection;
-        //     }
-        // }
+        foreach ($this->slotConnections as $connection) {
+            if ($connection->state === SlotConnection::STATE_EMPTY) {
+                return $connection;
+            }
+        }
 
         return false;
     }
