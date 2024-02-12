@@ -5,10 +5,10 @@ namespace Network\Enums;
 class Network
 {
     // Packet Flags
-    const PACKETFLAG_CONTROL  = 1;
-    const PACKETFLAG_CONNLESS = 2;
-    const PACKETFLAG_RESEND   = 4;
-    // const PACKETFLAG_COMPRESSION = 8; // Not-implemented
+    const PACKETFLAG_CONTROL     = 1;
+    const PACKETFLAG_CONNLESS    = 2;
+    const PACKETFLAG_RESEND      = 4;
+    const PACKETFLAG_COMPRESSION = 8;
 
     // Control Messages
     const CTRLMSG_KEEPALIVE     = 0;

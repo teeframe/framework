@@ -3,6 +3,7 @@
 namespace Network\Encoder;
 
 use Base\Instance;
+use Network\Enums\Network;
 
 class PackageEncoder
 {
@@ -22,10 +23,12 @@ class PackageEncoder
 
     protected function encode()
     {
-        // $this->flags &= ~NetPacketFlag::COMPRESSION;
+        if (false) {
+            $this->flags &= ~Network::PACKETFLAG_COMPRESSION; // TODO: Implement this
+        }
 
         $header    = [];
-        $header[0] = (($this->flags << 2) & 0xFC) | (($this->ack >> 8) & 0x3);
+        $header[0] = (($this->flags << 4) & 0xF0) | (($this->ack >> 8) & 0xF);
         $header[1] = $this->ack & 0xFF;
         $header[2] = count($this->chunks);
 
