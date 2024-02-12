@@ -2,7 +2,7 @@
 
 namespace Base;
 
-use App\Enums\NetConnState;
+use Network\Decoder\DecodedPacket;
 use Swoole\Server;
 
 class ServerSocket extends Server
@@ -20,14 +20,52 @@ class ServerSocket extends Server
         parent::__construct($host, $port, SWOOLE_BASE, SWOOLE_SOCK_UDP);
     }
 
-    public function getAvailableSlotConnection(): ?SlotConnection
+    public function onPacket(string $rawData, array $clientInfo)
+    {
+        $packet = DecodedPacket::decodeFromRaw($rawData);
+
+        // Already connected client
+        if ($slotConnection = $this->tryToMatchSlotConnection($clientInfo)) {
+            $slotConnection->feed($packet);
+
+            return;
+        }
+
+        // New client (and slot available)
+        if ($slotConnection = $this->getAvailableSlotConnection()) {
+            $slotConnection->connect($clientInfo);
+
+            return;
+        }
+
+        // TODO: Server is full
+    }
+
+    public function tryToMatchSlotConnection(array $clientInfo): SlotConnection|false
     {
         foreach ($this->slotConnections as $connection) {
-            if ($connection->state === NetConnState::OFFLINE) {
+            if ($connection->state === SlotConnection::STATE_EMPTY) {
+                continue;
+            }
+
+            if ($connection->clientAddress !== $clientInfo['address'] || $connection->clientPort !== $clientInfo['port']) {
+                continue;
+            }
+
+            return $connection;
+        }
+
+        return false;
+    }
+
+    public function getAvailableSlotConnection(): SlotConnection|false
+    {
+        foreach ($this->slotConnections as $connection) {
+            if ($connection->state === SlotConnection::STATE_EMPTY) {
                 return $connection;
             }
         }
 
-        return null;
+        return false;
     }
 }

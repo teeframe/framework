@@ -5,7 +5,7 @@ namespace Network\Decoder\Concerns;
 use Enums\Network;
 use Network\Decoder\DecodedPacketChunk;
 
-trait HasDecoder
+trait HasPacketDecoder
 {
     const HEADER_SIZE_DEFAULT       = 7;
     const HEADER_SIZE_CONNLESS      = 6;

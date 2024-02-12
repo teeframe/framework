@@ -1,7 +1,16 @@
 <?php
 
+namespace Base;
+
+use Network\Decoder\DecodedPacket;
+
 class SlotConnection
 {
+    const STATE_EMPTY      = 0;
+    const STATE_CONNECTING = 1;
+    const STATE_LOADING    = 2;
+    const STATE_ERROR      = 3;
+
     public int $sequence = 0;
 
     public int $ack = 0;
@@ -10,7 +19,7 @@ class SlotConnection
 
     public bool $remoteClosed = false;
 
-    public int $state = NetConnState::OFFLINE;
+    public int $state = self::STATE_EMPTY;
 
     public int $lastSendTime = 0;
 
@@ -26,10 +35,15 @@ class SlotConnection
 
     public array $stats = [];
 
-    /**
-     * Construct method.
-     */
     public function __construct()
+    {
+    }
+
+    public function connect()
+    {
+    }
+
+    public function feed(DecodedPacket $packet)
     {
     }
 }
