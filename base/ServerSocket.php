@@ -13,8 +13,8 @@ class ServerSocket extends Server
 
     public function __construct(string $host, int $port)
     {
-        for ($i = 0; $i < self::MAX_CONNECTIONS; ++$i) {
-            $this->slotConnections[$i] = new SlotConnection();
+        for ($i = 0; $i < self::MAX_CONNECTIONS; $i++) {
+            $this->slotConnections[$i] = new SlotConnection;
         }
 
         parent::__construct($host, $port, SWOOLE_BASE, SWOOLE_SOCK_UDP);

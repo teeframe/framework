@@ -7,7 +7,7 @@ class IntegerHelper
     public static function pack(int $value): array
     {
         $result = [];
-        $sign = $value < 0 ? 1 : 0;
+        $sign   = $value < 0 ? 1 : 0;
         $value ^= -$sign; // if(sign) *i = ~(*i)
 
         $result[] = ($sign << 6) | ($value & 0x3F);
@@ -25,8 +25,8 @@ class IntegerHelper
     {
         $pointer = 0;
 
-        $sign = ($data[$pointer] >> 6) & 1;
-        $result = $data[$pointer] & 0x3F;
+        $sign   = ($data[$pointer] >> 6) & 1;
+        $result = $data[$pointer]        & 0x3F;
 
         do {
             if (! ($data[$pointer] & 0x80)) {
