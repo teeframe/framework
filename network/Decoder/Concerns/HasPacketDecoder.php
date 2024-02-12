@@ -41,14 +41,16 @@ trait HasPacketDecoder
             ack: $ack,
             numChunks: $numChunks,
             rawPayload: $rawPayload,
-            chunks: static::decodeChunksFromPayload($rawPayload),
+            chunks: static::decodeChunksFromPayload($rawPayload, $flags & Network::PACKETFLAG_COMPRESSION),
         );
     }
 
-    public static function decodeChunksFromPayload(array $payload): array
+    public static function decodeChunksFromPayload(array $payload, bool $isCompressed): array
     {
         $pointer = 0;
         $chunks  = [];
+
+        // TODO: Implement huffman compression
 
         // TODO: handle sequence stuff
 

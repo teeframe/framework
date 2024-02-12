@@ -45,14 +45,18 @@ class ServerSocket extends Server
 
         // Known client (found it slot connection)
         if ($slotConnection = $this->tryToMatchSlotConnection($clientInfo)) {
-            $slotConnection->feed($packet);
+            if ($slotConnection->state === SlotConnection::STATE_CONNECTING) {
+                $slotConnection->completeConnection($packet);
+            } else {
+                $slotConnection->feedConnection($packet);
+            }
 
             return;
         }
 
         // New client (and slot available)
         if ($slotConnection = $this->getAvailableSlotConnection()) {
-            $slotConnection->connect($clientInfo);
+            $slotConnection->connect($clientInfo['address'], $clientInfo['port']);
 
             return;
         }

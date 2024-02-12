@@ -14,7 +14,7 @@ class PackageEncoder
     {
     }
 
-    public static function makeControlMessage(int $message, string $extra = '')
+    public static function makeControlMessage(int $message, string $extra = ''): static
     {
         $chunks = [new PackageChunkEncoder($message)];
 
@@ -25,17 +25,17 @@ class PackageEncoder
         return new static(Network::PACKETFLAG_CONTROL, 0, $chunks);
     }
 
-    public function send(string $address, int $port)
+    public function send(string $address, int $port): bool
     {
         $encodedData = implode('', array_map('chr', $this->encode()));
 
-        Instance::$server->sendto($address, $port, $encodedData);
+        return Instance::$server->sendto($address, $port, $encodedData);
     }
 
-    protected function encode()
+    protected function encode(): array
     {
         if (false) {
-            $this->flags &= ~Network::PACKETFLAG_COMPRESSION; // TODO: Implement this
+            $this->flags &= ~Network::PACKETFLAG_COMPRESSION; // TODO: Implement huffman compression
         }
 
         $header    = [];
