@@ -54,7 +54,7 @@ class DecodedPacket
         return $this->rawPayload[0];
     }
 
-    public function getControlMessageExtra(): int
+    public function getControlMessageExtra(): string
     {
         if (! ($this->flags & Network::PACKETFLAG_CONTROL)) {
             throw new \Exception('You can\'t get control message from non-control packet');

@@ -11,17 +11,17 @@ class Console
 
     public function info(string $message): void
     {
-        echo $this->newLine($message, 32);
+        $this->newLine($message, 32);
     }
 
     public function warn(string $message): void
     {
-        echo $this->newLine($message, 33);
+        $this->newLine($message, 33);
     }
 
     public function error(string $message): void
     {
-        echo $this->newLine($message, 31);
+        $this->newLine($message, 31);
     }
 
     protected function newLine(string $message, int $textColor = 0): void
