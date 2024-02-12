@@ -10,6 +10,14 @@
         },
         "nullable_type_declaration_for_default_null_value" : {
             "use_nullable_type_declaration": true
+        },
+        "class_attributes_separation" : {
+            "elements": {
+                "const": "none",
+                "method": "one",
+                "property": "one",
+                "trait_import": "none"
+            }
         }
     }
 }
