@@ -6,25 +6,8 @@ use Base\ServerSocket;
 
 $server = new ServerSocket('127.0.0.1', 8304);
 
-/*
- * Start & Shutdown functions
- */
-$server->on('start', fn (ServerSocket $server) => $this->openServer($server));
-$server->on('shutdown', fn (ServerSocket $server) => $this->closeServer($server));
+$server->on('packet', function (ServerSocket $server, string $data, array $clientInfo): void {
+    $server->onPacket($data, $clientInfo);
+});
 
-/*
- * On client packet
- */
-$server->on(
-    event_name: 'packet',
-    callback: fn (ServerSocket $server, string $data, array $clientInfo): NetworkPacket => new NetworkPacket(
-        $server,
-        array_values(unpack('C*', $data)),
-        (object) $clientInfo,
-    )
-);
-
-/*
- * Start server
- */
 $server->start();

@@ -20,6 +20,18 @@ class ServerSocket extends Server
         parent::__construct($host, $port, SWOOLE_BASE, SWOOLE_SOCK_UDP);
     }
 
+    public function start(): bool
+    {
+        Instance::$server = $this;
+
+        return parent::start();
+    }
+
+    public function shutdown(): bool
+    {
+        return parent::shutdown();
+    }
+
     public function onPacket(string $rawData, array $clientInfo): void
     {
         $packet = DecodedPacket::decodeFromRaw($rawData);
