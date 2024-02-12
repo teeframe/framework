@@ -20,9 +20,12 @@ class ServerSocket extends Server
         parent::__construct($host, $port, SWOOLE_BASE, SWOOLE_SOCK_UDP);
     }
 
-    public function onPacket(string $rawData, array $clientInfo)
+    public function onPacket(string $rawData, array $clientInfo): void
     {
         $packet = DecodedPacket::decodeFromRaw($rawData);
+        if ($packet === false) {
+            return;
+        }
 
         // Already connected client
         if ($slotConnection = $this->tryToMatchSlotConnection($clientInfo)) {

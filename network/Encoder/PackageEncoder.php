@@ -4,11 +4,15 @@ namespace Network\Encoder;
 
 class PackageEncoder
 {
-    public function __construct(protected int $ack, protected int $numChunks)
+    /**
+     * @param  array<int, PackageChunkEncoder>  $chunks
+     */
+    public function __construct(protected int $flags, protected int $ack, protected int $numChunks, protected array $chunks)
     {
     }
 
-    public function send()
+    public function send(string $address, int $port)
     {
+
     }
 }

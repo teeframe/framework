@@ -11,10 +11,10 @@ trait HasPacketDecoder
     const HEADER_SIZE_CONNLESS      = 6;
     const HEADER_SIZE_WITHOUT_TOKEN = 3;
 
-    public static function decodeFromRaw(string $rawBuffer)
+    public static function decodeFromRaw(string $rawBuffer): static|false
     {
         if (strlen($rawBuffer) < 3 || strlen($rawBuffer) > 1400) {
-            return; // TOO SMALL || TO BIG
+            return false; // TOO SMALL || TO BIG
         }
 
         $data  = array_values(unpack('C*', $rawBuffer));
@@ -67,7 +67,7 @@ trait HasPacketDecoder
             $message = $payload[$pointer + $headerSize];
             $message >>= 1;
 
-            // TODO: Why there is +1 here?
+            // +1 to skip the message byte
 
             $chunks[] = new DecodedPacketChunk($flags, $sequence, $message, array_slice($payload, $pointer + $headerSize + 1));
             $pointer += $headerSize + $size + 1;

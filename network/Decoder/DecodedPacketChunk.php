@@ -8,11 +8,26 @@ class DecodedPacketChunk
 {
     protected int $pointer = 0;
 
-    public function __construct(public int $flags, public int $sequence, public int $message, protected array $data)
+    public function __construct(protected int $flags, protected int $sequence, protected int $message, protected array $data)
     {
     }
 
-    public function getInt(): int
+    public function getFlags(): int
+    {
+        return $this->flags;
+    }
+
+    public function getSequence(): int
+    {
+        return $this->sequence;
+    }
+
+    public function getMessage(): int
+    {
+        return $this->message;
+    }
+
+    public function extractInt(): int
     {
         if ($this->pointerIsFault()) {
             return 0;
@@ -25,7 +40,7 @@ class DecodedPacketChunk
         return $result;
     }
 
-    public function getString(): string
+    public function extractString(): string
     {
         if ($this->pointerIsFault()) {
             return '';
@@ -47,7 +62,7 @@ class DecodedPacketChunk
         return $string;
     }
 
-    public function getBytes(int $length): array // CUnpacker::GetRaw(int Size) equivalent
+    public function extractBytes(int $length): array // CUnpacker::GetRaw(int Size) equivalent
     {
         if ($this->pointerIsFault()) {
             return [];
