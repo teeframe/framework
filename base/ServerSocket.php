@@ -3,6 +3,9 @@
 namespace Base;
 
 use Network\Decoder\DecodedPacket;
+use Network\Encoder\PackageChunkEncoder;
+use Network\Encoder\PackageEncoder;
+use Network\Enums\Network;
 use Swoole\Server;
 
 class ServerSocket extends Server
@@ -23,6 +26,8 @@ class ServerSocket extends Server
     public function start(): bool
     {
         Instance::$server = $this;
+
+        echo 'Server started on '.$this->host.':'.$this->port.PHP_EOL;
 
         return parent::start();
     }
@@ -53,7 +58,8 @@ class ServerSocket extends Server
             return;
         }
 
-        // TODO: Server is full
+        (new PackageEncoder(Network::PACKETFLAG_CONTROL, 0, [(new PackageChunkEncoder(Network::CTRLMSG_CLOSE))->addString('The server is full')]))->send($clientInfo['address'], $clientInfo['port']);
+
     }
 
     public function tryToMatchSlotConnection(array $clientInfo): SlotConnection|false
@@ -75,11 +81,11 @@ class ServerSocket extends Server
 
     public function getAvailableSlotConnection(): SlotConnection|false
     {
-        foreach ($this->slotConnections as $connection) {
-            if ($connection->state === SlotConnection::STATE_EMPTY) {
-                return $connection;
-            }
-        }
+        // foreach ($this->slotConnections as $connection) {
+        //     if ($connection->state === SlotConnection::STATE_EMPTY) {
+        //         return $connection;
+        //     }
+        // }
 
         return false;
     }

@@ -9,7 +9,7 @@ class PackageEncoder
     /**
      * @param  array<int, PackageChunkEncoder>  $chunks
      */
-    public function __construct(protected int $flags, protected int $ack, protected array $chunks)
+    public function __construct(protected int $flags, protected int $ack = 0, protected array $chunks = [])
     {
     }
 

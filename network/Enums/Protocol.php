@@ -1,6 +1,6 @@
 <?php
 
-namespace Enums;
+namespace Network\Enums;
 
 class Protocol
 {

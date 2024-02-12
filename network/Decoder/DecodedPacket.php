@@ -2,7 +2,7 @@
 
 namespace Network\Decoder;
 
-use Enums\Network;
+use Network\Enums\Network;
 
 class DecodedPacket
 {

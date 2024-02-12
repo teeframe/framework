@@ -2,8 +2,8 @@
 
 namespace Network\Decoder\Concerns;
 
-use Enums\Network;
 use Network\Decoder\DecodedPacketChunk;
+use Network\Enums\Network;
 
 trait HasPacketDecoder
 {
