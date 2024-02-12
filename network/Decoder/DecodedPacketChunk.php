@@ -2,7 +2,7 @@
 
 namespace Network\Decoder;
 
-use Helpers\IntegerHelper;
+use Network\IntegerHelper;
 
 class DecodedPacketChunk
 {

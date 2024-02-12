@@ -11,7 +11,7 @@
     <projectFiles>
         <directory name="base" />
         <directory name="game" />
-        <directory name="helpers" />
+        <directory name="map" />
         <directory name="network" />
         <ignoreFiles>
             <directory name="vendor" />

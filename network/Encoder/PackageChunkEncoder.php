@@ -2,7 +2,7 @@
 
 namespace Network\Encoder;
 
-use Helpers\IntegerHelper;
+use Network\IntegerHelper;
 
 class PackageChunkEncoder
 {

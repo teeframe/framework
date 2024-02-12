@@ -6,7 +6,7 @@
         "psr-4": {
             "Base\\": "base/",
             "Game\\": "game/",
-            "Helpers\\": "helpers/",
+            "Map\\": "map/",
             "Network\\": "network/"
         }
     },

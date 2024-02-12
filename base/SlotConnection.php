@@ -3,6 +3,7 @@
 namespace Base;
 
 use Network\Decoder\DecodedPacket;
+use Network\Encoder\PackageChunkEncoder;
 use Network\Encoder\PackageEncoder;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
@@ -35,7 +36,7 @@ class SlotConnection
     public int $lastUpdateTime = 0;
 
     /**
-     * @var array<int, PackageEncoder>
+     * @var array<int, PackageChunkEncoder>
      */
     public array $chunksQueue = [];
 
@@ -68,6 +69,13 @@ class SlotConnection
 
                     return;
                 }
+
+                $this->addChunk(
+                    PackageChunkEncoder::make(Protocol::MAP_CHANGE & Network::CHUNKFLAG_VITAL)
+                        ->addString('dm1')
+                        ->addInt(-233464210)
+                        ->addInt(5805)
+                )->sendChunks();
             }
         }
     }
@@ -132,7 +140,7 @@ class SlotConnection
         return true;
     }
 
-    public function addChunk(PackageEncoder $chunk): static
+    public function addChunk(PackageChunkEncoder $chunk): static
     {
         $this->chunksQueue[] = $chunk;
 
