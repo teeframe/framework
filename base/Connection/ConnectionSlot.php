@@ -75,7 +75,7 @@ class ConnectionSlot
             }
         }
 
-        $this->updateConnection($packet);
+        $this->updateState($packet);
 
         // Handle connection handshake
         if ($this->isConnectionOnHandshake()) {
@@ -93,33 +93,21 @@ class ConnectionSlot
         return $this->handleDefaultPacket($packet);
     }
 
-    public function updateConnection(DecodedPacket $packet): void
+    public function closeConnection(string $reason): void
     {
-        $this->lastRecvTime = time();
-        $this->peerAck      = $packet->getAck();
+        $this->sendControlMessage(Network::CTRLMSG_CLOSE, $reason);
 
-        // EQUIVALENT - handle sequence stuff
-        foreach ($packet->getChunks() as $chunk) {
-            if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
-                continue;
-            }
-
-            if ($chunk->getSequence() === ($this->ack + 1)) {
-                $this->ack++; // TODO: The maximum ack is needed here?
-            } else {
-                // TODO: Implement chunk resending
-            }
-        }
+        $this->reset();
     }
 
-    public function handleResendPacket(DecodedPacket $packet): bool
+    protected function handleResendPacket(DecodedPacket $packet): bool
     {
         // TODO: Implement CNetConnection::Resend()
 
         return true;
     }
 
-    public function handleControlMessagePacket(DecodedPacket $packet): bool
+    protected function handleControlMessagePacket(DecodedPacket $packet): bool
     {
         $message = $packet->getControlMessage();
 
@@ -138,10 +126,29 @@ class ConnectionSlot
         return false;
     }
 
-    public function handleDefaultPacket(DecodedPacket $packet): bool
+    protected function handleDefaultPacket(DecodedPacket $packet): bool
     {
         // TODO: Implement this
 
         return true;
+    }
+
+    protected function updateState(DecodedPacket $packet): void
+    {
+        $this->lastRecvTime = time();
+        $this->peerAck      = $packet->getAck();
+
+        // EQUIVALENT - handle sequence stuff
+        foreach ($packet->getChunks() as $chunk) {
+            if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
+                continue;
+            }
+
+            if ($chunk->getSequence() === ($this->ack + 1)) {
+                $this->ack++; // TODO: The maximum ack is needed here?
+            } else {
+                // TODO: Implement chunk resending
+            }
+        }
     }
 }

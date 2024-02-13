@@ -11,9 +11,10 @@
         }
     },
     "require": {
-        "swoole/ide-helper": "^5.1"
+        "nesbot/carbon": "^3.0"
     },
     "require-dev": {
+        "swoole/ide-helper": "^5.1",
         "laravel/pint": "^1.13",
         "vimeo/psalm": "^5.21"
     }

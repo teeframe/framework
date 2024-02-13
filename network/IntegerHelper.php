@@ -6,6 +6,8 @@ class IntegerHelper
 {
     public static function pack(int $value): array
     {
+        // TODO: Refactor this
+
         $pointer = 0;
         $result  = [];
 
@@ -35,6 +37,8 @@ class IntegerHelper
 
     public static function unpack(array $data): array
     {
+        // TODO: Refactor this
+
         $pointer = 0;
 
         $sign   = ($data[$pointer] >> 6) & 1;

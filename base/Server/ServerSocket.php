@@ -2,7 +2,6 @@
 
 namespace Base\Server;
 
-use Base\Connection\ConnectionSlot;
 use Base\Console;
 use Network\Decoder\DecodedPacket;
 use Network\Encoder\PackageEncoder;
@@ -11,21 +10,19 @@ use Swoole\Server;
 
 class ServerSocket extends Server
 {
-    const MAX_CONNECTIONS = 16;
-
-    public array $connectionSlots = [];
+    use Concerns\HasConnectionSlots;
 
     public function __construct(string $host, int $port)
     {
-        for ($i = 0; $i < self::MAX_CONNECTIONS; $i++) {
-            $this->connectionSlots[$i] = new ConnectionSlot;
-        }
+        $this->initializeConnectionSlots();
 
         parent::__construct($host, $port, SWOOLE_BASE, SWOOLE_SOCK_UDP);
     }
 
     public function start(): bool
     {
+        Console::info('Server is starting...');
+
         ServerInstance::$socket = $this;
 
         Console::info("Server started on {$this->host}:{$this->port}");
@@ -35,6 +32,12 @@ class ServerSocket extends Server
 
     public function shutdown(): bool
     {
+        Console::info('Server is shutting down...');
+
+        $this->closeAllConnections('Server shutdown');
+
+        Console::info('Server shutdown completed');
+
         return parent::shutdown();
     }
 
@@ -69,33 +72,5 @@ class ServerSocket extends Server
         // Server is full...
         PackageEncoder::makeControlMessage(Network::CTRLMSG_CLOSE, 'The server is full')
             ->send($clientInfo['address'], $clientInfo['port']);
-    }
-
-    public function tryToMatchConnectionSlot(array $clientInfo): ConnectionSlot|false
-    {
-        foreach ($this->connectionSlots as $connection) {
-            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
-                continue;
-            }
-
-            if ($connection->clientAddress !== $clientInfo['address'] || $connection->clientPort !== $clientInfo['port']) {
-                continue;
-            }
-
-            return $connection;
-        }
-
-        return false;
-    }
-
-    public function getAvailableConnectionSlot(): ConnectionSlot|false
-    {
-        foreach ($this->connectionSlots as $connection) {
-            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
-                return $connection;
-            }
-        }
-
-        return false;
     }
 }

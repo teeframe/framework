@@ -34,6 +34,8 @@ trait HasConnectionHandshake
         foreach ($packet->getChunks() as $chunk) {
             // Step 1
             if ($chunk->getMessage() === Protocol::INFO) {
+                $this->consoleInfo('player sent info');
+
                 if (! $this->handleInfoChunk($chunk)) {
                     return false;
                 }
@@ -41,6 +43,8 @@ trait HasConnectionHandshake
 
             // Step 2.1
             if ($chunk->getMessage() === Protocol::REQUEST_MAP_DATA) {
+                $this->consoleInfo('player requested map data');
+
                 if (! $this->handleRequestMapDataChunk($chunk)) {
                     return false;
                 }
@@ -48,21 +52,21 @@ trait HasConnectionHandshake
 
             // Step 2.2
             if ($chunk->getMessage() === Protocol::READY) {
-                $this->consoleInfo('player is ready.');
+                $this->consoleInfo('player is ready');
 
                 $this->handleReadyChunk($chunk);
             }
 
             // Step 3
             if ($chunk->getMessage() === Protocol::CL_START_INFO) {
-                $this->consoleInfo('player sent start info.');
+                $this->consoleInfo('player sent start info');
 
                 $this->handleClStartInfoChunk($chunk);
             }
 
             // Step 4
             if ($chunk->getMessage() === Protocol::ENTERGAME) {
-                $this->consoleInfo('player has entered the game.');
+                $this->consoleInfo('player has entered the game');
 
                 $this->handleEnterGameChunk($chunk);
             }
@@ -80,8 +84,7 @@ trait HasConnectionHandshake
         $version = $chunk->extractString();
 
         if ($version !== '0.6 626fce9a778df4d4') {
-            $this->sendControlMessage(Network::CTRLMSG_CLOSE, 'Wrong client version');
-            $this->reset();
+            $this->closeConnection('Wrong client version');
 
             return false;
         }
@@ -104,8 +107,7 @@ trait HasConnectionHandshake
 
         // TODO: Implement map loading
 
-        $this->sendControlMessage(Network::CTRLMSG_CLOSE, 'Server cannot send map data yet');
-        $this->reset();
+        $this->closeConnection('Server cannot send map data yet');
 
         return false;
     }
