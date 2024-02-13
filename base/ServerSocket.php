@@ -2,6 +2,7 @@
 
 namespace Base;
 
+use Base\Connection\ConnectionSlot;
 use Network\Decoder\DecodedPacket;
 use Network\Encoder\PackageEncoder;
 use Network\Enums\Network;
@@ -11,12 +12,12 @@ class ServerSocket extends Server
 {
     const MAX_CONNECTIONS = 16;
 
-    public array $slotConnections = [];
+    public array $connectionSlots = [];
 
     public function __construct(string $host, int $port)
     {
         for ($i = 0; $i < self::MAX_CONNECTIONS; $i++) {
-            $this->slotConnections[$i] = new SlotConnection;
+            $this->connectionSlots[$i] = new ConnectionSlot;
         }
 
         parent::__construct($host, $port, SWOOLE_BASE, SWOOLE_SOCK_UDP);
@@ -24,10 +25,9 @@ class ServerSocket extends Server
 
     public function start(): bool
     {
-        Instance::$server  = $this;
-        Instance::$console = new Console;
+        Instance::$server = $this;
 
-        Instance::$console->info("Server started on {$this->host}:{$this->port}");
+        Console::info("Server started on {$this->host}:{$this->port}");
 
         return parent::start();
     }
@@ -46,21 +46,21 @@ class ServerSocket extends Server
 
         // Connless package
         if ($packet->getFlags() & Network::PACKETFLAG_CONNLESS) {
-            Instance::$console->warn('Connless package received');
+            Console::warn('Connless package received');
 
             return;
         }
 
         // Known client (found it slot connection)
-        if ($slotConnection = $this->tryToMatchSlotConnection($clientInfo)) {
-            $slotConnection->feedConnection($packet);
+        if ($connectionSlot = $this->tryToMatchConnectionSlot($clientInfo)) {
+            $connectionSlot->feedConnection($packet);
 
             return;
         }
 
         // New client (and slot available)
-        if ($slotConnection = $this->getAvailableSlotConnection()) {
-            $slotConnection->startConnection($clientInfo['address'], $clientInfo['port']);
+        if ($connectionSlot = $this->getAvailableConnectionSlot()) {
+            $connectionSlot->startHandshakeConnection($clientInfo['address'], $clientInfo['port']);
 
             return;
         }
@@ -70,10 +70,10 @@ class ServerSocket extends Server
             ->send($clientInfo['address'], $clientInfo['port']);
     }
 
-    public function tryToMatchSlotConnection(array $clientInfo): SlotConnection|false
+    public function tryToMatchConnectionSlot(array $clientInfo): ConnectionSlot|false
     {
-        foreach ($this->slotConnections as $connection) {
-            if ($connection->state === SlotConnection::STATE_EMPTY) {
+        foreach ($this->connectionSlots as $connection) {
+            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
                 continue;
             }
 
@@ -87,10 +87,10 @@ class ServerSocket extends Server
         return false;
     }
 
-    public function getAvailableSlotConnection(): SlotConnection|false
+    public function getAvailableConnectionSlot(): ConnectionSlot|false
     {
-        foreach ($this->slotConnections as $connection) {
-            if ($connection->state === SlotConnection::STATE_EMPTY) {
+        foreach ($this->connectionSlots as $connection) {
+            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
                 return $connection;
             }
         }
