@@ -71,7 +71,7 @@ class SlotConnection
                 }
 
                 $this->addChunk(
-                    PackageChunkEncoder::make(Protocol::MAP_CHANGE & Network::CHUNKFLAG_VITAL)
+                    PackageChunkEncoder::make(Network::CHUNKFLAG_VITAL, Protocol::MAP_CHANGE)
                         ->addString('dm1')
                         ->addInt(-233464210)
                         ->addInt(5805)
@@ -143,6 +143,12 @@ class SlotConnection
     public function addChunk(PackageChunkEncoder $chunk): static
     {
         $this->chunksQueue[] = $chunk;
+
+        if ($chunk->getFlags() & Network::CHUNKFLAG_VITAL) {
+            $this->sequence++;
+
+            $chunk->setSequence($this->sequence);
+        }
 
         return $this;
     }

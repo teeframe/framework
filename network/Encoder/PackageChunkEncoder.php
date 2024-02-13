@@ -6,13 +6,27 @@ use Network\IntegerHelper;
 
 class PackageChunkEncoder
 {
-    public function __construct(protected int $message, protected array $payload = [])
+    protected int $sequence = 0;
+
+    public function __construct(protected int $flags, protected int $message, protected array $payload = [])
     {
     }
 
-    public static function make(int $message): static
+    public static function make(int $flags, int $message): static
     {
-        return new static($message);
+        return new static($flags, $message);
+    }
+
+    public function getFlags(): int
+    {
+        return $this->flags;
+    }
+
+    public function setSequence(int $sequence): static
+    {
+        $this->sequence = $sequence;
+
+        return $this;
     }
 
     public function addInt(int $value): static
@@ -38,6 +52,6 @@ class PackageChunkEncoder
 
     public function encode(): array
     {
-        return [$this->message, ...$this->payload];
+        return [$this->flags, $this->sequence, $this->message, ...$this->payload];
     }
 }

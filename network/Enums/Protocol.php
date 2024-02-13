@@ -17,7 +17,7 @@ class Protocol
     // const SNAP             = 5;	 // normal snapshot, multiple parts
     // const SNAPEMPTY        = 6;	 // empty snapshot
     // const SNAPSINGLE       = 7;	 // ?
-    // const SNAPSMALL        = 8;	 //
+    // const SNAPSMALL        = 8;	 // ?
     // const INPUTTIMING      = 9;  // reports how off the input was
     // const RCON_AUTH_STATUS = 10; // result of the authentication
     // const RCON_LINE        = 11; // line that should be printed to the remote console

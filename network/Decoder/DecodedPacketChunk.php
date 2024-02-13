@@ -8,7 +8,7 @@ class DecodedPacketChunk
 {
     protected int $pointer = 0;
 
-    public function __construct(protected int $flags, protected int $sequence, protected int $message, protected array $data)
+    public function __construct(protected int $flags, protected int $sequence, protected int $message, protected array $payload)
     {
     }
 
@@ -33,7 +33,7 @@ class DecodedPacketChunk
             return 0;
         }
 
-        [$result, $incrementPointer] = IntegerHelper::unpack(array_slice($this->data, $this->pointer));
+        [$result, $incrementPointer] = IntegerHelper::unpack(array_slice($this->payload, $this->pointer));
 
         $this->pointer += $incrementPointer;
 
@@ -49,7 +49,7 @@ class DecodedPacketChunk
         $string = '';
 
         while (! $this->pointerIsFault()) {
-            $char = $this->data[$this->pointer];
+            $char = $this->payload[$this->pointer];
 
             if ($char === 0) {
                 break;
@@ -75,7 +75,7 @@ class DecodedPacketChunk
                 break;
             }
 
-            $bytes[] = $this->data[$this->pointer];
+            $bytes[] = $this->payload[$this->pointer];
             $this->pointer++;
         }
 
@@ -84,6 +84,6 @@ class DecodedPacketChunk
 
     protected function pointerIsFault(): bool
     {
-        return $this->pointer >= count($this->data);
+        return $this->pointer >= count($this->payload);
     }
 }

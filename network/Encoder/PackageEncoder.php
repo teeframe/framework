@@ -10,19 +10,23 @@ class PackageEncoder
     /**
      * @param  array<int, PackageChunkEncoder>  $chunks
      */
-    public function __construct(protected int $flags, protected int $ack = 0, protected array $chunks = [])
-    {
+    public function __construct(
+        protected int $flags,
+        protected int $ack = 0,
+        protected array $chunks = [],
+        protected array $extraPayload = []
+    ) {
     }
 
     public static function makeControlMessage(int $message, string $extra = ''): static
     {
-        $chunks = [new PackageChunkEncoder($message)];
+        $extraPayload = [$message];
 
         if ($extra !== '') {
-            $chunks[0]->addString($extra);
+            $extraPayload = [...$extraPayload, ...unpack('C*', $extra), 0];
         }
 
-        return new static(Network::PACKETFLAG_CONTROL, 0, $chunks);
+        return new static(Network::PACKETFLAG_CONTROL, 0, [], $extraPayload);
     }
 
     public function send(string $address, int $port): bool
@@ -48,6 +52,6 @@ class PackageEncoder
             $payload = [...$payload, ...$chunk->encode()];
         }
 
-        return [...$header, ...$payload];
+        return [...$header, ...$payload, ...$this->extraPayload];
     }
 }
