@@ -2,6 +2,7 @@
 
 namespace Network\Encoder;
 
+use Network\Enums\Network;
 use Network\IntegerHelper;
 
 class PackageChunkEncoder
@@ -52,6 +53,17 @@ class PackageChunkEncoder
 
     public function encode(): array
     {
-        return [$this->flags, $this->sequence, $this->message, ...$this->payload];
+        $size = count($this->payload);
+
+        $header    = [];
+        $header[0] = (($this->flags & 3) << 6) | (($size >> 4) & 0x3F);
+        $header[1] = ($size & 0xF);
+
+        if ($this->flags & Network::CHUNKFLAG_VITAL) {
+            $header[1] |= ($this->sequence >> 2) & 0xF0;
+            $header[2] = $this->sequence         & 0xFF;
+        }
+
+        return [$header, $this->message, ...$this->payload];
     }
 }

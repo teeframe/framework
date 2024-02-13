@@ -49,6 +49,10 @@ class SlotConnection
         $this->state          = static::STATE_CONNECTING;
         $this->clientAddress  = $address;
         $this->clientPort     = $port;
+        $this->sequence       = 0;
+        $this->ack            = 0;
+        $this->peerAck        = 0;
+        $this->remoteClosed   = false;
         $this->lastSendTime   = time();
         $this->lastRecvTime   = time();
         $this->lastUpdateTime = time();
@@ -57,7 +61,7 @@ class SlotConnection
         Instance::$console->info('got connection, sending accept');
     }
 
-    public function completeConnection(DecodedPacket $packet): void
+    public function completeConnection(DecodedPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
             if ($chunk->getMessage() === Protocol::INFO) {
@@ -67,7 +71,7 @@ class SlotConnection
                     $this->sendControlMessage(Network::CTRLMSG_CLOSE, 'Wrong client version');
                     $this->state = static::STATE_EMPTY;
 
-                    return;
+                    return false;
                 }
 
                 $this->addChunk(
@@ -78,22 +82,34 @@ class SlotConnection
                 )->sendChunks();
             }
         }
+
+        return true;
     }
 
     public function feedConnection(DecodedPacket $packet): bool
     {
         if ($this->sequence >= $this->peerAck) {
             if ($packet->getAck() < $this->peerAck || $packet->getAck() > $this->sequence) {
+                Instance::$console->error('Invalid ack');
+
                 return false;
             }
         } else {
             if ($packet->getAck() < $this->peerAck && $packet->getAck() > $this->sequence) {
+                Instance::$console->error('Invalid ack');
+
                 return false;
             }
         }
 
-        $this->peerAck = $packet->getAck();
+        $this->updateConnectionAck($packet);
 
+        // Handle connecting connection
+        if ($this->state === static::STATE_CONNECTING) {
+            return $this->completeConnection($packet);
+        }
+
+        // Handle online connection
         if ($packet->getFlags() & Network::PACKETFLAG_RESEND) {
             return $this->handleResendPacket($packet);
         }
@@ -104,8 +120,27 @@ class SlotConnection
         return $this->handleDefaultPacket($packet);
     }
 
+    public function updateConnectionAck(DecodedPacket $packet): void
+    {
+        $this->peerAck = $packet->getAck();
+
+        foreach ($packet->getChunks() as $chunk) {
+            if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
+                continue;
+            }
+
+            if ($chunk->getSequence() === ($this->ack + 1)) {
+                $this->ack++;
+            } else {
+                // TODO: Implement chunk resending
+            }
+        }
+    }
+
     public function handleResendPacket(DecodedPacket $packet): bool
     {
+        // TODO: Implement CNetConnection::Resend()
+
         return true;
     }
 

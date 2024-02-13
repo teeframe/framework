@@ -53,11 +53,7 @@ class ServerSocket extends Server
 
         // Known client (found it slot connection)
         if ($slotConnection = $this->tryToMatchSlotConnection($clientInfo)) {
-            if ($slotConnection->state === SlotConnection::STATE_CONNECTING) {
-                $slotConnection->completeConnection($packet);
-            } else {
-                $slotConnection->feedConnection($packet);
-            }
+            $slotConnection->feedConnection($packet);
 
             return;
         }
