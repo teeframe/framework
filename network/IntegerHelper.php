@@ -6,17 +6,29 @@ class IntegerHelper
 {
     public static function pack(int $value): array
     {
-        $result = [];
-        $sign   = $value < 0 ? 1 : 0;
-        $value ^= -$sign; // if(sign) *i = ~(*i)
+        $pointer = 0;
+        $result  = [];
 
-        $result[] = ($sign << 6) | ($value & 0x3F);
-        $value >>= 6;
+        $result[$pointer] = ($value >> 25) & 0x40; // set sign bit if i<0
+        $value            = $value ^ ($value >> 31); // if(i<0) i = ~i
 
-        while ($value != 0) {
-            $result[] = 0x80 | ($value & 0x7F);
-            $value >>= 7;
+        $result[$pointer] |= $value & 0x3F; // pack 6bit into dst
+        $value >>= 6; // discard 6 bits
+
+        if ($value) {
+            $result[$pointer] |= 0x80; // set extend bit
+            while (1) {
+                $pointer++;
+                $result[$pointer] = $value & (0x7F); // pack 7bit
+                $value >>= 7; // discard 7 bits
+                $result[$pointer] |= ((int) ($value !== 0)) << 7; // set extend bit (may branch)
+                if ($value === 0) {
+                    break;
+                }
+            }
         }
+
+        $pointer++;
 
         return $result;
     }

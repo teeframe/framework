@@ -124,6 +124,7 @@ class SlotConnection
     {
         $this->peerAck = $packet->getAck();
 
+        // EQUIVALENT - handle sequence stuff
         foreach ($packet->getChunks() as $chunk) {
             if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
                 continue;

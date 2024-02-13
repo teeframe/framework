@@ -53,7 +53,7 @@ class PackageChunkEncoder
 
     public function encode(): array
     {
-        $size = count($this->payload);
+        $size = count($this->payload) + 1; // +1 for the message byte
 
         $header    = [];
         $header[0] = (($this->flags & 3) << 6) | (($size >> 4) & 0x3F);
@@ -64,6 +64,10 @@ class PackageChunkEncoder
             $header[2] = $this->sequence         & 0xFF;
         }
 
-        return [$header, $this->message, ...$this->payload];
+        $message = $this->message;
+        $message <<= 1;
+        $message |= 1;
+
+        return [...$header, $message, ...$this->payload];
     }
 }

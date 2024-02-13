@@ -23,30 +23,34 @@ trait HasPacketDecoder
         }
 
         $data  = array_values(unpack('C*', $rawBuffer));
-        $flags = $data[0] >> 2;
+        $flags = $data[0] >> 4;
 
         // Connless special case
-        // if ($flags & Network::PACKETFLAG_CONNLESS) {
-        //     return new static(
-        //         flags: $flags,
-        //         ack: 0,
-        //         numChunks: 0,
-        //         rawPayload: [],
-        //         chunks: [],
-        //     );
-        // }
+        if ($flags & Network::PACKETFLAG_CONNLESS) {
+            return new static(
+                flags: $flags,
+                ack: 0,
+                numChunks: 0,
+                rawPayload: [],
+                chunks: [],
+            );
+        }
 
         // Any other packet
-        $ack        = ($data[0] & 0b11) << 8 | $data[1];
+        $ack        = (($data[0] & 0xF) << 8) | $data[1];
         $numChunks  = $data[2];
         $rawPayload = array_slice($data, static::HEADER_SIZE_DEFAULT_NO_TOKEN);
+
+        if (! ($flags & Network::PACKETFLAG_CONTROL)) {
+            $chunks = static::decodeChunksFromPayload($rawPayload, $flags & Network::PACKETFLAG_COMPRESSION);
+        }
 
         return new static(
             flags: $flags,
             ack: $ack,
             numChunks: $numChunks,
             rawPayload: $rawPayload,
-            chunks: static::decodeChunksFromPayload($rawPayload, $flags & Network::PACKETFLAG_COMPRESSION),
+            chunks: $chunks ?? [],
         );
     }
 
@@ -56,8 +60,6 @@ trait HasPacketDecoder
         $chunks  = [];
 
         // TODO: Implement huffman compression
-
-        // TODO: handle sequence stuff
 
         while (count($payload) > $pointer + static::MINIMUM_PACKET_CHUNK_SIZE) {
             $flags = ($payload[$pointer + 0] >> 6) & 3;
@@ -72,10 +74,8 @@ trait HasPacketDecoder
             $message = $payload[$pointer + $headerSize];
             $message >>= 1;
 
-            $headerSize += 1; // +1 to skip the message byte
-
-            $chunks[] = new DecodedPacketChunk($flags, $sequence, $message, array_slice($payload, $pointer + $headerSize));
-            $pointer += $headerSize + $size;
+            $chunks[] = new DecodedPacketChunk($flags, $sequence, $message, array_slice($payload, $pointer + $headerSize + 1)); // +1 to skip the message byte
+            $pointer += $headerSize + $size; // The +1 CANNOT be added here
         }
 
         return $chunks;
