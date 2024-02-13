@@ -64,9 +64,14 @@ class PackageChunkEncoder
             $header[2] = $this->sequence         & 0xFF;
         }
 
-        $message = $this->message;
-        $message <<= 1;
-        $message |= 1;
+        if ($this->message > 127) {
+            $message = $this->message - 128;
+            $message <<= 1;
+        } else {
+            $message = $this->message;
+            $message <<= 1;
+            $message |= 1;
+        }
 
         return [...$header, $message, ...$this->payload];
     }

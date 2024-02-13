@@ -74,6 +74,10 @@ trait HasPacketDecoder
             $message = $payload[$pointer + $headerSize];
             $message >>= 1;
 
+            if (! ($payload[$pointer + $headerSize] & 1)) {
+                $message += 128;
+            }
+
             $chunks[] = new DecodedPacketChunk($flags, $sequence, $message, array_slice($payload, $pointer + $headerSize + 1)); // +1 to skip the message byte
             $pointer += $headerSize + $size; // The +1 CANNOT be added here
         }
