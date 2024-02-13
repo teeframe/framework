@@ -2,7 +2,7 @@
 
 namespace Network\Encoder;
 
-use Base\Instance;
+use Base\Server\ServerInstance;
 use Network\Enums\Network;
 
 class PackageEncoder
@@ -33,7 +33,7 @@ class PackageEncoder
     {
         $encodedData = implode('', array_map('chr', $this->encode()));
 
-        return Instance::$server->sendto($address, $port, $encodedData);
+        return ServerInstance::sendto($address, $port, $encodedData);
     }
 
     protected function encode(): array

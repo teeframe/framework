@@ -1,8 +1,9 @@
 <?php
 
-namespace Base;
+namespace Base\Server;
 
 use Base\Connection\ConnectionSlot;
+use Base\Console;
 use Network\Decoder\DecodedPacket;
 use Network\Encoder\PackageEncoder;
 use Network\Enums\Network;
@@ -25,7 +26,7 @@ class ServerSocket extends Server
 
     public function start(): bool
     {
-        Instance::$server = $this;
+        ServerInstance::$socket = $this;
 
         Console::info("Server started on {$this->host}:{$this->port}");
 

@@ -75,7 +75,7 @@ class ConnectionSlot
             }
         }
 
-        $this->updateConnectionAck($packet);
+        $this->updateConnection($packet);
 
         // Handle connection handshake
         if ($this->isConnectionOnHandshake()) {
@@ -93,9 +93,10 @@ class ConnectionSlot
         return $this->handleDefaultPacket($packet);
     }
 
-    public function updateConnectionAck(DecodedPacket $packet): void
+    public function updateConnection(DecodedPacket $packet): void
     {
-        $this->peerAck = $packet->getAck();
+        $this->lastRecvTime = time();
+        $this->peerAck      = $packet->getAck();
 
         // EQUIVALENT - handle sequence stuff
         foreach ($packet->getChunks() as $chunk) {
@@ -139,12 +140,7 @@ class ConnectionSlot
 
     public function handleDefaultPacket(DecodedPacket $packet): bool
     {
-        // if ($this->state === NetConnState::ONLINE) {
-        //     $this->lastRecvTime = time();
-
-        //     Console::info('connected client');
-        //     // AckChunks
-        // }
+        // TODO: Implement this
 
         return true;
     }

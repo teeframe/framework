@@ -2,7 +2,7 @@
 
 require_once 'vendor/autoload.php';
 
-use Base\ServerSocket;
+use Base\Server\ServerSocket;
 
 $server = new ServerSocket('127.0.0.1', 8304);
 
