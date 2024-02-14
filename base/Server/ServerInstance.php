@@ -2,9 +2,21 @@
 
 namespace Base\Server;
 
+use Base\Connection\ConnectionSlot;
+
 class ServerInstance
 {
     public static ServerSocket $socket;
+
+    /**
+     * Statically typing this method.
+     *
+     * @return array<int, ConnectionSlot>
+     */
+    public static function getConnectionSlots(): array
+    {
+        return self::$socket->getConnectionSlots();
+    }
 
     public static function __callStatic(mixed $name, mixed $arguments): mixed
     {

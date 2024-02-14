@@ -13,14 +13,30 @@ trait HasConnectionSlots
      */
     public array $connectionSlots = [];
 
-    protected function initializeConnectionSlots(): void
+    public function getConnectionSlots(): array
     {
-        for ($i = 0; $i < self::MAX_CONNECTIONS; $i++) {
-            $this->connectionSlots[$i] = new ConnectionSlot;
+        return $this->connectionSlots;
+    }
+
+    public function closeAllConnections(string $reason): void
+    {
+        foreach ($this->connectionSlots as $connection) {
+            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
+                continue;
+            }
+
+            $connection->closeConnection($reason);
         }
     }
 
-    public function tryToMatchConnectionSlot(array $clientInfo): ConnectionSlot|false
+    protected function initializeConnectionSlots(): void
+    {
+        for ($i = 0; $i < self::MAX_CONNECTIONS; $i++) {
+            $this->connectionSlots[$i] = new ConnectionSlot($i);
+        }
+    }
+
+    protected function tryToMatchConnectionSlot(array $clientInfo): ConnectionSlot|false
     {
         foreach ($this->connectionSlots as $connection) {
             if ($connection->state === ConnectionSlot::STATE_EMPTY) {
@@ -37,7 +53,7 @@ trait HasConnectionSlots
         return false;
     }
 
-    public function getAvailableConnectionSlot(): ConnectionSlot|false
+    protected function getAvailableConnectionSlot(): ConnectionSlot|false
     {
         foreach ($this->connectionSlots as $connection) {
             if ($connection->state === ConnectionSlot::STATE_EMPTY) {
@@ -46,16 +62,5 @@ trait HasConnectionSlots
         }
 
         return false;
-    }
-
-    public function closeAllConnections(string $reason): void
-    {
-        foreach ($this->connectionSlots as $connection) {
-            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
-                continue;
-            }
-
-            $connection->closeConnection($reason);
-        }
     }
 }

@@ -6,7 +6,7 @@ use Network\Encoder\PackageChunkEncoder;
 use Network\Encoder\PackageEncoder;
 use Network\Enums\Network;
 
-trait HasPacketFeatures
+trait HasPacketSending
 {
     /**
      * @var array<int, PackageChunkEncoder>

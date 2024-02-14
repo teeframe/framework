@@ -9,14 +9,14 @@ class ConnectionSlot
 {
     use Concerns\HasConnectionHandshake;
     use Concerns\HasConsoleFeatures;
-    use Concerns\HasPacketFeatures;
+    use Concerns\HasPacketSending;
 
     const STATE_EMPTY      = 0;
     const STATE_CONNECTING = 1;
     const STATE_LOADING    = 2;
     const STATE_READY      = 3;
     const STATE_INGAME     = 4;
-    const STATE_ERROR      = 5;
+    // const STATE_ERROR      = 5;
 
     public string $clientAddress;
 
@@ -38,7 +38,7 @@ class ConnectionSlot
 
     public int $lastUpdateTime;
 
-    public function __construct()
+    public function __construct(protected int $slotIndex)
     {
         $this->reset();
     }
@@ -111,19 +111,17 @@ class ConnectionSlot
     {
         $message = $packet->getControlMessage();
 
-        if ($message === Network::CTRLMSG_KEEPALIVE) {
-            return true;
-        }
         if ($message === Network::CTRLMSG_CLOSE) {
             $this->consoleInfo('Closed reason='.$packet->getControlMessageExtra());
 
             $this->remoteClosed = true;
             $this->state        = static::STATE_EMPTY;
-
-            return true;
+        }
+        if ($message === Network::CTRLMSG_KEEPALIVE) {
+            // NOTE: $this->updateConnectionState() already updated the lastRecvTime
         }
 
-        return false;
+        return true;
     }
 
     protected function handleDefaultPacket(DecodedPacket $packet): bool
@@ -148,7 +146,12 @@ class ConnectionSlot
     protected function updateConnectionState(DecodedPacket $packet): void
     {
         $this->lastRecvTime = time();
-        $this->peerAck      = $packet->getAck();
+
+        if ($packet->getFlags() & Network::PACKETFLAG_CONTROL) {
+            return;
+        }
+
+        $this->peerAck = $packet->getAck();
 
         // EQUIVALENT - handle sequence stuff
         foreach ($packet->getChunks() as $chunk) {

@@ -3,6 +3,7 @@
 namespace Base\Server;
 
 use Base\Console;
+use Game\GameContext;
 use Network\Decoder\DecodedPacket;
 use Network\Encoder\PackageEncoder;
 use Network\Enums\Network;
@@ -12,11 +13,23 @@ class ServerSocket extends Server
 {
     use Concerns\HasConnectionSlots;
 
+    protected GameContext $context;
+
     public function start(): bool
     {
         Console::info('Server is starting...');
 
         ServerInstance::$socket = $this;
+
+        // TODO: Implement LoadMap(g_Config.m_SvMap)
+
+        $this->context = new GameContext;
+
+        // TODO: Implement GameServer()->OnInit()
+
+        swoole_timer_tick(1000 / 50, function (): void {
+            $this->context->doTick();
+        });
 
         $this->initializeConnectionSlots();
 
