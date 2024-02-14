@@ -75,11 +75,11 @@ class ConnectionSlot
             }
         }
 
-        $this->updateState($packet);
+        $this->updateConnectionState($packet);
 
         // Handle connection handshake
         if ($this->isConnectionOnHandshake()) {
-            return $this->handleHandshakeConnection($packet);
+            return $this->handleConnectionHandshake($packet);
         }
 
         // Handle online connection
@@ -128,12 +128,24 @@ class ConnectionSlot
 
     protected function handleDefaultPacket(DecodedPacket $packet): bool
     {
-        // TODO: Implement this
+        foreach ($packet->getChunks() as $chunk) {
+            if ($chunk->isGameMessage()) {
+                // TODO: Implement GameServer()->OnMessage
+            }
+
+            // TODO: Implement NETMSG_INPUT
+
+            // TODO: Implement NETMSG_PING
+
+            // TODO: Implement NETMSG_RCON_CMD
+
+            // TODO: Implement NETMSG_RCON_AUTH
+        }
 
         return true;
     }
 
-    protected function updateState(DecodedPacket $packet): void
+    protected function updateConnectionState(DecodedPacket $packet): void
     {
         $this->lastRecvTime = time();
         $this->peerAck      = $packet->getAck();

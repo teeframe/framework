@@ -16,8 +16,10 @@ trait HasConnectionHandshake
         return in_array($this->state, [ConnectionSlot::STATE_CONNECTING, ConnectionSlot::STATE_LOADING, ConnectionSlot::STATE_READY]);
     }
 
-    public function startHandshakeConnection(string $address, int $port): void
+    public function startConnectionHandshake(string $address, int $port): void
     {
+        // TODO: Implement ban system
+
         $this->state          = ConnectionSlot::STATE_CONNECTING;
         $this->clientAddress  = $address;
         $this->clientPort     = $port;
@@ -29,7 +31,7 @@ trait HasConnectionHandshake
         $this->consoleInfo('got connection, sending accept');
     }
 
-    public function handleHandshakeConnection(DecodedPacket $packet): bool
+    public function handleConnectionHandshake(DecodedPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
             // Step 1

@@ -12,18 +12,13 @@ class ServerSocket extends Server
 {
     use Concerns\HasConnectionSlots;
 
-    public function __construct(string $host, int $port)
-    {
-        $this->initializeConnectionSlots();
-
-        parent::__construct($host, $port, SWOOLE_BASE, SWOOLE_SOCK_UDP);
-    }
-
     public function start(): bool
     {
         Console::info('Server is starting...');
 
         ServerInstance::$socket = $this;
+
+        $this->initializeConnectionSlots();
 
         Console::info("Server started on {$this->host}:{$this->port}");
 
@@ -64,7 +59,7 @@ class ServerSocket extends Server
 
         // New client (and slot available)
         if ($connectionSlot = $this->getAvailableConnectionSlot()) {
-            $connectionSlot->startHandshakeConnection($clientInfo['address'], $clientInfo['port']);
+            $connectionSlot->startConnectionHandshake($clientInfo['address'], $clientInfo['port']);
 
             return;
         }

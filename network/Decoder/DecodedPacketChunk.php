@@ -27,6 +27,11 @@ class DecodedPacketChunk
         return $this->message;
     }
 
+    public function isGameMessage(): bool
+    {
+        return $this->message > 127;
+    }
+
     public function extractInt(): int
     {
         if ($this->pointerIsFault()) {
