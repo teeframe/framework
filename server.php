@@ -1,5 +1,9 @@
 <?php
 
+if (! extension_loaded('swoole')) {
+    exit('The Swoole extension is not loaded');
+}
+
 require_once 'vendor/autoload.php';
 
 use Base\Server\ServerSocket;

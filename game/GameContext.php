@@ -43,7 +43,7 @@ class GameContext
             $connection->addChunk(
                 PackageChunkEncoder::make(0, Protocol::SNAPEMPTY)
                     ->addInt($this->getCurrentTick())
-                    ->addInt($this->getCurrentTick() - 1)
+                    ->addInt($this->getCurrentTick() + (-1))
             )->sendChunks();
         }
     }
