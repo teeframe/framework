@@ -47,6 +47,8 @@ class PackageEncoder
         $header[1] = $this->ack & 0xFF;
         $header[2] = count($this->chunks);
 
+        // TODO: Implement token support
+
         $payload = [];
         foreach ($this->chunks as $chunk) {
             $payload = [...$payload, ...$chunk->encode()];

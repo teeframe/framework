@@ -36,6 +36,8 @@ trait HasPacketDecoder
             );
         }
 
+        // TODO: Implement token support
+
         // Any other packet
         $ack        = (($data[0] & 0xF) << 8) | $data[1];
         $numChunks  = $data[2];

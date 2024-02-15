@@ -4,8 +4,7 @@ namespace Game;
 
 use Base\Connection\ConnectionSlot;
 use Base\Server\ServerInstance;
-use Network\Encoder\PackageChunkEncoder;
-use Network\Enums\Protocol;
+use Network\Encoder\Chunks\Snap\EmptySnapChunk;
 
 class GameContext
 {
@@ -41,9 +40,7 @@ class GameContext
             }
 
             $connection->addChunk(
-                PackageChunkEncoder::make(0, Protocol::SNAPEMPTY)
-                    ->addInt($this->getCurrentTick())
-                    ->addInt($this->getCurrentTick() + (-1))
+                EmptySnapChunk::make($this->getCurrentTick(), $this->getCurrentTick() + (-1))
             )->sendChunks();
         }
     }

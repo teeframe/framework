@@ -13,11 +13,6 @@ class PackageChunkEncoder
     {
     }
 
-    public static function make(int $flags, int $message): static
-    {
-        return new static($flags, $message);
-    }
-
     public function getFlags(): int
     {
         return $this->flags;

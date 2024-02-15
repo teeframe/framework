@@ -5,7 +5,12 @@ namespace Base\Connection\Concerns;
 use Base\Connection\ConnectionSlot;
 use Network\Decoder\DecodedPacket;
 use Network\Decoder\DecodedPacketChunk;
-use Network\Encoder\PackageChunkEncoder;
+use Network\Encoder\Chunks\Game\SvMotdChunk;
+use Network\Encoder\Chunks\Game\SvReadyToEnterChunk;
+use Network\Encoder\Chunks\Game\SvTuneParamsChunk;
+use Network\Encoder\Chunks\Game\SvVoteClearOptionsChunk;
+use Network\Encoder\Chunks\System\ConReadyChunk;
+use Network\Encoder\Chunks\System\MapChangeChunk;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
 
@@ -94,10 +99,7 @@ trait HasConnectionHandshake
         // TODO: Implement password system
 
         $this->addChunk(
-            PackageChunkEncoder::make(Network::CHUNKFLAG_VITAL, Protocol::MAP_CHANGE)
-                ->addString('dm1')
-                ->addInt(-233464210)
-                ->addInt(5805)
+            MapChangeChunk::make('dm1', -233464210, 5805)
         )->sendChunks();
 
         return true;
@@ -121,10 +123,9 @@ trait HasConnectionHandshake
         // TODO: Add CGameContext::SendVoteSet(int ClientID), (To send if there is a vote running)
 
         $this->addChunk(
-            PackageChunkEncoder::make(Network::CHUNKFLAG_VITAL, Protocol::SV_MOTD)
-                ->addString('Welcome to the server!')
+            SvMotdChunk::make('Welcome to the server!')
         )->addChunk(
-            PackageChunkEncoder::make(Network::CHUNKFLAG_VITAL, Protocol::CON_READY)
+            ConReadyChunk::make()
         )->sendChunks();
     }
 
@@ -133,47 +134,45 @@ trait HasConnectionHandshake
         // TODO: Add the code from (MsgID == NETMSGTYPE_CL_STARTINFO)
 
         $this->addChunk(
-            PackageChunkEncoder::make(Network::CHUNKFLAG_VITAL, Protocol::SV_VOTECLEAROPTIONS)
+            SvVoteClearOptionsChunk::make(),
         )->addChunk(
-            PackageChunkEncoder::make(Network::CHUNKFLAG_VITAL, Protocol::SV_TUNEPARAMS)
-                ->addInt(1000)
-                ->addInt(200)
-                ->addInt(50)
-                ->addInt(1320)
-                ->addInt(1200)
-                ->addInt(500)
-                ->addInt(150)
-                ->addInt(95)
-                ->addInt(38000)
-                ->addInt(8000)
-                ->addInt(300)
-                ->addInt(1500)
-                ->addInt(50)
-                ->addInt(55000)
-                ->addInt(200000)
-                ->addInt(140)
-                ->addInt(125)
-                ->addInt(200000)
-                ->addInt(140)
-                ->addInt(125)
-                ->addInt(220000)
-                ->addInt(200)
-                ->addInt(125)
-                ->addInt(275000)
-                ->addInt(80)
-                ->addInt(20)
-                ->addInt(700)
-                ->addInt(100000)
-                ->addInt(200)
-                ->addInt(80000)
-                ->addInt(15000)
-                ->addInt(100)
-                ->addInt(0)
-                ->addInt(500)
-                ->addInt(100)
-                ->addInt(10)
+            SvTuneParamsChunk::make(
+                groundControlSpeed: 1000,
+                groundControlAccel: 200,
+                groundFriction: 50,
+                groundJumpImpulse: 1320,
+                airJumpImpulse: 1200,
+                airControlSpeed: 500,
+                airControlAccel: 150,
+                airFriction: 95,
+                hookLength: 38000,
+                hookFireSpeed: 8000,
+                hookDragAccel: 300,
+                hookDragSpeed: 1500,
+                gravity: 50,
+                velrampStart: 55000,
+                velrampRange: 200000,
+                velrampCurvature: 140,
+                gunCurvature: 125,
+                gunSpeed: 220000,
+                gunLifetime: 200,
+                shotgunCurvature: 125,
+                shotgunSpeed: 275000,
+                shotgunSpeeddiff: 80,
+                shotgunLifetime: 20,
+                grenadeCurvature: 700,
+                grenadeSpeed: 100000,
+                grenadeLifetime: 200,
+                laserReach: 80000,
+                laserBounceDelay: 15000,
+                laserBounceNum: 100,
+                laserBounceCost: 0,
+                laserDamage: 500,
+                playerCollision: 100,
+                playerHooking: 100
+            )
         )->addChunk(
-            PackageChunkEncoder::make(Network::CHUNKFLAG_VITAL, Protocol::SV_READYTOENTER)
+            SvReadyToEnterChunk::make()
         )->sendChunks();
     }
 
