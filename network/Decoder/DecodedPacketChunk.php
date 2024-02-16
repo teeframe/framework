@@ -32,6 +32,11 @@ class DecodedPacketChunk
         return $this->message > 127;
     }
 
+    public function getSize(): int
+    {
+        return count($this->payload) + 1;
+    }
+
     public function extractInt(): int
     {
         if ($this->pointerIsFault()) {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Network\Encoder\Chunks\Snap;
+namespace Network\Encoder\Chunks\System;
 
 use Network\Encoder\PackageChunkEncoder;
 use Network\Enums\Protocol;
 
-class EmptySnapChunk extends PackageChunkEncoder
+class SnapEmptyChunk extends PackageChunkEncoder
 {
     public static function make(int $currentTick, int $deltaTick): static
     {

@@ -5,6 +5,9 @@ namespace Game;
 use Base\Connection\ConnectionSlot;
 use Base\Server\ServerInstance;
 use Network\Encoder\Chunks\Snap\EmptySnapChunk;
+use Network\Encoder\Chunks\Snap\ObjGameInfo;
+use Network\Encoder\Chunks\Snap\ObjPlayerInfo;
+use Network\Encoder\Chunks\System\SnapSingleChunk;
 
 class GameContext
 {
@@ -40,7 +43,28 @@ class GameContext
             }
 
             $connection->addChunk(
-                EmptySnapChunk::make($this->getCurrentTick(), $this->getCurrentTick() + (-1))
+                SnapSingleChunk::make($this->getCurrentTick(), $this->getCurrentTick() + (-1))
+                    ->addSnap(
+                        ObjGameInfo::make(
+                            gameFlags: 0,
+                            gameStateFlags: 0,
+                            roundStartTick: 0,
+                            warmupTimer: 0,
+                            scoreLimit: 0,
+                            timeLimit: 0,
+                            roundNum: 0,
+                            roundCurrent: 1
+                        )
+                    )
+                    ->addSnap(
+                        ObjPlayerInfo::make(
+                            local: 1,
+                            clientId: 0,
+                            team: 0,
+                            score: 0,
+                            latency: 0
+                        )
+                    )
             )->sendChunks();
         }
     }
