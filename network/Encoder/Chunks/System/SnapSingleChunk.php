@@ -35,9 +35,9 @@ class SnapSingleChunk extends PackageChunkEncoder
         }
 
         $this->payload[] = $this->calculateCrc(); // CRC
-        $this->payload[] = count($encodedSnaps); // Size
+        $this->payload[] = count($encodedSnaps) + 3; // Size (+3 for Removed Items, Delta Number and Zero)
         $this->payload[] = 0; // Removed Items
-        $this->payload[] = count($this->snaps); // Num Items
+        $this->payload[] = count($this->snaps); // Delta Number
         $this->payload[] = 0; // Zero
         $this->payload = [...$this->payload, ...$encodedSnaps];
 
@@ -51,7 +51,7 @@ class SnapSingleChunk extends PackageChunkEncoder
         foreach ($this->snaps as $snap) {
             $payload = $snap->getPayload();
 
-            for ($i=0; $i < (count($payload) / 4); $i++) { 
+            for ($i=0; $i < count($payload); $i++) { 
                 $crc += $payload[$i];
             }
         }

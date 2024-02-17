@@ -43,7 +43,7 @@ class GameContext
             }
 
             $connection->addChunk(
-                SnapSingleChunk::make($this->getCurrentTick(), $this->getCurrentTick() + (-1))
+                SnapSingleChunk::make($this->getCurrentTick(), $this->getCurrentTick() + (+1))
                     ->addSnap(
                         ObjGameInfo::make(
                             gameFlags: 0,
