@@ -7,7 +7,7 @@ use Network\SnapItems\AbstractSnapItem;
 class ConnectionSnap
 {
     /**
-     * @param array<int, AbstractSnapItem> $snapItems
+     * @param  array<int, AbstractSnapItem>  $snapItems
      */
     public function __construct(
         protected int $tick,
@@ -19,7 +19,7 @@ class ConnectionSnap
     {
         return $this->tick;
     }
-    
+
     /**
      * @return array<int, AbstractSnapItem>
      */

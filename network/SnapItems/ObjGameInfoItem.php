@@ -7,13 +7,13 @@ use Network\RawPayload;
 class ObjGameInfoItem extends AbstractSnapItem
 {
     public function __construct(
-        public int $gameFlags, 
-        public int $gameStateFlags, 
-        public int $roundStartTick, 
-        public int $warmupTimer, 
-        public int $scoreLimit, 
-        public int $timeLimit, 
-        public int $roundNum, 
+        public int $gameFlags,
+        public int $gameStateFlags,
+        public int $roundStartTick,
+        public int $warmupTimer,
+        public int $scoreLimit,
+        public int $timeLimit,
+        public int $roundNum,
         public int $roundCurrent,
     ) {
         parent::__construct(itemId: 6);

@@ -3,24 +3,22 @@
 namespace Network;
 
 use Network\Chunks\Game\ClStartInfoChunk;
+use Network\Chunks\Game\SvMotdChunk;
 use Network\Chunks\Game\SvReadyToEnterChunk;
+use Network\Chunks\Game\SvTuneParamsChunk;
 use Network\Chunks\Game\SvVoteClearOptionsChunk;
 use Network\Chunks\System\ConReadyChunk;
+use Network\Chunks\System\EnterGameChunk;
+use Network\Chunks\System\InfoChunk;
 use Network\Chunks\System\MapChangeChunk;
+use Network\Chunks\System\ReadyChunk;
+use Network\Chunks\System\RequestMapDataChunk;
 use Network\Chunks\System\SnapChunk;
 use Network\Chunks\System\SnapEmptyChunk;
 use Network\Chunks\System\SnapSingleChunk;
-use Network\Chunks\Game\SvMotdChunk;
-use Network\Chunks\Game\SvTuneParamsChunk;
-use Network\Chunks\System\EnterGameChunk;
-use Network\Chunks\System\InfoChunk;
-use Network\Chunks\System\ReadyChunk;
-use Network\Chunks\System\RequestMapDataChunk;
 use Network\Chunks\UnsupportedChunk;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
-use Network\NetworkParams;
-use Network\NetworkBase;
 use Network\Packets\AbstractPacket;
 use Network\Packets\ConnectionLessMessage;
 use Network\Packets\ControlMessage;
@@ -53,7 +51,7 @@ class PacketDecoder
 
         // Default Packet
         $chunks = static::decodeChunksFromPayload(
-            payload: array_slice($data, NetworkParams::PACKET_HEADER_SIZE_DEFAULT), 
+            payload: array_slice($data, NetworkParams::PACKET_HEADER_SIZE_DEFAULT),
             isCompressed: $flags & Network::PACKETFLAG_COMPRESSION
         );
 
@@ -101,25 +99,25 @@ class PacketDecoder
 
     protected static function matchDecodedChunk(int $message): UnsupportedChunk|string
     {
-        return match($message) {
+        return match ($message) {
             // System
-            Protocol::INFO => InfoChunk::class,
+            Protocol::INFO       => InfoChunk::class,
             Protocol::MAP_CHANGE => MapChangeChunk::class,
             // Protocol::MAP_DATA => ,
-            Protocol::CON_READY => ConReadyChunk::class,
-            Protocol::SNAP => SnapChunk::class,
-            Protocol::SNAPEMPTY => SnapEmptyChunk::class,
-            Protocol::SNAPSINGLE => SnapSingleChunk::class,
-            Protocol::READY => ReadyChunk::class,
-            Protocol::ENTERGAME => EnterGameChunk::class,
+            Protocol::CON_READY        => ConReadyChunk::class,
+            Protocol::SNAP             => SnapChunk::class,
+            Protocol::SNAPEMPTY        => SnapEmptyChunk::class,
+            Protocol::SNAPSINGLE       => SnapSingleChunk::class,
+            Protocol::READY            => ReadyChunk::class,
+            Protocol::ENTERGAME        => EnterGameChunk::class,
             Protocol::REQUEST_MAP_DATA => RequestMapDataChunk::class,
             // Game
-            Protocol::SV_MOTD => SvMotdChunk::class,
-            Protocol::SV_TUNEPARAMS => SvTuneParamsChunk::class,
-            Protocol::SV_READYTOENTER => SvReadyToEnterChunk::class,
+            Protocol::SV_MOTD             => SvMotdChunk::class,
+            Protocol::SV_TUNEPARAMS       => SvTuneParamsChunk::class,
+            Protocol::SV_READYTOENTER     => SvReadyToEnterChunk::class,
             Protocol::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
-            Protocol::CL_START_INFO => ClStartInfoChunk::class,
-            default => new UnsupportedChunk($message),
+            Protocol::CL_START_INFO       => ClStartInfoChunk::class,
+            default                       => new UnsupportedChunk($message),
         };
     }
 }

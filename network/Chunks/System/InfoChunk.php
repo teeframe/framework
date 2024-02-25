@@ -21,7 +21,7 @@ class InfoChunk extends AbstractChunk
 
     public function getPayload(): array
     {
-        return (new RawPayload())
+        return (new RawPayload)
             ->addString($this->version)
             ->addString($this->password)
             ->getPayload();

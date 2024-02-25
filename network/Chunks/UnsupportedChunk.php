@@ -18,7 +18,7 @@ class UnsupportedChunk extends AbstractChunk
 
     public function getPayload(): array
     {
-        return (new RawPayload())
+        return (new RawPayload)
             ->addInt($this->message)
             ->getPayload();
     }

@@ -5,16 +5,15 @@ namespace Network\Connection;
 use Network\Chunks\System\SnapChunk;
 use Network\Chunks\System\SnapEmptyChunk;
 use Network\Chunks\System\SnapSingleChunk;
-use Network\SnapItems\AbstractSnapItem;
-
 use Network\NetworkBase;
 use Network\NetworkParams;
+use Network\SnapItems\AbstractSnapItem;
 use Network\SnapSlicesLimitReachedException;
 
 class SnapHandler
 {
-    const STATE_INIT = 0;
-    const STATE_FULL = 1;
+    const STATE_INIT    = 0;
+    const STATE_FULL    = 1;
     const STATE_RECOVER = 2;
 
     protected int $state = self::STATE_INIT;
@@ -40,7 +39,7 @@ class SnapHandler
         }
 
         // Keep only items that are greater or equal to the last acked tick (for delta snap)
-        $this->sentList = array_filter($this->sentList, fn(ConnectionSnap $snap): bool => $snap->getTick() >= $tick);
+        $this->sentList = array_filter($this->sentList, fn (ConnectionSnap $snap): bool => $snap->getTick() >= $tick);
     }
 
     public function flushSentList(): void
@@ -54,7 +53,7 @@ class SnapHandler
     }
 
     /**
-     * @param array<int, AbstractSnapItem> $fullItems
+     * @param  array<int, AbstractSnapItem>  $fullItems
      */
     public function sendSnapItems(int $currentTick, array $fullItems): void
     {
@@ -62,12 +61,12 @@ class SnapHandler
         $crc       = $this->calculateCrc($fullItems);
 
         [$sendablePayload, $removedItemsCount, $updatedItemsCount] = $this->calculateSendablePayload($fullItems);
-    
+
         $payload = [
-            ...NetworkBase::packInt($removedItemsCount), 
-            ...NetworkBase::packInt($updatedItemsCount), 
+            ...NetworkBase::packInt($removedItemsCount),
+            ...NetworkBase::packInt($updatedItemsCount),
             ...NetworkBase::packInt(0),
-            ...$sendablePayload
+            ...$sendablePayload,
         ];
 
         if (count($sendablePayload) === 0) {
@@ -77,35 +76,34 @@ class SnapHandler
         } else {
             $payloadSize = count($payload);
             $slicesCount = (int) ceil($payloadSize / NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE);
-    
+
             if ($slicesCount > NetworkParams::MAXIMUM_SNAP_SLICES) {
-                throw new SnapSlicesLimitReachedException();
+                throw new SnapSlicesLimitReachedException;
             }
-    
-            for ($i=0; $i < $slicesCount; $i++) { 
+
+            for ($i = 0; $i < $slicesCount; $i++) {
                 if ($slicesCount === 1) {
                     $this->connection->chunks()->add(
                         new SnapSingleChunk($currentTick, $deltaTick, $crc, $payloadSize, $payload)
                     )->send();
-    
+
                     break;
                 }
-    
-                $slicePayload = array_slice($payload, $i * NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE, NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE);
+
+                $slicePayload     = array_slice($payload, $i * NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE, NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE);
                 $slicePayloadSize = count($slicePayload);
-                
+
                 $this->connection->chunks()->add(
                     new SnapChunk($currentTick, $deltaTick, $crc, $slicesCount, $i + 1, $slicePayloadSize, $slicePayload)
                 )->send();
-            }    
+            }
         }
 
         $this->sentList[] = new ConnectionSnap($currentTick, $fullItems);
     }
 
     /**
-     * @param array<int, AbstractSnapItem> $items
-     * 
+     * @param  array<int, AbstractSnapItem>  $items
      * @return array{array<int, int>, int, int}
      */
     protected function calculateSendablePayload(array $items): array
@@ -117,7 +115,7 @@ class SnapHandler
                 $this->state = self::STATE_RECOVER;
             }
 
-            $sendablePayload = $this->collapsePayload(array_map(fn(AbstractSnapItem $item) => $item->encode(), $items));
+            $sendablePayload = $this->collapsePayload(array_map(fn (AbstractSnapItem $item) => $item->encode(), $items));
 
             return [$sendablePayload, 0, count($items)];
         }
@@ -177,8 +175,8 @@ class SnapHandler
         }
 
         $sendablePayload = [
-            ...$this->collapsePayload(array_map(fn(AbstractSnapItem $item) => [$item->getItemId(), $item->getId()], $removedItems)),
-            ...$this->collapsePayload(array_map(fn(AbstractSnapItem $item) => $item->encode(), $updatedItems)),
+            ...$this->collapsePayload(array_map(fn (AbstractSnapItem $item) => [$item->getItemId(), $item->getId()], $removedItems)),
+            ...$this->collapsePayload(array_map(fn (AbstractSnapItem $item) => $item->encode(), $updatedItems)),
         ];
 
         return [$sendablePayload, $removedItemsCount, $updatedItemsCount];
@@ -196,7 +194,7 @@ class SnapHandler
     }
 
     /**
-     * @param array<int, AbstractSnapItem> $items
+     * @param  array<int, AbstractSnapItem>  $items
      */
     protected function calculateCrc(array $items): int
     {
@@ -205,7 +203,7 @@ class SnapHandler
         foreach ($items as $item) {
             $payload = $item->getPayload();
 
-            for ($i=0; $i < count($payload); $i++) { 
+            for ($i = 0; $i < count($payload); $i++) {
                 $crc += $payload[$i];
             }
         }
@@ -214,8 +212,7 @@ class SnapHandler
     }
 
     /**
-     * @param array<array<int, int>> $payload
-     * 
+     * @param  array<array<int, int>>  $payload
      * @return array<int, int>
      */
     protected function collapsePayload(array $payload): array

@@ -30,15 +30,15 @@ abstract class Connection
 
     public function reset(): void
     {
-        $this->clientAddress  = '';
-        $this->clientPort     = 0;
-        $this->sequence       = 0;
-        $this->ack            = 0;
-        $this->peerAck        = 0;
+        $this->clientAddress = '';
+        $this->clientPort    = 0;
+        $this->sequence      = 0;
+        $this->ack           = 0;
+        $this->peerAck       = 0;
 
         $this->chunks()->flushQueue();
         $this->chunks()->flushSentList();
-    
+
         $this->snaps()->resetState();
         $this->snaps()->flushSentList();
     }

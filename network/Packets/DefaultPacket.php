@@ -29,7 +29,7 @@ class DefaultPacket extends AbstractPacket
     }
 
     /**
-     * @return  array<int, AbstractChunk>
+     * @return array<int, AbstractChunk>
      */
     public function getChunks(): array
     {

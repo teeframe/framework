@@ -2,7 +2,6 @@
 
 namespace Base\Connection;
 
-use Network\Chunks\AbstractChunk;
 use Network\Chunks\Game\ClStartInfoChunk;
 use Network\Chunks\Game\SvMotdChunk;
 use Network\Chunks\Game\SvReadyToEnterChunk;
@@ -15,7 +14,6 @@ use Network\Chunks\System\MapChangeChunk;
 use Network\Chunks\System\ReadyChunk;
 use Network\Chunks\System\RequestMapDataChunk;
 use Network\Enums\Network;
-use Network\Enums\Protocol;
 use Network\Packets\DefaultPacket;
 
 class HandshakeHandler
@@ -32,11 +30,11 @@ class HandshakeHandler
 
     public function startHandshake(string $address, int $port): void
     {
-        $this->connection->state          = ConnectionSlot::STATE_CONNECTING;
-        $this->connection->clientAddress  = $address;
-        $this->connection->clientPort     = $port;
-        $this->connection->lastSendTime   = time();
-        $this->connection->lastRecvTime   = time();
+        $this->connection->state         = ConnectionSlot::STATE_CONNECTING;
+        $this->connection->clientAddress = $address;
+        $this->connection->clientPort    = $port;
+        $this->connection->lastSendTime  = time();
+        $this->connection->lastRecvTime  = time();
 
         $this->connection->sendControlMessage(Network::CTRLMSG_CONNECTACCEPT);
         $this->connection->consoleInfo('got connection, sending accept');
@@ -129,7 +127,7 @@ class HandshakeHandler
         $this->connection->chunks()->add(
             new SvMotdChunk('Welcome to the server!')
         )->add(
-            new ConReadyChunk()
+            new ConReadyChunk
         )->send();
     }
 
@@ -138,7 +136,7 @@ class HandshakeHandler
         // TODO: Add the code from (MsgID == NETMSGTYPE_CL_STARTINFO)
 
         $this->connection->chunks()->add(
-            new SvVoteClearOptionsChunk(),
+            new SvVoteClearOptionsChunk,
         )->add(
             new SvTuneParamsChunk(
                 groundControlSpeed: 1000,
@@ -176,7 +174,7 @@ class HandshakeHandler
                 playerHooking: 100
             )
         )->add(
-            new SvReadyToEnterChunk()
+            new SvReadyToEnterChunk
         )->send();
     }
 

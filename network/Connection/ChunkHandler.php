@@ -4,8 +4,8 @@ namespace Network\Connection;
 
 use Network\Chunks\AbstractChunk;
 use Network\Enums\Network;
-use Network\NetworkParams;
 use Network\NetworkBase;
+use Network\NetworkParams;
 use Network\Packets\DefaultPacket;
 
 class ChunkHandler
@@ -54,7 +54,7 @@ class ChunkHandler
 
     public function resend(): bool
     {
-        $resendChunks = array_map(fn(AbstractChunk $chunk): AbstractChunk => $chunk->addResendFlag(), $this->sentList);
+        $resendChunks = array_map(fn (AbstractChunk $chunk): AbstractChunk => $chunk->addResendFlag(), $this->sentList);
 
         $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $resendChunks, resend: true);
 
@@ -62,7 +62,7 @@ class ChunkHandler
     }
 
     /**
-     * @param array<int, AbstractChunk> $chunks
+     * @param  array<int, AbstractChunk>  $chunks
      */
     public function addToSentList(array $chunks): void
     {
@@ -77,7 +77,7 @@ class ChunkHandler
             return;
         }
 
-        $this->sentList = array_filter($this->sentList, fn(AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $ack));
+        $this->sentList = array_filter($this->sentList, fn (AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $ack));
     }
 
     public function flushQueue(): void

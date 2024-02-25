@@ -21,7 +21,7 @@ class MapChangeChunk extends AbstractChunk
 
     public function getPayload(): array
     {
-        return (new RawPayload())
+        return (new RawPayload)
             ->addString($this->mapName)
             ->addInt($this->crc)
             ->addInt($this->size)

@@ -10,12 +10,12 @@ use Network\RawPayload;
 class ClStartInfoChunk extends AbstractChunk
 {
     public function __construct(
-        public string $name, 
-        public string $clan, 
-        public int $country, 
-        public string $skin, 
-        public bool $useCustomColor, 
-        public int $colorBody, 
+        public string $name,
+        public string $clan,
+        public int $country,
+        public string $skin,
+        public bool $useCustomColor,
+        public int $colorBody,
         public int $colorFeet
     ) {
         parent::__construct(flags: Network::CHUNKFLAG_VITAL, message: Protocol::CL_START_INFO);
@@ -24,19 +24,19 @@ class ClStartInfoChunk extends AbstractChunk
     public static function make(RawPayload $payload): static
     {
         return new static(
-            $payload->extractString(), 
-            $payload->extractString(), 
-            $payload->extractInt(), 
-            $payload->extractString(), 
-            $payload->extractBool(), 
-            $payload->extractInt(), 
+            $payload->extractString(),
+            $payload->extractString(),
+            $payload->extractInt(),
+            $payload->extractString(),
+            $payload->extractBool(),
+            $payload->extractInt(),
             $payload->extractInt()
         );
     }
 
     public function getPayload(): array
     {
-        return (new RawPayload())
+        return (new RawPayload)
             ->addString($this->name)
             ->addString($this->clan)
             ->addInt($this->country)

@@ -43,8 +43,7 @@ class SvTuneParamsChunk extends AbstractChunk
         public int $laserDamage, // Unused by the game
         public int $playerCollision,
         public int $playerHooking,
-    )
-    {
+    ) {
         parent::__construct(flags: Network::CHUNKFLAG_VITAL, message: Protocol::SV_TUNEPARAMS);
     }
 
@@ -89,7 +88,7 @@ class SvTuneParamsChunk extends AbstractChunk
 
     public function getPayload(): array
     {
-        return (new RawPayload())
+        return (new RawPayload)
             ->addInt($this->groundControlSpeed)
             ->addInt($this->groundControlAccel)
             ->addInt($this->groundFriction)

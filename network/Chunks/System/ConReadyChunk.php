@@ -16,7 +16,7 @@ class ConReadyChunk extends AbstractChunk
 
     public static function make(RawPayload $payload): static
     {
-        return new static();
+        return new static;
     }
 
     public function getPayload(): array

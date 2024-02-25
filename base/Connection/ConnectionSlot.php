@@ -6,8 +6,8 @@ use Base\Server\ServerInstance;
 use Network\Chunks\UnsupportedChunk;
 use Network\Connection\Connection;
 use Network\Enums\Network;
-use Network\NetworkParams;
 use Network\NetworkBase;
+use Network\NetworkParams;
 use Network\Packets\AbstractPacket;
 use Network\Packets\ControlMessage;
 use Network\Packets\DefaultPacket;
@@ -41,9 +41,9 @@ class ConnectionSlot extends Connection
     {
         parent::reset();
 
-        $this->state          = static::STATE_EMPTY;
-        $this->lastSendTime   = 0;
-        $this->lastRecvTime   = 0;
+        $this->state        = static::STATE_EMPTY;
+        $this->lastSendTime = 0;
+        $this->lastRecvTime = 0;
     }
 
     public function handshaker(): HandshakeHandler
@@ -155,7 +155,7 @@ class ConnectionSlot extends Connection
 
         foreach ($packet->getChunks() as $chunk) {
             if ($chunk instanceof UnsupportedChunk) {
-                $this->consoleWarn('Unsupported chunk received, game='. $chunk->isGameMessage() . ' message='. $chunk->unsupportedMessage);
+                $this->consoleWarn('Unsupported chunk received, game='.$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
 
                 continue;
             }
