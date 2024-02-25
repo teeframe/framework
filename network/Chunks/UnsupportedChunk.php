@@ -2,24 +2,15 @@
 
 namespace Network\Chunks;
 
-use Network\RawPayload;
-
 class UnsupportedChunk extends AbstractChunk
 {
-    public function __construct(public int $unsupportedMessage)
+    public function __construct(public int $flags, public int $unsupportedMessage)
     {
-        parent::__construct(flags: 0, message: $unsupportedMessage);
-    }
-
-    public static function make(RawPayload $payload): static
-    {
-        return new static($payload->extractInt());
+        parent::__construct(flags: $flags, message: $unsupportedMessage);
     }
 
     public function getPayload(): array
     {
-        return (new RawPayload)
-            ->addInt($this->message)
-            ->getPayload();
+        return [];
     }
 }

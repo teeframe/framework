@@ -30,6 +30,8 @@ class ConnectionSlot extends Connection
 
     public int $lastRecvTime;
 
+    public int $lastResendAskTime;
+
     public function __construct(protected int $slotIndex)
     {
         $this->handshakeHandler = new HandshakeHandler($this);
@@ -41,9 +43,10 @@ class ConnectionSlot extends Connection
     {
         parent::reset();
 
-        $this->state        = static::STATE_EMPTY;
-        $this->lastSendTime = 0;
-        $this->lastRecvTime = 0;
+        $this->state             = static::STATE_EMPTY;
+        $this->lastSendTime      = 0;
+        $this->lastRecvTime      = 0;
+        $this->lastResendAskTime = 0;
     }
 
     public function handshaker(): HandshakeHandler
@@ -71,6 +74,10 @@ class ConnectionSlot extends Connection
 
         // Handle connection handshake
         if ($this->handshaker()->needsHandshake()) {
+            if (! ($packet instanceof DefaultPacket)) {
+                return false;
+            }
+
             return $this->handshaker()->handleHandshake($packet);
         }
 
@@ -155,9 +162,7 @@ class ConnectionSlot extends Connection
 
         foreach ($packet->getChunks() as $chunk) {
             if ($chunk instanceof UnsupportedChunk) {
-                $this->consoleWarn('Unsupported chunk received, game='.$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
-
-                continue;
+                $this->consoleInfo('Unsupported chunk received, game='.(int)$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
             }
 
             if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
@@ -173,9 +178,15 @@ class ConnectionSlot extends Connection
                     continue;
                 }
 
+                if ($this->lastResendAskTime >= time() - 1) {
+                    continue;
+                }
+    
                 $this->consoleWarn("Out of sequence, asking for resend, {$chunk->getSequence()} - {$futureAck}");
 
                 $this->sendResendKeepAliveMessage();
+
+                $this->lastResendAskTime = time();
             }
         }
     }

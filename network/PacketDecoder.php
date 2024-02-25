@@ -82,12 +82,12 @@ class PacketDecoder
                 $message += 128;
             }
 
-            $chunkClass = static::matchDecodedChunk($message);
+            $chunkClass = static::matchDecodedChunk($flags, $message);
 
             if ($chunkClass instanceof UnsupportedChunk) {
-                $chunks[] = $chunkClass;
+                $chunks[] = $chunkClass->setSequence($sequence);
             } else {
-                $chunks[] = $chunkClass::make(array_slice($payload, $pointer + $headerSize + 1, $size - 1)) // +1 to skip the message byte
+                $chunks[] = $chunkClass::make(new RawPayload(array_slice($payload, $pointer + $headerSize + 1, $size - 1))) // +1 to skip the message byte
                     ->setSequence($sequence);
             }
 
@@ -97,7 +97,7 @@ class PacketDecoder
         return $chunks;
     }
 
-    protected static function matchDecodedChunk(int $message): UnsupportedChunk|string
+    protected static function matchDecodedChunk(int $flags, int $message): UnsupportedChunk|string
     {
         return match ($message) {
             // System
@@ -117,7 +117,7 @@ class PacketDecoder
             Protocol::SV_READYTOENTER     => SvReadyToEnterChunk::class,
             Protocol::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
             Protocol::CL_START_INFO       => ClStartInfoChunk::class,
-            default                       => new UnsupportedChunk($message),
+            default                       => new UnsupportedChunk($flags, $message),
         };
     }
 }
