@@ -6,6 +6,7 @@ use Network\Encoder\ChunkEncoder;
 use Network\Encoder\PacketEncoder;
 use Network\Enums\Network;
 use Network\Limits;
+use Network\NetworkBase;
 
 class ChunkHandler
 {
@@ -53,9 +54,15 @@ class ChunkHandler
         return $encoder->send($this->connection->clientAddress, $this->connection->clientPort);
     }
 
-    public function flushSentList(int $ack): void
+    public function flushSentList(int $ack = -1): void
     {
-        $this->sentList = array_filter($this->sentList, fn(ChunkEncoder $chunk) => $chunk->getSequence() > $ack);
+        if ($ack === -1) {
+            $this->sentList = [];
+
+            return;
+        }
+
+        $this->sentList = array_filter($this->sentList, fn(ChunkEncoder $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $ack));
     }
 
     public function flushQueue(): void

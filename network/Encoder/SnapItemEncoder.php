@@ -2,7 +2,7 @@
 
 namespace Network\Encoder;
 
-use Network\IntegerHelper;
+use Network\NetworkBase;
 
 class SnapItemEncoder
 {
@@ -29,7 +29,7 @@ class SnapItemEncoder
 
     public function addInt(int $value): static
     {
-        $this->payload = [...$this->payload, ...IntegerHelper::pack($value)];
+        $this->payload = [...$this->payload, ...NetworkBase::packInt($value)];
 
         return $this;
     }

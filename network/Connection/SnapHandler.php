@@ -2,12 +2,11 @@
 
 namespace Network\Connection;
 
-use Base\Console;
 use Network\Encoder\Chunks\System\SnapChunk;
 use Network\Encoder\Chunks\System\SnapSingleChunk;
 use Network\Encoder\SnapItemEncoder;
 
-use Network\IntegerHelper;
+use Network\NetworkBase;
 use Network\Limits;
 
 class SnapHandler
@@ -17,7 +16,7 @@ class SnapHandler
     /**
      * @var array<int, ConnectionSnap>
      */
-    protected array $sentSnaps = [];
+    protected array $sentList = [];
 
     public function __construct(
         protected Connection $connection
@@ -27,6 +26,11 @@ class SnapHandler
     public function setLastAckedTick(int $tick): void
     {
         $this->lastAckedTick = $tick;
+    }
+
+    public function flushSentList(): void
+    {
+        $this->sentList = [];
     }
 
     /**
@@ -39,7 +43,7 @@ class SnapHandler
 
         [$removedItems, $updatedItems] = $this->calculateRemovedAndUpdatedItems($items);
 
-        $payload = [...IntegerHelper::pack($removedItems), ...IntegerHelper::pack($updatedItems), ...IntegerHelper::pack(0)];
+        $payload = [...NetworkBase::packInt($removedItems), ...NetworkBase::packInt($updatedItems), ...NetworkBase::packInt(0)];
         foreach ($items as $item) {
             $payload = [...$payload, ...$item->encode()];
         }
@@ -48,7 +52,7 @@ class SnapHandler
         $slicesCount = (int) ceil($payloadSize / Limits::MAXIMUM_SNAP_PAYLOAD_SIZE);
 
         if ($slicesCount > Limits::MAXIMUM_SNAP_SLICES) {
-            Console::error("Snap payload is too large for the client");
+            throw new \Exception('Snap payload is too large'); // TODO: Handle this
         }
 
         for ($i=0; $i < $slicesCount; $i++) { 
@@ -68,7 +72,7 @@ class SnapHandler
             )->send();
         }
 
-        $this->sentSnaps[] = new ConnectionSnap($currentTick, $items);
+        $this->sentList[] = new ConnectionSnap($currentTick, $items);
     }
 
     /**
@@ -111,7 +115,7 @@ class SnapHandler
 
     protected function findDeltaSnap(): ?ConnectionSnap
     {
-        foreach ($this->sentSnaps as $snap) {
+        foreach ($this->sentList as $snap) {
             if ($snap->getTick() === $this->lastAckedTick) {
                 return $snap;
             }

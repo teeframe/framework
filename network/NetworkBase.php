@@ -2,9 +2,28 @@
 
 namespace Network;
 
-class IntegerHelper
+class NetworkBase
 {
-    public static function pack(int $value): array
+    public static function isSequenceInBackroom(int $sequence, int $ack): bool
+    {
+        $bottom = ($ack - Limits::MAXIMUM_ACK / 2);
+
+        if ($bottom < 0) {
+            if ($sequence <= $ack || $sequence > ($bottom + Limits::MAXIMUM_ACK)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        if ($sequence <= $ack && $sequence > $bottom) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static function packInt(int $value): array
     {
         // TODO: Refactor this
 
@@ -35,7 +54,7 @@ class IntegerHelper
         return $result;
     }
 
-    public static function unpack(array $data): array
+    public static function unpackInt(array $data): array
     {
         // TODO: Refactor this
 

@@ -18,7 +18,16 @@ class PacketEncoder
     ) {
     }
 
-    public static function makeControlMessage(int $message, string $extra = ''): static
+    public static function makeResendKeepAliveMessage(int $ack): static
+    {
+        return new static(
+            flags: Network::PACKETFLAG_CONTROL|Network::PACKETFLAG_RESEND, 
+            ack: $ack, 
+            extraPayload: [Network::CTRLMSG_KEEPALIVE]
+        );
+    }
+
+    public static function makeControlMessage(int $message, string $extra = '', int $ack = 0): static
     {
         $extraPayload = [$message];
 
@@ -26,7 +35,11 @@ class PacketEncoder
             $extraPayload = [...$extraPayload, ...unpack('C*', $extra), 0];
         }
 
-        return new static(Network::PACKETFLAG_CONTROL, 0, [], $extraPayload);
+        return new static(
+            flags: Network::PACKETFLAG_CONTROL, 
+            ack: $ack, 
+            extraPayload: $extraPayload
+        );
     }
 
     public function send(string $address, int $port): bool

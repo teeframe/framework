@@ -7,6 +7,7 @@ use Base\Server\ServerInstance;
 use Network\Encoder\Chunks\Snap\ObjGameInfo;
 use Network\Encoder\Chunks\Snap\ObjPlayerInfo;
 use Network\Encoder\Chunks\System\SnapSingleChunk;
+use Network\Limits;
 
 class GameContext
 {
@@ -22,6 +23,10 @@ class GameContext
     public function doTick(): void
     {
         $this->currentTick++;
+
+        if ($this->currentTick >= Limits::MAXIMUM_TICK) {
+            ServerInstance::shutdown();
+        }
 
         // TODO: apply new input
 

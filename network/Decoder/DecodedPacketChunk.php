@@ -2,7 +2,7 @@
 
 namespace Network\Decoder;
 
-use Network\IntegerHelper;
+use Network\NetworkBase;
 
 class DecodedPacketChunk
 {
@@ -43,7 +43,7 @@ class DecodedPacketChunk
             return 0;
         }
 
-        [$result, $incrementPointer] = IntegerHelper::unpack(array_slice($this->payload, $this->pointer));
+        [$result, $incrementPointer] = NetworkBase::unpackInt(array_slice($this->payload, $this->pointer));
 
         $this->pointer += $incrementPointer;
 

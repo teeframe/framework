@@ -3,7 +3,7 @@
 namespace Network\Encoder;
 
 use Network\Enums\Network;
-use Network\IntegerHelper;
+use Network\NetworkBase;
 
 class ChunkEncoder
 {
@@ -32,7 +32,7 @@ class ChunkEncoder
 
     public function addInt(int $value): static
     {
-        $this->payload = [...$this->payload, ...IntegerHelper::pack($value)];
+        $this->payload = [...$this->payload, ...NetworkBase::packInt($value)];
 
         return $this;
     }

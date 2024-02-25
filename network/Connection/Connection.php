@@ -16,9 +16,12 @@ class Connection
 
     protected ChunkHandler $chunkHandler;
 
+    protected SnapHandler $snapHandler;
+
     public function __construct()
     {
         $this->chunkHandler = new ChunkHandler($this);
+        $this->snapHandler  = new SnapHandler($this);
 
         $this->reset();
     }
@@ -32,10 +35,18 @@ class Connection
         $this->peerAck        = 0;
 
         $this->chunks()->flushQueue();
+        $this->chunks()->flushSentList();
+    
+        $this->snaps()->flushSentList();
     }
 
     public function chunks(): ChunkHandler
     {
         return $this->chunkHandler;
+    }
+
+    public function snaps(): SnapHandler
+    {
+        return $this->snapHandler;
     }
 }
