@@ -4,7 +4,7 @@ namespace Network\Encoder;
 
 use Network\IntegerHelper;
 
-class PackageChunkSnapEncoder
+class SnapItemEncoder
 {
     public function __construct(protected int $itemId, protected int $id = 0, protected array $payload = [])
     {

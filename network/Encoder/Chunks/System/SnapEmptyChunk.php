@@ -2,10 +2,10 @@
 
 namespace Network\Encoder\Chunks\System;
 
-use Network\Encoder\PackageChunkEncoder;
+use Network\Encoder\ChunkEncoder;
 use Network\Enums\Protocol;
 
-class SnapEmptyChunk extends PackageChunkEncoder
+class SnapEmptyChunk extends ChunkEncoder
 {
     public static function make(int $currentTick, int $deltaTick): static
     {

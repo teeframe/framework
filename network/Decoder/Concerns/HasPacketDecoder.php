@@ -4,22 +4,14 @@ namespace Network\Decoder\Concerns;
 
 use Network\Decoder\DecodedPacketChunk;
 use Network\Enums\Network;
+use Network\Limits;
 
 trait HasPacketDecoder
 {
-    const HEADER_SIZE_DEFAULT          = 7;
-    const HEADER_SIZE_DEFAULT_NO_TOKEN = 3;
-    const HEADER_SIZE_CONNLESS         = 6;
-
-    // Size limits
-    const MINIMUM_PACKET_SIZE       = 3;
-    const MAXIMUM_PACKET_SIZE       = 1400;
-    const MINIMUM_PACKET_CHUNK_SIZE = 3;
-
     public static function decodeFromRaw(string $rawBuffer): static|false
     {
-        if (strlen($rawBuffer) < static::MINIMUM_PACKET_SIZE || strlen($rawBuffer) > static::MAXIMUM_PACKET_SIZE) {
-            return false; // TOO SMALL || TO BIG
+        if (strlen($rawBuffer) < Limits::MINIMUM_PACKET_SIZE || strlen($rawBuffer) > Limits::MAXIMUM_PACKET_SIZE) {
+            return false;
         }
 
         $data  = array_values(unpack('C*', $rawBuffer));
@@ -41,7 +33,7 @@ trait HasPacketDecoder
         // Any other packet
         $ack        = (($data[0] & 0xF) << 8) | $data[1];
         $numChunks  = $data[2];
-        $rawPayload = array_slice($data, static::HEADER_SIZE_DEFAULT_NO_TOKEN);
+        $rawPayload = array_slice($data, Limits::PACKET_HEADER_SIZE_DEFAULT);
 
         if (! ($flags & Network::PACKETFLAG_CONTROL)) {
             $chunks = static::decodeChunksFromPayload($rawPayload, $flags & Network::PACKETFLAG_COMPRESSION);
@@ -63,7 +55,7 @@ trait HasPacketDecoder
 
         // TODO: Implement huffman compression
 
-        while (count($payload) > $pointer + static::MINIMUM_PACKET_CHUNK_SIZE) {
+        while (count($payload) > $pointer + Limits::MINIMUM_PACKET_CHUNK_SIZE) {
             $flags = ($payload[$pointer + 0] >> 6) & 3;
             $size  = (($payload[$pointer + 0] & 0x3F) << 4) | ($payload[$pointer + 1] & 0xF);
 
@@ -73,8 +65,7 @@ trait HasPacketDecoder
                 ? (($payload[$pointer + 1] & 0xF0) << 2) | $payload[$pointer + 2]
                 : -1;
 
-            $message = $payload[$pointer + $headerSize];
-            $message >>= 1;
+            $message = $payload[$pointer + $headerSize] >> 1;
 
             if (! ($payload[$pointer + $headerSize] & 1)) {
                 $message += 128;

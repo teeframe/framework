@@ -2,11 +2,11 @@
 
 namespace Network\Encoder\Chunks\Game;
 
-use Network\Encoder\PackageChunkEncoder;
+use Network\Encoder\ChunkEncoder;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
 
-class SvTuneParamsChunk extends PackageChunkEncoder
+class SvTuneParamsChunk extends ChunkEncoder
 {
     public static function make(
         int $groundControlSpeed,

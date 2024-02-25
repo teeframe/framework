@@ -1,10 +1,10 @@
 <?php
 
-namespace Network\Encoder\Chunks\Snap;
+namespace Network\Encoder\SnapItems;
 
-use Network\Encoder\PackageChunkSnapEncoder;
+use Network\Encoder\SnapItemEncoder;
 
-class ObjPickupItem extends PackageChunkSnapEncoder
+class ObjPickupItem extends SnapItemEncoder
 {
     public static function make(int $x, int $y, int $type, int $subType): static
     {

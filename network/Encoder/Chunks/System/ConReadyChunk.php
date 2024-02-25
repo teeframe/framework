@@ -2,11 +2,11 @@
 
 namespace Network\Encoder\Chunks\System;
 
-use Network\Encoder\PackageChunkEncoder;
+use Network\Encoder\ChunkEncoder;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
 
-class ConReadyChunk extends PackageChunkEncoder
+class ConReadyChunk extends ChunkEncoder
 {
     public static function make(): static
     {

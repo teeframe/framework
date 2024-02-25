@@ -4,7 +4,6 @@ namespace Game;
 
 use Base\Connection\ConnectionSlot;
 use Base\Server\ServerInstance;
-use Network\Encoder\Chunks\Snap\EmptySnapChunk;
 use Network\Encoder\Chunks\Snap\ObjGameInfo;
 use Network\Encoder\Chunks\Snap\ObjPlayerInfo;
 use Network\Encoder\Chunks\System\SnapSingleChunk;

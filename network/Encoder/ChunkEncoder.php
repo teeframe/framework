@@ -5,7 +5,7 @@ namespace Network\Encoder;
 use Network\Enums\Network;
 use Network\IntegerHelper;
 
-class PackageChunkEncoder
+class ChunkEncoder
 {
     protected int $sequence = 0;
 
@@ -16,6 +16,11 @@ class PackageChunkEncoder
     public function getFlags(): int
     {
         return $this->flags;
+    }
+
+    public function getSequence(): int
+    {
+        return $this->sequence;
     }
 
     public function setSequence(int $sequence): static

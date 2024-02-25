@@ -5,10 +5,10 @@ namespace Network\Encoder;
 use Base\Server\ServerInstance;
 use Network\Enums\Network;
 
-class PackageEncoder
+class PacketEncoder
 {
     /**
-     * @param  array<int, PackageChunkEncoder>  $chunks
+     * @param  array<int, ChunkEncoder>  $chunks
      */
     public function __construct(
         protected int $flags,
@@ -38,9 +38,9 @@ class PackageEncoder
 
     protected function encode(): array
     {
-        if (false) {
-            $this->flags &= ~Network::PACKETFLAG_COMPRESSION; // TODO: Implement huffman compression
-        }
+        // if () {
+        //     $this->flags &= ~Network::PACKETFLAG_COMPRESSION; // TODO: Implement huffman compression
+        // }
 
         $header    = [];
         $header[0] = (($this->flags << 4) & 0xF0) | (($this->ack >> 8) & 0xF);

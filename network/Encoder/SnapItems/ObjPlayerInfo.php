@@ -1,10 +1,10 @@
 <?php
 
-namespace Network\Encoder\Chunks\Snap;
+namespace Network\Encoder\SnapItems;
 
-use Network\Encoder\PackageChunkSnapEncoder;
+use Network\Encoder\SnapItemEncoder;
 
-class ObjPlayerInfo extends PackageChunkSnapEncoder
+class ObjPlayerInfo extends SnapItemEncoder
 {
     public static function make(int $local, int $clientId, int $team, int $score, int $latency): static
     {

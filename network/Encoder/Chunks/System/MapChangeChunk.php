@@ -2,11 +2,11 @@
 
 namespace Network\Encoder\Chunks\System;
 
-use Network\Encoder\PackageChunkEncoder;
+use Network\Encoder\ChunkEncoder;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
 
-class MapChangeChunk extends PackageChunkEncoder
+class MapChangeChunk extends ChunkEncoder
 {
     public static function make(string $mapName, int $crc, int $size): static
     {

@@ -2,11 +2,11 @@
 
 namespace Network\Encoder\Chunks\Game;
 
-use Network\Encoder\PackageChunkEncoder;
+use Network\Encoder\ChunkEncoder;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
 
-class SvReadyToEnterChunk extends PackageChunkEncoder
+class SvReadyToEnterChunk extends ChunkEncoder
 {
     public static function make(): static
     {

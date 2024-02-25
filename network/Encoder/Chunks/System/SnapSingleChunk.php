@@ -2,14 +2,14 @@
 
 namespace Network\Encoder\Chunks\System;
 
-use Network\Encoder\PackageChunkEncoder;
-use Network\Encoder\PackageChunkSnapEncoder;
+use Network\Encoder\ChunkEncoder;
+use Network\Encoder\SnapItemEncoder;
 use Network\Enums\Protocol;
 
-class SnapSingleChunk extends PackageChunkEncoder
+class SnapSingleChunk extends ChunkEncoder
 {
     /**
-     * @var array<int, PackageChunkSnapEncoder>
+     * @var array<int, SnapItemEncoder>
      */
     protected array $snaps = [];
 
@@ -20,7 +20,7 @@ class SnapSingleChunk extends PackageChunkEncoder
             ->addInt($deltaTick);
     }
 
-    public function addSnap(PackageChunkSnapEncoder $snap): static
+    public function addSnap(SnapItemEncoder $snap): static
     {
         $this->snaps[] = $snap;
 
