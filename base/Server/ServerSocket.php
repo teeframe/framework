@@ -6,6 +6,7 @@ use Base\Console;
 use Game\GameContext;
 use Network\PacketDecoder;
 use Network\Enums\Network;
+use Network\Packets\ConnectionLessMessage;
 use Network\Packets\ControlMessage;
 use Swoole\Server;
 
@@ -56,9 +57,9 @@ class ServerSocket extends Server
             return;
         }
 
-        // Connless package
-        if ($packet->getFlags() & Network::PACKETFLAG_CONNLESS) {
-            Console::warn('Connless package received');
+        // Connection-less packet
+        if ($packet instanceof ConnectionLessMessage) {
+            Console::warn('Connection-less packet received');
 
             return;
         }
@@ -74,7 +75,7 @@ class ServerSocket extends Server
 
         // New client (and slot available)
         if ($connectionSlot = $this->getAvailableConnectionSlot()) {
-            $connectionSlot->startConnectionHandshake($clientInfo['address'], $clientInfo['port']);
+            $connectionSlot->handshaker()->startHandshake($clientInfo['address'], $clientInfo['port']);
 
             return;
         }

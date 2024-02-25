@@ -38,10 +38,10 @@ abstract class AbstractChunk
         return $this->flags;
     }
 
-    public function getMessage(): int
-    {
-        return $this->message;
-    }
+    // public function getMessage(): int
+    // {
+    //     return $this->message;
+    // }
 
     public function isGameMessage(): bool
     {

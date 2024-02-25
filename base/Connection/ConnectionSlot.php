@@ -4,12 +4,12 @@ namespace Base\Connection;
 
 use Base\Server\ServerInstance;
 use Network\Connection\Connection;
-use Network\Connection\ConnectionHandshaker;
 use Network\Enums\Network;
 use Network\NetworkParams;
 use Network\NetworkBase;
 use Network\Packets\AbstractPacket;
 use Network\Packets\ControlMessage;
+use Network\Packets\DefaultPacket;
 
 class ConnectionSlot extends Connection
 {
@@ -21,7 +21,7 @@ class ConnectionSlot extends Connection
     const STATE_READY      = 3;
     const STATE_INGAME     = 4;
 
-    protected ConnectionHandshaker $handshaker;
+    protected HandshakeHandler $handshakeHandler;
 
     public int $state;
 
@@ -31,7 +31,7 @@ class ConnectionSlot extends Connection
 
     public function __construct(protected int $slotIndex)
     {
-        $this->handshaker = new ConnectionHandshaker($this);
+        $this->handshakeHandler = new HandshakeHandler($this);
 
         parent::__construct();
     }
@@ -43,6 +43,11 @@ class ConnectionSlot extends Connection
         $this->state          = static::STATE_EMPTY;
         $this->lastSendTime   = 0;
         $this->lastRecvTime   = 0;
+    }
+
+    public function handshaker(): HandshakeHandler
+    {
+        return $this->handshakeHandler;
     }
 
     public function feedConnection(AbstractPacket $packet): bool
@@ -64,8 +69,8 @@ class ConnectionSlot extends Connection
         $this->updateConnectionState($packet);
 
         // Handle connection handshake
-        if ($this->handshaker->needsHandshake()) {
-            return $this->handshaker->handleHandshake($packet);
+        if ($this->handshaker()->needsHandshake()) {
+            return $this->handshaker()->handleHandshake($packet);
         }
 
         // Handle online connection
@@ -73,7 +78,7 @@ class ConnectionSlot extends Connection
             $this->chunks()->resend();
         }
 
-        return ($packet->getFlags() & Network::PACKETFLAG_CONTROL)
+        return ($packet instanceof ControlMessage)
             ? $this->handleControlMessagePacket($packet)
             : $this->handleDefaultPacket($packet);
     }
@@ -102,7 +107,7 @@ class ConnectionSlot extends Connection
         return ServerInstance::sendto($this->clientAddress, $this->clientPort, $packet->encodeToSend());
     }
 
-    protected function handleControlMessagePacket(AbstractPacket $packet): bool
+    protected function handleControlMessagePacket(ControlMessage $packet): bool
     {
         $message = $packet->getControlMessage();
 
@@ -119,7 +124,7 @@ class ConnectionSlot extends Connection
         return true;
     }
 
-    protected function handleDefaultPacket(AbstractPacket $packet): bool
+    protected function handleDefaultPacket(DefaultPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
             if ($chunk->isGameMessage()) {
@@ -141,12 +146,11 @@ class ConnectionSlot extends Connection
     protected function updateConnectionState(AbstractPacket $packet): void
     {
         $this->lastRecvTime = time();
+        $this->peerAck      = $packet->getAck();
 
-        if ($packet->getFlags() & Network::PACKETFLAG_CONTROL) {
+        if (! ($packet instanceof DefaultPacket)) {
             return;
         }
-
-        $this->peerAck = $packet->getAck();
 
         foreach ($packet->getChunks() as $chunk) {
             if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {

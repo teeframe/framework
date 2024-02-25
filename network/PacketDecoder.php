@@ -50,7 +50,7 @@ class PacketDecoder
             isCompressed: $flags & Network::PACKETFLAG_COMPRESSION
         );
 
-        return new DefaultPacket(ack: $ack, chunks: $chunks);
+        return new DefaultPacket(chunks: $chunks, ack: $ack);
     }
 
     public static function decodeChunksFromPayload(array $payload, bool $isCompressed): array
@@ -104,6 +104,7 @@ class PacketDecoder
             128 + 6 => SvTuneParamsChunk::class,
             128 + 8 => SvReadyToEnterChunk::class,
             128 + 10 => SvVoteClearOptionsChunk::class,
+            // TODO: Handle unknown messages
         };
     }
 }

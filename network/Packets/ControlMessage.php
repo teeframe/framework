@@ -7,7 +7,7 @@ use Network\NetworkBase;
 
 class ControlMessage extends AbstractPacket
 {
-    public function __construct(int $message, string $extra = '', int $ack = 0, bool $resend = false)
+    public function __construct(protected int $message, protected string $extra = '', int $ack = 0, bool $resend = false)
     {
         $flags = Network::PACKETFLAG_CONTROL;
 
@@ -26,11 +26,11 @@ class ControlMessage extends AbstractPacket
 
     public function getControlMessage(): int
     {
-        return $this->payload[0];
+        return $this->message;
     }
 
     public function getControlMessageExtra(): string
     {
-        return NetworkBase::packBuffer(array_slice($this->payload, 1));
+        return $this->extra;
     }
 }

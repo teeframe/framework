@@ -1,20 +1,24 @@
 <?php
 
-namespace Network\Connection;
+namespace Base\Connection;
 
-use Base\Connection\ConnectionSlot;
 use Network\Chunks\AbstractChunk;
-use Network\Encoder\Chunks\Game\SvMotdChunk;
-use Network\Encoder\Chunks\Game\SvReadyToEnterChunk;
-use Network\Encoder\Chunks\Game\SvTuneParamsChunk;
-use Network\Encoder\Chunks\Game\SvVoteClearOptionsChunk;
-use Network\Encoder\Chunks\System\ConReadyChunk;
-use Network\Encoder\Chunks\System\MapChangeChunk;
+use Network\Chunks\Game\ClStartInfoChunk;
+use Network\Chunks\Game\SvMotdChunk;
+use Network\Chunks\Game\SvReadyToEnterChunk;
+use Network\Chunks\Game\SvTuneParamsChunk;
+use Network\Chunks\Game\SvVoteClearOptionsChunk;
+use Network\Chunks\System\ConReadyChunk;
+use Network\Chunks\System\EnterGameChunk;
+use Network\Chunks\System\InfoChunk;
+use Network\Chunks\System\MapChangeChunk;
+use Network\Chunks\System\ReadyChunk;
+use Network\Chunks\System\RequestMapDataChunk;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
-use Network\Packets\AbstractPacket;
+use Network\Packets\DefaultPacket;
 
-class ConnectionHandshaker
+class HandshakeHandler
 {
     public function __construct(
         protected ConnectionSlot $connection
@@ -38,11 +42,11 @@ class ConnectionHandshaker
         $this->connection->consoleInfo('got connection, sending accept');
     }
 
-    public function handleHandshake(AbstractPacket $packet): bool
+    public function handleHandshake(DefaultPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
             // Step 1
-            if ($chunk->getMessage() === Protocol::INFO) {
+            if ($chunk instanceof InfoChunk) {
                 $this->connection->consoleInfo('player sent info');
 
                 if (! $this->handleInfoChunk($chunk)) {
@@ -51,7 +55,7 @@ class ConnectionHandshaker
             }
 
             // Step 2.1
-            if ($chunk->getMessage() === Protocol::REQUEST_MAP_DATA) {
+            if ($chunk instanceof RequestMapDataChunk) {
                 $this->connection->consoleInfo('player requested map data');
 
                 if (! $this->handleRequestMapDataChunk($chunk)) {
@@ -60,21 +64,21 @@ class ConnectionHandshaker
             }
 
             // Step 2.2
-            if ($chunk->getMessage() === Protocol::READY) {
+            if ($chunk instanceof ReadyChunk) {
                 $this->connection->consoleInfo('player is ready');
 
                 $this->handleReadyChunk($chunk);
             }
 
             // Step 3
-            if ($chunk->getMessage() === Protocol::CL_START_INFO) {
+            if ($chunk instanceof ClStartInfoChunk) {
                 $this->connection->consoleInfo('player sent start info');
 
                 $this->handleClStartInfoChunk($chunk);
             }
 
             // Step 4
-            if ($chunk->getMessage() === Protocol::ENTERGAME) {
+            if ($chunk instanceof EnterGameChunk) {
                 $this->connection->consoleInfo('player has entered the game');
 
                 $this->handleEnterGameChunk($chunk);
@@ -88,11 +92,9 @@ class ConnectionHandshaker
         return true;
     }
 
-    protected function handleInfoChunk(AbstractChunk $chunk): bool
+    protected function handleInfoChunk(InfoChunk $chunk): bool
     {
-        $version = $chunk->extractString();
-
-        if ($version !== '0.6 626fce9a778df4d4') {
+        if ($chunk->version !== '0.6 626fce9a778df4d4') {
             $this->connection->closeConnection('Wrong client version');
 
             return false;
@@ -101,13 +103,13 @@ class ConnectionHandshaker
         // TODO: Implement password system
 
         $this->connection->chunks()->add(
-            MapChangeChunk::make('dm1', -233464210, 5805)
+            new MapChangeChunk('dm1', -233464210, 5805)
         )->send();
 
         return true;
     }
 
-    protected function handleRequestMapDataChunk(AbstractChunk $chunk): bool
+    protected function handleRequestMapDataChunk(RequestMapDataChunk $chunk): bool
     {
         $this->connection->state = ConnectionSlot::STATE_LOADING;
 
@@ -118,27 +120,27 @@ class ConnectionHandshaker
         return false;
     }
 
-    protected function handleReadyChunk(AbstractChunk $chunk): void
+    protected function handleReadyChunk(ReadyChunk $chunk): void
     {
         $this->connection->state = ConnectionSlot::STATE_READY;
 
         // TODO: Add CGameContext::SendVoteSet(int ClientID), (To send if there is a vote running)
 
         $this->connection->chunks()->add(
-            SvMotdChunk::make('Welcome to the server!')
+            new SvMotdChunk('Welcome to the server!')
         )->add(
-            ConReadyChunk::make()
+            new ConReadyChunk()
         )->send();
     }
 
-    protected function handleClStartInfoChunk(AbstractChunk $chunk): void
+    protected function handleClStartInfoChunk(ClStartInfoChunk $chunk): void
     {
         // TODO: Add the code from (MsgID == NETMSGTYPE_CL_STARTINFO)
 
         $this->connection->chunks()->add(
-            SvVoteClearOptionsChunk::make(),
+            new SvVoteClearOptionsChunk(),
         )->add(
-            SvTuneParamsChunk::make(
+            new SvTuneParamsChunk(
                 groundControlSpeed: 1000,
                 groundControlAccel: 200,
                 groundFriction: 50,
@@ -174,11 +176,11 @@ class ConnectionHandshaker
                 playerHooking: 100
             )
         )->add(
-            SvReadyToEnterChunk::make()
+            new SvReadyToEnterChunk()
         )->send();
     }
 
-    protected function handleEnterGameChunk(AbstractChunk $chunk): void
+    protected function handleEnterGameChunk(EnterGameChunk $chunk): void
     {
         $this->connection->state = ConnectionSlot::STATE_INGAME;
 

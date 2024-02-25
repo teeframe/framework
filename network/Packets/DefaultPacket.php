@@ -7,10 +7,10 @@ use Network\Enums\Network;
 
 class DefaultPacket extends AbstractPacket
 {
-     /**
+    /**
      * @param  array<int, AbstractChunk>  $chunks
      */
-    public function __construct(int $ack, array $chunks, bool $resend = false)
+    public function __construct(protected array $chunks, int $ack, bool $resend = false)
     {
         $flags = 0;
 
@@ -26,5 +26,13 @@ class DefaultPacket extends AbstractPacket
         parent::__construct(flags: $flags, ack: $ack, payload: $payload);
 
         $this->setNumChunks(count($chunks));
+    }
+
+    /**
+     * @return  array<int, AbstractChunk>
+     */
+    public function getChunks(): array
+    {
+        return $this->chunks;
     }
 }
