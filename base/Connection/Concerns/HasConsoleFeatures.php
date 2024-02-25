@@ -6,17 +6,17 @@ use Base\Console;
 
 trait HasConsoleFeatures
 {
-    protected function consoleError(string $message): void
+    public function consoleError(string $message): void
     {
         Console::error($this->generateConsoleMessage($message));
     }
 
-    protected function consoleWarn(string $message): void
+    public function consoleWarn(string $message): void
     {
         Console::warn($this->generateConsoleMessage($message));
     }
 
-    protected function consoleInfo(string $message): void
+    public function consoleInfo(string $message): void
     {
         Console::info($this->generateConsoleMessage($message));
     }

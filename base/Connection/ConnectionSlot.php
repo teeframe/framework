@@ -3,6 +3,7 @@
 namespace Base\Connection;
 
 use Network\Connection\Connection;
+use Network\Connection\ConnectionHandshaker;
 use Network\Decoder\DecodedPacket;
 use Network\Encoder\PacketEncoder;
 use Network\Enums\Network;
@@ -11,7 +12,6 @@ use Network\NetworkBase;
 
 class ConnectionSlot extends Connection
 {
-    use Concerns\HasConnectionHandshake;
     use Concerns\HasConsoleFeatures;
 
     const STATE_EMPTY      = 0;
@@ -19,6 +19,8 @@ class ConnectionSlot extends Connection
     const STATE_LOADING    = 2;
     const STATE_READY      = 3;
     const STATE_INGAME     = 4;
+
+    protected ConnectionHandshaker $handshaker;
 
     public int $state;
 
@@ -28,6 +30,8 @@ class ConnectionSlot extends Connection
 
     public function __construct(protected int $slotIndex)
     {
+        $this->handshaker = new ConnectionHandshaker($this);
+
         parent::__construct();
     }
 
@@ -59,8 +63,8 @@ class ConnectionSlot extends Connection
         $this->updateConnectionState($packet);
 
         // Handle connection handshake
-        if ($this->isConnectionOnHandshake()) {
-            return $this->handleConnectionHandshake($packet);
+        if ($this->handshaker->needsHandshake()) {
+            return $this->handshaker->handleHandshake($packet);
         }
 
         // Handle online connection
@@ -78,6 +82,21 @@ class ConnectionSlot extends Connection
         $this->sendControlMessage(Network::CTRLMSG_CLOSE, $reason);
 
         $this->reset();
+    }
+
+
+    public function sendControlMessage(int $message, string $extra = ''): bool
+    {
+        $encoder = PacketEncoder::makeControlMessage($message, $extra, $this->ack);
+
+        return $encoder->send($this->clientAddress, $this->clientPort);
+    }
+
+    public function sendResendKeepAliveMessage(): bool
+    {
+        $encoder = PacketEncoder::makeResendKeepAliveMessage($this->ack);
+        
+        return $encoder->send($this->clientAddress, $this->clientPort);
     }
 
     protected function handleControlMessagePacket(DecodedPacket $packet): bool
@@ -145,19 +164,5 @@ class ConnectionSlot extends Connection
                 $this->sendResendKeepAliveMessage();
             }
         }
-    }
-
-    protected function sendResendKeepAliveMessage(): bool
-    {
-        $encoder = PacketEncoder::makeResendKeepAliveMessage($this->ack);
-        
-        return $encoder->send($this->clientAddress, $this->clientPort);
-    }
-
-    protected function sendControlMessage(int $message, string $extra = ''): bool
-    {
-        $encoder = PacketEncoder::makeControlMessage($message, $extra, $this->ack);
-
-        return $encoder->send($this->clientAddress, $this->clientPort);
     }
 }

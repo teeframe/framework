@@ -8,9 +8,16 @@ use Network\Encoder\SnapItemEncoder;
 
 use Network\NetworkBase;
 use Network\Limits;
+use Network\SnapSlicesLimitReachedException;
 
 class SnapHandler
 {
+    const STATE_INIT = 0;
+    const STATE_FULL = 1;
+    const STATE_RECOVER = 2;
+
+    protected int $state = self::STATE_INIT;
+
     protected int $lastAckedTick = -1;
 
     /**
@@ -26,11 +33,20 @@ class SnapHandler
     public function setLastAckedTick(int $tick): void
     {
         $this->lastAckedTick = $tick;
+
+        if ($this->state === self::STATE_INIT) {
+            $this->state = self::STATE_FULL;
+        }
     }
 
     public function flushSentList(): void
     {
         $this->sentList = [];
+    }
+
+    public function resetState(): void
+    {
+        $this->state = self::STATE_INIT;
     }
 
     /**
@@ -52,7 +68,7 @@ class SnapHandler
         $slicesCount = (int) ceil($payloadSize / Limits::MAXIMUM_SNAP_PAYLOAD_SIZE);
 
         if ($slicesCount > Limits::MAXIMUM_SNAP_SLICES) {
-            throw new \Exception('Snap payload is too large'); // TODO: Handle this
+            throw new SnapSlicesLimitReachedException();
         }
 
         for ($i=0; $i < $slicesCount; $i++) { 
@@ -85,6 +101,10 @@ class SnapHandler
         $deltaSnap = $this->findDeltaSnap();
 
         if ($deltaSnap === null) {
+            if ($this->state === self::STATE_FULL) {
+                $this->state = self::STATE_RECOVER;
+            }
+
             return [0, count($items)];
         }
 

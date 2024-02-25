@@ -37,6 +37,7 @@ class Connection
         $this->chunks()->flushQueue();
         $this->chunks()->flushSentList();
     
+        $this->snaps()->resetState();
         $this->snaps()->flushSentList();
     }
 

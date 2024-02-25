@@ -29,6 +29,8 @@ class ChunkHandler
     {
         $this->queue[] = $chunk;
 
+        // TODO: Add sending if reach the limit
+
         if ($chunk->getFlags() & Network::CHUNKFLAG_VITAL) {
             $this->connection->sequence = ($this->connection->sequence + 1) % Limits::MAXIMUM_ACK;
 
