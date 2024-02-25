@@ -4,6 +4,7 @@ namespace Network\Encoder;
 
 use Base\Server\ServerInstance;
 use Network\Enums\Network;
+use Network\NetworkBase;
 
 class PacketEncoder
 {
@@ -32,7 +33,7 @@ class PacketEncoder
         $extraPayload = [$message];
 
         if ($extra !== '') {
-            $extraPayload = [...$extraPayload, ...unpack('C*', $extra), 0];
+            $extraPayload = [...$extraPayload, ...NetworkBase::unpackBuffer($extra), 0];
         }
 
         return new static(

@@ -1,25 +1,25 @@
 <?php
 
-namespace Network\Decoder\Concerns;
+namespace Network\Decoder;
 
-use Network\Decoder\DecodedPacketChunk;
 use Network\Enums\Network;
 use Network\Limits;
+use Network\NetworkBase;
 
-trait HasPacketDecoder
+class PacketDecoder
 {
-    public static function decodeFromRaw(string $rawBuffer): static|false
+    public static function decodeFromRaw(string $rawBuffer): DecodedPacket|false
     {
         if (strlen($rawBuffer) < Limits::MINIMUM_PACKET_SIZE || strlen($rawBuffer) > Limits::MAXIMUM_PACKET_SIZE) {
             return false;
         }
 
-        $data  = array_values(unpack('C*', $rawBuffer));
+        $data  = array_values(NetworkBase::unpackBuffer($rawBuffer));
         $flags = $data[0] >> 4;
 
         // Connless special case
         if ($flags & Network::PACKETFLAG_CONNLESS) {
-            return new static(
+            return new DecodedPacket(
                 flags: $flags,
                 ack: 0,
                 numChunks: 0,
@@ -39,7 +39,7 @@ trait HasPacketDecoder
             $chunks = static::decodeChunksFromPayload($rawPayload, $flags & Network::PACKETFLAG_COMPRESSION);
         }
 
-        return new static(
+        return new DecodedPacket(
             flags: $flags,
             ack: $ack,
             numChunks: $numChunks,

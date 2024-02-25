@@ -4,8 +4,8 @@ namespace Base\Server;
 
 use Base\Console;
 use Game\GameContext;
-use Network\Decoder\DecodedPacket;
-use Network\Encoder\PackageEncoder;
+use Network\Decoder\PacketDecoder;
+use Network\Encoder\PacketEncoder;
 use Network\Enums\Network;
 use Swoole\Server;
 
@@ -51,7 +51,7 @@ class ServerSocket extends Server
 
     public function onPacket(string $rawData, array $clientInfo): void
     {
-        $packet = DecodedPacket::decodeFromRaw($rawData);
+        $packet = PacketDecoder::decodeFromRaw($rawData);
         if ($packet === false) {
             return;
         }
@@ -78,7 +78,7 @@ class ServerSocket extends Server
         }
 
         // Server is full...
-        PackageEncoder::makeControlMessage(Network::CTRLMSG_CLOSE, 'The server is full')
+        PacketEncoder::makeControlMessage(Network::CTRLMSG_CLOSE, 'The server is full')
             ->send($clientInfo['address'], $clientInfo['port']);
     }
 }

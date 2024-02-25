@@ -39,7 +39,7 @@ class ChunkEncoder
 
     public function addString(string $value): static
     {
-        $this->payload = [...$this->payload, ...unpack('C*', $value), 0]; // Alternative?: array_map('ord', str_split($value))
+        $this->payload = [...$this->payload, ...NetworkBase::unpackBuffer($value), 0];
 
         return $this;
     }

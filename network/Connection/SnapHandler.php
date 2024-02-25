@@ -110,6 +110,8 @@ class SnapHandler
 
         $deltaItems = $deltaSnap->getSnapItems();
 
+        // TODO: Implement filtering of items and return
+
         $removedItems = 0;
         $updatedItems = 0;
 

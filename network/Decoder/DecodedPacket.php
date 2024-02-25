@@ -6,8 +6,6 @@ use Network\Enums\Network;
 
 class DecodedPacket
 {
-    use Concerns\HasPacketDecoder;
-
     public function __construct(
         protected int $flags,
         protected int $ack,
