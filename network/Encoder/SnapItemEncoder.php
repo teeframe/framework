@@ -15,6 +15,11 @@ class SnapItemEncoder
         return $this->payload;
     }
 
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
     public function setId(int $id): static
     {
         $this->id = $id;

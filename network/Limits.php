@@ -17,5 +17,7 @@ class Limits
 
     const MAXIMUM_ACK = 1024;
     const MAXIMUM_CHUNKS = 255;
-    const MAXIMUM_SNAP_PAYLOAD = 900;
+
+    const MAXIMUM_SNAP_SLICES = 64;
+    const MAXIMUM_SNAP_PAYLOAD_SIZE = 900;
 }
