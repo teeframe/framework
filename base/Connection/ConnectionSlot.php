@@ -3,6 +3,7 @@
 namespace Base\Connection;
 
 use Base\Server\ServerInstance;
+use Network\Chunks\UnsupportedChunk;
 use Network\Connection\Connection;
 use Network\Enums\Network;
 use Network\NetworkParams;
@@ -153,6 +154,12 @@ class ConnectionSlot extends Connection
         }
 
         foreach ($packet->getChunks() as $chunk) {
+            if ($chunk instanceof UnsupportedChunk) {
+                $this->consoleWarn('Unsupported chunk received, game='. $chunk->isGameMessage() . ' message='. $chunk->unsupportedMessage);
+
+                continue;
+            }
+
             if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
                 continue;
             }

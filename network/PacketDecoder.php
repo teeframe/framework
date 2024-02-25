@@ -2,6 +2,7 @@
 
 namespace Network;
 
+use Network\Chunks\Game\ClStartInfoChunk;
 use Network\Chunks\Game\SvReadyToEnterChunk;
 use Network\Chunks\Game\SvVoteClearOptionsChunk;
 use Network\Chunks\System\ConReadyChunk;
@@ -11,7 +12,13 @@ use Network\Chunks\System\SnapEmptyChunk;
 use Network\Chunks\System\SnapSingleChunk;
 use Network\Chunks\Game\SvMotdChunk;
 use Network\Chunks\Game\SvTuneParamsChunk;
+use Network\Chunks\System\EnterGameChunk;
+use Network\Chunks\System\InfoChunk;
+use Network\Chunks\System\ReadyChunk;
+use Network\Chunks\System\RequestMapDataChunk;
+use Network\Chunks\UnsupportedChunk;
 use Network\Enums\Network;
+use Network\Enums\Protocol;
 use Network\NetworkParams;
 use Network\NetworkBase;
 use Network\Packets\AbstractPacket;
@@ -79,8 +86,12 @@ class PacketDecoder
 
             $chunkClass = static::matchDecodedChunk($message);
 
-            $chunks[] = $chunkClass::make(array_slice($payload, $pointer + $headerSize + 1, $size - 1)) // +1 to skip the message byte
-                ->setSequence($sequence);
+            if ($chunkClass instanceof UnsupportedChunk) {
+                $chunks[] = $chunkClass;
+            } else {
+                $chunks[] = $chunkClass::make(array_slice($payload, $pointer + $headerSize + 1, $size - 1)) // +1 to skip the message byte
+                    ->setSequence($sequence);
+            }
 
             $pointer += $headerSize + $size; // The +1 CANNOT be added here
         }
@@ -88,23 +99,27 @@ class PacketDecoder
         return $chunks;
     }
 
-    protected static function matchDecodedChunk(int $message): string
+    protected static function matchDecodedChunk(int $message): UnsupportedChunk|string
     {
         return match($message) {
             // System
-            // 1 => ,
-            2 => MapChangeChunk::class,
-            // 3 => ,
-            4 => ConReadyChunk::class,
-            5 => SnapChunk::class,
-            6 => SnapEmptyChunk::class,
-            7 => SnapSingleChunk::class,
+            Protocol::INFO => InfoChunk::class,
+            Protocol::MAP_CHANGE => MapChangeChunk::class,
+            // Protocol::MAP_DATA => ,
+            Protocol::CON_READY => ConReadyChunk::class,
+            Protocol::SNAP => SnapChunk::class,
+            Protocol::SNAPEMPTY => SnapEmptyChunk::class,
+            Protocol::SNAPSINGLE => SnapSingleChunk::class,
+            Protocol::READY => ReadyChunk::class,
+            Protocol::ENTERGAME => EnterGameChunk::class,
+            Protocol::REQUEST_MAP_DATA => RequestMapDataChunk::class,
             // Game
-            128 + 1 => SvMotdChunk::class,
-            128 + 6 => SvTuneParamsChunk::class,
-            128 + 8 => SvReadyToEnterChunk::class,
-            128 + 10 => SvVoteClearOptionsChunk::class,
-            // TODO: Handle unknown messages
+            Protocol::SV_MOTD => SvMotdChunk::class,
+            Protocol::SV_TUNEPARAMS => SvTuneParamsChunk::class,
+            Protocol::SV_READYTOENTER => SvReadyToEnterChunk::class,
+            Protocol::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
+            Protocol::CL_START_INFO => ClStartInfoChunk::class,
+            default => new UnsupportedChunk($message),
         };
     }
 }
