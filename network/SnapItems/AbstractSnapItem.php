@@ -12,6 +12,11 @@ abstract class AbstractSnapItem
 
     abstract public function getPayload(): array;
 
+    public function getItemId(): int
+    {
+        return $this->itemId;
+    }
+
     public function getId(): int
     {
         return $this->id;

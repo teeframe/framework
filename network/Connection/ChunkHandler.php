@@ -29,7 +29,9 @@ class ChunkHandler
     {
         $this->queue[] = $chunk;
 
-        // TODO: Add sending if reach the limit
+        if (($this->getQueueSize() + count($chunk->encode())) > NetworkParams::MAXIMUM_PACKET_SIZE) {
+            $this->send();
+        }
 
         if ($chunk->getFlags() & Network::CHUNKFLAG_VITAL) {
             $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK;
@@ -44,6 +46,7 @@ class ChunkHandler
     {
         $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->queue);
 
+        $this->addToSentList($this->queue);
         $this->flushQueue();
 
         return $this->connection->sendPacket($packet);
@@ -51,9 +54,19 @@ class ChunkHandler
 
     public function resend(): bool
     {
-        $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->sentList, resend: true); // TODO: Apply resend flag to all sent chunks
+        $resendChunks = array_map(fn(AbstractChunk $chunk): AbstractChunk => $chunk->addResendFlag(), $this->sentList);
+
+        $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $resendChunks, resend: true);
 
         return $this->connection->sendPacket($packet);
+    }
+
+    /**
+     * @param array<int, AbstractChunk> $chunks
+     */
+    public function addToSentList(array $chunks): void
+    {
+        $this->sentList = [...$this->sentList, ...$chunks];
     }
 
     public function flushSentList(int $ack = -1): void
@@ -69,8 +82,17 @@ class ChunkHandler
 
     public function flushQueue(): void
     {
-        $this->sentList = [...$this->sentList, ...$this->queue];
-
         $this->queue = [];
+    }
+
+    protected function getQueueSize(): int
+    {
+        $chunksPayload = [];
+
+        foreach ($this->queue as $chunk) {
+            $chunksPayload = [...$chunksPayload, ...$chunk->encode()];
+        }
+
+        return NetworkParams::PACKET_HEADER_SIZE_DEFAULT + count($chunksPayload);
     }
 }

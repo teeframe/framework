@@ -14,6 +14,13 @@ abstract class AbstractChunk
 
     abstract public function getPayload(): array;
 
+    public function addResendFlag(): static
+    {
+        $this->flags |= Network::CHUNKFLAG_RESEND;
+
+        return $this;
+    }
+
     public function setSequence(int $sequence): static
     {
         $this->sequence = $sequence;
