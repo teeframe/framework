@@ -2,8 +2,32 @@
 
 namespace Network;
 
+use Network\Huffman\Huffman;
+
+// TODO: Better type this
+
 class NetworkBase
 {
+    protected static ?Huffman $huffmanInstance = null;
+
+    public static function compressHuffman(array $buffer): array
+    {
+        if (! self::$huffmanInstance) {
+            self::$huffmanInstance = new Huffman();
+        }
+
+        return self::$huffmanInstance->compress($buffer);
+    }
+
+    public static function decompressHuffman(array $buffer): array
+    {
+        if (! self::$huffmanInstance) {
+            self::$huffmanInstance = new Huffman();
+        }
+
+        return self::$huffmanInstance->decompress($buffer);
+    }
+
     public static function packBuffer(array $buffer): string
     {
         return implode('', array_map('chr', $buffer));

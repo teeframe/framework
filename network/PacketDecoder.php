@@ -10,6 +10,7 @@ use Network\Chunks\Game\SvVoteClearOptionsChunk;
 use Network\Chunks\System\ConReadyChunk;
 use Network\Chunks\System\EnterGameChunk;
 use Network\Chunks\System\InfoChunk;
+use Network\Chunks\System\InputChunk;
 use Network\Chunks\System\MapChangeChunk;
 use Network\Chunks\System\ReadyChunk;
 use Network\Chunks\System\RequestMapDataChunk;
@@ -49,9 +50,15 @@ class PacketDecoder
             return new ControlMessage(message: $data[3], extra: NetworkBase::packBuffer(array_slice($data, 4)), ack: $ack);
         }
 
+        $payload = array_slice($data, NetworkParams::PACKET_HEADER_SIZE_DEFAULT);
+
+        if ($flags & Network::PACKETFLAG_COMPRESSION) {
+            $payload = NetworkBase::decompressHuffman($payload);
+        }
+
         // Default Packet
         $chunks = static::decodeChunksFromPayload(
-            payload: array_slice($data, NetworkParams::PACKET_HEADER_SIZE_DEFAULT),
+            payload: $payload,
             isCompressed: $flags & Network::PACKETFLAG_COMPRESSION
         );
 
@@ -108,9 +115,15 @@ class PacketDecoder
             Protocol::SNAP             => SnapChunk::class,
             Protocol::SNAPEMPTY        => SnapEmptyChunk::class,
             Protocol::SNAPSINGLE       => SnapSingleChunk::class,
+            // Protocol::INPUTTIMING => ,
+            // Protocol::RCON_AUTH_STATUS => ,
+            // Protocol::RCON_LINE => ,
             Protocol::READY            => ReadyChunk::class,
             Protocol::ENTERGAME        => EnterGameChunk::class,
+            Protocol::INPUT            => InputChunk::class,
             Protocol::REQUEST_MAP_DATA => RequestMapDataChunk::class,
+            // Protocol::PING => ,
+            // Protocol::PING_REPLY => ,
             // Game
             Protocol::SV_MOTD             => SvMotdChunk::class,
             Protocol::SV_TUNEPARAMS       => SvTuneParamsChunk::class,
