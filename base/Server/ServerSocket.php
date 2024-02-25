@@ -4,9 +4,9 @@ namespace Base\Server;
 
 use Base\Console;
 use Game\GameContext;
-use Network\Decoder\PacketDecoder;
-use Network\Encoder\PacketEncoder;
+use Network\PacketDecoder;
 use Network\Enums\Network;
+use Network\Packets\ControlMessage;
 use Swoole\Server;
 
 class ServerSocket extends Server
@@ -70,6 +70,8 @@ class ServerSocket extends Server
             return;
         }
 
+        // TODO: Implement ban system
+
         // New client (and slot available)
         if ($connectionSlot = $this->getAvailableConnectionSlot()) {
             $connectionSlot->startConnectionHandshake($clientInfo['address'], $clientInfo['port']);
@@ -78,7 +80,10 @@ class ServerSocket extends Server
         }
 
         // Server is full...
-        PacketEncoder::makeControlMessage(Network::CTRLMSG_CLOSE, 'The server is full')
-            ->send($clientInfo['address'], $clientInfo['port']);
+        $this->sendto(
+            $clientInfo['address'], 
+            $clientInfo['port'], 
+            (new ControlMessage(Network::CTRLMSG_CLOSE, 'The server is full'))->encodeToSend()
+        );
     }
 }

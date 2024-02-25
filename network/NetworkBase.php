@@ -4,6 +4,11 @@ namespace Network;
 
 class NetworkBase
 {
+    public static function packBuffer(array $buffer): string
+    {
+        return implode('', array_map('chr', $buffer));
+    }
+
     public static function unpackBuffer(string $packet): array
     {
         $result = unpack('C*', $packet);
@@ -17,10 +22,10 @@ class NetworkBase
 
     public static function isSequenceInBackroom(int $sequence, int $ack): bool
     {
-        $bottom = ($ack - Limits::MAXIMUM_ACK / 2);
+        $bottom = ($ack - NetworkParams::MAXIMUM_ACK / 2);
 
         if ($bottom < 0) {
-            if ($sequence <= $ack || $sequence > ($bottom + Limits::MAXIMUM_ACK)) {
+            if ($sequence <= $ack || $sequence > ($bottom + NetworkParams::MAXIMUM_ACK)) {
                 return true;
             }
 

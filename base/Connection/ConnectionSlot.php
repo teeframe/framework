@@ -2,13 +2,14 @@
 
 namespace Base\Connection;
 
+use Base\Server\ServerInstance;
 use Network\Connection\Connection;
 use Network\Connection\ConnectionHandshaker;
-use Network\Decoder\DecodedPacket;
-use Network\Encoder\PacketEncoder;
 use Network\Enums\Network;
-use Network\Limits;
+use Network\NetworkParams;
 use Network\NetworkBase;
+use Network\Packets\AbstractPacket;
+use Network\Packets\ControlMessage;
 
 class ConnectionSlot extends Connection
 {
@@ -44,7 +45,7 @@ class ConnectionSlot extends Connection
         $this->lastRecvTime   = 0;
     }
 
-    public function feedConnection(DecodedPacket $packet): bool
+    public function feedConnection(AbstractPacket $packet): bool
     {
         if ($this->sequence >= $this->peerAck) {
             if ($packet->getAck() < $this->peerAck || $packet->getAck() > $this->sequence) {
@@ -84,22 +85,24 @@ class ConnectionSlot extends Connection
         $this->reset();
     }
 
-
     public function sendControlMessage(int $message, string $extra = ''): bool
     {
-        $encoder = PacketEncoder::makeControlMessage($message, $extra, $this->ack);
-
-        return $encoder->send($this->clientAddress, $this->clientPort);
+        return $this->sendPacket(new ControlMessage(message: $message, extra: $extra, ack: $this->ack));
     }
 
     public function sendResendKeepAliveMessage(): bool
     {
-        $encoder = PacketEncoder::makeResendKeepAliveMessage($this->ack);
-        
-        return $encoder->send($this->clientAddress, $this->clientPort);
+        return $this->sendPacket(new ControlMessage(message: Network::CTRLMSG_KEEPALIVE, ack: $this->ack, resend: true));
     }
 
-    protected function handleControlMessagePacket(DecodedPacket $packet): bool
+    public function sendPacket(AbstractPacket $packet): bool
+    {
+        $this->lastSendTime = time();
+
+        return ServerInstance::sendto($this->clientAddress, $this->clientPort, $packet->encodeToSend());
+    }
+
+    protected function handleControlMessagePacket(AbstractPacket $packet): bool
     {
         $message = $packet->getControlMessage();
 
@@ -116,7 +119,7 @@ class ConnectionSlot extends Connection
         return true;
     }
 
-    protected function handleDefaultPacket(DecodedPacket $packet): bool
+    protected function handleDefaultPacket(AbstractPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
             if ($chunk->isGameMessage()) {
@@ -135,7 +138,7 @@ class ConnectionSlot extends Connection
         return true;
     }
 
-    protected function updateConnectionState(DecodedPacket $packet): void
+    protected function updateConnectionState(AbstractPacket $packet): void
     {
         $this->lastRecvTime = time();
 
@@ -150,7 +153,7 @@ class ConnectionSlot extends Connection
                 continue;
             }
 
-            $futureAck = ($this->ack + 1) % Limits::MAXIMUM_ACK;
+            $futureAck = ($this->ack + 1) % NetworkParams::MAXIMUM_ACK;
 
             if ($chunk->getSequence() === $futureAck) {
                 $this->ack = $futureAck;

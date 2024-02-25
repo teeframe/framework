@@ -2,7 +2,9 @@
 
 namespace Network\Connection;
 
-class Connection
+use Network\Packets\AbstractPacket;
+
+abstract class Connection
 {
     public string $clientAddress;
 
@@ -50,4 +52,6 @@ class Connection
     {
         return $this->snapHandler;
     }
+
+    abstract public function sendPacket(AbstractPacket $packet): bool;
 }

@@ -7,7 +7,7 @@ use Base\Server\ServerInstance;
 use Network\Encoder\Chunks\Snap\ObjGameInfo;
 use Network\Encoder\Chunks\Snap\ObjPlayerInfo;
 use Network\Encoder\Chunks\System\SnapSingleChunk;
-use Network\Limits;
+use Network\NetworkParams;
 
 class GameContext
 {
@@ -24,7 +24,7 @@ class GameContext
     {
         $this->currentTick++;
 
-        if ($this->currentTick >= Limits::MAXIMUM_TICK) {
+        if ($this->currentTick >= NetworkParams::MAXIMUM_TICK) {
             ServerInstance::shutdown();
         }
 

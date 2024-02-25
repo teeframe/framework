@@ -2,21 +2,21 @@
 
 namespace Network\Connection;
 
-use Network\Encoder\ChunkEncoder;
-use Network\Encoder\PacketEncoder;
+use Network\Chunks\AbstractChunk;
 use Network\Enums\Network;
-use Network\Limits;
+use Network\NetworkParams;
 use Network\NetworkBase;
+use Network\Packets\DefaultPacket;
 
 class ChunkHandler
 {
     /**
-     * @var array<int, ChunkEncoder>
+     * @var array<int, AbstractChunk>
      */
     protected array $queue = [];
 
     /**
-     * @var array<int, ChunkEncoder>
+     * @var array<int, AbstractChunk>
      */
     protected array $sentList = [];
 
@@ -25,14 +25,14 @@ class ChunkHandler
     ) {
     }
 
-    public function add(ChunkEncoder $chunk): static
+    public function add(AbstractChunk $chunk): static
     {
         $this->queue[] = $chunk;
 
         // TODO: Add sending if reach the limit
 
         if ($chunk->getFlags() & Network::CHUNKFLAG_VITAL) {
-            $this->connection->sequence = ($this->connection->sequence + 1) % Limits::MAXIMUM_ACK;
+            $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK;
 
             $chunk->setSequence($this->connection->sequence);
         }
@@ -42,18 +42,18 @@ class ChunkHandler
 
     public function send(): bool
     {
-        $encoder = new PacketEncoder(0, $this->connection->ack, $this->queue);
+        $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->queue);
 
         $this->flushQueue();
 
-        return $encoder->send($this->connection->clientAddress, $this->connection->clientPort);
+        return $this->connection->sendPacket($packet);
     }
 
     public function resend(): bool
     {
-        $encoder = new PacketEncoder(Network::PACKETFLAG_RESEND, $this->connection->ack, $this->sentList);
+        $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->sentList, resend: true); // TODO: Apply resend flag to all sent chunks
 
-        return $encoder->send($this->connection->clientAddress, $this->connection->clientPort);
+        return $this->connection->sendPacket($packet);
     }
 
     public function flushSentList(int $ack = -1): void
@@ -64,7 +64,7 @@ class ChunkHandler
             return;
         }
 
-        $this->sentList = array_filter($this->sentList, fn(ChunkEncoder $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $ack));
+        $this->sentList = array_filter($this->sentList, fn(AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $ack));
     }
 
     public function flushQueue(): void

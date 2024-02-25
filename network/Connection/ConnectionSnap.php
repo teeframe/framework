@@ -2,12 +2,12 @@
 
 namespace Network\Connection;
 
-use Network\Encoder\SnapItemEncoder;
+use Network\SnapItems\AbstractSnapItem;
 
 class ConnectionSnap
 {
     /**
-     * @param array<int, SnapItemEncoder> $snapItems
+     * @param array<int, AbstractSnapItem> $snapItems
      */
     public function __construct(
         protected int $tick,
@@ -21,7 +21,7 @@ class ConnectionSnap
     }
     
     /**
-     * @return array<int, SnapItemEncoder>
+     * @return array<int, AbstractSnapItem>
      */
     public function getSnapItems(): array
     {

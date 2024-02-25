@@ -2,7 +2,7 @@
 
 namespace Network;
 
-class Limits
+class NetworkParams
 {
     const PACKET_HEADER_SIZE_DEFAULT = 3;
     const PACKET_HEADER_SIZE_CONNECTION_LESS = 6;

@@ -2,12 +2,12 @@
 
 namespace Network\Connection;
 
-use Network\Encoder\Chunks\System\SnapChunk;
-use Network\Encoder\Chunks\System\SnapSingleChunk;
-use Network\Encoder\SnapItemEncoder;
+use Network\Chunks\System\SnapChunk;
+use Network\Chunks\System\SnapSingleChunk;
+use Network\SnapItems\AbstractSnapItem;
 
 use Network\NetworkBase;
-use Network\Limits;
+use Network\NetworkParams;
 use Network\SnapSlicesLimitReachedException;
 
 class SnapHandler
@@ -37,6 +37,8 @@ class SnapHandler
         if ($this->state === self::STATE_INIT) {
             $this->state = self::STATE_FULL;
         }
+
+        // TODO: Add auto remove of sentList items
     }
 
     public function flushSentList(): void
@@ -50,7 +52,7 @@ class SnapHandler
     }
 
     /**
-     * @param array<int, SnapItemEncoder> $items
+     * @param array<int, AbstractSnapItem> $items
      */
     public function sendSnapItems(int $currentTick, array $items): void
     {
@@ -65,26 +67,26 @@ class SnapHandler
         }
 
         $payloadSize = count($payload);
-        $slicesCount = (int) ceil($payloadSize / Limits::MAXIMUM_SNAP_PAYLOAD_SIZE);
+        $slicesCount = (int) ceil($payloadSize / NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE);
 
-        if ($slicesCount > Limits::MAXIMUM_SNAP_SLICES) {
+        if ($slicesCount > NetworkParams::MAXIMUM_SNAP_SLICES) {
             throw new SnapSlicesLimitReachedException();
         }
 
         for ($i=0; $i < $slicesCount; $i++) { 
             if ($slicesCount === 1) {
                 $this->connection->chunks()->add(
-                    SnapSingleChunk::make($currentTick, $deltaTick, $crc, $payloadSize, $payload)
+                    new SnapSingleChunk($currentTick, $deltaTick, $crc, $payloadSize, $payload)
                 )->send();
 
                 break;
             }
 
-            $slicePayload = array_slice($payload, $i * Limits::MAXIMUM_SNAP_PAYLOAD_SIZE, Limits::MAXIMUM_SNAP_PAYLOAD_SIZE);
+            $slicePayload = array_slice($payload, $i * NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE, NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE);
             $slicePayloadSize = count($slicePayload);
             
             $this->connection->chunks()->add(
-                SnapChunk::make($currentTick, $deltaTick, $crc, $slicesCount, $i + 1, $slicePayloadSize, $slicePayload)
+                new SnapChunk($currentTick, $deltaTick, $crc, $slicesCount, $i + 1, $slicePayloadSize, $slicePayload)
             )->send();
         }
 
@@ -92,7 +94,7 @@ class SnapHandler
     }
 
     /**
-     * @param array<int, SnapItemEncoder> $items
+     * @param array<int, AbstractSnapItem> $items
      * 
      * @return array{int, int}
      */
@@ -147,7 +149,7 @@ class SnapHandler
     }
 
     /**
-     * @param array<int, SnapItemEncoder> $items
+     * @param array<int, AbstractSnapItem> $items
      */
     protected function calculateCrc(array $items): int
     {

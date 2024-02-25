@@ -3,8 +3,7 @@
 namespace Network\Connection;
 
 use Base\Connection\ConnectionSlot;
-use Network\Decoder\DecodedPacket;
-use Network\Decoder\DecodedPacketChunk;
+use Network\Chunks\AbstractChunk;
 use Network\Encoder\Chunks\Game\SvMotdChunk;
 use Network\Encoder\Chunks\Game\SvReadyToEnterChunk;
 use Network\Encoder\Chunks\Game\SvTuneParamsChunk;
@@ -13,6 +12,7 @@ use Network\Encoder\Chunks\System\ConReadyChunk;
 use Network\Encoder\Chunks\System\MapChangeChunk;
 use Network\Enums\Network;
 use Network\Enums\Protocol;
+use Network\Packets\AbstractPacket;
 
 class ConnectionHandshaker
 {
@@ -28,8 +28,6 @@ class ConnectionHandshaker
 
     public function startHandshake(string $address, int $port): void
     {
-        // TODO: Implement ban system
-
         $this->connection->state          = ConnectionSlot::STATE_CONNECTING;
         $this->connection->clientAddress  = $address;
         $this->connection->clientPort     = $port;
@@ -40,7 +38,7 @@ class ConnectionHandshaker
         $this->connection->consoleInfo('got connection, sending accept');
     }
 
-    public function handleHandshake(DecodedPacket $packet): bool
+    public function handleHandshake(AbstractPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
             // Step 1
@@ -90,7 +88,7 @@ class ConnectionHandshaker
         return true;
     }
 
-    protected function handleInfoChunk(DecodedPacketChunk $chunk): bool
+    protected function handleInfoChunk(AbstractChunk $chunk): bool
     {
         $version = $chunk->extractString();
 
@@ -109,7 +107,7 @@ class ConnectionHandshaker
         return true;
     }
 
-    protected function handleRequestMapDataChunk(DecodedPacketChunk $chunk): bool
+    protected function handleRequestMapDataChunk(AbstractChunk $chunk): bool
     {
         $this->connection->state = ConnectionSlot::STATE_LOADING;
 
@@ -120,7 +118,7 @@ class ConnectionHandshaker
         return false;
     }
 
-    protected function handleReadyChunk(DecodedPacketChunk $chunk): void
+    protected function handleReadyChunk(AbstractChunk $chunk): void
     {
         $this->connection->state = ConnectionSlot::STATE_READY;
 
@@ -133,7 +131,7 @@ class ConnectionHandshaker
         )->send();
     }
 
-    protected function handleClStartInfoChunk(DecodedPacketChunk $chunk): void
+    protected function handleClStartInfoChunk(AbstractChunk $chunk): void
     {
         // TODO: Add the code from (MsgID == NETMSGTYPE_CL_STARTINFO)
 
@@ -180,7 +178,7 @@ class ConnectionHandshaker
         )->send();
     }
 
-    protected function handleEnterGameChunk(DecodedPacketChunk $chunk): void
+    protected function handleEnterGameChunk(AbstractChunk $chunk): void
     {
         $this->connection->state = ConnectionSlot::STATE_INGAME;
 
