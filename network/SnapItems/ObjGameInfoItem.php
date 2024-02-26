@@ -19,7 +19,7 @@ class ObjGameInfoItem extends AbstractSnapItem
         parent::__construct(itemId: 6);
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->gameFlags)
@@ -29,7 +29,6 @@ class ObjGameInfoItem extends AbstractSnapItem
             ->addInt($this->scoreLimit)
             ->addInt($this->timeLimit)
             ->addInt($this->roundNum)
-            ->addInt($this->roundCurrent)
-            ->getPayload();
+            ->addInt($this->roundCurrent);
     }
 }

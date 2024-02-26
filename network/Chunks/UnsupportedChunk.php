@@ -2,6 +2,8 @@
 
 namespace Network\Chunks;
 
+use Network\RawPayload;
+
 class UnsupportedChunk extends AbstractChunk
 {
     public function __construct(public int $flags, public int $unsupportedMessage)
@@ -9,8 +11,8 @@ class UnsupportedChunk extends AbstractChunk
         parent::__construct(flags: $flags, message: $unsupportedMessage);
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
-        return [];
+        return new RawPayload();
     }
 }

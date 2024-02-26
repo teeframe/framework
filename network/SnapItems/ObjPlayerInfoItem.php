@@ -16,14 +16,13 @@ class ObjPlayerInfoItem extends AbstractSnapItem
         parent::__construct(itemId: 10);
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addBool($this->local)
             ->addInt($this->clientId)
             ->addInt($this->team)
             ->addInt($this->score)
-            ->addInt($this->latency)
-            ->getPayload();
+            ->addInt($this->latency);
     }
 }

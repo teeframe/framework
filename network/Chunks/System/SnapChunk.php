@@ -34,7 +34,7 @@ class SnapChunk extends AbstractChunk
         );
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->currentTick)
@@ -43,7 +43,6 @@ class SnapChunk extends AbstractChunk
             ->addInt($this->currentNumber)
             ->addInt($this->crc)
             ->addInt($this->size)
-            ->addBytes($this->snapPayload)
-            ->getPayload();
+            ->addBytes($this->snapPayload);
     }
 }

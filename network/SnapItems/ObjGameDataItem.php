@@ -15,13 +15,12 @@ class ObjGameDataItem extends AbstractSnapItem
         parent::__construct(itemId: 7);
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->teamScoreRed)
             ->addInt($this->teamScoreBlue)
             ->addInt($this->flagCarrierRedIndex)
-            ->addInt($this->flagCarrierBlueIndex)
-            ->getPayload();
+            ->addInt($this->flagCarrierBlueIndex);
     }
 }

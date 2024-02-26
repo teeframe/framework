@@ -19,8 +19,8 @@ class SvVoteClearOptionsChunk extends AbstractChunk
         return new static;
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
-        return (new RawPayload)->getPayload();
+        return new RawPayload;
     }
 }

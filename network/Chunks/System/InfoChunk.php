@@ -19,11 +19,10 @@ class InfoChunk extends AbstractChunk
         return new static($payload->extractString(), $payload->extractString());
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addString($this->version)
-            ->addString($this->password)
-            ->getPayload();
+            ->addString($this->password);
     }
 }

@@ -46,7 +46,7 @@ class InputChunk extends AbstractChunk
         );
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->ackGameTick)
@@ -61,7 +61,6 @@ class InputChunk extends AbstractChunk
             ->addInt($this->inputPlayerFlag)
             ->addInt($this->inputWantedWeapon)
             ->addInt($this->inputNextWeapon)
-            ->addInt($this->inputPrevWeapon)
-            ->getPayload();
+            ->addInt($this->inputPrevWeapon);
     }
 }

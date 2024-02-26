@@ -206,15 +206,15 @@ class ConnectionSlot extends Connection implements SnapInterface
     public function doSnap(int $indexAsking): array
     {
         return [
-            new ObjClientInfoItem(
-                name: $this->name,
-                clan: $this->clan,
-                country: $this->country,
-                skinName: $this->skinName,
-                useCustomColor: $this->useCustomColor,
-                colorBody: $this->colorBody,
-                colorFoot: $this->colorFeet,
-            ),
+            // new ObjClientInfoItem(
+            //     name: $this->name,
+            //     clan: $this->clan,
+            //     country: $this->country,
+            //     skinName: $this->skinName,
+            //     useCustomColor: $this->useCustomColor,
+            //     colorBody: $this->colorBody,
+            //     colorFoot: $this->colorFeet,
+            // ),
             new ObjPlayerInfoItem(
                 local: $this->slotIndex === $indexAsking,
                 clientId: $this->slotIndex,

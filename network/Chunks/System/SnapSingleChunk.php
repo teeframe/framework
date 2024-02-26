@@ -30,14 +30,13 @@ class SnapSingleChunk extends AbstractChunk
         );
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->currentTick)
             ->addInt($this->deltaTick)
             ->addInt($this->crc)
             ->addInt($this->size)
-            ->addBytes($this->snapPayload)
-            ->getPayload();
+            ->addBytes($this->snapPayload);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Network\SnapItems;
 
+use Network\RawPayload;
+
 abstract class AbstractSnapItem
 {
     protected int $id = 0;
@@ -10,7 +12,7 @@ abstract class AbstractSnapItem
     {
     }
 
-    abstract public function getPayload(): array;
+    abstract public function getPayload(): RawPayload;
 
     public function getItemId(): int
     {
@@ -31,6 +33,6 @@ abstract class AbstractSnapItem
 
     public function encode(): array
     {
-        return [$this->itemId, $this->id, ...$this->getPayload()];
+        return [$this->itemId, $this->id, ...$this->getPayload()->encode()];
     }
 }

@@ -15,13 +15,12 @@ class ObjPickupItem extends AbstractSnapItem
         parent::__construct(itemId: 4);
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->x)
             ->addInt($this->y)
             ->addInt($this->type)
-            ->addInt($this->subType)
-            ->getPayload();
+            ->addInt($this->subType);
     }
 }

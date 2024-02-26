@@ -23,11 +23,10 @@ class SnapEmptyChunk extends AbstractChunk
         );
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->currentTick)
-            ->addInt($this->deltaTick)
-            ->getPayload();
+            ->addInt($this->deltaTick);
     }
 }

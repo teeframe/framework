@@ -8,7 +8,7 @@ class RawPayload
     {
     }
 
-    public function getPayload(): array
+    public function encode(): array
     {
         return $this->payload;
     }
@@ -79,5 +79,15 @@ class RawPayload
         $this->payload = array_slice($this->payload, $safeLength);
 
         return $bytes;
+    }
+
+    public function extractIntRaw(): array
+    {
+        [$unused, $bytesAmount] = NetworkBase::unpackInt($this->payload);
+
+        $result        = array_slice($this->payload, 0, $bytesAmount);
+        $this->payload = array_slice($this->payload, $bytesAmount);
+
+        return $result;
     }
 }

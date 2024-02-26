@@ -18,7 +18,7 @@ class ObjClientInfoItem extends AbstractSnapItem
         parent::__construct(itemId: 11);
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addString(substr($this->name, 0, 15))
@@ -27,7 +27,6 @@ class ObjClientInfoItem extends AbstractSnapItem
             ->addString(substr($this->skinName, 0, 19))
             ->addBool($this->useCustomColor)
             ->addInt($this->colorBody)
-            ->addInt($this->colorFoot)
-            ->getPayload();
+            ->addInt($this->colorFoot);
     }
 }

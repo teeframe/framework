@@ -19,10 +19,9 @@ class SvMotdChunk extends AbstractChunk
         return new static($payload->extractString());
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
-            ->addString($this->text)
-            ->getPayload();
+            ->addString($this->text);
     }
 }

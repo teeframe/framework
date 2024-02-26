@@ -34,7 +34,7 @@ class ClStartInfoChunk extends AbstractChunk
         );
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addString($this->name)
@@ -43,7 +43,6 @@ class ClStartInfoChunk extends AbstractChunk
             ->addString($this->skinName)
             ->addBool($this->useCustomColor)
             ->addInt($this->colorBody)
-            ->addInt($this->colorFeet)
-            ->getPayload();
+            ->addInt($this->colorFeet);
     }
 }

@@ -86,7 +86,7 @@ class SvTuneParamsChunk extends AbstractChunk
         );
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
         return (new RawPayload)
             ->addInt($this->groundControlSpeed)
@@ -121,7 +121,6 @@ class SvTuneParamsChunk extends AbstractChunk
             ->addInt($this->laserBounceCost)
             ->addInt($this->laserDamage)
             ->addInt($this->playerCollision)
-            ->addInt($this->playerHooking)
-            ->getPayload();
+            ->addInt($this->playerHooking);
     }
 }

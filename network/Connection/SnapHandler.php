@@ -213,10 +213,13 @@ class SnapHandler
 
         foreach ($items as $item) {
             $payload = $item->getPayload();
+            $payload = clone $payload;
 
-            for ($i = 0; $i < count($payload); $i++) {
-                $crc += $payload[$i];
-            }
+            do {
+                $rawInt = $payload->extractIntRaw();
+
+                $crc += $rawInt[0];
+            } while ($rawInt[0] > 0);
         }
 
         return $crc;

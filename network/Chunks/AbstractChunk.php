@@ -3,6 +3,7 @@
 namespace Network\Chunks;
 
 use Network\Enums\Network;
+use Network\RawPayload;
 
 abstract class AbstractChunk
 {
@@ -12,7 +13,7 @@ abstract class AbstractChunk
     {
     }
 
-    abstract public function getPayload(): array;
+    abstract public function getPayload(): RawPayload;
 
     public function addResendFlag(): static
     {
@@ -50,7 +51,7 @@ abstract class AbstractChunk
 
     public function getSize(): int
     {
-        return count($this->getPayload()) + 1; // +1 for the message byte
+        return count($this->getPayload()->encode()) + 1; // +1 for the message byte
     }
 
     public function encode(): array
@@ -75,6 +76,6 @@ abstract class AbstractChunk
             $message |= 1;
         }
 
-        return [...$header, $message, ...$this->getPayload()];
+        return [...$header, $message, ...$this->getPayload()->encode()];
     }
 }

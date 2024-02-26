@@ -19,8 +19,8 @@ class ReadyChunk extends AbstractChunk
         return new static;
     }
 
-    public function getPayload(): array
+    public function getPayload(): RawPayload
     {
-        return [];
+        return new RawPayload();
     }
 }
