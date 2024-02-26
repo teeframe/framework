@@ -13,6 +13,11 @@ class RawPayload
         return $this->payload;
     }
 
+    public function reset(): void
+    {
+        $this->payload = [];
+    }
+
     public function addBool(bool $value): static
     {
         return $this->addInt((int) $value);
@@ -79,15 +84,5 @@ class RawPayload
         $this->payload = array_slice($this->payload, $safeLength);
 
         return $bytes;
-    }
-
-    public function extractIntRaw(): array
-    {
-        [$unused, $bytesAmount] = NetworkBase::unpackInt($this->payload);
-
-        $result        = array_slice($this->payload, 0, $bytesAmount);
-        $this->payload = array_slice($this->payload, $bytesAmount);
-
-        return $result;
     }
 }

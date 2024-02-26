@@ -14,6 +14,34 @@ abstract class AbstractSnapItem
 
     abstract public function getPayload(): RawPayload;
 
+    public function getPayloadInts(): array
+    {
+        $payload = clone $this->getPayload();
+
+        $integers = [];
+        while (true) {
+            $rawInt = $payload->extractInt();
+
+            if ($rawInt === -1) {
+                break;
+            }
+
+            $integers[] = $rawInt;
+        }
+
+        return $integers;
+    }
+
+    public function resetPayload(): void
+    {
+        $this->getPayload()->reset();
+    }
+
+    public function getKey(): int
+    {
+        return ($this->itemId << 16) | $this->id;
+    }
+
     public function getItemId(): int
     {
         return $this->itemId;

@@ -144,7 +144,7 @@ class SnapHandler
             $matchedItem = null;
 
             foreach ($items as $item) {
-                if ($item->getId() === $deltaItem->getId()) {
+                if ($item->getKey() === $deltaItem->getKey()) {
                     $matchedItem = $item;
                     break;
                 }
@@ -153,7 +153,7 @@ class SnapHandler
             if ($matchedItem === null) {
                 $removedItemsCount++;
 
-                $removedItems[] = $deltaItem;
+                $removedItems = [...$removedItems, $deltaItem->getItemId(), $deltaItem->getId()];
             }
         }
 
@@ -164,7 +164,7 @@ class SnapHandler
             $matchedItem = null;
 
             foreach ($deltaItems as $deltaItem) {
-                if ($item->getId() === $deltaItem->getId()) {
+                if ($item->getKey() === $deltaItem->getKey()) {
                     $matchedItem = $deltaItem;
                     break;
                 }
@@ -174,23 +174,38 @@ class SnapHandler
                 if ($item->encode() !== $matchedItem->encode()) {
                     $updatedItemsCount++;
 
-                    $updatedItems[] = $item;
+                    $updatedItems = [...$updatedItems, ...$this->diffItem($matchedItem, $item)];
                 } else {
                     // Item is the same, no need to send it
                 }
             } else { // Item is new
                 $updatedItemsCount++;
 
-                $updatedItems[] = $item;
+                $updatedItems = [...$updatedItems, ...$item->encode()];
             }
         }
+        return [[...$removedItems, ...$updatedItems], $removedItemsCount, $updatedItemsCount];
+    }
 
-        $sendablePayload = [
-            ...$this->collapsePayload(array_map(fn (AbstractSnapItem $item) => [$item->getItemId(), $item->getId()], $removedItems)),
-            ...$this->collapsePayload(array_map(fn (AbstractSnapItem $item) => $item->encode(), $updatedItems)),
-        ];
+    protected function diffItem(AbstractSnapItem $deltaItem, AbstractSnapItem $item): array
+    {
+        $deltaItemInts = $deltaItem->getPayloadInts();
+        $itemInts      = $item->getPayloadInts();
+        $diffInts      = [];
 
-        return [$sendablePayload, $removedItemsCount, $updatedItemsCount];
+        foreach ($itemInts as $i => $integer) {
+            $diffInts[] = $integer - $deltaItemInts[$i];
+        }
+
+        // Clone item, reset it payload and add the diff
+        $item = clone $item;
+        $item->resetPayload();
+        
+        foreach ($diffInts as $integer) {
+            $item->getPayload()->addInt($integer);
+        }
+
+        return $item->encode();
     }
 
     protected function findDeltaSnap(): ?ConnectionSnap
@@ -212,14 +227,9 @@ class SnapHandler
         $crc = 0;
 
         foreach ($items as $item) {
-            $payload = $item->getPayload();
-            $payload = clone $payload;
+            $payloadInts = $item->getPayloadInts();
 
-            do {
-                $rawInt = $payload->extractIntRaw();
-
-                $crc += $rawInt[0];
-            } while ($rawInt[0] > 0);
+            $crc += (int) array_sum($payloadInts);
         }
 
         return $crc;

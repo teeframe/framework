@@ -99,7 +99,7 @@ class NetworkBase
         // TODO: Refactor this
 
         if (count($data) === 0) {
-            return [0, 0];
+            return [-1, 0];
         }
 
         $pointer = 0;
