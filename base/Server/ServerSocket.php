@@ -5,6 +5,7 @@ namespace Base\Server;
 use Base\Console;
 use Game\GameContext;
 use Network\Enums\Network;
+use Network\NetworkParams;
 use Network\PacketDecoder;
 use Network\Packets\ConnectionLessMessage;
 use Network\Packets\ControlMessage;
@@ -28,7 +29,7 @@ class ServerSocket extends Server
 
         // TODO: Implement GameServer()->OnInit()
 
-        swoole_timer_tick(1000 / 50, function (): void {
+        swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
             $this->context->doTick();
         });
 

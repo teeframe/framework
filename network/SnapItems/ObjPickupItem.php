@@ -12,7 +12,7 @@ class ObjPickupItem extends AbstractSnapItem
         public int $type,
         public int $subType,
     ) {
-        parent::__construct(itemId: 7);
+        parent::__construct(itemId: 4);
     }
 
     public function getPayload(): array

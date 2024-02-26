@@ -7,7 +7,7 @@ use Network\RawPayload;
 class ObjPlayerInfoItem extends AbstractSnapItem
 {
     public function __construct(
-        public int $local,
+        public bool $local,
         public int $clientId,
         public int $team,
         public int $score,
@@ -19,7 +19,7 @@ class ObjPlayerInfoItem extends AbstractSnapItem
     public function getPayload(): array
     {
         return (new RawPayload)
-            ->addInt($this->local)
+            ->addBool($this->local)
             ->addInt($this->clientId)
             ->addInt($this->team)
             ->addInt($this->score)

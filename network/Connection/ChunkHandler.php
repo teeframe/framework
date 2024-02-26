@@ -29,12 +29,12 @@ class ChunkHandler
     {
         $this->queue[] = $chunk;
 
-        if (($this->getQueueSize() + count($chunk->encode())) > NetworkParams::MAXIMUM_PACKET_SIZE) {
+        if (($this->getQueueSize() + count($chunk->encode())) > NetworkParams::MAXIMUM_PACKET_SIZE || count($this->queue) === (NetworkParams::MAXIMUM_CHUNKS_PER_PACKET + 1)) {
             $this->send();
         }
 
         if ($chunk->getFlags() & Network::CHUNKFLAG_VITAL) {
-            $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK;
+            $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
 
             $chunk->setSequence($this->connection->sequence);
         }

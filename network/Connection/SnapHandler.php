@@ -20,6 +20,8 @@ class SnapHandler
 
     protected int $lastAckedTick = -1;
 
+    protected int $latency = 0;
+
     /**
      * @var array<int, ConnectionSnap>
      */
@@ -30,11 +32,20 @@ class SnapHandler
     ) {
     }
 
+    public function getLatency(): int
+    {
+        return $this->latency;
+    }
+
     public function setLastAckedTick(int $tick): void
     {
+        if ($deltaSnap = $this->findDeltaSnap()) {
+            $this->latency = (int) round(($tick - $deltaSnap->getTick()) / NetworkParams::TICKS_PER_SECOND * 1000);
+        }
+    
         $this->lastAckedTick = $tick;
 
-        if ($this->state === self::STATE_INIT) {
+        if ($this->state !== self::STATE_FULL) {
             $this->state = self::STATE_FULL;
         }
 

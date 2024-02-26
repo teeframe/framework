@@ -4,11 +4,13 @@ namespace Game;
 
 use Base\Connection\ConnectionSlot;
 use Base\Server\ServerInstance;
+use Base\SnapInterface;
 use Network\NetworkParams;
+use Network\SnapItems\ObjGameDataItem;
 use Network\SnapItems\ObjGameInfoItem;
 use Network\SnapItems\ObjPlayerInfoItem;
 
-class GameContext
+class GameContext implements SnapInterface
 {
     public function __construct(protected int $currentTick = 0)
     {
@@ -31,39 +33,61 @@ class GameContext
 
         // TODO: Implement GameServer()->OnTick()
 
-        $this->doSnapshot();
+        $this->constructAndBroadcastSnaps();
 
         // TODO: master server stuff
     }
 
-    protected function doSnapshot(): void
+    protected function constructAndBroadcastSnaps(): void
     {
         // TODO: DoSnapshot()
 
-        foreach (ServerInstance::getConnectionSlots() as $connection) {
+        foreach (ServerInstance::getConnectionSlots() as $slotIndex => $connection) {
             if ($connection->state !== ConnectionSlot::STATE_INGAME) {
                 continue;
             }
 
             $connection->snaps()->sendSnapItems($this->getCurrentTick(), [
-                new ObjGameInfoItem(
-                    gameFlags: 0,
-                    gameStateFlags: 0,
-                    roundStartTick: 0,
-                    warmupTimer: 0,
-                    scoreLimit: 0,
-                    timeLimit: 0,
-                    roundNum: 0,
-                    roundCurrent: 1
-                ),
-                new ObjPlayerInfoItem(
-                        local: 1,
-                        clientId: 0,
-                        team: 0,
-                        score: 0,
-                        latency: 0
-                )
+                ...$this->doSnap($slotIndex),
+                ...$this->doConnectionsSnap($slotIndex),
             ]);
         }
+    }
+
+    public function doSnap(int $indexAsking): array
+    {
+        return [
+            new ObjGameInfoItem(
+                gameFlags: 0,
+                gameStateFlags: 0,
+                roundStartTick: $this->getCurrentTick(),
+                warmupTimer: 0,
+                scoreLimit: 0,
+                timeLimit: 0,
+                roundNum: 0,
+                roundCurrent: 1
+            ),
+            // new ObjGameDataItem(
+            //     teamScoreRed: 0,
+            //     teamScoreBlue: 0,
+            //     flagCarrierRedIndex: -1,
+            //     flagCarrierBlueIndex: -1,
+            // )
+        ];
+    }
+
+    public function doConnectionsSnap(int $indexAsking): array
+    {
+        $snaps = [];
+
+        foreach (ServerInstance::getConnectionSlots() as $slotIndex => $connection) {
+            if ($connection->state !== ConnectionSlot::STATE_INGAME) {
+                continue;
+            }
+
+            $snaps = [...$snaps, ...$connection->doSnap($indexAsking)];
+        }
+
+        return $snaps;
     }
 }

@@ -4,7 +4,7 @@ namespace Base\Connection\Concerns;
 
 use Base\Console;
 
-trait HasConsoleFeatures
+trait HasConsole
 {
     public function consoleError(string $message): void
     {

@@ -46,10 +46,10 @@ class NetworkBase
 
     public static function isSequenceInBackroom(int $sequence, int $ack): bool
     {
-        $bottom = ($ack - NetworkParams::MAXIMUM_ACK / 2);
+        $bottom = ($ack - NetworkParams::MAXIMUM_ACK_NUMBER / 2);
 
         if ($bottom < 0) {
-            if ($sequence <= $ack || $sequence > ($bottom + NetworkParams::MAXIMUM_ACK)) {
+            if ($sequence <= $ack || $sequence > ($bottom + NetworkParams::MAXIMUM_ACK_NUMBER)) {
                 return true;
             }
 

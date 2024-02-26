@@ -14,12 +14,13 @@ class NetworkParams
     const MINIMUM_PACKET_CHUNK_SIZE          = 3;
 
     // Tick
+    const TICKS_PER_SECOND                   = 50;
     const MINIMUM_TICK                       = 0;
     const MAXIMUM_TICK                       = 0x6FFFFFFF;
 
     // Ack & Chunk
-    const MAXIMUM_ACK                        = 1024;
-    const MAXIMUM_CHUNKS                     = 255;
+    const MAXIMUM_ACK_NUMBER                 = 1024;
+    const MAXIMUM_CHUNKS_PER_PACKET          = 255;
 
     // Snap
     const MAXIMUM_SNAP_SLICES                = 64;

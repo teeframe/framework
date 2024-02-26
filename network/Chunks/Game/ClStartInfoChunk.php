@@ -13,7 +13,7 @@ class ClStartInfoChunk extends AbstractChunk
         public string $name,
         public string $clan,
         public int $country,
-        public string $skin,
+        public string $skinName,
         public bool $useCustomColor,
         public int $colorBody,
         public int $colorFeet
@@ -40,7 +40,7 @@ class ClStartInfoChunk extends AbstractChunk
             ->addString($this->name)
             ->addString($this->clan)
             ->addInt($this->country)
-            ->addString($this->skin)
+            ->addString($this->skinName)
             ->addBool($this->useCustomColor)
             ->addInt($this->colorBody)
             ->addInt($this->colorFeet)

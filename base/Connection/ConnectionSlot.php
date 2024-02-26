@@ -3,6 +3,8 @@
 namespace Base\Connection;
 
 use Base\Server\ServerInstance;
+use Base\SnapInterface;
+use Network\Chunks\System\InputChunk;
 use Network\Chunks\UnsupportedChunk;
 use Network\Connection\Connection;
 use Network\Enums\Network;
@@ -11,10 +13,13 @@ use Network\NetworkParams;
 use Network\Packets\AbstractPacket;
 use Network\Packets\ControlMessage;
 use Network\Packets\DefaultPacket;
+use Network\SnapItems\ObjClientInfoItem;
+use Network\SnapItems\ObjPlayerInfoItem;
 
-class ConnectionSlot extends Connection
+class ConnectionSlot extends Connection implements SnapInterface
 {
-    use Concerns\HasConsoleFeatures;
+    use Concerns\HasConsole;
+    use Concerns\HasClientData;
 
     const STATE_EMPTY      = 0;
     const STATE_CONNECTING = 1;
@@ -42,6 +47,8 @@ class ConnectionSlot extends Connection
     public function reset(): void
     {
         parent::reset();
+
+        $this->resetClientData();
 
         $this->state             = static::STATE_EMPTY;
         $this->lastSendTime      = 0;
@@ -139,6 +146,11 @@ class ConnectionSlot extends Connection
                 // TODO: Implement GameServer()->OnMessage
             }
 
+            if ($chunk instanceof InputChunk) {
+                $this->snaps()->setLastAckedTick($chunk->ackGameTick);
+
+
+            }
             // TODO: Implement NETMSG_INPUT
 
             // TODO: Implement NETMSG_PING
@@ -162,14 +174,14 @@ class ConnectionSlot extends Connection
 
         foreach ($packet->getChunks() as $chunk) {
             if ($chunk instanceof UnsupportedChunk) {
-                $this->consoleInfo('Unsupported chunk received, game='.(int)$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
+                $this->consoleWarn('Unsupported chunk received, game='.(int)$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
             }
 
             if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
                 continue;
             }
 
-            $futureAck = ($this->ack + 1) % NetworkParams::MAXIMUM_ACK;
+            $futureAck = ($this->ack + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
 
             if ($chunk->getSequence() === $futureAck) {
                 $this->ack = $futureAck;
@@ -189,5 +201,27 @@ class ConnectionSlot extends Connection
                 $this->lastResendAskTime = time();
             }
         }
+    }
+
+    public function doSnap(int $indexAsking): array
+    {
+        return [
+            new ObjClientInfoItem(
+                name: $this->name,
+                clan: $this->clan,
+                country: $this->country,
+                skinName: $this->skinName,
+                useCustomColor: $this->useCustomColor,
+                colorBody: $this->colorBody,
+                colorFoot: $this->colorFeet,
+            ),
+            new ObjPlayerInfoItem(
+                local: $this->slotIndex === $indexAsking,
+                clientId: $this->slotIndex,
+                team: 0,
+                score: 0,
+                latency: $this->snaps()->getLatency(),
+            ),
+        ];
     }
 }

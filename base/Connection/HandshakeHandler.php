@@ -122,6 +122,8 @@ class HandshakeHandler
     {
         $this->connection->state = ConnectionSlot::STATE_READY;
 
+        // TODO: Add CNetMsg_Sv_VoteOptionListAdd OptionMsg (To send votes list)
+
         // TODO: Add CGameContext::SendVoteSet(int ClientID), (To send if there is a vote running)
 
         $this->connection->chunks()->add(
@@ -133,7 +135,13 @@ class HandshakeHandler
 
     protected function handleClStartInfoChunk(ClStartInfoChunk $chunk): void
     {
-        // TODO: Add the code from (MsgID == NETMSGTYPE_CL_STARTINFO)
+        $this->connection->name           = $chunk->name;
+        $this->connection->clan           = $chunk->clan;
+        $this->connection->country        = $chunk->country;
+        $this->connection->skinName       = $chunk->skinName;
+        $this->connection->useCustomColor = $chunk->useCustomColor;
+        $this->connection->colorBody      = $chunk->colorBody;
+        $this->connection->colorFeet      = $chunk->colorFeet;
 
         $this->connection->chunks()->add(
             new SvVoteClearOptionsChunk,
