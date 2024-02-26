@@ -7,6 +7,7 @@ use Network\Chunks\System\SnapEmptyChunk;
 use Network\Chunks\System\SnapSingleChunk;
 use Network\NetworkBase;
 use Network\NetworkParams;
+use Network\RawPayload;
 use Network\SnapItems\AbstractSnapItem;
 use Network\SnapSlicesLimitReachedException;
 
@@ -184,6 +185,7 @@ class SnapHandler
                 $updatedItems = [...$updatedItems, ...$item->encode()];
             }
         }
+
         return [[...$removedItems, ...$updatedItems], $removedItemsCount, $updatedItemsCount];
     }
 
@@ -197,15 +199,12 @@ class SnapHandler
             $diffInts[] = $integer - $deltaItemInts[$i];
         }
 
-        // Clone item, reset it payload and add the diff
-        $item = clone $item;
-        $item->resetPayload();
-        
+        $newPayload = new RawPayload();
         foreach ($diffInts as $integer) {
-            $item->getPayload()->addInt($integer);
+            $newPayload->addInt($integer);
         }
 
-        return $item->encode();
+        return [$item->getItemId(), $item->getId(), ...$newPayload->encode()];
     }
 
     protected function findDeltaSnap(): ?ConnectionSnap

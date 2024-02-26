@@ -32,11 +32,6 @@ abstract class AbstractSnapItem
         return $integers;
     }
 
-    public function resetPayload(): void
-    {
-        $this->getPayload()->reset();
-    }
-
     public function getKey(): int
     {
         return ($this->itemId << 16) | $this->id;

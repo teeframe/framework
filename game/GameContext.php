@@ -33,9 +33,7 @@ class GameContext implements SnapInterface
 
         // TODO: Implement GameServer()->OnTick()
 
-        if ($this->currentTick % 50 === 0) {
-            $this->constructAndBroadcastSnaps();
-        }
+        $this->constructAndBroadcastSnaps();
 
         // TODO: master server stuff
     }
