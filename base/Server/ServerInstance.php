@@ -8,6 +8,8 @@ class ServerInstance
 {
     public static ServerSocket $socket;
 
+    // TODO: Type this
+
     /**
      * Statically typing this method.
      *

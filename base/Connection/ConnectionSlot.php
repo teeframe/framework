@@ -5,6 +5,7 @@ namespace Base\Connection;
 use Base\Server\ServerInstance;
 use Base\SnapInterface;
 use Network\Chunks\System\InputChunk;
+use Network\Chunks\System\InputTimingChunk;
 use Network\Chunks\UnsupportedChunk;
 use Network\Connection\Connection;
 use Network\Enums\Network;
@@ -31,12 +32,6 @@ class ConnectionSlot extends Connection implements SnapInterface
 
     public int $state;
 
-    public int $lastSendTime;
-
-    public int $lastRecvTime;
-
-    public int $lastResendAskTime;
-
     public function __construct(protected int $slotIndex)
     {
         $this->handshakeHandler = new HandshakeHandler($this);
@@ -50,10 +45,7 @@ class ConnectionSlot extends Connection implements SnapInterface
 
         $this->resetClientData();
 
-        $this->state             = static::STATE_EMPTY;
-        $this->lastSendTime      = 0;
-        $this->lastRecvTime      = 0;
-        $this->lastResendAskTime = 0;
+        $this->state = static::STATE_EMPTY;
     }
 
     public function handshaker(): HandshakeHandler
@@ -63,21 +55,11 @@ class ConnectionSlot extends Connection implements SnapInterface
 
     public function feedConnection(AbstractPacket $packet): bool
     {
-        if ($this->sequence >= $this->peerAck) {
-            if ($packet->getAck() < $this->peerAck || $packet->getAck() > $this->sequence) {
-                $this->consoleError('Invalid ack');
-
-                return false;
-            }
-        } else {
-            if ($packet->getAck() < $this->peerAck && $packet->getAck() > $this->sequence) {
-                $this->consoleError('Invalid ack');
-
-                return false;
-            }
-        }
-
-        $this->updateConnectionState($packet);
+        if (! $this->validateFeeding($packet)) {
+            $this->consoleError('Invalid ack');
+            
+            return false;
+        } 
 
         // Handle connection handshake
         if ($this->handshaker()->needsHandshake()) {
@@ -103,23 +85,6 @@ class ConnectionSlot extends Connection implements SnapInterface
         $this->sendControlMessage(Network::CTRLMSG_CLOSE, $reason);
 
         $this->reset();
-    }
-
-    public function sendControlMessage(int $message, string $extra = ''): bool
-    {
-        return $this->sendPacket(new ControlMessage(message: $message, extra: $extra, ack: $this->ack));
-    }
-
-    public function sendResendKeepAliveMessage(): bool
-    {
-        return $this->sendPacket(new ControlMessage(message: Network::CTRLMSG_KEEPALIVE, ack: $this->ack, resend: true));
-    }
-
-    public function sendPacket(AbstractPacket $packet): bool
-    {
-        $this->lastSendTime = time();
-
-        return ServerInstance::sendto($this->clientAddress, $this->clientPort, $packet->encodeToSend());
     }
 
     protected function handleControlMessagePacket(ControlMessage $packet): bool
@@ -149,9 +114,15 @@ class ConnectionSlot extends Connection implements SnapInterface
             if ($chunk instanceof InputChunk) {
                 $this->snaps()->setLastAckedTick($chunk->ackGameTick);
 
+                $this->chunks()->add(new InputTimingChunk(
+                    intendedTick: $chunk->predictionTick, 
+                    timeLeft: ($chunk->predictionTick - ServerInstance::context()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000, 
+                ));
 
+                // TODO: Implement NETMSG_INPUT
             }
-            // TODO: Implement NETMSG_INPUT
+
+            
 
             // TODO: Implement NETMSG_PING
 
@@ -161,46 +132,6 @@ class ConnectionSlot extends Connection implements SnapInterface
         }
 
         return true;
-    }
-
-    protected function updateConnectionState(AbstractPacket $packet): void
-    {
-        $this->lastRecvTime = time();
-        $this->peerAck      = $packet->getAck();
-
-        if (! ($packet instanceof DefaultPacket)) {
-            return;
-        }
-
-        foreach ($packet->getChunks() as $chunk) {
-            if ($chunk instanceof UnsupportedChunk) {
-                $this->consoleWarn('Unsupported chunk received, game='.(int)$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
-            }
-
-            if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
-                continue;
-            }
-
-            $futureAck = ($this->ack + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
-
-            if ($chunk->getSequence() === $futureAck) {
-                $this->ack = $futureAck;
-            } else {
-                if (NetworkBase::isSequenceInBackroom($chunk->getSequence(), $this->ack)) {
-                    continue;
-                }
-
-                if ($this->lastResendAskTime >= time() - 1) {
-                    continue;
-                }
-    
-                $this->consoleWarn("Out of sequence, asking for resend, {$chunk->getSequence()} - {$futureAck}");
-
-                $this->sendResendKeepAliveMessage();
-
-                $this->lastResendAskTime = time();
-            }
-        }
     }
 
     public function doSnap(int $indexAsking): array
@@ -223,5 +154,22 @@ class ConnectionSlot extends Connection implements SnapInterface
                 latency: $this->snaps()->getLatency(),
             ),
         ];
+    }
+
+    protected function handlePacketSending(AbstractPacket $packet): bool
+    {
+        return ServerInstance::sendto($this->destinationAddress, $this->destinationPort, $packet->encodeToSend());
+    }
+
+    protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void
+    {
+        $this->consoleWarn('Unsupported chunk received, game='.(int)$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
+    }
+
+    protected function handleConnectionOutOfSequence(int $sequence, int $ack): void
+    {
+        $this->consoleWarn("Out of sequence, asking for resend, {$sequence} - {$ack}");
+
+        $this->sendPacket(new ControlMessage(message: Network::CTRLMSG_KEEPALIVE, ack: $this->ack, resend: true));
     }
 }

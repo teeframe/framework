@@ -199,12 +199,12 @@ class SnapHandler
             $diffInts[] = $integer - $deltaItemInts[$i];
         }
 
-        $newPayload = new RawPayload();
+        $diffPayload = new RawPayload();
         foreach ($diffInts as $integer) {
-            $newPayload->addInt($integer);
+            $diffPayload->addInt($integer);
         }
 
-        return [$item->getItemId(), $item->getId(), ...$newPayload->encode()];
+        return [$item->getItemId(), $item->getId(), ...$diffPayload->encode()];
     }
 
     protected function findDeltaSnap(): ?ConnectionSnap

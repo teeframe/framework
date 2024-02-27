@@ -21,10 +21,10 @@ class ObjClientInfoItem extends AbstractSnapItem
     public function getPayload(): RawPayload
     {
         return (new RawPayload)
-            ->addString(substr($this->name, 0, 15))
-            ->addString(substr($this->clan, 0, 11))
+            ->addString(str_pad(substr($this->name, 0, 15), 15))
+            ->addString(str_pad(substr($this->clan, 0, 11), 11))
             ->addInt($this->country)
-            ->addString(substr($this->skinName, 0, 19))
+            ->addString(str_pad(substr($this->skinName, 0, 19), 19))
             ->addBool($this->useCustomColor)
             ->addInt($this->colorBody)
             ->addInt($this->colorFoot);

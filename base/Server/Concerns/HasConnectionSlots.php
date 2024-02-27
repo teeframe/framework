@@ -43,7 +43,7 @@ trait HasConnectionSlots
                 continue;
             }
 
-            if ($connection->clientAddress !== $clientInfo['address'] || $connection->clientPort !== $clientInfo['port']) {
+            if ($connection->destinationAddress !== $clientInfo['address'] || $connection->destinationPort !== $clientInfo['port']) {
                 continue;
             }
 

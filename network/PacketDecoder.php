@@ -70,8 +70,6 @@ class PacketDecoder
         $pointer = 0;
         $chunks  = [];
 
-        // TODO: Implement huffman compression
-
         // TODO: Refactor this
         while (count($payload) > $pointer + NetworkParams::MINIMUM_PACKET_CHUNK_SIZE) {
             $flags = ($payload[$pointer + 0] >> 6) & 3;

@@ -2,6 +2,8 @@
 
 namespace Network\Huffman;
 
+// TODO: Refactor this entirely
+
 class Huffman {
     public const FREQ_TABLE = [
         1 << 30, 4545, 2657, 431, 1950, 919, 444, 482, 2244, 617, 838, 542, 715, 1814, 304, 240, 754, 212, 647, 186,

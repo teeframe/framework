@@ -30,11 +30,7 @@ class HandshakeHandler
 
     public function startHandshake(string $address, int $port): void
     {
-        $this->connection->state         = ConnectionSlot::STATE_CONNECTING;
-        $this->connection->clientAddress = $address;
-        $this->connection->clientPort    = $port;
-        $this->connection->lastSendTime  = time();
-        $this->connection->lastRecvTime  = time();
+        $this->connection->init($address, $port);
 
         $this->connection->sendControlMessage(Network::CTRLMSG_CONNECTACCEPT);
         $this->connection->consoleInfo('got connection, sending accept');

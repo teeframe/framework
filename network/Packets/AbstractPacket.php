@@ -2,6 +2,7 @@
 
 namespace Network\Packets;
 
+use Network\Enums\Network;
 use Network\NetworkBase;
 
 abstract class AbstractPacket
@@ -49,8 +50,12 @@ abstract class AbstractPacket
 
     protected function encode(): array
     {
-        // if () {
-        //     $this->flags &= ~Network::PACKETFLAG_COMPRESSION; // TODO: Implement huffman compression
+        $encodedPayload = $this->payload;
+
+        // if (!($this->flags & Network::PACKETFLAG_CONTROL)) {
+        //     $this->flags |= Network::PACKETFLAG_COMPRESSION;
+
+        //     $encodedPayload = NetworkBase::compressHuffman($encodedPayload);
         // }
 
         // TODO: Implement token support
@@ -60,6 +65,6 @@ abstract class AbstractPacket
         $header[1] = $this->ack & 0xFF;
         $header[2] = $this->numChunks;
 
-        return [...$header, ...$this->payload];
+        return [...$header, ...$encodedPayload];
     }
 }

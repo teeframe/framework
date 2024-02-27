@@ -17,6 +17,11 @@ class ServerSocket extends Server
 
     protected GameContext $context;
 
+    public function context(): GameContext
+    {
+        return $this->context;
+    }
+
     public function start(): bool
     {
         Console::info('Server is starting...');

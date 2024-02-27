@@ -23,6 +23,6 @@ trait HasConsole
 
     protected function generateConsoleMessage(string $message): string
     {
-        return 'ClientID='.$this->slotIndex.', addr='.$this->clientAddress.':'.$this->clientPort.'. '.$message;
+        return 'ClientID='.$this->slotIndex.', addr='.$this->destinationAddress.':'.$this->destinationPort.'. '.$message;
     }
 }

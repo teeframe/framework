@@ -16,7 +16,7 @@ abstract class AbstractSnapItem
 
     public function getPayloadInts(): array
     {
-        $payload = clone $this->getPayload();
+        $payload = $this->getPayload();
 
         $integers = [];
         while (true) {
