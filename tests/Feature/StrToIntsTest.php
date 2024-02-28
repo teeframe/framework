@@ -10,8 +10,8 @@ test('stringToIntegers', function () {
 });
 
 /**
- * @param string $string
- * @param int $num
+ * @param string $string Input string
+ * @param int $num Number of output integers count
  *
  * @return int[]
  */
