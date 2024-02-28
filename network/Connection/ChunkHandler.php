@@ -12,16 +12,23 @@ class ChunkHandler
     /**
      * @var array<int, AbstractChunk>
      */
-    protected array $queue = [];
+    protected array $queue;
 
     /**
      * @var array<int, AbstractChunk>
      */
-    protected array $sentList = [];
+    protected array $sentList;
 
     public function __construct(
         protected Connection $connection
     ) {
+        $this->reset();
+    }
+
+    public function reset(): void
+    {
+        $this->sentList = [];
+        $this->flushQueue();
     }
 
     public function add(AbstractChunk $chunk): static
@@ -68,14 +75,8 @@ class ChunkHandler
         $this->sentList = [...$this->sentList, ...$chunks];
     }
 
-    public function flushSentList(int $ack = -1): void
+    public function flushSentList(int $ack): void
     {
-        if ($ack === -1) {
-            $this->sentList = [];
-
-            return;
-        }
-
         $this->sentList = array_filter($this->sentList, fn (AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $ack));
     }
 

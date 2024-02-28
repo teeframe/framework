@@ -17,11 +17,11 @@ class SnapHandler
     const STATE_FULL    = 1;
     const STATE_RECOVER = 2;
 
-    protected int $state = self::STATE_INIT;
+    protected int $state;
 
-    protected int $lastAckedTick = -1;
+    protected int $lastAckedTick;
 
-    protected int $latency = 0;
+    protected int $latency;
 
     /**
      * @var array<int, ConnectionSnap>
@@ -31,6 +31,21 @@ class SnapHandler
     public function __construct(
         protected Connection $connection
     ) {
+        $this->reset();
+    }
+
+    public function reset(): void
+    {
+        $this->state         = self::STATE_INIT;
+        $this->lastAckedTick = -1;
+        $this->latency       = 0;
+    
+        $this->flushSentList();
+    }
+    
+    public function flushSentList(): void
+    {
+        $this->sentList = [];
     }
 
     public function getLatency(): int
@@ -52,16 +67,6 @@ class SnapHandler
 
         // Keep only items that are greater or equal to the last acked tick (for delta snap)
         $this->sentList = array_filter($this->sentList, fn (ConnectionSnap $snap): bool => $snap->getTick() >= $tick);
-    }
-
-    public function flushSentList(): void
-    {
-        $this->sentList = [];
-    }
-
-    public function resetState(): void
-    {
-        $this->state = self::STATE_INIT;
     }
 
     /**

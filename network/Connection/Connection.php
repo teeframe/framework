@@ -50,11 +50,8 @@ abstract class Connection
         $this->lastRecvTime       = 0;
         $this->lastResendAskTime  = 0;
 
-        $this->chunks()->flushQueue();
-        $this->chunks()->flushSentList();
-
-        $this->snaps()->resetState();
-        $this->snaps()->flushSentList();
+        $this->chunks()->reset();
+        $this->snaps()->reset();
     }
 
     public function init(string $destinationAddress, int $destinationPort): void
@@ -133,6 +130,8 @@ abstract class Connection
 
             if ($chunk->getSequence() === $futureAck) {
                 $this->ack = $futureAck;
+
+                $this->chunks()->flushSentList($this->ack);
 
                 continue;
             }

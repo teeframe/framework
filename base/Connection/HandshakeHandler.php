@@ -32,6 +32,8 @@ class HandshakeHandler
     {
         $this->connection->init($address, $port);
 
+        $this->connection->state = ConnectionSlot::STATE_CONNECTING;
+
         $this->connection->sendControlMessage(NetworkMessages::CONTROL_CONNECT_ACCEPT);
         $this->connection->consoleInfo('got connection, sending accept');
     }

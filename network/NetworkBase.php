@@ -76,6 +76,18 @@ class NetworkBase
 
     public static function packInt(int $value): array
     {
+        // This should be here? This handles the difference between PHP and C++ int
+        // The difference start to get some trouble if the value is greater than 0x7FFFFFFF (2147483647)
+        // After this number, C++ will invert the number to negative, while PHP will just add +1 correctly
+        // So this code imitate this behavior, however I think it should not be a "Network thing"
+        
+        // It's currently being used to fix :
+        // - 1. calculateCrc() method in SnapHandler.php
+        // - 2. convertStringToInts() method in ObjClientInfoItem.php
+        if ($value & 0x80000000) {
+            $value = -((~$value & 0xFFFFFFFF) + 1);
+        }
+
         // TODO: Refactor this
 
         $pointer = 0;
@@ -108,10 +120,6 @@ class NetworkBase
     public static function unpackInt(array $data): array
     {
         // TODO: Refactor this
-
-        if (count($data) === 0) {
-            return [-1, 0];
-        }
 
         $pointer = 0;
 

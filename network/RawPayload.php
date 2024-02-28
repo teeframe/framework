@@ -49,8 +49,16 @@ class RawPayload
         return (bool) $this->extractInt();
     }
 
-    public function extractInt(): int
+    public function extractInt(bool $throw = false): int
     {
+        if (count($this->payload) < 1) {
+            if ($throw) {
+                throw new \RuntimeException('Not enough data to extract int');
+            }
+
+            return 0;
+        }
+
         [$result, $bytesAmount] = NetworkBase::unpackInt($this->payload);
 
         $this->payload = array_slice($this->payload, $bytesAmount);

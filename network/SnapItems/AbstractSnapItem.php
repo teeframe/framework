@@ -20,9 +20,9 @@ abstract class AbstractSnapItem
 
         $integers = [];
         while (true) {
-            $rawInt = $payload->extractInt();
-
-            if ($rawInt === -1) {
+            try {
+                $rawInt = $payload->extractInt(throw: true);
+            } catch (\RuntimeException) {
                 break;
             }
 
