@@ -113,6 +113,8 @@ abstract class Connection
         $this->lastRecvTime = time();
         $this->peerAck      = $packet->getAck();
 
+        $this->chunks()->flushSentList($this->peerAck);
+
         if (! ($packet instanceof DefaultPacket)) {
             return;
         }
@@ -130,8 +132,6 @@ abstract class Connection
 
             if ($chunk->getSequence() === $futureAck) {
                 $this->ack = $futureAck;
-
-                $this->chunks()->flushSentList($this->ack);
 
                 continue;
             }

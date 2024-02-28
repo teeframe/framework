@@ -75,9 +75,9 @@ class ChunkHandler
         $this->sentList = [...$this->sentList, ...$chunks];
     }
 
-    public function flushSentList(int $ack): void
+    public function flushSentList(int $sequence): void
     {
-        $this->sentList = array_filter($this->sentList, fn (AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $ack));
+        $this->sentList = array_filter($this->sentList, fn (AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $sequence));
     }
 
     public function flushQueue(): void
