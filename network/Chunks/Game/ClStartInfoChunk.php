@@ -3,8 +3,8 @@
 namespace Network\Chunks\Game;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Network;
-use Network\Enums\Protocol;
+use Network\NetworkBase;
+use Network\NetworkMessages;
 use Network\RawPayload;
 
 class ClStartInfoChunk extends AbstractChunk
@@ -18,7 +18,7 @@ class ClStartInfoChunk extends AbstractChunk
         public int $colorBody,
         public int $colorFeet
     ) {
-        parent::__construct(flags: Network::CHUNKFLAG_VITAL, message: Protocol::CL_START_INFO);
+        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::CL_START_INFO);
     }
 
     public static function make(RawPayload $payload): static

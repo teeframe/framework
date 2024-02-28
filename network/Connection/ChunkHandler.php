@@ -3,7 +3,6 @@
 namespace Network\Connection;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Network;
 use Network\NetworkBase;
 use Network\NetworkParams;
 use Network\Packets\DefaultPacket;
@@ -33,7 +32,7 @@ class ChunkHandler
             $this->send();
         }
 
-        if ($chunk->getFlags() & Network::CHUNKFLAG_VITAL) {
+        if ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL) {
             $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
 
             $chunk->setSequence($this->connection->sequence);

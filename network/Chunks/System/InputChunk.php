@@ -3,14 +3,13 @@
 namespace Network\Chunks\System;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Network;
-use Network\Enums\Protocol;
+use Network\NetworkMessages;
 use Network\RawPayload;
 
 class InputChunk extends AbstractChunk
 {
     public function __construct(
-        public int $ackGameTick, 
+        public int $ackGameTick,
         public int $predictionTick,
         public int $inputSize,
         public int $inputDirection,
@@ -24,7 +23,7 @@ class InputChunk extends AbstractChunk
         public int $inputNextWeapon,
         public int $inputPrevWeapon,
     ) {
-        parent::__construct(flags: 0, message: Protocol::INPUT);
+        parent::__construct(flags: 0, message: NetworkMessages::INPUT);
     }
 
     public static function make(RawPayload $payload): static

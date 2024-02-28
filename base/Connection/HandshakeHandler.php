@@ -13,7 +13,7 @@ use Network\Chunks\System\InfoChunk;
 use Network\Chunks\System\MapChangeChunk;
 use Network\Chunks\System\ReadyChunk;
 use Network\Chunks\System\RequestMapDataChunk;
-use Network\Enums\Network;
+use Network\NetworkMessages;
 use Network\Packets\DefaultPacket;
 
 class HandshakeHandler
@@ -32,7 +32,7 @@ class HandshakeHandler
     {
         $this->connection->init($address, $port);
 
-        $this->connection->sendControlMessage(Network::CTRLMSG_CONNECTACCEPT);
+        $this->connection->sendControlMessage(NetworkMessages::CONTROL_CONNECT_ACCEPT);
         $this->connection->consoleInfo('got connection, sending accept');
     }
 

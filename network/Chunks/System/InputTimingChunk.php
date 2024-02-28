@@ -3,16 +3,16 @@
 namespace Network\Chunks\System;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Protocol;
+use Network\NetworkMessages;
 use Network\RawPayload;
 
 class InputTimingChunk extends AbstractChunk
 {
     public function __construct(
-        public int $intendedTick, 
+        public int $intendedTick,
         public int $timeLeft,
     ) {
-        parent::__construct(flags: 0, message: Protocol::INPUTTIMING);
+        parent::__construct(flags: 0, message: NetworkMessages::INPUTTIMING);
     }
 
     public static function make(RawPayload $payload): static

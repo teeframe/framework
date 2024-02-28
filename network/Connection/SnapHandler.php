@@ -2,9 +2,9 @@
 
 namespace Network\Connection;
 
-use Network\Chunks\System\SnapChunk;
 use Network\Chunks\System\SnapEmptyChunk;
 use Network\Chunks\System\SnapSingleChunk;
+use Network\Chunks\System\SnapSliceChunk;
 use Network\NetworkBase;
 use Network\NetworkParams;
 use Network\RawPayload;
@@ -43,7 +43,7 @@ class SnapHandler
         if ($deltaSnap = $this->findDeltaSnap()) {
             $this->latency = (int) round(($tick - $deltaSnap->getTick()) / NetworkParams::TICKS_PER_SECOND * 1000);
         }
-    
+
         $this->lastAckedTick = $tick;
 
         if ($this->state !== self::STATE_FULL) {
@@ -106,7 +106,7 @@ class SnapHandler
                 $slicePayloadSize = count($slicePayload);
 
                 $this->connection->chunks()->add(
-                    new SnapChunk($currentTick, $deltaTick, $crc, $slicesCount, $i + 1, $slicePayloadSize, $slicePayload)
+                    new SnapSliceChunk($currentTick, $deltaTick, $crc, $slicesCount, $i + 1, $slicePayloadSize, $slicePayload)
                 )->send();
             }
         }
@@ -199,7 +199,7 @@ class SnapHandler
             $diffInts[] = $integer - $deltaItemInts[$i];
         }
 
-        $diffPayload = new RawPayload();
+        $diffPayload = new RawPayload;
         foreach ($diffInts as $integer) {
             $diffPayload->addInt($integer);
         }

@@ -3,7 +3,6 @@
 namespace Network\Connection;
 
 use Network\Chunks\UnsupportedChunk;
-use Network\Enums\Network;
 use Network\NetworkBase;
 use Network\NetworkParams;
 use Network\Packets\AbstractPacket;
@@ -126,7 +125,7 @@ abstract class Connection
                 $this->handleUnsupportedChunk($chunk);
             }
 
-            if (! ($chunk->getFlags() & Network::CHUNKFLAG_VITAL)) {
+            if (! ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL)) {
                 continue;
             }
 

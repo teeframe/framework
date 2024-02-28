@@ -2,7 +2,7 @@
 
 namespace Network\Chunks;
 
-use Network\Enums\Network;
+use Network\NetworkBase;
 use Network\RawPayload;
 
 abstract class AbstractChunk
@@ -17,7 +17,7 @@ abstract class AbstractChunk
 
     public function addResendFlag(): static
     {
-        $this->flags |= Network::CHUNKFLAG_RESEND;
+        $this->flags |= NetworkBase::CHUNK_FLAG_RESEND;
 
         return $this;
     }
@@ -62,7 +62,7 @@ abstract class AbstractChunk
         $header[0] = (($this->flags & 3) << 6) | (($size >> 4) & 0x3F);
         $header[1] = ($size & 0xF);
 
-        if ($this->flags & Network::CHUNKFLAG_VITAL) {
+        if ($this->flags & NetworkBase::CHUNK_FLAG_VITAL) {
             $header[1] |= ($this->sequence >> 2) & 0xF0;
             $header[2] = $this->sequence         & 0xFF;
         }

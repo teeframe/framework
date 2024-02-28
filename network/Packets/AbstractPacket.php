@@ -2,7 +2,6 @@
 
 namespace Network\Packets;
 
-use Network\Enums\Network;
 use Network\NetworkBase;
 
 abstract class AbstractPacket
@@ -24,6 +23,11 @@ abstract class AbstractPacket
     public function getAck(): int
     {
         return $this->ack;
+    }
+
+    public function isResend(): bool
+    {
+        return (bool) ($this->flags & NetworkBase::PACKET_FLAG_RESEND);
     }
 
     public function getNumChunks(): int
@@ -52,8 +56,8 @@ abstract class AbstractPacket
     {
         $encodedPayload = $this->payload;
 
-        // if (!($this->flags & Network::PACKETFLAG_CONTROL)) {
-        //     $this->flags |= Network::PACKETFLAG_COMPRESSION;
+        // if (!($this->flags & NetworkBase::PACKET_FLAG_TYPE_CONTROL)) {
+        //     $this->flags |= NetworkBase::PACKET_FLAG_COMPRESSION;
 
         //     $encodedPayload = NetworkBase::compressHuffman($encodedPayload);
         // }

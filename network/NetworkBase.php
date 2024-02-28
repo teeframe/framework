@@ -8,12 +8,23 @@ use Network\Huffman\Huffman;
 
 class NetworkBase
 {
+    // Packet Flags
+    const PACKET_FLAG_TYPE_DEFAULT         = 0;
+    const PACKET_FLAG_TYPE_CONTROL         = 1;
+    const PACKET_FLAG_TYPE_CONNECTION_LESS = 2;
+    const PACKET_FLAG_RESEND               = 4;
+    const PACKET_FLAG_COMPRESSION          = 8;
+
+    // Chunk Flags
+    const CHUNK_FLAG_VITAL  = 1;
+    const CHUNK_FLAG_RESEND = 2;
+
     protected static ?Huffman $huffmanInstance = null;
 
     public static function compressHuffman(array $buffer): array
     {
         if (! self::$huffmanInstance) {
-            self::$huffmanInstance = new Huffman();
+            self::$huffmanInstance = new Huffman;
         }
 
         return self::$huffmanInstance->compress($buffer);
@@ -22,7 +33,7 @@ class NetworkBase
     public static function decompressHuffman(array $buffer): array
     {
         if (! self::$huffmanInstance) {
-            self::$huffmanInstance = new Huffman();
+            self::$huffmanInstance = new Huffman;
         }
 
         return self::$huffmanInstance->decompress($buffer);

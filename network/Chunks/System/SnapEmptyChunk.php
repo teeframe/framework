@@ -3,7 +3,7 @@
 namespace Network\Chunks\System;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Protocol;
+use Network\NetworkMessages;
 use Network\RawPayload;
 
 class SnapEmptyChunk extends AbstractChunk
@@ -12,7 +12,7 @@ class SnapEmptyChunk extends AbstractChunk
         public int $currentTick,
         public int $deltaTick
     ) {
-        parent::__construct(flags: 0, message: Protocol::SNAPEMPTY);
+        parent::__construct(flags: 0, message: NetworkMessages::SNAPEMPTY);
     }
 
     public static function make(RawPayload $payload): static

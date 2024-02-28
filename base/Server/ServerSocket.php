@@ -4,7 +4,7 @@ namespace Base\Server;
 
 use Base\Console;
 use Game\GameContext;
-use Network\Enums\Network;
+use Network\NetworkMessages;
 use Network\NetworkParams;
 use Network\PacketDecoder;
 use Network\Packets\ConnectionLessMessage;
@@ -90,7 +90,7 @@ class ServerSocket extends Server
         $this->sendto(
             $clientInfo['address'],
             $clientInfo['port'],
-            (new ControlMessage(Network::CTRLMSG_CLOSE, 'The server is full'))->encodeToSend()
+            (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'The server is full'))->encodeToSend()
         );
     }
 }

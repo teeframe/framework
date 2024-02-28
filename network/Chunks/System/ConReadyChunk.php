@@ -3,15 +3,15 @@
 namespace Network\Chunks\System;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Network;
-use Network\Enums\Protocol;
+use Network\NetworkBase;
+use Network\NetworkMessages;
 use Network\RawPayload;
 
 class ConReadyChunk extends AbstractChunk
 {
     public function __construct()
     {
-        parent::__construct(flags: Network::CHUNKFLAG_VITAL, message: Protocol::CON_READY);
+        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::CON_READY);
     }
 
     public static function make(RawPayload $payload): static
@@ -21,6 +21,6 @@ class ConReadyChunk extends AbstractChunk
 
     public function getPayload(): RawPayload
     {
-        return new RawPayload();
+        return new RawPayload;
     }
 }

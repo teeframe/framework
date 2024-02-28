@@ -2,17 +2,16 @@
 
 namespace Network\Packets;
 
-use Network\Enums\Network;
 use Network\NetworkBase;
 
 class ControlMessage extends AbstractPacket
 {
     public function __construct(protected int $message, protected string $extra = '', int $ack = 0, bool $resend = false)
     {
-        $flags = Network::PACKETFLAG_CONTROL;
+        $flags = NetworkBase::PACKET_FLAG_TYPE_CONTROL;
 
         if ($resend) {
-            $flags |= Network::PACKETFLAG_RESEND;
+            $flags |= NetworkBase::PACKET_FLAG_RESEND;
         }
 
         $payload = [$message];

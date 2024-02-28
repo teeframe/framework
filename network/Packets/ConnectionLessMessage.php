@@ -2,16 +2,16 @@
 
 namespace Network\Packets;
 
-use Network\Enums\Network;
+use Network\NetworkBase;
 
 class ConnectionLessMessage extends AbstractPacket
 {
     public function __construct(int $ack = 0, bool $resend = false)
     {
-        $flags = Network::PACKETFLAG_CONNLESS;
+        $flags = NetworkBase::PACKET_FLAG_TYPE_CONNECTION_LESS;
 
         if ($resend) {
-            $flags |= Network::PACKETFLAG_RESEND;
+            $flags |= NetworkBase::PACKET_FLAG_RESEND;
         }
 
         parent::__construct(flags: $flags, ack: $ack, payload: []);

@@ -3,11 +3,11 @@
 namespace Network\Chunks\System;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Protocol;
+use Network\NetworkMessages;
 use Network\NetworkParams;
 use Network\RawPayload;
 
-class SnapChunk extends AbstractChunk
+class SnapSliceChunk extends AbstractChunk
 {
     public function __construct(
         public int $currentTick,
@@ -18,7 +18,7 @@ class SnapChunk extends AbstractChunk
         public int $size,
         public array $snapPayload
     ) {
-        parent::__construct(flags: 0, message: Protocol::SNAP);
+        parent::__construct(flags: 0, message: NetworkMessages::SNAP);
     }
 
     public static function make(RawPayload $payload): static

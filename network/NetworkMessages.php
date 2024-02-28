@@ -1,9 +1,20 @@
 <?php
 
-namespace Network\Enums;
+namespace Network;
 
-class Protocol
+class NetworkMessages
 {
+    /*
+     * Control Messages
+     */
+    const CONTROL_KEEP_ALIVE     = 0;
+    const CONTROL_CONNECT        = 1;
+    const CONTROL_CONNECT_ACCEPT = 2;
+    const CONTROL_CLOSE          = 4;
+
+    /*
+     * System Messages
+     */
     const INFO = 1;
 
     // sent by server
@@ -13,8 +24,8 @@ class Protocol
     const SNAP             = 5;
     const SNAPEMPTY        = 6;
     const SNAPSINGLE       = 7;
-    const INPUTTIMING      = 9; 
-    const RCON_AUTH_STATUS = 10; 
+    const INPUTTIMING      = 9;
+    const RCON_AUTH_STATUS = 10;
     const RCON_LINE        = 11;
 
     // sent by client
@@ -33,8 +44,12 @@ class Protocol
     // const RCON_CMD_ADD = 25;
     // const RCON_CMD_REM = 26;
 
-    // Game messages. This is an adaptation of the original game messages
-    // TeeFrame will threat every >127 message as a game message
+    /*
+     * Game Messages
+     *
+     * NOTE: This is an adaptation of the original game messages
+     * TeeFrame will threat every >127 message as a game message
+     */
     const SV_MOTD = 128 + 1;
 
     // const SV_BROADCAST  = 128 + 2;

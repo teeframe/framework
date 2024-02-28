@@ -8,8 +8,7 @@ use Network\Chunks\System\InputChunk;
 use Network\Chunks\System\InputTimingChunk;
 use Network\Chunks\UnsupportedChunk;
 use Network\Connection\Connection;
-use Network\Enums\Network;
-use Network\NetworkBase;
+use Network\NetworkMessages;
 use Network\NetworkParams;
 use Network\Packets\AbstractPacket;
 use Network\Packets\ControlMessage;
@@ -19,8 +18,8 @@ use Network\SnapItems\ObjPlayerInfoItem;
 
 class ConnectionSlot extends Connection implements SnapInterface
 {
-    use Concerns\HasConsole;
     use Concerns\HasClientData;
+    use Concerns\HasConsole;
 
     const STATE_EMPTY      = 0;
     const STATE_CONNECTING = 1;
@@ -57,9 +56,9 @@ class ConnectionSlot extends Connection implements SnapInterface
     {
         if (! $this->validateFeeding($packet)) {
             $this->consoleError('Invalid ack');
-            
+
             return false;
-        } 
+        }
 
         // Handle connection handshake
         if ($this->handshaker()->needsHandshake()) {
@@ -71,7 +70,7 @@ class ConnectionSlot extends Connection implements SnapInterface
         }
 
         // Handle online connection
-        if ($packet->getFlags() & Network::PACKETFLAG_RESEND) {
+        if ($packet->isResend()) {
             $this->chunks()->resend();
         }
 
@@ -82,7 +81,7 @@ class ConnectionSlot extends Connection implements SnapInterface
 
     public function closeConnection(string $reason): void
     {
-        $this->sendControlMessage(Network::CTRLMSG_CLOSE, $reason);
+        $this->sendControlMessage(NetworkMessages::CONTROL_CLOSE, $reason);
 
         $this->reset();
     }
@@ -91,13 +90,13 @@ class ConnectionSlot extends Connection implements SnapInterface
     {
         $message = $packet->getControlMessage();
 
-        if ($message === Network::CTRLMSG_CLOSE) {
+        if ($message === NetworkMessages::CONTROL_CLOSE) {
             $this->consoleInfo('Closed reason='.$packet->getControlMessageExtra());
 
             $this->reset();
         }
 
-        // CTRLMSG_KEEPALIVE is used just to keep the connection alive
+        // CONTROL_KEEP_ALIVE is used just to keep the connection alive
         // by updating the lastRecvTime, since updateConnectionState()
         // already do this, we don't need to do anything here
 
@@ -115,14 +114,12 @@ class ConnectionSlot extends Connection implements SnapInterface
                 $this->snaps()->setLastAckedTick($chunk->ackGameTick);
 
                 $this->chunks()->add(new InputTimingChunk(
-                    intendedTick: $chunk->predictionTick, 
-                    timeLeft: ($chunk->predictionTick - ServerInstance::context()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000, 
+                    intendedTick: $chunk->predictionTick,
+                    timeLeft: ($chunk->predictionTick - ServerInstance::context()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000,
                 ));
 
                 // TODO: Implement NETMSG_INPUT
             }
-
-            
 
             // TODO: Implement NETMSG_PING
 
@@ -163,13 +160,13 @@ class ConnectionSlot extends Connection implements SnapInterface
 
     protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void
     {
-        $this->consoleWarn('Unsupported chunk received, game='.(int)$chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
+        $this->consoleWarn('Unsupported chunk received, game='.(int) $chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
     }
 
     protected function handleConnectionOutOfSequence(int $sequence, int $ack): void
     {
         $this->consoleWarn("Out of sequence, asking for resend, {$sequence} - {$ack}");
 
-        $this->sendPacket(new ControlMessage(message: Network::CTRLMSG_KEEPALIVE, ack: $this->ack, resend: true));
+        $this->sendPacket(new ControlMessage(message: NetworkMessages::CONTROL_KEEP_ALIVE, ack: $this->ack, resend: true));
     }
 }

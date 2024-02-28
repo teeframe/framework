@@ -3,8 +3,8 @@
 namespace Network\Chunks\Game;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Network;
-use Network\Enums\Protocol;
+use Network\NetworkBase;
+use Network\NetworkMessages;
 use Network\RawPayload;
 
 class SvTuneParamsChunk extends AbstractChunk
@@ -44,7 +44,7 @@ class SvTuneParamsChunk extends AbstractChunk
         public int $playerCollision,
         public int $playerHooking,
     ) {
-        parent::__construct(flags: Network::CHUNKFLAG_VITAL, message: Protocol::SV_TUNEPARAMS);
+        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::SV_TUNEPARAMS);
     }
 
     public static function make(RawPayload $payload): static

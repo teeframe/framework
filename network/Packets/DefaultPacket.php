@@ -3,7 +3,7 @@
 namespace Network\Packets;
 
 use Network\Chunks\AbstractChunk;
-use Network\Enums\Network;
+use Network\NetworkBase;
 
 class DefaultPacket extends AbstractPacket
 {
@@ -12,10 +12,10 @@ class DefaultPacket extends AbstractPacket
      */
     public function __construct(protected array $chunks, int $ack, bool $resend = false)
     {
-        $flags = 0;
+        $flags = NetworkBase::PACKET_FLAG_TYPE_DEFAULT;
 
         if ($resend) {
-            $flags |= Network::PACKETFLAG_RESEND;
+            $flags |= NetworkBase::PACKET_FLAG_RESEND;
         }
 
         $payload = [];

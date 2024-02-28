@@ -13,6 +13,6 @@ class UnsupportedChunk extends AbstractChunk
 
     public function getPayload(): RawPayload
     {
-        return new RawPayload();
+        return new RawPayload;
     }
 }

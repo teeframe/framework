@@ -8,7 +8,6 @@ use Base\SnapInterface;
 use Network\NetworkParams;
 use Network\SnapItems\ObjGameDataItem;
 use Network\SnapItems\ObjGameInfoItem;
-use Network\SnapItems\ObjPlayerInfoItem;
 
 class GameContext implements SnapInterface
 {
