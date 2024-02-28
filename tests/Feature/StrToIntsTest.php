@@ -18,7 +18,7 @@ test('stringToIntegers', function () {
 function stringToIntegers(string $string, int $num): array
 {
     $integers = array_fill(0, $num, 0);
-    $bytes = unpack('C*', $string);
+    $bytes = unpack('c*', $string);
     $bytesCount = count($bytes);
     $index = 0;
 
