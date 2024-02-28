@@ -8,28 +8,19 @@ abstract class AbstractSnapItem
 {
     protected int $id = 0;
 
-    public function __construct(protected int $itemId)
+    /**
+     * @param array<int, int> $integers
+     */
+    public function __construct(protected int $itemId, protected array $integers)
     {
     }
 
-    abstract public function getPayload(): RawPayload;
-
-    public function getPayloadInts(): array
+    /**
+     * @return array<int, int>
+     */
+    public function getInts(): array
     {
-        $payload = $this->getPayload();
-
-        $integers = [];
-        while (true) {
-            try {
-                $rawInt = $payload->extractInt(throw: true);
-            } catch (\RuntimeException) {
-                break;
-            }
-
-            $integers[] = $rawInt;
-        }
-
-        return $integers;
+        return $this->integers;
     }
 
     public function getKey(): int
@@ -54,8 +45,22 @@ abstract class AbstractSnapItem
         return $this;
     }
 
+    /**
+     * @return array<int, int>
+     */
     public function encode(): array
     {
         return [$this->itemId, $this->id, ...$this->getPayload()->encode()];
+    }
+
+    protected function getPayload(): RawPayload
+    {
+        $rawPayload = new RawPayload;
+
+        foreach ($this->integers as $integer) {
+            $rawPayload->addInt($integer);
+        }
+
+        return $rawPayload;
     }
 }

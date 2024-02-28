@@ -2,7 +2,7 @@
 
 namespace Network\SnapItems;
 
-use Network\RawPayload;
+use Network\NetworkMessages;
 
 class ObjGameDataItem extends AbstractSnapItem
 {
@@ -12,15 +12,11 @@ class ObjGameDataItem extends AbstractSnapItem
         public int $flagCarrierRedIndex,
         public int $flagCarrierBlueIndex,
     ) {
-        parent::__construct(itemId: 7);
-    }
-
-    public function getPayload(): RawPayload
-    {
-        return (new RawPayload)
-            ->addInt($this->teamScoreRed)
-            ->addInt($this->teamScoreBlue)
-            ->addInt($this->flagCarrierRedIndex)
-            ->addInt($this->flagCarrierBlueIndex);
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_GAMEDATA, integers: [
+            $this->teamScoreRed,
+            $this->teamScoreBlue,
+            $this->flagCarrierRedIndex,
+            $this->flagCarrierBlueIndex,
+        ]);
     }
 }

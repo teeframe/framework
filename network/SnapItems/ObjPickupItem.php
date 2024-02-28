@@ -2,7 +2,7 @@
 
 namespace Network\SnapItems;
 
-use Network\RawPayload;
+use Network\NetworkMessages;
 
 class ObjPickupItem extends AbstractSnapItem
 {
@@ -12,15 +12,11 @@ class ObjPickupItem extends AbstractSnapItem
         public int $type,
         public int $subType,
     ) {
-        parent::__construct(itemId: 4);
-    }
-
-    public function getPayload(): RawPayload
-    {
-        return (new RawPayload)
-            ->addInt($this->x)
-            ->addInt($this->y)
-            ->addInt($this->type)
-            ->addInt($this->subType);
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_PICKUP, integers: [
+            $this->x,
+            $this->y,
+            $this->type,
+            $this->subType,
+        ]);
     }
 }

@@ -49,14 +49,10 @@ abstract class AbstractChunk
         return $this->message > 127;
     }
 
-    public function getSize(): int
-    {
-        return count($this->getPayload()->encode()) + 1; // +1 for the message byte
-    }
-
     public function encode(): array
     {
-        $size = $this->getSize();
+        $encodedPayload = $this->getPayload()->encode();
+        $size           = count($encodedPayload) + 1; // +1 for the message byte
 
         $header    = [];
         $header[0] = (($this->flags & 3) << 6) | (($size >> 4) & 0x3F);
@@ -76,6 +72,6 @@ abstract class AbstractChunk
             $message |= 1;
         }
 
-        return [...$header, $message, ...$this->getPayload()->encode()];
+        return [...$header, $message, ...$encodedPayload];
     }
 }

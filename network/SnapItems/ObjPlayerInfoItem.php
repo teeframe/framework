@@ -2,7 +2,7 @@
 
 namespace Network\SnapItems;
 
-use Network\RawPayload;
+use Network\NetworkMessages;
 
 class ObjPlayerInfoItem extends AbstractSnapItem
 {
@@ -13,16 +13,12 @@ class ObjPlayerInfoItem extends AbstractSnapItem
         public int $score,
         public int $latency,
     ) {
-        parent::__construct(itemId: 10);
-    }
-
-    public function getPayload(): RawPayload
-    {
-        return (new RawPayload)
-            ->addBool($this->local)
-            ->addInt($this->clientId)
-            ->addInt($this->team)
-            ->addInt($this->score)
-            ->addInt($this->latency);
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_PLAYERINFO, integers: [
+            (int) $this->local,
+            $this->clientId,
+            $this->team,
+            $this->score,
+            $this->latency,
+        ]);
     }
 }

@@ -2,7 +2,7 @@
 
 namespace Network\SnapItems;
 
-use Network\RawPayload;
+use Network\NetworkMessages;
 
 class ObjGameInfoItem extends AbstractSnapItem
 {
@@ -16,19 +16,15 @@ class ObjGameInfoItem extends AbstractSnapItem
         public int $roundNum,
         public int $roundCurrent,
     ) {
-        parent::__construct(itemId: 6);
-    }
-
-    public function getPayload(): RawPayload
-    {
-        return (new RawPayload)
-            ->addInt($this->gameFlags)
-            ->addInt($this->gameStateFlags)
-            ->addInt($this->roundStartTick)
-            ->addInt($this->warmupTimer)
-            ->addInt($this->scoreLimit)
-            ->addInt($this->timeLimit)
-            ->addInt($this->roundNum)
-            ->addInt($this->roundCurrent);
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_GAMEINFO, integers: [
+            $this->gameFlags,
+            $this->gameStateFlags,
+            $this->roundStartTick,
+            $this->warmupTimer,
+            $this->scoreLimit,
+            $this->timeLimit,
+            $this->roundNum,
+            $this->roundCurrent,
+        ]);
     }
 }

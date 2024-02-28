@@ -95,7 +95,7 @@ class SnapHandler
             $slicesCount = (int) ceil($payloadSize / NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE);
 
             if ($slicesCount > NetworkParams::MAXIMUM_SNAP_SLICES) {
-                throw new SnapSlicesLimitReachedException;
+                throw new \RuntimeException('Snap slices limit reached');
             }
 
             for ($i = 0; $i < $slicesCount; $i++) {
@@ -196,17 +196,12 @@ class SnapHandler
 
     protected function diffItem(AbstractSnapItem $deltaItem, AbstractSnapItem $item): array
     {
-        $deltaItemInts = $deltaItem->getPayloadInts();
-        $itemInts      = $item->getPayloadInts();
-        $diffInts      = [];
-
-        foreach ($itemInts as $i => $integer) {
-            $diffInts[] = $integer - $deltaItemInts[$i];
-        }
+        $deltaItemInts = $deltaItem->getInts();
+        $itemInts      = $item->getInts();
 
         $diffPayload = new RawPayload;
-        foreach ($diffInts as $integer) {
-            $diffPayload->addInt($integer);
+        foreach ($itemInts as $i => $itemInt) {
+            $diffPayload->addInt($itemInt - $deltaItemInts[$i]);
         }
 
         return [$item->getItemId(), $item->getId(), ...$diffPayload->encode()];
@@ -231,9 +226,9 @@ class SnapHandler
         $crc = 0;
 
         foreach ($items as $item) {
-            $payloadInts = $item->getPayloadInts();
+            $payloadInts = $item->getInts();
 
-            $crc += (int) array_sum($payloadInts);
+            $crc += array_sum($payloadInts);
         }
 
         return $crc;

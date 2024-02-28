@@ -33,11 +33,11 @@ class ChunkHandler
 
     public function add(AbstractChunk $chunk): static
     {
-        $this->queue[] = $chunk;
-
         if (($this->getQueueSize() + count($chunk->encode())) > NetworkParams::MAXIMUM_PACKET_SIZE || count($this->queue) === (NetworkParams::MAXIMUM_CHUNKS_PER_PACKET + 1)) {
             $this->send();
         }
+
+        $this->queue[] = $chunk;
 
         if ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL) {
             $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;

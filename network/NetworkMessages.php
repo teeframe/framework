@@ -65,4 +65,18 @@ class NetworkMessages
     // const SV_EMOTICON = 128 + 10;
     const SV_VOTECLEAROPTIONS = 128 + 11;
     const CL_START_INFO       = 128 + 20;
+
+    /*
+     * Snap Items
+     */
+    const NETOBJTYPE_PROJECTILE = 2;
+    const NETOBJTYPE_LASER      = 3;
+    const NETOBJTYPE_PICKUP     = 4;
+    const NETOBJTYPE_FLAG       = 5;
+    const NETOBJTYPE_GAMEINFO   = 6;
+    const NETOBJTYPE_GAMEDATA   = 7;
+    const NETOBJTYPE_CHARACTER  = 9;
+    const NETOBJTYPE_PLAYERINFO = 10;
+    const NETOBJTYPE_CLIENTINFO = 11;
+    const NETOBJTYPE_SPECTATOR  = 12;
 }
