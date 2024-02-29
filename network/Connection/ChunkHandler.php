@@ -10,12 +10,12 @@ use Network\Packets\DefaultPacket;
 class ChunkHandler
 {
     /**
-     * @var array<int, AbstractChunk>
+     * @var AbstractChunk[]
      */
     protected array $queue;
 
     /**
-     * @var array<int, AbstractChunk>
+     * @var AbstractChunk[]
      */
     protected array $sentList;
 
@@ -52,7 +52,8 @@ class ChunkHandler
     {
         $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->queue);
 
-        $this->addToSentList($this->queue);
+        $this->sentList = [...$this->sentList, ...$this->queue];
+
         $this->flushQueue();
 
         return $this->connection->sendPacket($packet);
@@ -65,14 +66,6 @@ class ChunkHandler
         $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $resendChunks, resend: true);
 
         return $this->connection->sendPacket($packet);
-    }
-
-    /**
-     * @param  array<int, AbstractChunk>  $chunks
-     */
-    public function addToSentList(array $chunks): void
-    {
-        $this->sentList = [...$this->sentList, ...$chunks];
     }
 
     public function flushSentList(int $sequence): void
