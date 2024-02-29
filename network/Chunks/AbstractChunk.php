@@ -9,7 +9,7 @@ abstract class AbstractChunk
 {
     protected int $sequence = -1;
 
-    public function __construct(protected int $flags, protected int $message)
+    public function __construct(protected int $flags, protected int $message, protected bool $isSystem = false)
     {
     }
 
@@ -39,14 +39,9 @@ abstract class AbstractChunk
         return $this->flags;
     }
 
-    // public function getMessage(): int
-    // {
-    //     return $this->message;
-    // }
-
-    public function isGameMessage(): bool
+    public function isSystem(): bool
     {
-        return $this->message > 127;
+        return $this->isSystem;
     }
 
     public function encode(): array
@@ -63,12 +58,10 @@ abstract class AbstractChunk
             $header[2] = $this->sequence         & 0xFF;
         }
 
-        if ($this->message > 127) {
-            $message = $this->message - 128;
-            $message <<= 1;
-        } else {
-            $message = $this->message;
-            $message <<= 1;
+        $message = $this->message;
+        $message <<= 1;
+
+        if ($this->isSystem) {
             $message |= 1;
         }
 

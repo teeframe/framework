@@ -11,7 +11,7 @@ class InfoChunk extends AbstractChunk
 {
     public function __construct(public string $version, public string $password = '')
     {
-        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::INFO);
+        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::INFO, isSystem: true);
     }
 
     public static function make(RawPayload $payload): static

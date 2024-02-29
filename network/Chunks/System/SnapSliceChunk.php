@@ -18,7 +18,7 @@ class SnapSliceChunk extends AbstractChunk
         public int $size,
         public array $snapPayload
     ) {
-        parent::__construct(flags: 0, message: NetworkMessages::SNAP);
+        parent::__construct(flags: 0, message: NetworkMessages::SNAP, isSystem: true);
     }
 
     public static function make(RawPayload $payload): static

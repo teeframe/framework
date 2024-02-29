@@ -12,7 +12,7 @@ class InputTimingChunk extends AbstractChunk
         public int $intendedTick,
         public int $timeLeft,
     ) {
-        parent::__construct(flags: 0, message: NetworkMessages::INPUTTIMING);
+        parent::__construct(flags: 0, message: NetworkMessages::INPUTTIMING, isSystem: true);
     }
 
     public static function make(RawPayload $payload): static

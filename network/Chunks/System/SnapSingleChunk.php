@@ -16,7 +16,7 @@ class SnapSingleChunk extends AbstractChunk
         public int $size,
         public array $snapPayload
     ) {
-        parent::__construct(flags: 0, message: NetworkMessages::SNAPSINGLE);
+        parent::__construct(flags: 0, message: NetworkMessages::SNAPSINGLE, isSystem: true);
     }
 
     public static function make(RawPayload $payload): static

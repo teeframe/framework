@@ -7,7 +7,6 @@ use Game\GameContext;
 use Network\NetworkMessages;
 use Network\NetworkParams;
 use Network\PacketDecoder;
-use Network\Packets\ConnectionLessMessage;
 use Network\Packets\ControlMessage;
 use Swoole\Server;
 
@@ -60,13 +59,6 @@ class ServerSocket extends Server
     {
         $packet = PacketDecoder::decodeFromRaw($rawData);
         if ($packet === false) {
-            return;
-        }
-
-        // Connection-less packet
-        if ($packet instanceof ConnectionLessMessage) {
-            Console::warn('Connection-less packet received');
-
             return;
         }
 

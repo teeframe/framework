@@ -23,8 +23,10 @@ class SnapHandler
 
     protected int $latency;
 
+    protected ?ConnectionSnap $deltaSnap;
+
     /**
-     * @var array<int, ConnectionSnap>
+     * @var ConnectionSnap[]
      */
     protected array $sentList = [];
 
@@ -39,6 +41,7 @@ class SnapHandler
         $this->state         = self::STATE_INIT;
         $this->lastAckedTick = -1;
         $this->latency       = 0;
+        $this->deltaSnap     = null;
     
         $this->flushSentList();
     }
@@ -55,14 +58,18 @@ class SnapHandler
 
     public function setLastAckedTick(int $tick): void
     {
-        if ($deltaSnap = $this->findDeltaSnap()) {
-            $this->latency = (int) round(($tick - $deltaSnap->getTick()) / NetworkParams::TICKS_PER_SECOND * 1000);
-        }
-
+        $this->latency       = (int) round(($tick - $this->lastAckedTick) / NetworkParams::TICKS_PER_SECOND * 1000);
         $this->lastAckedTick = $tick;
 
         if ($this->state !== self::STATE_FULL) {
             $this->state = self::STATE_FULL;
+        }
+
+        // Select new delta snap
+        foreach ($this->sentList as $snap) {
+            if ($snap->getTick() === $this->lastAckedTick) {
+                $this->deltaSnap = $snap;
+            }
         }
 
         // Keep only items that are greater or equal to the last acked tick (for delta snap)
@@ -74,6 +81,8 @@ class SnapHandler
      */
     public function sendSnapItems(int $currentTick, array $fullItems): void
     {
+        $fullItems = $this->indexItemsList($fullItems);
+
         $deltaTick = $currentTick - $this->lastAckedTick;
         $crc       = $this->calculateCrc($fullItems);
 
@@ -125,9 +134,7 @@ class SnapHandler
      */
     protected function calculateSendablePayload(array $items): array
     {
-        $deltaSnap = $this->findDeltaSnap();
-
-        if ($deltaSnap === null) {
+        if ($this->deltaSnap === null) {
             if ($this->state === self::STATE_FULL) {
                 $this->state = self::STATE_RECOVER;
             }
@@ -137,56 +144,35 @@ class SnapHandler
             return [$sendablePayload, 0, count($items)];
         }
 
-        $deltaItems = $deltaSnap->getSnapItems();
-
+        $deltaItems        = $this->deltaSnap->getSnapItems();
         $removedItems      = [];
         $updatedItems      = [];
         $removedItemsCount = 0;
         $updatedItemsCount = 0;
 
-        // TODO: Refactor this & optimize
-
-        foreach ($deltaItems as $deltaItem) {
-            $matchedItem = null;
-
-            foreach ($items as $item) {
-                if ($item->getKey() === $deltaItem->getKey()) {
-                    $matchedItem = $item;
-                    break;
-                }
-            }
-
-            if ($matchedItem === null) {
+        foreach ($deltaItems as $deltaItemKey => $deltaItem) {
+            // Item was in delta snap but not in the current
+            if (! isset($items[$deltaItemKey])) {
                 $removedItemsCount++;
 
                 $removedItems = [...$removedItems, $deltaItem->getItemId(), $deltaItem->getId()];
             }
         }
 
-        // What happens if ID as "X" was a deleted item,
-        // and then a new item with the same ID as "X" is added?
+        foreach ($items as $itemKey => $item) {
+            $matchedDeltaItem = $deltaItems[$itemKey] ?? null;
 
-        foreach ($items as $item) {
-            $matchedItem = null;
-
-            foreach ($deltaItems as $deltaItem) {
-                if ($item->getKey() === $deltaItem->getKey()) {
-                    $matchedItem = $deltaItem;
-                    break;
+            if ($matchedDeltaItem !== null) {
+                if ($item->getInts() === $matchedDeltaItem->getInts()) {
+                    continue; // Item is the same, no need to send it
                 }
-            }
 
-            if ($matchedItem) {
-                if ($item->encode() !== $matchedItem->encode()) {
-                    $updatedItemsCount++;
-
-                    $updatedItems = [...$updatedItems, ...$this->diffItem($matchedItem, $item)];
-                } else {
-                    // Item is the same, no need to send it
-                }
-            } else { // Item is new
+                // Item is updated
                 $updatedItemsCount++;
-
+                $updatedItems = [...$updatedItems, ...$this->diffItem($matchedDeltaItem, $item)];
+            } else {
+                // Item is new
+                $updatedItemsCount++;
                 $updatedItems = [...$updatedItems, ...$item->encode()];
             }
         }
@@ -194,6 +180,9 @@ class SnapHandler
         return [[...$removedItems, ...$updatedItems], $removedItemsCount, $updatedItemsCount];
     }
 
+    /**
+     * @return int[]
+     */
     protected function diffItem(AbstractSnapItem $deltaItem, AbstractSnapItem $item): array
     {
         $deltaItemInts = $deltaItem->getInts();
@@ -207,19 +196,8 @@ class SnapHandler
         return [$item->getItemId(), $item->getId(), ...$diffPayload->encode()];
     }
 
-    protected function findDeltaSnap(): ?ConnectionSnap
-    {
-        foreach ($this->sentList as $snap) {
-            if ($snap->getTick() === $this->lastAckedTick) {
-                return $snap;
-            }
-        }
-
-        return null;
-    }
-
     /**
-     * @param  array<int, AbstractSnapItem>  $items
+     * @param AbstractSnapItem[]  $items
      */
     protected function calculateCrc(array $items): int
     {
@@ -236,7 +214,7 @@ class SnapHandler
 
     /**
      * @param  array<array<int, int>>  $payload
-     * @return array<int, int>
+     * @return int[]
      */
     protected function collapsePayload(array $payload): array
     {
@@ -247,5 +225,20 @@ class SnapHandler
         }
 
         return $collapsedPayload;
+    }
+
+    /**
+     * @param AbstractSnapItem[] $items
+     * @return array<int, AbstractSnapItem>
+     */
+    protected function indexItemsList(array $items): array
+    {
+        $indexedItems = [];
+
+        foreach ($items as $item) {
+            $indexedItems[$item->getKey()] = $item;
+        }
+
+        return $indexedItems;
     }
 }

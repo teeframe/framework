@@ -12,7 +12,7 @@ class SnapEmptyChunk extends AbstractChunk
         public int $currentTick,
         public int $deltaTick
     ) {
-        parent::__construct(flags: 0, message: NetworkMessages::SNAPEMPTY);
+        parent::__construct(flags: 0, message: NetworkMessages::SNAPEMPTY, isSystem: true);
     }
 
     public static function make(RawPayload $payload): static

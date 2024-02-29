@@ -106,7 +106,7 @@ class ConnectionSlot extends Connection implements SnapInterface
     protected function handleDefaultPacket(DefaultPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
-            if ($chunk->isGameMessage()) {
+            if (! $chunk->isSystem()) {
                 // TODO: Implement GameServer()->OnMessage
             }
 
@@ -160,7 +160,7 @@ class ConnectionSlot extends Connection implements SnapInterface
 
     protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void
     {
-        $this->consoleWarn('Unsupported chunk received, game='.(int) $chunk->isGameMessage().' message='.$chunk->unsupportedMessage);
+        $this->consoleWarn('Unsupported chunk received, system='.(int) $chunk->isSystem().' message='.$chunk->unsupportedMessage);
     }
 
     protected function handleConnectionOutOfSequence(int $sequence, int $ack): void

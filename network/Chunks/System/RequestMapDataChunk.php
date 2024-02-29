@@ -11,7 +11,7 @@ class RequestMapDataChunk extends AbstractChunk
 {
     public function __construct()
     {
-        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::REQUEST_MAP_DATA);
+        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::REQUEST_MAP_DATA, isSystem: true);
     }
 
     public static function make(RawPayload $payload): static

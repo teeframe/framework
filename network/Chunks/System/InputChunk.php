@@ -23,7 +23,7 @@ class InputChunk extends AbstractChunk
         public int $inputNextWeapon,
         public int $inputPrevWeapon,
     ) {
-        parent::__construct(flags: 0, message: NetworkMessages::INPUT);
+        parent::__construct(flags: 0, message: NetworkMessages::INPUT, isSystem: true);
     }
 
     public static function make(RawPayload $payload): static

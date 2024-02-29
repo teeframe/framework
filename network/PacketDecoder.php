@@ -42,7 +42,7 @@ class PacketDecoder
 
         // Connection-less Message
         if ($flags & NetworkBase::PACKET_FLAG_TYPE_CONNECTION_LESS) {
-            return new ConnectionLessMessage(ack: $ack, resend: $isResend);
+            return false;
         }
 
         // Control Message
@@ -80,11 +80,7 @@ class PacketDecoder
 
             $message = $payload[$pointer + $headerSize] >> 1;
 
-            if (! ($payload[$pointer + $headerSize] & 1)) {
-                $message += 128;
-            }
-
-            $chunkClass = static::matchDecodedChunk($flags, $message);
+            $chunkClass = static::matchDecodedChunk($flags, $message, $payload[$pointer + $headerSize] & 1);
 
             if ($chunkClass instanceof UnsupportedChunk) {
                 $chunks[] = $chunkClass->setSequence($sequence);
@@ -99,33 +95,37 @@ class PacketDecoder
         return $chunks;
     }
 
-    protected static function matchDecodedChunk(int $flags, int $message): UnsupportedChunk|string
+    protected static function matchDecodedChunk(int $flags, int $message, bool $isSystem): UnsupportedChunk|string
     {
+        if ($isSystem) {
+            return match ($message) {
+                NetworkMessages::INFO       => InfoChunk::class,
+                NetworkMessages::MAP_CHANGE => MapChangeChunk::class,
+                // NetworkMessages::MAP_DATA => ,
+                NetworkMessages::CON_READY        => ConReadyChunk::class,
+                NetworkMessages::SNAP             => SnapSliceChunk::class,
+                NetworkMessages::SNAPEMPTY        => SnapEmptyChunk::class,
+                NetworkMessages::SNAPSINGLE       => SnapSingleChunk::class,
+                // NetworkMessages::INPUTTIMING => ,
+                // NetworkMessages::RCON_AUTH_STATUS => ,
+                // NetworkMessages::RCON_LINE => ,
+                NetworkMessages::READY            => ReadyChunk::class,
+                NetworkMessages::ENTERGAME        => EnterGameChunk::class,
+                NetworkMessages::INPUT            => InputChunk::class,
+                NetworkMessages::REQUEST_MAP_DATA => RequestMapDataChunk::class,
+                // NetworkMessages::PING => ,
+                // NetworkMessages::PING_REPLY => ,
+                default                           => new UnsupportedChunk($message, $flags, true),
+            };
+        }
+
         return match ($message) {
-            // System
-            NetworkMessages::INFO       => InfoChunk::class,
-            NetworkMessages::MAP_CHANGE => MapChangeChunk::class,
-            // NetworkMessages::MAP_DATA => ,
-            NetworkMessages::CON_READY        => ConReadyChunk::class,
-            NetworkMessages::SNAP             => SnapSliceChunk::class,
-            NetworkMessages::SNAPEMPTY        => SnapEmptyChunk::class,
-            NetworkMessages::SNAPSINGLE       => SnapSingleChunk::class,
-            // NetworkMessages::INPUTTIMING => ,
-            // NetworkMessages::RCON_AUTH_STATUS => ,
-            // NetworkMessages::RCON_LINE => ,
-            NetworkMessages::READY            => ReadyChunk::class,
-            NetworkMessages::ENTERGAME        => EnterGameChunk::class,
-            NetworkMessages::INPUT            => InputChunk::class,
-            NetworkMessages::REQUEST_MAP_DATA => RequestMapDataChunk::class,
-            // NetworkMessages::PING => ,
-            // NetworkMessages::PING_REPLY => ,
-            // Game
             NetworkMessages::SV_MOTD             => SvMotdChunk::class,
             NetworkMessages::SV_TUNEPARAMS       => SvTuneParamsChunk::class,
             NetworkMessages::SV_READYTOENTER     => SvReadyToEnterChunk::class,
             NetworkMessages::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
             NetworkMessages::CL_START_INFO       => ClStartInfoChunk::class,
-            default                       => new UnsupportedChunk($flags, $message),
+            default                              => new UnsupportedChunk($message, $flags, false),
         };
     }
 }

@@ -46,25 +46,18 @@ class NetworkMessages
 
     /*
      * Game Messages
-     *
-     * NOTE: This is an adaptation of the original game messages
-     * TeeFrame will threat every >127 message as a game message
      */
-    const SV_MOTD = 128 + 1;
-
-    // const SV_BROADCAST  = 128 + 2;
-    // const SV_CHAT       = 128 + 3;
-    // const SV_KILLMSG    = 128 + 4;
-    // const SV_SOUNDGLOBAL= 128 + 5;
-    const SV_TUNEPARAMS = 128 + 6;
-
-    // const SV_EXTRAPROJECTILE = 128 + 7;
-    const SV_READYTOENTER = 128 + 8;
-
-    // const SV_WEAPONPICKUP = 128 + 9;
-    // const SV_EMOTICON = 128 + 10;
-    const SV_VOTECLEAROPTIONS = 128 + 11;
-    const CL_START_INFO       = 128 + 20;
+    const SV_MOTD = 1;
+    // const SV_BROADCAST  = 2;
+    // const SV_CHAT       = 3;
+    // const SV_KILLMSG    = 4;
+    // const SV_SOUNDGLOBAL= 5;
+    const SV_TUNEPARAMS = 6;
+    const SV_READYTOENTER = 8;
+    // const SV_WEAPONPICKUP = 9;
+    // const SV_EMOTICON = 10;
+    const SV_VOTECLEAROPTIONS = 11;
+    const CL_START_INFO       = 20;
 
     /*
      * Snap Items
