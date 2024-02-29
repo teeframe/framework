@@ -2,6 +2,7 @@
 
 namespace Network\SnapItems;
 
+use Network\NetworkBase;
 use Network\NetworkMessages;
 
 class ObjClientInfoItem extends AbstractSnapItem
@@ -16,35 +17,49 @@ class ObjClientInfoItem extends AbstractSnapItem
         public int $colorFoot,
     ) {
         parent::__construct(itemId: NetworkMessages::NETOBJTYPE_CLIENTINFO, integers: [
-            ...$this->convertStringToInts($this->name, 16),
-            ...$this->convertStringToInts($this->clan, 12),
+            ...$this->convertStringToIntArray($this->name, 4),
+            ...$this->convertStringToIntArray($this->clan, 3),
             $this->country,
-            ...$this->convertStringToInts($this->skinName, 24),
+            ...$this->convertStringToIntArray($this->skinName, 6),
             (int) $this->useCustomColor,
             $this->colorBody,
             $this->colorFoot,
         ]);
     }
 
-    protected function convertStringToInts(string $string, int $size): array
+    /**
+     * @param string $string Input string
+     * @param int $num Number of output integers count
+     * 
+     * @return int[]
+     */
+    protected function convertStringToIntArray(string $string, int $num): array
     {
-        $string = str_pad(substr($string, 0, $size - 1), $size, "\0");
-
-        // TODO: Refactor this
-        $ints = [];
+        $integers = array_fill(0, $num, 0);
+        $bytes = unpack('c*', $string);
+        $bytesCount = count($bytes);
         $index = 0;
-        $length = strlen($string);
 
-        while ($length > 0) {
-            $buf = [0, 0, 0, 0];
-            for ($c = 0; $c < 4 && $index < strlen($string); $c++, $index++) {
-                $buf[$c] = ord($string[$index]) + 128;
+        for ($i = 0; $i < $num; $i++) {
+            $buffer = [0, 0, 0, 0];
+
+            for (
+                $c = 0;
+                $c < 4 && $index < $bytesCount;
+                $c++, $index++
+            ) {
+                $buffer[$c] = $bytes[$index + 1];
             }
-            $result = ($buf[0] << 24) | ($buf[1] << 16) | ($buf[2] << 8) | $buf[3];
-            $ints[] = $result;
-            $length -= 4;
+
+            $integers[$i] = NetworkBase::toInt32(
+                (($buffer[0] + 128) << 24) |
+                (($buffer[1] + 128) << 16) |
+                (($buffer[2] + 128) << 8) |
+                (($buffer[3] + 128) << 0)
+            );
         }
-    
-        return $ints;
+
+        $integers[$num - 1] = NetworkBase::toInt32($integers[$num - 1] & 0xffff_ff00);
+        return $integers;
     }
 }

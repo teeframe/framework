@@ -209,7 +209,7 @@ class SnapHandler
             $crc += array_sum($payloadInts);
         }
 
-        return $crc;
+        return NetworkBase::toInt32($crc);
     }
 
     /**
