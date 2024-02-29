@@ -54,16 +54,17 @@ class MapReader
         $items = [];
         foreach ($itemTypes as [$typeId, $start, $num]) {
             for ($i=0; $i < $num; $i++) { 
-                $size = $reader->readInt();
-                $data = $reader->readBytes($size);
+                $typeIdId = $reader->readInt();
+                $size     = $reader->readInt();
 
-                var_dump([$typeId, $size, strlen($data)]);
-
-                // $items[] = $this->constructMapItem($typeId, $size, $data);
+                $items[] = [$typeIdId, $size];
             }
         }
 
-        // var_dump($items);
+        // Data
+        foreach ($items as $i => [$typeIdId, $size]) {
+            $items[$i][] = $reader->readBytes($size);
+        }
     }
 
     protected function constructMapItem(int $typeIdId, int $size, string $data): ?AbstractMapItem
