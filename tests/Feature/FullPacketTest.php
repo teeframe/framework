@@ -1,15 +1,32 @@
 <?php
 
 use Network\Chunks\System\SnapSingleChunk;
+use Network\Chunks\UnsupportedChunk;
 use Network\NetworkBase;
-use Network\PacketDecoder;
 use Network\SnapItems\ObjCharacterItem;
 use Network\SnapItems\ObjClientInfoItem;
 use Network\SnapItems\ObjGameInfoItem;
 use Network\SnapItems\ObjPickupItem;
 use Network\SnapItems\ObjPlayerInfoItem;
+use Network\Connection\Connection;
+use Network\Packets\AbstractPacket;
 
-test('can encode a full packet with multiple snap items', function () {
+function getExpectedPacket(): array
+{
+    return NetworkBase::unpackBuffer(
+        "\x00\x06\x01" . // Header
+        "\x09\x01\x0f\xaa\x4d\xab\x4d\x90\xde\xaf\xf2\x06\x85\x02" . // Snap Header
+        "\x00\x05\x00" . // Removed, Updated Items & Unused
+        "\x04\x00\x90\x1b\xb0\x10\x02\x03" . // PickUp
+        "\x09\x00\x9f\x4d\xb0\x18\xb1\x04\x00\x80\x02\x00\x00\x00\x40\x00\x00\xb0\x18\xb0\x04\x00\x00\x00\x0a\x00\x0a\x01\x00\x00" . // Character
+        "\x06\x00\x00\x00\x00\x00\x14\x00\x00\x01" . // Game Info
+        "\x0b\x00\xde\xd0\xf0\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\xff\xfd\xab\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x40\xde\xe4\xd0\xb1\x03\xff\xad\x98\xa1\x01\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x00\x80\xfe\x07\x80\xfe\x07" . // Client Info
+        "\x0a\x00\x01\x00\x00\x00\x00" // Player Info
+    );
+}
+
+function getCommonSnapItems(): array
+{
     $pickUp = new ObjPickupItem(
         x: 1744,
         y: 1072,
@@ -71,6 +88,24 @@ test('can encode a full packet with multiple snap items', function () {
         latency: 0,
     );
 
+    return [
+        $pickUp,
+        $character,
+        $gameInfo,
+        $clientInfo,
+        $playerInfo,
+    ];
+}
+
+test('can encode a full packet with multiple snap items', function () {
+    [
+        $pickUp,
+        $character,
+        $gameInfo,
+        $clientInfo,
+        $playerInfo,
+    ] = getCommonSnapItems();
+    
     $snapSingle = new SnapSingleChunk(
         currentTick: 4970,
         deltaTick: 4971,
@@ -95,16 +130,34 @@ test('can encode a full packet with multiple snap items', function () {
         ...$snapSingle->encode()
     ];
 
-    expect($encodedPacket)->toBe(
-        NetworkBase::unpackBuffer(
-            "\x00\x06\x01" . // Header
-            "\x09\x01\x0f\xaa\x4d\xab\x4d\x90\xde\xaf\xf2\x06\x85\x02" . // Snap Header
-            "\x00\x05\x00" . // Removed, Updated Items & Unused
-            "\x04\x00\x90\x1b\xb0\x10\x02\x03" . // PickUp
-            "\x09\x00\x9f\x4d\xb0\x18\xb1\x04\x00\x80\x02\x00\x00\x00\x40\x00\x00\xb0\x18\xb0\x04\x00\x00\x00\x0a\x00\x0a\x01\x00\x00" . // Character
-            "\x06\x00\x00\x00\x00\x00\x14\x00\x00\x01" . // Game Info
-            "\x0b\x00\xde\xd0\xf0\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\xff\xfd\xab\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x40\xde\xe4\xd0\xb1\x03\xff\xad\x98\xa1\x01\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x00\x80\xfe\x07\x80\xfe\x07" . // Client Info
-            "\x0a\x00\x01\x00\x00\x00\x00" // Player Info
-        )
-    );
+    expect($encodedPacket)->toBe(getExpectedPacket());
+});
+
+test('can encode a full packet with multiple snap items through snap handler', function () {
+    $connectionClass = new class extends Connection {
+        protected function handlePacketSending(AbstractPacket $packet): bool
+        {
+            throw new \Exception($packet->encodeToSend());
+        }
+
+        protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void
+        {
+            return;
+        }
+    
+        protected function handleConnectionOutOfSequence(int $sequence, int $ack): void
+        {
+            return;
+        }
+    };
+
+    $connectionClass->ack = 6;
+
+    try {
+        $connectionClass->snaps()->sendSnapItems(4970, getCommonSnapItems());
+    } catch (\Exception $e) {
+        $encodedPacket = NetworkBase::unpackBuffer($e->getMessage());
+    }
+
+    expect($encodedPacket)->toBe(getExpectedPacket());
 });
