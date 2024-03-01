@@ -28,7 +28,7 @@ class ChunkHandler
     public function reset(): void
     {
         $this->sentList = [];
-        $this->flushQueue();
+        $this->queue    = [];
     }
 
     public function add(AbstractChunk $chunk): static
@@ -53,14 +53,15 @@ class ChunkHandler
         $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->queue);
 
         $this->sentList = [...$this->sentList, ...$this->queue];
-
-        $this->flushQueue();
+        $this->queue    = [];
 
         return $this->connection->sendPacket($packet);
     }
 
     public function resend(): bool
     {
+        // TODO: Implement code to check MAXIMUM_PACKET_SIZE and MAXIMUM_CHUNKS_PER_PACKET
+
         $resendChunks = array_map(fn (AbstractChunk $chunk): AbstractChunk => $chunk->addResendFlag(), $this->sentList);
 
         $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $resendChunks, resend: true);
@@ -71,11 +72,6 @@ class ChunkHandler
     public function flushSentList(int $sequence): void
     {
         $this->sentList = array_filter($this->sentList, fn (AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $sequence));
-    }
-
-    public function flushQueue(): void
-    {
-        $this->queue = [];
     }
 
     protected function getQueueSize(): int
