@@ -1,6 +1,8 @@
 {
     "name": "miguilimzero/teeframe",
     "type": "project",
+    "description": "The TeeFrame project.",
+    "license": "MIT",
     "minimum-stability": "stable",
     "autoload": {
         "psr-4": {
