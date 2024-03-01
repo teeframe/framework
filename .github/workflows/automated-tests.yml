@@ -1,0 +1,24 @@
+name: Automated Tests
+
+on: ["push", "pull_request"]
+
+jobs:
+  automated-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup PHP Version 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Execute tests via Pest
+        run: vendor/bin/pest
