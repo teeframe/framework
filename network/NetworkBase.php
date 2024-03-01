@@ -62,7 +62,7 @@ class NetworkBase
             return [];
         }
 
-        return $result;
+        return array_values($result);
     }
 
     public static function isSequenceInBackroom(int $sequence, int $ack): bool
