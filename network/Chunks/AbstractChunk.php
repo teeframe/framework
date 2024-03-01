@@ -15,6 +15,8 @@ abstract class AbstractChunk
 
     abstract public function getPayload(): RawPayload;
 
+    abstract public static function make(RawPayload $payload): static;
+
     public function addResendFlag(): static
     {
         $this->flags |= NetworkBase::CHUNK_FLAG_RESEND;
