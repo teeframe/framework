@@ -207,11 +207,11 @@ class SnapHandler
             $payloadInts = $item->getInts();
 
             foreach ($payloadInts as $int) {
-                $crc = NetworkBase::toInt32($crc + $int);
+                $crc += $int;
             }
         }
 
-        return $crc;
+        return NetworkBase::toInt32($crc);
     }
 
     /**

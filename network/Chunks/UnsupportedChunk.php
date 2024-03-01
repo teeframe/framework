@@ -11,6 +11,11 @@ class UnsupportedChunk extends AbstractChunk
         parent::__construct(flags: $flags, message: $unsupportedMessage, isSystem: $isSystem);
     }
 
+    public static function make(RawPayload $payload): static
+    {
+        throw new \RuntimeException('You cannot instantiate an unsupported chunk from the make method.');
+    }
+
     public function getPayload(): RawPayload
     {
         return new RawPayload;

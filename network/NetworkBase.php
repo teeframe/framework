@@ -46,6 +46,8 @@ class NetworkBase
      */
     public static function toInt32(int $value): int
     {
+        $value = $value & 0xFFFFFFFF;
+
         return $value & 0x80000000 ? -((~$value & 0xFFFFFFFF) + 1) : $value;
     }
 
