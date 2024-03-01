@@ -15,7 +15,7 @@ abstract class AbstractMapItem
     // ) {
     // }
 
-    abstract static function make(int $id, int $size, string $data): static;
+    abstract public static function make(int $id, int $size, string $data): static;
 
     // public function getId(): int
     // {

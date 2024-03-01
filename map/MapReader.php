@@ -49,6 +49,9 @@ class MapReader
         $itemOffsets = $reader->readBytes($numItems * 4);
         $dataOffsets = $reader->readBytes($numData * 4);
         $dataSizes   = ($version === 4) ? $reader->readBytes($numData * 4) : null;
+        // $itemOffsets = $reader->readInt();
+        // $dataOffsets = $reader->readInt();
+        // $dataSizes   = ($version === 4) ? $reader->readInt() : null;
 
         // Items
         $items = [];
@@ -61,10 +64,11 @@ class MapReader
             }
         }
 
+        var_dump($itemTypes);
         // Data
-        foreach ($items as $i => [$typeIdId, $size]) {
-            $items[$i][] = $reader->readBytes($size);
-        }
+        // foreach ($items as $i => [$typeIdId, $size]) {
+        //     $items[$i][] = $reader->readBytes($size);
+        // }
     }
 
     protected function constructMapItem(int $typeIdId, int $size, string $data): ?AbstractMapItem
@@ -73,7 +77,7 @@ class MapReader
         $id     = $typeIdId & 0b1111_1111_1111_1111;
 
         return match($typeId) {
-            0       => MapItems\VersionItem::make($id, $size, $data),
+            1       => MapItems\InfoItem::make($id, $size, $data),
             default => null,
         };
     }
