@@ -7,7 +7,7 @@ use Base\SnapInterface;
 use Network\Chunks\System\InputChunk;
 use Network\Chunks\System\InputTimingChunk;
 use Network\Chunks\UnsupportedChunk;
-use Network\Connection\Connection;
+use Network\Connection\AbstractConnection;
 use Network\NetworkMessages;
 use Network\NetworkParams;
 use Network\Packets\AbstractPacket;
@@ -16,7 +16,7 @@ use Network\Packets\DefaultPacket;
 use Network\SnapItems\ObjClientInfoItem;
 use Network\SnapItems\ObjPlayerInfoItem;
 
-class ConnectionSlot extends Connection implements SnapInterface
+class ConnectionSlot extends AbstractConnection implements SnapInterface
 {
     use Concerns\HasClientData;
     use Concerns\HasConsole;

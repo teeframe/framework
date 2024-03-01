@@ -8,7 +8,7 @@ use Network\SnapItems\ObjClientInfoItem;
 use Network\SnapItems\ObjGameInfoItem;
 use Network\SnapItems\ObjPickupItem;
 use Network\SnapItems\ObjPlayerInfoItem;
-use Network\Connection\Connection;
+use Network\Connection\AbstractConnection;
 use Network\Packets\AbstractPacket;
 
 function getExpectedPacket(): array
@@ -134,7 +134,7 @@ test('can encode a full packet with multiple snap items', function () {
 });
 
 test('can encode a full packet with multiple snap items through snap handler', function () {
-    $connectionClass = new class extends Connection {
+    $connectionClass = new class extends AbstractConnection {
         protected function handlePacketSending(AbstractPacket $packet): bool
         {
             throw new \Exception($packet->encodeToSend());

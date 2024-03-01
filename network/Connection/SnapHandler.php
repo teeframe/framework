@@ -31,7 +31,7 @@ class SnapHandler
     protected array $sentList = [];
 
     public function __construct(
-        protected Connection $connection
+        protected AbstractConnection $connection
     ) {
         $this->reset();
     }
@@ -77,7 +77,7 @@ class SnapHandler
     }
 
     /**
-     * @param  array<int, AbstractSnapItem>  $fullItems
+     * @param  AbstractSnapItem[]  $fullItems
      */
     public function sendSnapItems(int $currentTick, array $fullItems): void
     {

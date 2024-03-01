@@ -9,7 +9,7 @@ use Network\Packets\AbstractPacket;
 use Network\Packets\ControlMessage;
 use Network\Packets\DefaultPacket;
 
-abstract class Connection
+abstract class AbstractConnection
 {
     public string $destinationAddress;
 

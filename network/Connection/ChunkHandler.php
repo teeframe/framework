@@ -20,7 +20,7 @@ class ChunkHandler
     protected array $sentList;
 
     public function __construct(
-        protected Connection $connection
+        protected AbstractConnection $connection
     ) {
         $this->reset();
     }
