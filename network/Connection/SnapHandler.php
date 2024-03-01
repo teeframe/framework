@@ -206,10 +206,12 @@ class SnapHandler
         foreach ($items as $item) {
             $payloadInts = $item->getInts();
 
-            $crc += array_sum($payloadInts);
+            foreach ($payloadInts as $int) {
+                $crc = NetworkBase::toInt32($crc + $int);
+            }
         }
 
-        return NetworkBase::toInt32($crc);
+        return $crc;
     }
 
     /**
