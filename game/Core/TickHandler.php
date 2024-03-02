@@ -13,7 +13,7 @@ class TickHandler
         return $this->currentTick;
     }
 
-    public function do(): void
+    public function next(): void
     {
         $this->currentTick++;
     }
