@@ -13,12 +13,17 @@ class ObjPlayerInfoItem extends AbstractSnapItem
         public int $score,
         public int $latency,
     ) {
-        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_PLAYERINFO, integers: [
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_PLAYERINFO);
+    }
+
+    public function getInts(): array
+    {
+        return [
             (int) $this->local,
             $this->clientId,
             $this->team,
             $this->score,
             $this->latency,
-        ]);
+        ];
     }
 }

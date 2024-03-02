@@ -16,7 +16,12 @@ class ObjClientInfoItem extends AbstractSnapItem
         public int $colorBody,
         public int $colorFoot,
     ) {
-        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_CLIENTINFO, integers: [
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_CLIENTINFO);
+    }
+
+    public function getInts(): array
+    {
+        return [
             ...$this->convertStringToIntArray($this->name, 4),
             ...$this->convertStringToIntArray($this->clan, 3),
             $this->country,
@@ -24,7 +29,7 @@ class ObjClientInfoItem extends AbstractSnapItem
             (int) $this->useCustomColor,
             $this->colorBody,
             $this->colorFoot,
-        ]);
+        ];
     }
 
     /**

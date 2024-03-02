@@ -11,17 +11,14 @@ abstract class AbstractSnapItem
     /**
      * @param array<int, int> $integers
      */
-    public function __construct(protected int $itemId, protected array $integers)
+    public function __construct(protected int $itemId)
     {
     }
 
     /**
      * @return int[]
      */
-    public function getInts(): array
-    {
-        return $this->integers;
-    }
+    abstract public function getInts(): array;
 
     public function getKey(): int
     {
@@ -61,8 +58,8 @@ abstract class AbstractSnapItem
     {
         $rawPayload = new RawPayload;
 
-        foreach ($this->integers as $integer) {
-            $rawPayload->addInt($integer);
+        foreach ($this->getInts() as $int) {
+            $rawPayload->addInt($int);
         }
 
         return $rawPayload;

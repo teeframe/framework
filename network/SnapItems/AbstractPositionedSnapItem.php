@@ -7,8 +7,8 @@ abstract class AbstractPositionedSnapItem extends AbstractSnapItem
     /**
      * @param array<int, int> $integers
      */
-    public function __construct(protected int $itemId, protected array $integers, public int $x, public int $y)
+    public function __construct(protected int $itemId, public int $x, public int $y)
     {
-        parent::__construct($itemId, $integers);
+        parent::__construct($itemId);
     }
 }

@@ -12,11 +12,16 @@ class ObjGameDataItem extends AbstractSnapItem
         public int $flagCarrierRedIndex,
         public int $flagCarrierBlueIndex,
     ) {
-        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_GAMEDATA, integers: [
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_GAMEDATA);
+    }
+
+    public function getInts(): array
+    {
+        return [
             $this->teamScoreRed,
             $this->teamScoreBlue,
             $this->flagCarrierRedIndex,
             $this->flagCarrierBlueIndex,
-        ]);
+        ];
     }
 }

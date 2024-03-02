@@ -16,7 +16,12 @@ class ObjGameInfoItem extends AbstractSnapItem
         public int $roundNum,
         public int $roundCurrent,
     ) {
-        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_GAMEINFO, integers: [
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_GAMEINFO);
+    }
+
+    public function getInts(): array
+    {
+        return [
             $this->gameFlags,
             $this->gameStateFlags,
             $this->roundStartTick,
@@ -25,6 +30,6 @@ class ObjGameInfoItem extends AbstractSnapItem
             $this->timeLimit,
             $this->roundNum,
             $this->roundCurrent,
-        ]);
+        ];
     }
 }

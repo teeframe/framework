@@ -4,7 +4,7 @@ namespace Network\SnapItems;
 
 use Network\NetworkMessages;
 
-class ObjCharacterItem extends AbstractSnapItem
+class ObjCharacterItem extends AbstractPositionedSnapItem
 {
     public function __construct(
         public int $tick,
@@ -31,7 +31,12 @@ class ObjCharacterItem extends AbstractSnapItem
         public int $emote,
         public int $attackTick,
     ) {
-        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_CHARACTER, integers: [
+        parent::__construct(itemId: NetworkMessages::NETOBJTYPE_CHARACTER, x: $x, y: $y);
+    }
+
+    public function getInts(): array
+    {
+        return [
             $this->tick,
             $this->x,
             $this->y,
@@ -55,6 +60,6 @@ class ObjCharacterItem extends AbstractSnapItem
             $this->weapon,
             $this->emote,
             $this->attackTick,
-        ]);
+        ];
     }
 }
