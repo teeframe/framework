@@ -1,15 +1,15 @@
 {
-    "name": "miguilimzero/teeframe",
+    "name": "teeframe/framework",
     "type": "project",
     "description": "The TeeFrame project.",
     "license": "MIT",
     "minimum-stability": "stable",
     "autoload": {
         "psr-4": {
-            "Base\\": "base/",
-            "Game\\": "game/",
-            "Map\\": "map/",
-            "Network\\": "network/"
+            "TeeFrame\\Base\\": "base/",
+            "TeeFrame\\Game\\": "game/",
+            "TeeFrame\\Map\\": "map/",
+            "TeeFrame\\Network\\": "network/"
         }
     },
     "require": {

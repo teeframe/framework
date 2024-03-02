@@ -1,8 +1,8 @@
 <?php
 
-namespace Network\Chunks;
+namespace TeeFrame\Network\Chunks;
 
-use Network\RawPayload;
+use TeeFrame\Network\RawPayload;
 
 class UnsupportedChunk extends AbstractChunk
 {

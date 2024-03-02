@@ -4,17 +4,17 @@ namespace Base\Connection;
 
 use Base\Server\ServerInstance;
 use Base\SnapInterface;
-use Network\Chunks\System\InputChunk;
-use Network\Chunks\System\InputTimingChunk;
-use Network\Chunks\UnsupportedChunk;
-use Network\Connection\AbstractConnection;
-use Network\NetworkMessages;
-use Network\NetworkParams;
-use Network\Packets\AbstractPacket;
-use Network\Packets\ControlMessage;
-use Network\Packets\DefaultPacket;
-use Network\SnapItems\ObjClientInfoItem;
-use Network\SnapItems\ObjPlayerInfoItem;
+use TeeFrame\Network\Chunks\System\InputChunk;
+use TeeFrame\Network\Chunks\System\InputTimingChunk;
+use TeeFrame\Network\Chunks\UnsupportedChunk;
+use TeeFrame\Network\Connection\AbstractConnection;
+use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\Packets\AbstractPacket;
+use TeeFrame\Network\Packets\ControlMessage;
+use TeeFrame\Network\Packets\DefaultPacket;
+use TeeFrame\Network\SnapItems\ObjClientInfoItem;
+use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
 
 class ConnectionSlot extends AbstractConnection implements SnapInterface
 {

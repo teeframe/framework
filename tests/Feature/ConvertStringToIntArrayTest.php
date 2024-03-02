@@ -1,7 +1,7 @@
 <?php
 
-use Network\NetworkBase;
-use Network\SnapItems\ObjClientInfoItem;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 
 function createClientInfoItem(string $name) {
     $clan           = 'kj';

@@ -1,15 +1,14 @@
 <?php
 
-namespace Network\Connection;
+namespace TeeFrame\Network\Connection;
 
-use Network\Chunks\System\SnapEmptyChunk;
-use Network\Chunks\System\SnapSingleChunk;
-use Network\Chunks\System\SnapSliceChunk;
-use Network\NetworkBase;
-use Network\NetworkParams;
-use Network\RawPayload;
-use Network\SnapItems\AbstractSnapItem;
-use Network\SnapSlicesLimitReachedException;
+use TeeFrame\Network\Chunks\System\SnapEmptyChunk;
+use TeeFrame\Network\Chunks\System\SnapSingleChunk;
+use TeeFrame\Network\Chunks\System\SnapSliceChunk;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\RawPayload;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 class SnapHandler
 {
@@ -79,7 +78,7 @@ class SnapHandler
     /**
      * @param  AbstractSnapItem[]  $fullItems
      */
-    public function sendSnapItems(int $currentTick, array $fullItems): void
+    public function sendItems(int $currentTick, array $fullItems): void
     {
         $fullItems = $this->indexItemsList($fullItems);
 

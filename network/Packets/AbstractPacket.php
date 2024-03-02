@@ -1,8 +1,8 @@
 <?php
 
-namespace Network\Packets;
+namespace TeeFrame\Network\Packets;
 
-use Network\NetworkBase;
+use TeeFrame\Network\NetworkBase;
 
 abstract class AbstractPacket
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Network\Chunks\Game;
+namespace TeeFrame\Network\Chunks\Game;
 
-use Network\Chunks\AbstractChunk;
-use Network\NetworkBase;
-use Network\NetworkMessages;
-use Network\RawPayload;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\RawPayload;
 
 class SvMotdChunk extends AbstractChunk
 {

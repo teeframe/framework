@@ -1,8 +1,8 @@
 <?php
 
-namespace Network\Connection;
+namespace TeeFrame\Network\Connection;
 
-use Network\SnapItems\AbstractSnapItem;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 class ConnectionSnap
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Network\Connection;
+namespace TeeFrame\Network\Connection;
 
-use Network\Chunks\AbstractChunk;
-use Network\NetworkBase;
-use Network\NetworkParams;
-use Network\Packets\DefaultPacket;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\Packets\DefaultPacket;
 
 class ChunkHandler
 {

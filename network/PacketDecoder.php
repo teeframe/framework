@@ -1,28 +1,28 @@
 <?php
 
-namespace Network;
+namespace TeeFrame\Network;
 
-use Network\Chunks\Game\ClStartInfoChunk;
-use Network\Chunks\Game\SvMotdChunk;
-use Network\Chunks\Game\SvReadyToEnterChunk;
-use Network\Chunks\Game\SvTuneParamsChunk;
-use Network\Chunks\Game\SvVoteClearOptionsChunk;
-use Network\Chunks\System\ConReadyChunk;
-use Network\Chunks\System\EnterGameChunk;
-use Network\Chunks\System\InfoChunk;
-use Network\Chunks\System\InputChunk;
-use Network\Chunks\System\MapChangeChunk;
-use Network\Chunks\System\ReadyChunk;
-use Network\Chunks\System\RequestMapDataChunk;
-use Network\Chunks\System\SnapSliceChunk;
-use Network\Chunks\System\SnapEmptyChunk;
-use Network\Chunks\System\SnapSingleChunk;
-use Network\Chunks\UnsupportedChunk;
-use Network\Enums\Protocol;
-use Network\Packets\AbstractPacket;
-use Network\Packets\ConnectionLessMessage;
-use Network\Packets\ControlMessage;
-use Network\Packets\DefaultPacket;
+use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
+use TeeFrame\Network\Chunks\Game\SvMotdChunk;
+use TeeFrame\Network\Chunks\Game\SvReadyToEnterChunk;
+use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteClearOptionsChunk;
+use TeeFrame\Network\Chunks\System\ConReadyChunk;
+use TeeFrame\Network\Chunks\System\EnterGameChunk;
+use TeeFrame\Network\Chunks\System\InfoChunk;
+use TeeFrame\Network\Chunks\System\InputChunk;
+use TeeFrame\Network\Chunks\System\MapChangeChunk;
+use TeeFrame\Network\Chunks\System\ReadyChunk;
+use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
+use TeeFrame\Network\Chunks\System\SnapSliceChunk;
+use TeeFrame\Network\Chunks\System\SnapEmptyChunk;
+use TeeFrame\Network\Chunks\System\SnapSingleChunk;
+use TeeFrame\Network\Chunks\UnsupportedChunk;
+use TeeFrame\Network\Enums\Protocol;
+use TeeFrame\Network\Packets\AbstractPacket;
+use TeeFrame\Network\Packets\ConnectionLessMessage;
+use TeeFrame\Network\Packets\ControlMessage;
+use TeeFrame\Network\Packets\DefaultPacket;
 
 class PacketDecoder
 {

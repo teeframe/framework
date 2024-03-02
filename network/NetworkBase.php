@@ -1,8 +1,8 @@
 <?php
 
-namespace Network;
+namespace TeeFrame\Network;
 
-use Network\Huffman\Huffman;
+use TeeFrame\Network\Huffman\Huffman;
 
 // TODO: Better type this
 

@@ -1,11 +1,11 @@
 <?php
 
-namespace Network\Chunks\System;
+namespace TeeFrame\Network\Chunks\System;
 
-use Network\Chunks\AbstractChunk;
-use Network\NetworkBase;
-use Network\NetworkMessages;
-use Network\RawPayload;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\RawPayload;
 
 class ConReadyChunk extends AbstractChunk
 {

@@ -3,23 +3,29 @@
 namespace Game\Entities;
 
 use Game\Core\Vector2;
+use Game\GameWorld;
 use Game\Player;
-use Network\SnapItems\ObjProjectileItem;
+use TeeFrame\Network\SnapItems\ObjProjectileItem;
 
 class ProjectileEntity extends AbstractEntity
 {
-    protected int $startTick;
+    protected int $startTick = -1;
 
     public function __construct(public Vector2 $position, public Vector2 $direction, public int $type)
     {
         parent::__construct(position: $position);
-
-        $this->startTick = $this->world->getTick();
     }
 
     public function __destruct()
     {
         // ...
+    }
+
+    public function setWorld(GameWorld $world): void
+    {
+        parent::setWorld($world);
+
+        $this->startTick = $world->getCurrentTick();
     }
 
     public function tick(): void

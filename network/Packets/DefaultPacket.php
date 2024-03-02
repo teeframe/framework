@@ -1,9 +1,9 @@
 <?php
 
-namespace Network\Packets;
+namespace TeeFrame\Network\Packets;
 
-use Network\Chunks\AbstractChunk;
-use Network\NetworkBase;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\NetworkBase;
 
 class DefaultPacket extends AbstractPacket
 {

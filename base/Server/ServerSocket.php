@@ -4,10 +4,10 @@ namespace Base\Server;
 
 use Base\Console;
 use Game\GameContext;
-use Network\NetworkMessages;
-use Network\NetworkParams;
-use Network\PacketDecoder;
-use Network\Packets\ControlMessage;
+use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\PacketDecoder;
+use TeeFrame\Network\Packets\ControlMessage;
 use Swoole\Server;
 
 class ServerSocket extends Server

@@ -1,9 +1,9 @@
 <?php
 
-namespace Network\SnapItems;
+namespace TeeFrame\Network\SnapItems;
 
-use Network\NetworkBase;
-use Network\NetworkMessages;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkMessages;
 
 class ObjClientInfoItem extends AbstractSnapItem
 {

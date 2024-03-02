@@ -1,8 +1,8 @@
 <?php
 
-namespace Network\SnapItems;
+namespace TeeFrame\Network\SnapItems;
 
-use Network\NetworkMessages;
+use TeeFrame\Network\NetworkMessages;
 
 class ObjPickupItem extends AbstractPositionedSnapItem
 {

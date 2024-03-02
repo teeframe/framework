@@ -1,6 +1,6 @@
 <?php
 
-namespace Network;
+namespace TeeFrame\Network;
 
 class RawPayload
 {

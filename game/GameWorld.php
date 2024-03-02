@@ -4,10 +4,11 @@ namespace Game;
 
 use Game\Core\SnapableObject;
 use Game\Core\SnapIdPool;
+use Game\Core\TickHandler;
 use Game\Core\Vector2;
 use Game\Entities\AbstractEntity;
-use Network\SnapItems\AbstractPositionedSnapItem;
-use Network\SnapItems\AbstractSnapItem;
+use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 class GameWorld implements SnapableObject
 {
@@ -25,9 +26,14 @@ class GameWorld implements SnapableObject
 
     protected SnapIdPool $snapIdPool;
 
-    public function __construct()
+    public function __construct(protected TickHandler $tickHandler)
     {
         $this->snapIdPool = new SnapIdPool();
+    }
+
+    public function getCurrentTick(): int
+    {
+        return $this->tickHandler->get();
     }
 
     public function snapIdPool(): SnapIdPool

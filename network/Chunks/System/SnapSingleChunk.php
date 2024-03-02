@@ -1,11 +1,11 @@
 <?php
 
-namespace Network\Chunks\System;
+namespace TeeFrame\Network\Chunks\System;
 
-use Network\Chunks\AbstractChunk;
-use Network\NetworkMessages;
-use Network\NetworkParams;
-use Network\RawPayload;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\RawPayload;
 
 class SnapSingleChunk extends AbstractChunk
 {

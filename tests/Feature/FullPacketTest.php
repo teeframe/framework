@@ -1,15 +1,15 @@
 <?php
 
-use Network\Chunks\System\SnapSingleChunk;
-use Network\Chunks\UnsupportedChunk;
-use Network\NetworkBase;
-use Network\SnapItems\ObjCharacterItem;
-use Network\SnapItems\ObjClientInfoItem;
-use Network\SnapItems\ObjGameInfoItem;
-use Network\SnapItems\ObjPickupItem;
-use Network\SnapItems\ObjPlayerInfoItem;
-use Network\Connection\AbstractConnection;
-use Network\Packets\AbstractPacket;
+use TeeFrame\Network\Chunks\System\SnapSingleChunk;
+use TeeFrame\Network\Chunks\UnsupportedChunk;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\SnapItems\ObjCharacterItem;
+use TeeFrame\Network\SnapItems\ObjClientInfoItem;
+use TeeFrame\Network\SnapItems\ObjGameInfoItem;
+use TeeFrame\Network\SnapItems\ObjPickupItem;
+use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
+use TeeFrame\Network\Connection\AbstractConnection;
+use TeeFrame\Network\Packets\AbstractPacket;
 
 function getExpectedPacket(): array
 {
@@ -154,7 +154,7 @@ test('can encode a full packet with multiple snap items through snap handler', f
     $connectionClass->ack = 6;
 
     try {
-        $connectionClass->snaps()->sendSnapItems(4970, getCommonSnapItems());
+        $connectionClass->snaps()->sendItems(4970, getCommonSnapItems());
     } catch (\Exception $e) {
         $encodedPacket = NetworkBase::unpackBuffer($e->getMessage());
     }

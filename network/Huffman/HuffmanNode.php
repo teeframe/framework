@@ -1,6 +1,6 @@
 <?php
 
-namespace Network\Huffman;
+namespace TeeFrame\Network\Huffman;
 
 class HuffmanNode
 {

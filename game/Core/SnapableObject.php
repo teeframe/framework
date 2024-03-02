@@ -3,7 +3,7 @@
 namespace Game\Core;
 
 use Game\Player;
-use Network\SnapItems\AbstractSnapItem;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 interface SnapableObject
 {

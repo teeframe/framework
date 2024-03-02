@@ -1,6 +1,6 @@
 <?php
 
-namespace Network\SnapItems;
+namespace TeeFrame\Network\SnapItems;
 
 abstract class AbstractPositionedSnapItem extends AbstractSnapItem
 {

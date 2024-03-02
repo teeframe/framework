@@ -1,13 +1,13 @@
 <?php
 
-namespace Network\Connection;
+namespace TeeFrame\Network\Connection;
 
-use Network\Chunks\UnsupportedChunk;
-use Network\NetworkBase;
-use Network\NetworkParams;
-use Network\Packets\AbstractPacket;
-use Network\Packets\ControlMessage;
-use Network\Packets\DefaultPacket;
+use TeeFrame\Network\Chunks\UnsupportedChunk;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\Packets\AbstractPacket;
+use TeeFrame\Network\Packets\ControlMessage;
+use TeeFrame\Network\Packets\DefaultPacket;
 
 abstract class AbstractConnection
 {

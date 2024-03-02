@@ -1,9 +1,9 @@
 <?php
 
-namespace Network\Chunks;
+namespace TeeFrame\Network\Chunks;
 
-use Network\NetworkBase;
-use Network\RawPayload;
+use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\RawPayload;
 
 abstract class AbstractChunk
 {

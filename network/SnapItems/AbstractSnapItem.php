@@ -1,8 +1,8 @@
 <?php
 
-namespace Network\SnapItems;
+namespace TeeFrame\Network\SnapItems;
 
-use Network\RawPayload;
+use TeeFrame\Network\RawPayload;
 
 abstract class AbstractSnapItem
 {

@@ -5,9 +5,9 @@ namespace Game;
 use Base\Connection\ConnectionSlot;
 use Base\Server\ServerInstance;
 use Base\SnapInterface;
-use Network\NetworkParams;
-use Network\SnapItems\ObjGameDataItem;
-use Network\SnapItems\ObjGameInfoItem;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\SnapItems\ObjGameDataItem;
+use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 
 class GameContext implements SnapInterface
 {
@@ -46,7 +46,7 @@ class GameContext implements SnapInterface
                 continue;
             }
 
-            $connection->snaps()->sendSnapItems($this->getCurrentTick(), [
+            $connection->snaps()->sendItems($this->getCurrentTick(), [
                 ...$this->doSnap($slotIndex),
                 ...$this->doConnectionsSnap($slotIndex),
             ]);

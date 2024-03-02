@@ -6,7 +6,7 @@ use Game\GameWorld;
 use Game\Core\SnapableObject;
 use Game\Core\Vector2;
 use Game\Player;
-use Network\SnapItems\AbstractSnapItem;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 abstract class AbstractEntity implements SnapableObject
 {
