@@ -22,7 +22,7 @@ class ObjClientInfoItem extends AbstractSnapItem
     public function getInts(): array
     {
         return [
-            ...$this->convertStringToIntArray($this->name, 4),
+            ...$this->convertStringToIntArray($this->name, 4), // TODO: Maybe this should be cached for performance?
             ...$this->convertStringToIntArray($this->clan, 3),
             $this->country,
             ...$this->convertStringToIntArray($this->skinName, 6),

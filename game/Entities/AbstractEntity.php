@@ -17,11 +17,15 @@ abstract class AbstractEntity implements SnapableObject
 
     protected bool $toDestroy = false;
 
+    protected ?GameWorld $world = null;
+
     public function __construct(public Vector2 $position) 
     {
     }
 
     abstract public function tick(): void;
+
+    abstract public function getHitBoxRadius(): int;
 
     /**
      * @return AbstractSnapItem[]
@@ -38,6 +42,11 @@ abstract class AbstractEntity implements SnapableObject
         }
 
         return $this->doRawSnap($requestingPlayer);
+    }
+
+    public function setWorld(GameWorld $world): void
+    {
+        $this->world = $world;
     }
 
     public function isToDestroy(): bool

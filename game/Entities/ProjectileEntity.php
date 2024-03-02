@@ -4,12 +4,17 @@ namespace Game\Entities;
 
 use Game\Core\Vector2;
 use Game\Player;
+use Network\SnapItems\ObjProjectileItem;
 
 class ProjectileEntity extends AbstractEntity
 {
-    public function __construct(public Vector2 $position)
+    protected int $startTick;
+
+    public function __construct(public Vector2 $position, public Vector2 $direction, public int $type)
     {
         parent::__construct(position: $position);
+
+        $this->startTick = $this->world->getTick();
     }
 
     public function __destruct()
@@ -22,8 +27,22 @@ class ProjectileEntity extends AbstractEntity
         // ...
     }
 
+    public function getHitBoxRadius(): int
+    {
+        return 0;
+    }
+
     protected function doRawSnap(Player $requestingPlayer): array
     {
-        return [];
+        return [
+            new ObjProjectileItem(
+                x: (int) $this->position->x,
+                y: (int) $this->position->y,
+                velX: (int) ($this->direction->x * 100),
+                velY: (int) ($this->direction->y * 100),
+                type: $this->type,
+                startTick: $this->startTick
+            )
+        ];
     }
 }

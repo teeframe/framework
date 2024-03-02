@@ -51,11 +51,19 @@ class GameWorld implements SnapableObject
 
     public function addEntity(AbstractEntity $entity): void
     {
+        $entity->setWorld($this);
+
         $this->entities[] = $entity;
     }
 
     public function removeEntity(AbstractEntity $entity): void
     {
+        $allocatedSnapIds = $entity->getAllocatedSnapIds();
+
+        foreach ($allocatedSnapIds as $id) {
+            $this->snapIdPool->freeId($id);
+        }
+
         $this->entities = array_filter(
             $this->entities,
             fn(AbstractEntity $e) => $e !== $entity
