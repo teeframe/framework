@@ -1,6 +1,6 @@
 <?php
 
-namespace Game\World;
+namespace Game;
 
 class GameController
 {

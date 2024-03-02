@@ -6,7 +6,7 @@ use Network\RawPayload;
 
 abstract class AbstractSnapItem
 {
-    protected int $id = 0;
+    protected int $id = -1;
 
     /**
      * @param array<int, int> $integers
@@ -16,7 +16,7 @@ abstract class AbstractSnapItem
     }
 
     /**
-     * @return array<int, int>
+     * @return int[]
      */
     public function getInts(): array
     {
@@ -50,6 +50,10 @@ abstract class AbstractSnapItem
      */
     public function encode(): array
     {
+        if ($this->id === -1) {
+            throw new \RuntimeException('Trying to encode a snap item without an id');
+        }
+
         return [$this->itemId, $this->id, ...$this->getPayload()->encode()];
     }
 
