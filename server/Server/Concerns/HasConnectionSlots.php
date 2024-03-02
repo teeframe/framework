@@ -1,8 +1,8 @@
 <?php
 
-namespace Base\Server\Concerns;
+namespace TeeFrame\Server\Server\Concerns;
 
-use Base\Connection\ConnectionSlot;
+use TeeFrame\Server\Connection\ConnectionSlot;
 
 trait HasConnectionSlots
 {

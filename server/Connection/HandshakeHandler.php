@@ -1,6 +1,6 @@
 <?php
 
-namespace Base\Connection;
+namespace TeeFrame\Server\Connection;
 
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;

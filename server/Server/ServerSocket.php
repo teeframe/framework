@@ -1,9 +1,9 @@
 <?php
 
-namespace Base\Server;
+namespace TeeFrame\Server\Server;
 
-use Base\Console;
-use Game\GameContext;
+use TeeFrame\Server\Console;
+use TeeFrame\Game\GameContext;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;

@@ -1,8 +1,8 @@
 <?php
 
-namespace Base\Server;
+namespace TeeFrame\Server\Server;
 
-use Base\Connection\ConnectionSlot;
+use TeeFrame\Server\Connection\ConnectionSlot;
 
 class ServerInstance
 {

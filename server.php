@@ -6,7 +6,7 @@ if (! extension_loaded('swoole')) {
 
 require_once 'vendor/autoload.php';
 
-use Base\Server\ServerSocket;
+use TeeFrame\Server\Server\ServerSocket;
 
 $server = new ServerSocket('127.0.0.1', 8304, SWOOLE_BASE, SWOOLE_SOCK_UDP);
 

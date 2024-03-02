@@ -1,8 +1,8 @@
 <?php
 
-namespace Map;
+namespace TeeFrame\Map;
 
-use Map\MapItems\AbstractMapItem;
+use TeeFrame\Map\MapItems\AbstractMapItem;
 
 class MapReader
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Map\MapItems;
+namespace TeeFrame\Map\MapItems;
 
 abstract class AbstractMapItem
 {

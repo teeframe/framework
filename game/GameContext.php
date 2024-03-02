@@ -1,10 +1,10 @@
 <?php
 
-namespace Game;
+namespace TeeFrame\Game;
 
-use Base\Connection\ConnectionSlot;
-use Base\Server\ServerInstance;
-use Base\SnapInterface;
+use TeeFrame\Server\Connection\ConnectionSlot;
+use TeeFrame\Server\Server\ServerInstance;
+use TeeFrame\Server\SnapInterface;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;

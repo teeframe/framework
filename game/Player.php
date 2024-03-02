@@ -1,8 +1,8 @@
 <?php
 
-namespace Game;
+namespace TeeFrame\Game;
 
-use Game\Core\Vector2;
+use TeeFrame\Game\Core\Vector2;
 
 class Player
 {

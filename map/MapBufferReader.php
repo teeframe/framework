@@ -1,6 +1,6 @@
 <?php
 
-namespace Map;
+namespace TeeFrame\Map;
 
 class MapBufferReader
 {

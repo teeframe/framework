@@ -1,12 +1,12 @@
 <?php
 
-namespace Game;
+namespace TeeFrame\Game;
 
-use Game\Core\SnapableObject;
-use Game\Core\SnapIdPool;
-use Game\Core\TickHandler;
-use Game\Core\Vector2;
-use Game\Entities\AbstractEntity;
+use TeeFrame\Game\Core\SnapableObject;
+use TeeFrame\Game\Core\SnapIdPool;
+use TeeFrame\Game\Core\TickHandler;
+use TeeFrame\Game\Core\Vector2;
+use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 

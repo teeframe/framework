@@ -1,6 +1,6 @@
 <?php
 
-namespace Game\Core;
+namespace TeeFrame\Game\Core;
 
 class Vector2
 {

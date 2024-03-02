@@ -1,6 +1,6 @@
 <?php
 
-namespace Game;
+namespace TeeFrame\Game;
 
 class GameController
 {

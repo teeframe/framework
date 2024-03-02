@@ -1,8 +1,8 @@
 <?php
 
-namespace Map\MapItems;
+namespace TeeFrame\Map\MapItems;
 
-use Map\MapBufferReader;
+use TeeFrame\Map\MapBufferReader;
 
 class InfoItem extends AbstractMapItem
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Game\Entities;
+namespace TeeFrame\Game\Entities;
 
-use Game\GameWorld;
-use Game\Core\SnapableObject;
-use Game\Core\Vector2;
-use Game\Player;
+use TeeFrame\Game\GameWorld;
+use TeeFrame\Game\Core\SnapableObject;
+use TeeFrame\Game\Core\Vector2;
+use TeeFrame\Game\Player;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 abstract class AbstractEntity implements SnapableObject

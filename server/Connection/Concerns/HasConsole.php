@@ -1,8 +1,8 @@
 <?php
 
-namespace Base\Connection\Concerns;
+namespace TeeFrame\Server\Connection\Concerns;
 
-use Base\Console;
+use TeeFrame\Server\Console;
 
 trait HasConsole
 {

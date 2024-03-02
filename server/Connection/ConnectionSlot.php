@@ -1,9 +1,10 @@
 <?php
 
-namespace Base\Connection;
+namespace TeeFrame\Server\Connection;
 
-use Base\Server\ServerInstance;
-use Base\SnapInterface;
+use Swoole\Server;
+use TeeFrame\Server\Server\ServerInstance;
+use TeeFrame\Server\SnapInterface;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\InputTimingChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
@@ -31,7 +32,7 @@ class ConnectionSlot extends AbstractConnection implements SnapInterface
 
     public int $state;
 
-    public function __construct(protected int $slotIndex)
+    public function __construct(protected int $slotIndex, protected Server $socket)
     {
         $this->handshakeHandler = new HandshakeHandler($this);
 
@@ -155,7 +156,7 @@ class ConnectionSlot extends AbstractConnection implements SnapInterface
 
     protected function handlePacketSending(AbstractPacket $packet): bool
     {
-        return ServerInstance::sendto($this->destinationAddress, $this->destinationPort, $packet->encodeToSend());
+        return $this->socket->sendto($this->destinationAddress, $this->destinationPort, $packet->encodeToSend());
     }
 
     protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void

@@ -1,9 +1,9 @@
 <?php
 
-namespace Game\Entities;
+namespace TeeFrame\Game\Entities;
 
-use Game\Core\Vector2;
-use Game\Player;
+use TeeFrame\Game\Core\Vector2;
+use TeeFrame\Game\Player;
 
 class CharacterEntity extends AbstractEntity
 {

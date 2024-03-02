@@ -1,6 +1,6 @@
 <?php
 
-namespace Base\Connection\Concerns;
+namespace TeeFrame\Server\Connection\Concerns;
 
 trait HasClientData
 {

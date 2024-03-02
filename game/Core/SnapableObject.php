@@ -1,8 +1,8 @@
 <?php
 
-namespace Game\Core;
+namespace TeeFrame\Game\Core;
 
-use Game\Player;
+use TeeFrame\Game\Player;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 interface SnapableObject
