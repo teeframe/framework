@@ -10,7 +10,7 @@ class SnapIdPool
     protected array $releasedIds = [];
 
     /**
-     * @param int[] $allocatedIds
+     * @param  int[]  $allocatedIds
      */
     public function __construct(protected int $lastAllocatedId = -1, protected int $maximumId = 16 * 1024)
     {

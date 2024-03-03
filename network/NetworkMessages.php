@@ -48,12 +48,14 @@ class NetworkMessages
      * Game Messages
      */
     const SV_MOTD = 1;
+
     // const SV_BROADCAST  = 2;
     // const SV_CHAT       = 3;
     // const SV_KILLMSG    = 4;
     // const SV_SOUNDGLOBAL= 5;
-    const SV_TUNEPARAMS = 6;
+    const SV_TUNEPARAMS   = 6;
     const SV_READYTOENTER = 8;
+
     // const SV_WEAPONPICKUP = 9;
     // const SV_EMOTICON = 10;
     const SV_VOTECLEAROPTIONS = 11;

@@ -14,13 +14,11 @@ use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\MapChangeChunk;
 use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
-use TeeFrame\Network\Chunks\System\SnapSliceChunk;
 use TeeFrame\Network\Chunks\System\SnapEmptyChunk;
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
+use TeeFrame\Network\Chunks\System\SnapSliceChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
-use TeeFrame\Network\Enums\Protocol;
 use TeeFrame\Network\Packets\AbstractPacket;
-use TeeFrame\Network\Packets\ConnectionLessMessage;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
 
@@ -102,10 +100,10 @@ class PacketDecoder
                 NetworkMessages::INFO       => InfoChunk::class,
                 NetworkMessages::MAP_CHANGE => MapChangeChunk::class,
                 // NetworkMessages::MAP_DATA => ,
-                NetworkMessages::CON_READY        => ConReadyChunk::class,
-                NetworkMessages::SNAP             => SnapSliceChunk::class,
-                NetworkMessages::SNAPEMPTY        => SnapEmptyChunk::class,
-                NetworkMessages::SNAPSINGLE       => SnapSingleChunk::class,
+                NetworkMessages::CON_READY  => ConReadyChunk::class,
+                NetworkMessages::SNAP       => SnapSliceChunk::class,
+                NetworkMessages::SNAPEMPTY  => SnapEmptyChunk::class,
+                NetworkMessages::SNAPSINGLE => SnapSingleChunk::class,
                 // NetworkMessages::INPUTTIMING => ,
                 // NetworkMessages::RCON_AUTH_STATUS => ,
                 // NetworkMessages::RCON_LINE => ,
@@ -115,7 +113,7 @@ class PacketDecoder
                 NetworkMessages::REQUEST_MAP_DATA => RequestMapDataChunk::class,
                 // NetworkMessages::PING => ,
                 // NetworkMessages::PING_REPLY => ,
-                default                           => new UnsupportedChunk($message, $flags, true),
+                default => new UnsupportedChunk($message, $flags, true),
             };
         }
 

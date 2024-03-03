@@ -4,7 +4,6 @@ namespace TeeFrame\Server;
 
 use Swoole\Server;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Player;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\InputTimingChunk;
@@ -39,8 +38,8 @@ class ConnectionSlot extends AbstractConnection
     {
         parent::reset();
 
-        $this->tee    = new PlayerTee();
-        $this->state  = static::STATE_EMPTY;
+        $this->tee   = new PlayerTee;
+        $this->state = static::STATE_EMPTY;
     }
 
     public function tee(): PlayerTee

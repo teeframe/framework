@@ -2,14 +2,13 @@
 
 namespace TeeFrame\Server;
 
-use TeeFrame\Game\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Core\TickHandler;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
-use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 abstract class AbstractServerInstance
@@ -53,7 +52,7 @@ abstract class AbstractServerInstance
         swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
             $this->doTick();
         });
-        
+
         foreach ($this->sockets as $socket) {
             $socket->on('packet', function (mixed $server, string $data, array $clientInfo) use ($socket): void {
                 $packet = PacketDecoder::decodeFromRaw($data);
@@ -100,7 +99,7 @@ abstract class AbstractServerInstance
             }
 
             $connection->snaps()->sendItems(
-                currentTick: $this->tickHandler->get(), 
+                currentTick: $this->tickHandler->get(),
                 rawItems: $connection->world()->doSnap($connection->tee()),
             );
         }

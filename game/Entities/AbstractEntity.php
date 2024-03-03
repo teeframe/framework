@@ -17,7 +17,7 @@ abstract class AbstractEntity implements SnapableObject
 
     protected ?AbstractWorld $world = null;
 
-    public function __construct(public Vector2 $position) 
+    public function __construct(public Vector2 $position)
     {
     }
 

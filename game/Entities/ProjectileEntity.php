@@ -2,8 +2,8 @@
 
 namespace TeeFrame\Game\Entities;
 
-use TeeFrame\Game\Core\Vector2;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Core\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\ObjProjectileItem;
 
@@ -48,7 +48,7 @@ class ProjectileEntity extends AbstractEntity
                 velY: (int) ($this->direction->y * 100),
                 type: $this->type,
                 startTick: $this->startTick
-            )
+            ),
         ];
     }
 }

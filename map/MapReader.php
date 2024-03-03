@@ -37,11 +37,11 @@ class MapReader
 
         // Item Types
         $itemTypes = [];
-        for ($i=0; $i < $numItemTypes; $i++) { 
+        for ($i = 0; $i < $numItemTypes; $i++) {
             $itemTypes[] = [
                 $reader->readInt(), // Type ID
                 $reader->readInt(), // Start
-                $reader->readInt()  // Num
+                $reader->readInt(),  // Num
             ];
         }
 
@@ -56,7 +56,7 @@ class MapReader
         // Items
         $items = [];
         foreach ($itemTypes as [$typeId, $start, $num]) {
-            for ($i=0; $i < $num; $i++) { 
+            for ($i = 0; $i < $num; $i++) {
                 $typeIdId = $reader->readInt();
                 $size     = $reader->readInt();
 
@@ -73,10 +73,10 @@ class MapReader
 
     protected function constructMapItem(int $typeIdId, int $size, string $data): ?AbstractMapItem
     {
-        $typeId = ($typeIdId  >> 16) & 0b1111_1111_1111_1111;
-        $id     = $typeIdId & 0b1111_1111_1111_1111;
+        $typeId = ($typeIdId >> 16) & 0b1111_1111_1111_1111;
+        $id     = $typeIdId          & 0b1111_1111_1111_1111;
 
-        return match($typeId) {
+        return match ($typeId) {
             1       => MapItems\InfoItem::make($id, $size, $data),
             default => null,
         };

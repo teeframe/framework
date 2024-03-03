@@ -29,7 +29,7 @@ abstract class AbstractWorld implements SnapableObject
 
     public function __construct(protected TickHandler $tickHandler, protected AbstractWorldController $controller)
     {
-        $this->snapIdPool = new SnapIdPool();
+        $this->snapIdPool = new SnapIdPool;
     }
 
     public function getCurrentTick(): int
@@ -78,7 +78,7 @@ abstract class AbstractWorld implements SnapableObject
 
         $this->entities = array_filter(
             $this->entities,
-            fn(AbstractEntity $e) => $e !== $entity
+            fn (AbstractEntity $e) => $e !== $entity
         );
     }
 
@@ -89,7 +89,7 @@ abstract class AbstractWorld implements SnapableObject
         // TODO: Implement GameServer()->OnTick()
 
         $this->controller()->doTick();
-        
+
         foreach ($this->entities as $entity) {
             $entity->doTick();
 
@@ -120,7 +120,6 @@ abstract class AbstractWorld implements SnapableObject
     protected function doPlayerSnap(AbstractTee $requestingTee): array
     {
         $snaps = [];
-
 
         return $snaps;
     }

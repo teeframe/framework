@@ -41,10 +41,10 @@ class SnapHandler
         $this->lastAckedTick = -1;
         $this->latency       = 0;
         $this->deltaSnap     = null;
-    
+
         $this->flushSentList();
     }
-    
+
     public function flushSentList(): void
     {
         $this->sentList = [];
@@ -196,7 +196,7 @@ class SnapHandler
     }
 
     /**
-     * @param AbstractSnapItem[]  $items
+     * @param  AbstractSnapItem[]  $items
      */
     protected function calculateCrc(array $items): int
     {
@@ -229,7 +229,7 @@ class SnapHandler
     }
 
     /**
-     * @param AbstractSnapItem[] $items
+     * @param  AbstractSnapItem[]  $items
      * @return array<int, AbstractSnapItem>
      */
     protected function indexItemsList(array $items): array

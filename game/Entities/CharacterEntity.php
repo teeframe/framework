@@ -30,7 +30,7 @@ class CharacterEntity extends AbstractEntity
     public function doSnap(AbstractTee $requestingTee): array
     {
         return [
-            
+
         ];
     }
 }

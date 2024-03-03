@@ -14,7 +14,7 @@ class AbstractWorldController implements SnapableObject
 
     public function doTick(): void
     {
-    }    
+    }
 
     /**
      * @return AbstractSnapItem[]

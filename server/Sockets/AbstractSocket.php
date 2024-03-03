@@ -6,5 +6,4 @@ use Swoole\Server;
 
 abstract class AbstractSocket extends Server
 {
-    
 }

@@ -21,10 +21,10 @@ class InfoItem extends AbstractMapItem
         $reader = new MapBufferReader($data);
 
         return new static(
-            $reader->readInt(), 
-            $reader->readString(), 
-            $reader->readString(), 
-            $reader->readString(), 
+            $reader->readInt(),
+            $reader->readString(),
+            $reader->readString(),
+            $reader->readString(),
             $reader->readString()
         );
     }

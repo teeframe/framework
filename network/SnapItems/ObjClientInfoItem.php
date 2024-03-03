@@ -33,17 +33,16 @@ class ObjClientInfoItem extends AbstractSnapItem
     }
 
     /**
-     * @param string $string Input string
-     * @param int $num Number of output integers count
-     * 
+     * @param  string  $string  Input string
+     * @param  int  $num  Number of output integers count
      * @return int[]
      */
     protected function convertStringToIntArray(string $string, int $num): array
     {
-        $integers = array_fill(0, $num, 0);
-        $bytes = unpack('c*', $string);
+        $integers   = array_fill(0, $num, 0);
+        $bytes      = unpack('c*', $string);
         $bytesCount = count($bytes);
-        $index = 0;
+        $index      = 0;
 
         for ($i = 0; $i < $num; $i++) {
             $buffer = [0, 0, 0, 0];
@@ -57,14 +56,12 @@ class ObjClientInfoItem extends AbstractSnapItem
             }
 
             $integers[$i] = NetworkBase::toInt32(
-                (($buffer[0] + 128) << 24) |
-                (($buffer[1] + 128) << 16) |
-                (($buffer[2] + 128) << 8) |
-                (($buffer[3] + 128) << 0)
+                (($buffer[0] + 128) << 24) | (($buffer[1] + 128) << 16) | (($buffer[2] + 128) << 8) | (($buffer[3] + 128) << 0)
             );
         }
 
-        $integers[$num - 1] = NetworkBase::toInt32($integers[$num - 1] & 0xffff_ff00);
+        $integers[$num - 1] = NetworkBase::toInt32($integers[$num - 1] & 0xFFFF_FF00);
+
         return $integers;
     }
 }

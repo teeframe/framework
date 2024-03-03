@@ -3,7 +3,8 @@
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 
-function createClientInfoItem(string $name) {
+function createClientInfoItem(string $name)
+{
     $clan           = 'kj';
     $country        = -1;
     $skinName       = 'default';
@@ -15,7 +16,7 @@ function createClientInfoItem(string $name) {
 }
 
 test('can encode client info name to correct integers "wL7SHc4Ipa1prqHE"', function () {
-    $snapInts = createClientInfoItem("wL7SHc4Ipa1prqHE")->getInts();
+    $snapInts = createClientInfoItem('wL7SHc4Ipa1prqHE')->getInts();
 
     $nameInts = array_slice($snapInts, 0, 4);
 
@@ -27,8 +28,8 @@ test('can encode client info name to correct integers "wL7SHc4Ipa1prqHE"', funct
     ]);
 });
 
-test('can encode full client info to correct integers "aaaaaaaaaaaaaaa"', function() {
-    $snapInts = createClientInfoItem("aaaaaaaaaaaaaaa")->getInts();
+test('can encode full client info to correct integers "aaaaaaaaaaaaaaa"', function () {
+    $snapInts = createClientInfoItem('aaaaaaaaaaaaaaa')->getInts();
 
     expect($snapInts)->toBe([
         // Name
@@ -58,16 +59,16 @@ test('can encode full client info to correct integers "aaaaaaaaaaaaaaa"', functi
     ]);
 });
 
-test('can encode full client info to correct bytes "aaaaaaaaaaaaaaa"', function() {
-    $snapBytes = createClientInfoItem("aaaaaaaaaaaaaaa")->encode();
+test('can encode full client info to correct bytes "aaaaaaaaaaaaaaa"', function () {
+    $snapBytes = createClientInfoItem('aaaaaaaaaaaaaaa')->encode();
 
     expect(NetworkBase::packBuffer($snapBytes))->toBe(
         "\x0b\x00\xde\xf8\xf0\xe1\x03\xde\xf8\xf0\xe1\x03\xde\xf8\xf0\xe1\x03\xff\xfb\xf0\xe1\x03\xff\xfd\xab\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x40\xde\xe4\xd0\xb1\x03\xff\xad\x98\xa1\x01\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x00\x80\xfe\x07\x80\xfe\x07"
     );
 });
 
-test('can encode full client info to correct bytes "kaka"', function() {
-    $snapBytes = createClientInfoItem("kaka")->encode();
+test('can encode full client info to correct bytes "kaka"', function () {
+    $snapBytes = createClientInfoItem('kaka')->encode();
 
     expect(NetworkBase::packBuffer($snapBytes))->toBe(
         "\x0b\x00\xde\xd0\xf0\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\xff\xfd\xab\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x40\xde\xe4\xd0\xb1\x03\xff\xad\x98\xa1\x01\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x00\x80\xfe\x07\x80\xfe\x07"

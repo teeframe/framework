@@ -14,7 +14,7 @@ class ObjPickupItem extends AbstractPositionedSnapItem
     ) {
         parent::__construct(itemId: NetworkMessages::NETOBJTYPE_PICKUP, x: $x, y: $y);
     }
-    
+
     public function getInts(): array
     {
         return [

@@ -3,7 +3,6 @@
 namespace TeeFrame\Server;
 
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 class ConnectionHandler

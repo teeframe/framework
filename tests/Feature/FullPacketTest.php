@@ -2,25 +2,25 @@
 
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
+use TeeFrame\Network\Connection\AbstractConnection;
 use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Network\SnapItems\ObjPickupItem;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
-use TeeFrame\Network\Connection\AbstractConnection;
-use TeeFrame\Network\Packets\AbstractPacket;
 
 function getExpectedPacket(): array
 {
     return NetworkBase::unpackBuffer(
-        "\x00\x06\x01" . // Header
-        "\x09\x01\x0f\xaa\x4d\xab\x4d\x90\xde\xaf\xf2\x06\x85\x02" . // Snap Header
-        "\x00\x05\x00" . // Removed, Updated Items & Unused
-        "\x04\x00\x90\x1b\xb0\x10\x02\x03" . // PickUp
-        "\x09\x00\x9f\x4d\xb0\x18\xb1\x04\x00\x80\x02\x00\x00\x00\x40\x00\x00\xb0\x18\xb0\x04\x00\x00\x00\x0a\x00\x0a\x01\x00\x00" . // Character
-        "\x06\x00\x00\x00\x00\x00\x14\x00\x00\x01" . // Game Info
-        "\x0b\x00\xde\xd0\xf0\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\xff\xfd\xab\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x40\xde\xe4\xd0\xb1\x03\xff\xad\x98\xa1\x01\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x00\x80\xfe\x07\x80\xfe\x07" . // Client Info
+        "\x00\x06\x01". // Header
+        "\x09\x01\x0f\xaa\x4d\xab\x4d\x90\xde\xaf\xf2\x06\x85\x02". // Snap Header
+        "\x00\x05\x00". // Removed, Updated Items & Unused
+        "\x04\x00\x90\x1b\xb0\x10\x02\x03". // PickUp
+        "\x09\x00\x9f\x4d\xb0\x18\xb1\x04\x00\x80\x02\x00\x00\x00\x40\x00\x00\xb0\x18\xb0\x04\x00\x00\x00\x0a\x00\x0a\x01\x00\x00". // Character
+        "\x06\x00\x00\x00\x00\x00\x14\x00\x00\x01". // Game Info
+        "\x0b\x00\xde\xd0\xf0\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\xff\xfd\xab\xc1\x02\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x40\xde\xe4\xd0\xb1\x03\xff\xad\x98\xa1\x01\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xfd\xfb\xf7\x0f\xff\xff\xfb\xf7\x0f\x00\x80\xfe\x07\x80\xfe\x07". // Client Info
         "\x0a\x00\x01\x00\x00\x00\x00" // Player Info
     );
 }
@@ -71,10 +71,10 @@ function getCommonSnapItems(): array
     );
 
     $clientInfo = new ObjClientInfoItem(
-        name: "kaka",
-        clan: "kj",
+        name: 'kaka',
+        clan: 'kj',
         country: -1,
-        skinName: "default",
+        skinName: 'default',
         useCustomColor: false,
         colorBody: 65408,
         colorFoot: 65408,
@@ -105,7 +105,7 @@ test('can encode a full packet with multiple snap items', function () {
         $clientInfo,
         $playerInfo,
     ] = getCommonSnapItems();
-    
+
     $snapSingle = new SnapSingleChunk(
         currentTick: 4970,
         deltaTick: 4971,
@@ -127,14 +127,15 @@ test('can encode a full packet with multiple snap items', function () {
         0, // Flags
         6, // Ack
         1, // Num Chunks
-        ...$snapSingle->encode()
+        ...$snapSingle->encode(),
     ];
 
     expect($encodedPacket)->toBe(getExpectedPacket());
 });
 
 test('can encode a full packet with multiple snap items through snap handler', function () {
-    $connectionClass = new class extends AbstractConnection {
+    $connectionClass = new class extends AbstractConnection
+    {
         protected function handlePacketSending(AbstractPacket $packet): bool
         {
             throw new \Exception($packet->encodeToSend());
@@ -142,12 +143,10 @@ test('can encode a full packet with multiple snap items through snap handler', f
 
         protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void
         {
-            return;
         }
-    
+
         protected function handleConnectionOutOfSequence(int $sequence, int $ack): void
         {
-            return;
         }
     };
 
