@@ -14,6 +14,7 @@ use TeeFrame\Network\Chunks\System\MapChangeChunk;
 use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
 use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Server\ConnectionSlot;
 
@@ -29,8 +30,12 @@ trait HasHandshakeHandler
         $connection->consoleInfo('got connection, sending accept');
     }
 
-    public function handleConnectionHandshake(ConnectionSlot $connection, DefaultPacket $packet): bool
+    public function handleConnectionHandshake(ConnectionSlot $connection, AbstractPacket $packet): bool
     {
+        if (! ($packet instanceof DefaultPacket)) {
+            return false;
+        }
+
         foreach ($packet->getChunks() as $chunk) {
             // Step 1
             if ($chunk instanceof InfoChunk) {

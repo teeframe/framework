@@ -35,7 +35,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected EmptyWorldController $controller;
 
-    public function __construct(protected TickHandler $tickHandler)
+    public function __construct(public string $identifier, protected TickHandler $tickHandler)
     {
         $this->snapIdPool = new SnapIdPool;
 
@@ -137,7 +137,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         // TODO: DoSnapshot()
 
         return [
-            ...$this->controller()->doSnap($requestingTee),
+            ...array_map(fn (AbstractSnapItem $snap) => $snap->setId(0), $this->controller()->doSnap($requestingTee)),
             ...$this->doPlayerSnap($requestingTee),
             ...$this->doEventSnap($requestingTee),
             ...$this->doEntitySnap($requestingTee),
@@ -150,6 +150,16 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected function doPlayerSnap(AbstractTee $requestingTee): array
     {
         $snaps = [];
+
+        foreach ($this->tees as $i => $tee) {
+            $teeSnaps = $tee->doSnap($requestingTee);
+            
+            foreach ($teeSnaps as $teeSnap) {
+                $teeSnap->setId($i);
+            }
+
+            $snaps = [...$snaps, ...$teeSnaps];
+        }
 
         return $snaps;
     }
@@ -201,7 +211,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 $snap->setId($entityAllocatedIds[$i]);
             }
 
-            $snaps = array_merge($snaps, $entitySnaps);
+            $snaps = [...$snaps, ...$entitySnaps];
         }
 
         return $snaps;

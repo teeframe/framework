@@ -30,7 +30,7 @@ abstract class AbstractTee implements SnapableObject
     // Tee On World
     public Vector2 $viewPosition;
 
-    protected int $playerIndex;
+    public int $playerIndex;
 
     public function __construct()
     {

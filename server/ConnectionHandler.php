@@ -20,11 +20,13 @@ class ConnectionHandler
 
     public function startNew(AbstractSocket $socket, AbstractWorld $world): ConnectionSlot|false
     {
+        $this->clearConnections();
+
         if (count($this->slots) >= $this->slotsLimit) {
             return false;
         }
 
-        $this->slots[] = $slot = new ConnectionSlot(count($this->slots), $socket, $world);
+        $this->slots[] = $slot = new ConnectionSlot($socket, $world);
 
         return $slot;
     }
@@ -48,5 +50,18 @@ class ConnectionHandler
     public function getConnections(): array
     {
         return $this->slots;
+    }
+
+    protected function clearConnections(): void
+    {
+        foreach ($this->slots as $i => $connection) {
+            if ($connection->state === ConnectionSlot::STATE_CLOSED) {
+                unset($this->slots[$i]);
+            }
+
+
+        }
+
+        $this->slots = array_values($this->slots);
     }
 }

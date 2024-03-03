@@ -30,7 +30,7 @@ class ConnectionSlot extends AbstractConnection
 
     public int $state;
 
-    public function __construct(protected int $slotIndex, protected AbstractSocket $socket, protected AbstractWorld $world)
+    public function __construct(protected AbstractSocket $socket, protected AbstractWorld $world)
     {
         parent::__construct();
     }
@@ -65,9 +65,14 @@ class ConnectionSlot extends AbstractConnection
             $this->chunks()->resend();
         }
 
-        return ($packet instanceof ControlMessage)
-            ? $this->handleControlMessagePacket($packet)
-            : $this->handleDefaultPacket($packet);
+        if ($packet instanceof ControlMessage) {
+            return $this->handleControlMessagePacket($packet);
+        }
+        if ($packet instanceof DefaultPacket) {
+            return $this->handleDefaultPacket($packet);
+        }
+
+        return false;
     }
 
     public function closeConnection(string $reason): void
@@ -109,7 +114,7 @@ class ConnectionSlot extends AbstractConnection
 
                 $this->chunks()->add(new InputTimingChunk(
                     intendedTick: $chunk->predictionTick,
-                    timeLeft: ($chunk->predictionTick - $this->world()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000,
+                    timeLeft: (int) (($chunk->predictionTick - $this->world()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000),
                 ));
 
                 // TODO: Implement NETMSG_INPUT
