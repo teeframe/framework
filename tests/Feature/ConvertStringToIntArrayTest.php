@@ -12,7 +12,7 @@ function createClientInfoItem(string $name)
     $colorBody      = 65408;
     $colorFeet      = 65408;
 
-    return new ObjClientInfoItem($name, $clan, $country, $skinName, $useCustomColor, $colorBody, $colorFeet);
+    return (new ObjClientInfoItem($name, $clan, $country, $skinName, $useCustomColor, $colorBody, $colorFeet))->setId(0);
 }
 
 test('can encode client info name to correct integers "wL7SHc4Ipa1prqHE"', function () {

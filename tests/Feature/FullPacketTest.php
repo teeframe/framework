@@ -89,11 +89,11 @@ function getCommonSnapItems(): array
     );
 
     return [
-        $pickUp,
-        $character,
-        $gameInfo,
-        $clientInfo,
-        $playerInfo,
+        $pickUp->setId(0),
+        $character->setId(0),
+        $gameInfo->setId(0),
+        $clientInfo->setId(0),
+        $playerInfo->setId(0),
     ];
 }
 
