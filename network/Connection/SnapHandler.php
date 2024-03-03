@@ -78,14 +78,14 @@ class SnapHandler
     /**
      * @param  AbstractSnapItem[]  $fullItems
      */
-    public function sendItems(int $currentTick, array $fullItems): void
+    public function sendItems(int $currentTick, array $rawItems): void
     {
-        $fullItems = $this->indexItemsList($fullItems);
+        $indexedItems = $this->indexItemsList($rawItems);
 
         $deltaTick = $currentTick - $this->lastAckedTick;
-        $crc       = $this->calculateCrc($fullItems);
+        $crc       = $this->calculateCrc($indexedItems);
 
-        [$sendablePayload, $removedItemsCount, $updatedItemsCount] = $this->calculateSendablePayload($fullItems);
+        [$sendablePayload, $removedItemsCount, $updatedItemsCount] = $this->calculateSendablePayload($indexedItems);
 
         $payload = [
             ...NetworkBase::packInt($removedItemsCount),
@@ -124,7 +124,7 @@ class SnapHandler
             }
         }
 
-        $this->sentList[] = new ConnectionSnap($currentTick, $fullItems);
+        $this->sentList[] = new ConnectionSnap($currentTick, $indexedItems);
     }
 
     /**

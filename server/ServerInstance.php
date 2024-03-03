@@ -2,16 +2,17 @@
 
 namespace TeeFrame\Server;
 
-use Server\ConnectionHandler;
 use TeeFrame\Game\Core\TickHandler;
 use TeeFrame\Game\GameWorld;
+use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\AbstractPacket;
-use TeeFrame\Server\Connection\ConnectionSlot;
+use TeeFrame\Network\Packets\ControlMessage;
+use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
-class ServerInstance
+abstract class AbstractServerInstance
 {
     /**
      * @var GameWorld[]
@@ -30,18 +31,17 @@ class ServerInstance
         $this->connectionHandler = new ConnectionHandler(slotsLimit: 64);
     }
 
-    public function addSocket(AbstractSocket $socket)
-    {
-        $this->sockets[] = $socket;
-    }
+    abstract protected function bootWorlds(): void;
 
-    public function addWorld(GameWorld $world)
-    {
-        $this->worlds[] = $world;
-    }
+    abstract protected function bootSockets(): void;
+
+    abstract protected function selectWorldForNewConnection(): GameWorld;
 
     public function start()
     {
+        $this->bootWorlds();
+        $this->bootSockets();
+
         if (empty($this->worlds)) {
             throw new \RuntimeException('No worlds to start');
         }
@@ -78,7 +78,7 @@ class ServerInstance
     protected function onTick(): void
     {
         foreach ($this->worlds as $world) {
-            $world->tick();
+            $world->onTick();
         }
 
         $this->onSnap();
@@ -97,10 +97,10 @@ class ServerInstance
                 continue;
             }
 
-            $connection->snaps()->sendItems($this->tickHandler->get(), [
-                ...$this->doSnap($slotIndex),
-                ...$this->doConnectionsSnap($slotIndex),
-            ]);
+            $connection->snaps()->sendItems(
+                currentTick: $this->tickHandler->get(), 
+                rawItems: $connection->world()->doSnap($connection->player()),
+            );
         }
 
         foreach ($this->worlds as $world) {
@@ -108,13 +108,41 @@ class ServerInstance
         }
     }
 
-    protected function onPacket(AbstractPacket $packet, array $clientInfo, AbstractSocket $socket)
+    protected function onPacket(AbstractPacket $packet, array $clientInfo, AbstractSocket $socket): void
     {
-        
-    }
+        if ($connectionSlot = $this->connectionHandler->tryToMatch($clientInfo)) {
+            if ($connectionSlot->state !== ConnectionSlot::STATE_INGAME) {
+                $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet);
 
-    protected function selectWorldForNewConnection(): GameWorld
-    {
-        return $this->worlds[0];
+                return;
+            }
+
+            $connectionSlot->feedConnection($packet);
+        }
+
+        // Is not a connect control message...
+        if (! ($packet instanceof ControlMessage)) {
+            return;
+        }
+
+        if ($packet->getControlMessage() !== NetworkMessages::CONTROL_CONNECT) {
+            return;
+        }
+
+        // TODO: Implement ban system
+
+        // New connection...
+        $slotConnection = $this->connectionHandler->startNew($socket, $this->selectWorldForNewConnection());
+        if (! $slotConnection) {
+            $socket->sendto(
+                $clientInfo['address'],
+                $clientInfo['port'],
+                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'The server is full'))->encodeToSend()
+            );
+
+            return;
+        }
+
+        $this->connectionHandler->startConnectionHandshake($slotConnection, $clientInfo['address'], $clientInfo['port']);
     }
 }

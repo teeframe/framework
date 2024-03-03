@@ -1,10 +1,10 @@
 <?php
 
-namespace TeeFrame\Server\Connection;
+namespace TeeFrame\Server;
 
 use Swoole\Server;
-use TeeFrame\Server\Server\ServerInstance;
-use TeeFrame\Server\SnapInterface;
+use TeeFrame\Game\GameWorld;
+use TeeFrame\Game\Player;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\InputTimingChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
@@ -14,13 +14,10 @@ use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
-use TeeFrame\Network\SnapItems\ObjClientInfoItem;
-use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
 
-class ConnectionSlot extends AbstractConnection implements SnapInterface
+class ConnectionSlot extends AbstractConnection
 {
-    use Concerns\HasClientData;
-    use Concerns\HasConsole;
+    use Concerns\HasConnectionConsole;
 
     const STATE_EMPTY      = 0;
     const STATE_CONNECTING = 1;
@@ -28,14 +25,12 @@ class ConnectionSlot extends AbstractConnection implements SnapInterface
     const STATE_READY      = 3;
     const STATE_INGAME     = 4;
 
-    protected HandshakeHandler $handshakeHandler;
+    protected Player $player;
 
     public int $state;
 
-    public function __construct(protected int $slotIndex, protected Server $socket)
+    public function __construct(protected int $slotIndex, protected Server $socket, protected GameWorld $world)
     {
-        $this->handshakeHandler = new HandshakeHandler($this);
-
         parent::__construct();
     }
 
@@ -43,14 +38,18 @@ class ConnectionSlot extends AbstractConnection implements SnapInterface
     {
         parent::reset();
 
-        $this->resetClientData();
-
-        $this->state = static::STATE_EMPTY;
+        $this->player = new Player();
+        $this->state  = static::STATE_EMPTY;
     }
 
-    public function handshaker(): HandshakeHandler
+    public function player(): Player
     {
-        return $this->handshakeHandler;
+        return $this->player;
+    }
+
+    public function world(): GameWorld
+    {
+        return $this->world;
     }
 
     public function feedConnection(AbstractPacket $packet): bool
@@ -61,16 +60,6 @@ class ConnectionSlot extends AbstractConnection implements SnapInterface
             return false;
         }
 
-        // Handle connection handshake
-        if ($this->handshaker()->needsHandshake()) {
-            if (! ($packet instanceof DefaultPacket)) {
-                return false;
-            }
-
-            return $this->handshaker()->handleHandshake($packet);
-        }
-
-        // Handle online connection
         if ($packet->isResend()) {
             $this->chunks()->resend();
         }
@@ -116,7 +105,7 @@ class ConnectionSlot extends AbstractConnection implements SnapInterface
 
                 $this->chunks()->add(new InputTimingChunk(
                     intendedTick: $chunk->predictionTick,
-                    timeLeft: ($chunk->predictionTick - ServerInstance::context()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000,
+                    timeLeft: ($chunk->predictionTick - $this->world()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000,
                 ));
 
                 // TODO: Implement NETMSG_INPUT
@@ -130,28 +119,6 @@ class ConnectionSlot extends AbstractConnection implements SnapInterface
         }
 
         return true;
-    }
-
-    public function doSnap(int $indexAsking): array
-    {
-        return [
-            new ObjClientInfoItem(
-                name: $this->name,
-                clan: $this->clan,
-                country: $this->country,
-                skinName: $this->skinName,
-                useCustomColor: $this->useCustomColor,
-                colorBody: $this->colorBody,
-                colorFoot: $this->colorFeet,
-            ),
-            new ObjPlayerInfoItem(
-                local: $this->slotIndex === $indexAsking,
-                clientId: $this->slotIndex,
-                team: 0,
-                score: 0,
-                latency: $this->snaps()->getLatency(),
-            ),
-        ];
     }
 
     protected function handlePacketSending(AbstractPacket $packet): bool

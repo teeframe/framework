@@ -1,12 +1,15 @@
 <?php
 
-namespace Server;
+namespace TeeFrame\Server;
 
-use TeeFrame\Server\Connection\ConnectionSlot;
+use TeeFrame\Game\GameWorld;
+use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 class ConnectionHandler
 {
+    use Concerns\HasHandshakeHandler;
+
     /**
      * @var ConnectionSlot[]
      */
@@ -16,15 +19,32 @@ class ConnectionHandler
     {
     }
 
-    public function startNew(AbstractSocket $socket)
+    public function startNew(AbstractSocket $socket, GameWorld $world): ConnectionSlot|false
     {
         if (count($this->slots) >= $this->slotsLimit) {
-            throw new \RuntimeException('Connection slots limit reached');
+            return false;
         }
 
-        $slot = new ConnectionSlot(count($this->slots), $socket);
+        $this->slots[] = $slot = new ConnectionSlot(count($this->slots), $socket, $world);
 
-        $this->slots[] = $slot;
+        return $slot;
+    }
+
+    public function tryToMatch(array $clientInfo): ConnectionSlot|false
+    {
+        foreach ($this->slots as $connection) {
+            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
+                continue;
+            }
+
+            if ($connection->destinationAddress !== $clientInfo['address'] || $connection->destinationPort !== $clientInfo['port']) {
+                continue;
+            }
+
+            return $connection;
+        }
+
+        return false;
     }
 
     /**

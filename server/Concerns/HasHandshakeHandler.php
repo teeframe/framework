@@ -1,6 +1,6 @@
 <?php
 
-namespace TeeFrame\Server\Connection;
+namespace TeeFrame\Server\Concerns;
 
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
@@ -15,69 +15,60 @@ use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\Packets\DefaultPacket;
+use TeeFrame\Server\ConnectionSlot;
 
-class HandshakeHandler
+trait HasHandshakeHandler
 {
-    public function __construct(
-        protected ConnectionSlot $connection
-    ) {
-    }
-
-    public function needsHandshake(): bool
+    public function startConnectionHandshake(ConnectionSlot $connection, string $address, int $port): void
     {
-        return in_array($this->connection->state, [ConnectionSlot::STATE_CONNECTING, ConnectionSlot::STATE_LOADING, ConnectionSlot::STATE_READY]);
+        $connection->init($address, $port);
+
+        $connection->state = ConnectionSlot::STATE_CONNECTING;
+
+        $connection->sendControlMessage(NetworkMessages::CONTROL_CONNECT_ACCEPT);
+        $connection->consoleInfo('got connection, sending accept');
     }
 
-    public function startHandshake(string $address, int $port): void
-    {
-        $this->connection->init($address, $port);
-
-        $this->connection->state = ConnectionSlot::STATE_CONNECTING;
-
-        $this->connection->sendControlMessage(NetworkMessages::CONTROL_CONNECT_ACCEPT);
-        $this->connection->consoleInfo('got connection, sending accept');
-    }
-
-    public function handleHandshake(DefaultPacket $packet): bool
+    public function handleConnectionHandshake(ConnectionSlot $connection, DefaultPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
             // Step 1
             if ($chunk instanceof InfoChunk) {
-                $this->connection->consoleInfo('player sent info');
+                $connection->consoleInfo('player sent info');
 
-                if (! $this->handleInfoChunk($chunk)) {
+                if (! $this->handleInfoChunk($connection, $chunk)) {
                     return false;
                 }
             }
 
             // Step 2.1
             if ($chunk instanceof RequestMapDataChunk) {
-                $this->connection->consoleInfo('player requested map data');
+                $connection->consoleInfo('player requested map data');
 
-                if (! $this->handleRequestMapDataChunk($chunk)) {
+                if (! $this->handleRequestMapDataChunk($connection, $chunk)) {
                     return false;
                 }
             }
 
             // Step 2.2
             if ($chunk instanceof ReadyChunk) {
-                $this->connection->consoleInfo('player is ready');
+                $connection->consoleInfo('player is ready');
 
-                $this->handleReadyChunk($chunk);
+                $this->handleReadyChunk($connection, $chunk);
             }
 
             // Step 3
             if ($chunk instanceof ClStartInfoChunk) {
-                $this->connection->consoleInfo('player sent start info');
+                $connection->consoleInfo('player sent start info');
 
-                $this->handleClStartInfoChunk($chunk);
+                $this->handleClStartInfoChunk($connection, $chunk);
             }
 
             // Step 4
             if ($chunk instanceof EnterGameChunk) {
-                $this->connection->consoleInfo('player has entered the game');
+                $connection->consoleInfo('player has entered the game');
 
-                $this->handleEnterGameChunk($chunk);
+                $this->handleEnterGameChunk($connection, $chunk);
             }
 
             // After step 4, the connection is completed. However,
@@ -88,60 +79,60 @@ class HandshakeHandler
         return true;
     }
 
-    protected function handleInfoChunk(InfoChunk $chunk): bool
+    protected function handleInfoChunk(ConnectionSlot $connection, InfoChunk $chunk): bool
     {
         if ($chunk->version !== '0.6 626fce9a778df4d4') {
-            $this->connection->closeConnection('Wrong client version');
+            $connection->closeConnection('Wrong client version');
 
             return false;
         }
 
         // TODO: Implement password system
 
-        $this->connection->chunks()->add(
+        $connection->chunks()->add(
             new MapChangeChunk('dm1', -233464210, 5805)
         )->send();
 
         return true;
     }
 
-    protected function handleRequestMapDataChunk(RequestMapDataChunk $chunk): bool
+    protected function handleRequestMapDataChunk(ConnectionSlot $connection, RequestMapDataChunk $chunk): bool
     {
-        $this->connection->state = ConnectionSlot::STATE_LOADING;
+        $connection->state = ConnectionSlot::STATE_LOADING;
 
         // TODO: Implement map loading
 
-        $this->connection->closeConnection('Server cannot send map data yet');
+        $connection->closeConnection('Server cannot send map data yet');
 
         return false;
     }
 
-    protected function handleReadyChunk(ReadyChunk $chunk): void
+    protected function handleReadyChunk(ConnectionSlot $connection, ReadyChunk $chunk): void
     {
-        $this->connection->state = ConnectionSlot::STATE_READY;
+        $connection->state = ConnectionSlot::STATE_READY;
 
         // TODO: Add CNetMsg_Sv_VoteOptionListAdd OptionMsg (To send votes list)
 
         // TODO: Add CGameContext::SendVoteSet(int ClientID), (To send if there is a vote running)
 
-        $this->connection->chunks()->add(
+        $connection->chunks()->add(
             new SvMotdChunk('Welcome to the server!')
         )->add(
             new ConReadyChunk
         )->send();
     }
 
-    protected function handleClStartInfoChunk(ClStartInfoChunk $chunk): void
+    protected function handleClStartInfoChunk(ConnectionSlot $connection, ClStartInfoChunk $chunk): void
     {
-        $this->connection->name           = $chunk->name;
-        $this->connection->clan           = $chunk->clan;
-        $this->connection->country        = $chunk->country;
-        $this->connection->skinName       = $chunk->skinName;
-        $this->connection->useCustomColor = $chunk->useCustomColor;
-        $this->connection->colorBody      = $chunk->colorBody;
-        $this->connection->colorFeet      = $chunk->colorFeet;
+        $connection->player()->name           = $chunk->name;
+        $connection->player()->clan           = $chunk->clan;
+        $connection->player()->country        = $chunk->country;
+        $connection->player()->skinName       = $chunk->skinName;
+        $connection->player()->useCustomColor = $chunk->useCustomColor;
+        $connection->player()->colorBody      = $chunk->colorBody;
+        $connection->player()->colorFeet      = $chunk->colorFeet;
 
-        $this->connection->chunks()->add(
+        $connection->chunks()->add(
             new SvVoteClearOptionsChunk,
         )->add(
             new SvTuneParamsChunk(
@@ -184,9 +175,9 @@ class HandshakeHandler
         )->send();
     }
 
-    protected function handleEnterGameChunk(EnterGameChunk $chunk): void
+    protected function handleEnterGameChunk(ConnectionSlot $connection, EnterGameChunk $chunk): void
     {
-        $this->connection->state = ConnectionSlot::STATE_INGAME;
+        $connection->state = ConnectionSlot::STATE_INGAME;
 
         // TODO: Add the code from GameServer()->OnClientEnter(ClientID)
     }

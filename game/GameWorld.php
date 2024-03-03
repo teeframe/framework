@@ -12,7 +12,7 @@ use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 class GameWorld implements SnapableObject
 {
-    protected const MAX_EVENTS = 128;
+    protected const MAX_EVENTS = 128; // TODO: Is this limit also on client? If not, this can be removed
 
     /**
      * @var AbstractEntity[]
@@ -26,7 +26,7 @@ class GameWorld implements SnapableObject
 
     protected SnapIdPool $snapIdPool;
 
-    public function __construct(protected TickHandler $tickHandler)
+    public function __construct(protected TickHandler $tickHandler, protected GameController $controller)
     {
         $this->snapIdPool = new SnapIdPool();
     }
@@ -39,6 +39,11 @@ class GameWorld implements SnapableObject
     public function snapIdPool(): SnapIdPool
     {
         return $this->snapIdPool;
+    }
+
+    public function controller(): GameController
+    {
+        return $this->controller;
     }
 
     public function addEvent(AbstractPositionedSnapItem $event): void
@@ -76,7 +81,7 @@ class GameWorld implements SnapableObject
         );
     }
 
-    public function tick(): void
+    public function onTick(): void
     {
         foreach ($this->entities as $entity) {
             $entity->tick();
@@ -93,9 +98,22 @@ class GameWorld implements SnapableObject
     public function doSnap(Player $requestingPlayer): array
     {
         return [
+            ...$this->controller()->doSnap($requestingPlayer),
+            ...$this->doPlayerSnap($requestingPlayer),
             ...$this->doEventSnap($requestingPlayer),
             ...$this->doEntitySnap($requestingPlayer),
         ];
+    }
+
+    /**
+     * @return AbstractSnapItem[]
+     */
+    protected function doPlayerSnap(Player $requestingPlayer): array
+    {
+        $snaps = [];
+
+
+        return $snaps;
     }
 
     /**

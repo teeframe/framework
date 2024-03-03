@@ -1,10 +1,10 @@
 <?php
 
-namespace TeeFrame\Server\Connection\Concerns;
+namespace TeeFrame\Server\Concerns;
 
 use TeeFrame\Server\Console;
 
-trait HasConsole
+trait HasConnectionConsole
 {
     public function consoleError(string $message): void
     {
