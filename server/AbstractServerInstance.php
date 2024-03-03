@@ -2,8 +2,8 @@
 
 namespace TeeFrame\Server;
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Core\TickHandler;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
