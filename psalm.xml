@@ -9,10 +9,10 @@
     findUnusedCode="false"
 >
     <projectFiles>
-        <directory name="base" />
         <directory name="game" />
         <directory name="map" />
         <directory name="network" />
+        <directory name="server" />
         <ignoreFiles>
             <directory name="vendor" />
         </ignoreFiles>
@@ -20,6 +20,7 @@
     <issueHandlers>
         <UnsafeInstantiation>
             <errorLevel type="suppress">
+                <directory name="map" />
                 <directory name="network" />
             </errorLevel>
         </UnsafeInstantiation>
