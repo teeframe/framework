@@ -30,23 +30,20 @@ abstract class AbstractServerInstance
         $this->connectionHandler = new ConnectionHandler(slotsLimit: 64);
     }
 
-    abstract protected function bootWorlds(): void;
-
-    abstract protected function bootSockets(): void;
+    abstract protected function boot(): void;
 
     abstract protected function selectWorldForNewConnection(): AbstractWorld;
 
-    public function start()
+    public function start(): void
     {
-        $this->bootWorlds();
-        $this->bootSockets();
+        $this->boot();
 
         if (empty($this->worlds)) {
-            throw new \RuntimeException('No worlds to start');
+            throw new \RuntimeException('No worlds were booted');
         }
 
         if (empty($this->sockets)) {
-            throw new \RuntimeException('No sockets to start');
+            throw new \RuntimeException('No sockets were booted');
         }
 
         swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
@@ -100,7 +97,7 @@ abstract class AbstractServerInstance
 
             $connection->snaps()->sendItems(
                 currentTick: $this->tickHandler->get(),
-                rawItems: $connection->world()->doSnap($connection->tee()),
+                rawItems: $connection->world()->doSnap($connection->playerTee()),
             );
         }
 

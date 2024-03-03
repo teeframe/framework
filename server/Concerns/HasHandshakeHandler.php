@@ -124,13 +124,13 @@ trait HasHandshakeHandler
 
     protected function handleClStartInfoChunk(ConnectionSlot $connection, ClStartInfoChunk $chunk): void
     {
-        $connection->tee()->name           = $chunk->name;
-        $connection->tee()->clan           = $chunk->clan;
-        $connection->tee()->country        = $chunk->country;
-        $connection->tee()->skinName       = $chunk->skinName;
-        $connection->tee()->useCustomColor = $chunk->useCustomColor;
-        $connection->tee()->colorBody      = $chunk->colorBody;
-        $connection->tee()->colorFeet      = $chunk->colorFeet;
+        $connection->playerTee()->name           = $chunk->name;
+        $connection->playerTee()->clan           = $chunk->clan;
+        $connection->playerTee()->country        = $chunk->country;
+        $connection->playerTee()->skinName       = $chunk->skinName;
+        $connection->playerTee()->useCustomColor = $chunk->useCustomColor;
+        $connection->playerTee()->colorBody      = $chunk->colorBody;
+        $connection->playerTee()->colorFeet      = $chunk->colorFeet;
 
         $connection->chunks()->add(
             new SvVoteClearOptionsChunk,
@@ -178,6 +178,8 @@ trait HasHandshakeHandler
     protected function handleEnterGameChunk(ConnectionSlot $connection, EnterGameChunk $chunk): void
     {
         $connection->state = ConnectionSlot::STATE_INGAME;
+
+        $connection->world()->addTee($connection->playerTee());
 
         // TODO: Add the code from GameServer()->OnClientEnter(ClientID)
     }

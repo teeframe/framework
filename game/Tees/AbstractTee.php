@@ -53,9 +53,10 @@ abstract class AbstractTee implements SnapableObject
         $this->playerIndex  = -1;
     }
 
-    public function setWorld(AbstractWorld $world): void
+    public function setWorld(AbstractWorld $world, int $index): void
     {
-        $this->world = $world;
+        $this->world       = $world;
+        $this->playerIndex = $index;
     }
 
     public function doSnap(AbstractTee $requestingTee): array

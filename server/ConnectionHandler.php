@@ -32,10 +32,6 @@ class ConnectionHandler
     public function tryToMatch(array $clientInfo): ConnectionSlot|false
     {
         foreach ($this->slots as $connection) {
-            if ($connection->state === ConnectionSlot::STATE_EMPTY) {
-                continue;
-            }
-
             if ($connection->destinationAddress !== $clientInfo['address'] || $connection->destinationPort !== $clientInfo['port']) {
                 continue;
             }

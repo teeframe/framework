@@ -4,6 +4,7 @@ namespace TeeFrame\Game;
 
 use TeeFrame\Game\Core\SnapableObject;
 use TeeFrame\Game\Core\SnapIdPool;
+use TeeFrame\Game\Core\TickableObject;
 use TeeFrame\Game\Core\TickHandler;
 use TeeFrame\Game\Core\Vector2;
 use TeeFrame\Game\Entities\AbstractEntity;
@@ -11,7 +12,7 @@ use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
-abstract class AbstractWorld implements SnapableObject
+abstract class AbstractWorld implements SnapableObject, TickableObject
 {
     protected const MAX_EVENTS = 128; // TODO: Is this limit also on client? If not, this can be removed
 
@@ -25,11 +26,25 @@ abstract class AbstractWorld implements SnapableObject
      */
     protected array $pendingEvents = [];
 
+    /**
+     * @var AbstractTee[]
+     */
+    protected array $tees = [];
+
     protected SnapIdPool $snapIdPool;
 
-    public function __construct(protected TickHandler $tickHandler, protected AbstractWorldController $controller)
+    protected EmptyWorldController $controller;
+
+    public function __construct(protected TickHandler $tickHandler)
     {
         $this->snapIdPool = new SnapIdPool;
+
+        $this->bootController();
+    }
+
+    protected function bootController(): void
+    {
+        $this->controller = new EmptyWorldController($this);
     }
 
     public function getCurrentTick(): int
@@ -42,7 +57,7 @@ abstract class AbstractWorld implements SnapableObject
         return $this->snapIdPool;
     }
 
-    public function controller(): AbstractWorldController
+    public function controller(): EmptyWorldController
     {
         return $this->controller;
     }
@@ -79,6 +94,21 @@ abstract class AbstractWorld implements SnapableObject
         $this->entities = array_filter(
             $this->entities,
             fn (AbstractEntity $e) => $e !== $entity
+        );
+    }
+
+    public function addTee(AbstractTee $tee): void
+    {
+        $tee->setWorld($this, count($this->tees));
+
+        $this->tees[] = $tee;
+    }
+
+    public function removeTee(AbstractTee $tee): void
+    {
+        $this->tees = array_filter(
+            $this->tees,
+            fn (AbstractTee $t) => $t !== $tee
         );
     }
 

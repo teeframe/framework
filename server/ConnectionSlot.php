@@ -19,13 +19,14 @@ class ConnectionSlot extends AbstractConnection
 {
     use Concerns\HasConnectionConsole;
 
-    const STATE_EMPTY      = 0;
-    const STATE_CONNECTING = 1;
-    const STATE_LOADING    = 2;
-    const STATE_READY      = 3;
-    const STATE_INGAME     = 4;
+    const STATE_WAITING_INIT = 0;
+    const STATE_CONNECTING   = 1;
+    const STATE_LOADING      = 2;
+    const STATE_READY        = 3;
+    const STATE_INGAME       = 4;
+    const STATE_CLOSED       = 5;
 
-    protected PlayerTee $tee;
+    protected PlayerTee $playerTee;
 
     public int $state;
 
@@ -38,13 +39,13 @@ class ConnectionSlot extends AbstractConnection
     {
         parent::reset();
 
-        $this->tee   = new PlayerTee;
-        $this->state = static::STATE_EMPTY;
+        $this->playerTee = new PlayerTee;
+        $this->state     = static::STATE_WAITING_INIT;
     }
 
-    public function tee(): PlayerTee
+    public function playerTee(): PlayerTee
     {
-        return $this->tee;
+        return $this->playerTee;
     }
 
     public function world(): AbstractWorld
@@ -73,7 +74,10 @@ class ConnectionSlot extends AbstractConnection
     {
         $this->sendControlMessage(NetworkMessages::CONTROL_CLOSE, $reason);
 
+        $this->world()->removeTee($this->playerTee);
+
         $this->reset();
+        $this->state = static::STATE_CLOSED;
     }
 
     protected function handleControlMessagePacket(ControlMessage $packet): bool

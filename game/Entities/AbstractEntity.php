@@ -4,9 +4,10 @@ namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Core\SnapableObject;
+use TeeFrame\Game\Core\TickableObject;
 use TeeFrame\Game\Core\Vector2;
 
-abstract class AbstractEntity implements SnapableObject
+abstract class AbstractEntity implements SnapableObject, TickableObject
 {
     /**
      * @var int[]
