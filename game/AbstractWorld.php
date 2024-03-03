@@ -2,11 +2,12 @@
 
 namespace TeeFrame\Game;
 
-use TeeFrame\Game\Core\SnapableObject;
-use TeeFrame\Game\Core\SnapIdPool;
-use TeeFrame\Game\Core\TickableObject;
-use TeeFrame\Game\Core\TickHandler;
-use TeeFrame\Game\Core\Vector2;
+use Map\Map;
+use TeeFrame\Core\SnapableObject;
+use TeeFrame\Core\TickableObject;
+use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\SnapIdPool;
+use TeeFrame\Game\Vector2;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
@@ -35,7 +36,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected EmptyWorldController $controller;
 
-    public function __construct(public string $identifier, protected TickHandler $tickHandler)
+    public function __construct(public string $identifier, protected TickHandler $tickHandler, protected Map $map)
     {
         $this->snapIdPool = new SnapIdPool;
 
@@ -50,6 +51,15 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getCurrentTick(): int
     {
         return $this->tickHandler->get();
+    }
+
+    public function getMapInfo(): array
+    {
+        return [
+            $this->map->getName(),
+            $this->map->getCrc(),
+            $this->map->getSize(),
+        ];
     }
 
     public function snapIdPool(): SnapIdPool
@@ -102,6 +112,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $tee->setWorld($this, count($this->tees));
 
         $this->tees[] = $tee;
+
+        // TODO: GameServer()->OnClientEnter(ClientID)
     }
 
     public function removeTee(AbstractTee $tee): void

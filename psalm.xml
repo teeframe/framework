@@ -9,6 +9,7 @@
     findUnusedCode="false"
 >
     <projectFiles>
+        <directory name="core" />
         <directory name="game" />
         <directory name="map" />
         <directory name="network" />

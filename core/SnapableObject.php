@@ -1,6 +1,6 @@
 <?php
 
-namespace TeeFrame\Game\Core;
+namespace TeeFrame\Core;
 
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;

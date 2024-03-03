@@ -94,8 +94,10 @@ trait HasHandshakeHandler
 
         // TODO: Implement password system
 
+        [$mapName, $mapCrc, $mapSize] = $connection->world()->getMapInfo();
+
         $connection->chunks()->add(
-            new MapChangeChunk('dm1', -233464210, 5805)
+            new MapChangeChunk($mapName, $mapCrc, $mapSize)
         )->send();
 
         return true;
@@ -140,7 +142,7 @@ trait HasHandshakeHandler
         $connection->chunks()->add(
             new SvVoteClearOptionsChunk,
         )->add(
-            new SvTuneParamsChunk(
+            new SvTuneParamsChunk( // TODO: Implement this to world
                 groundControlSpeed: 1000,
                 groundControlAccel: 200,
                 groundFriction: 50,
@@ -185,7 +187,5 @@ trait HasHandshakeHandler
         $connection->state = ConnectionSlot::STATE_INGAME;
 
         $connection->world()->addTee($connection->playerTee());
-
-        // TODO: Add the code from GameServer()->OnClientEnter(ClientID)
     }
 }

@@ -2,7 +2,7 @@
 
 namespace TeeFrame\Game\Entities;
 
-use TeeFrame\Game\Core\Vector2;
+use TeeFrame\Game\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
 
 class CharacterEntity extends AbstractEntity

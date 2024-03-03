@@ -2,8 +2,8 @@
 
 namespace TeeFrame\Game;
 
-use TeeFrame\Game\Core\SnapableObject;
-use TeeFrame\Game\Core\TickableObject;
+use TeeFrame\Core\SnapableObject;
+use TeeFrame\Core\TickableObject;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;

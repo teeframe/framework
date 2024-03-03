@@ -1,6 +1,6 @@
 <?php
 
-namespace TeeFrame\Game\Core;
+namespace TeeFrame\Game;
 
 class SnapIdPool
 {
@@ -12,7 +12,7 @@ class SnapIdPool
     /**
      * @param  int[]  $allocatedIds
      */
-    public function __construct(protected int $lastAllocatedId = -1, protected int $maximumId = 16 * 1024)
+    public function __construct(protected int $lastAllocatedId = -1, protected int $maximumIdNumber = 16 * 1024)
     {
     }
 
@@ -24,13 +24,13 @@ class SnapIdPool
 
         $nextId = $this->lastAllocatedId + 1;
 
-        if ($nextId < $this->maximumId) {
-            $this->lastAllocatedId = $nextId;
-
-            return $nextId;
+        if ($nextId > $this->maximumIdNumber) {
+            throw new \RuntimeException('No more snap ids available');
         }
 
-        throw new \RuntimeException('No more snap ids available');
+        $this->lastAllocatedId = $nextId;
+
+        return $nextId;
     }
 
     public function freeId(int $id): void

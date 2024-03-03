@@ -1,6 +1,6 @@
 <?php
 
-namespace TeeFrame\Game\Core;
+namespace TeeFrame\Core;
 
 class TickHandler
 {

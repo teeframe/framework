@@ -2,9 +2,9 @@
 
 namespace TeeFrame\Game\Tees;
 
+use TeeFrame\Core\SnapableObject;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Core\SnapableObject;
-use TeeFrame\Game\Core\Vector2;
+use TeeFrame\Game\Vector2;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
 
