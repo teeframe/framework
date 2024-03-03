@@ -6,10 +6,10 @@
     "minimum-stability": "stable",
     "autoload": {
         "psr-4": {
-            "TeeFrame\\Base\\": "base/",
             "TeeFrame\\Game\\": "game/",
             "TeeFrame\\Map\\": "map/",
-            "TeeFrame\\Network\\": "network/"
+            "TeeFrame\\Network\\": "network/",
+            "TeeFrame\\Server\\": "server/"
         }
     },
     "require": {
