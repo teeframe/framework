@@ -2,11 +2,9 @@
 
 namespace TeeFrame\Game\Entities;
 
-use TeeFrame\Game\GameWorld;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Core\SnapableObject;
 use TeeFrame\Game\Core\Vector2;
-use TeeFrame\Game\Player;
-use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 abstract class AbstractEntity implements SnapableObject
 {
@@ -17,34 +15,17 @@ abstract class AbstractEntity implements SnapableObject
 
     protected bool $toDestroy = false;
 
-    protected ?GameWorld $world = null;
+    protected ?AbstractWorld $world = null;
 
     public function __construct(public Vector2 $position) 
     {
     }
 
-    abstract public function tick(): void;
-
     abstract public function getHitBoxRadius(): int;
 
-    /**
-     * @return AbstractSnapItem[]
-     */
-    abstract protected function doRawSnap(Player $requestingPlayer): array;
+    abstract public function doTick(): void;
 
-    /**
-     * @return AbstractSnapItem[]
-     */
-    public function doSnap(Player $requestingPlayer): array
-    {
-        if ($this->isNotOnScreen($requestingPlayer)) {
-            return [];
-        }
-
-        return $this->doRawSnap($requestingPlayer);
-    }
-
-    public function setWorld(GameWorld $world): void
+    public function setWorld(AbstractWorld $world): void
     {
         $this->world = $world;
     }
@@ -67,12 +48,5 @@ abstract class AbstractEntity implements SnapableObject
     public function addAllocatedSnapId(int $id): void
     {
         $this->allocatedSnapIds[] = $id;
-    }
-
-    protected function isNotOnScreen(Player $requestingPlayer): bool
-    {
-        $distance = $requestingPlayer->viewPosition->distance($this->position);
-
-        return $distance > 1100;
     }
 }

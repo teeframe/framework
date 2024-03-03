@@ -7,10 +7,11 @@ use TeeFrame\Game\Core\SnapIdPool;
 use TeeFrame\Game\Core\TickHandler;
 use TeeFrame\Game\Core\Vector2;
 use TeeFrame\Game\Entities\AbstractEntity;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
-class GameWorld implements SnapableObject
+abstract class AbstractWorld implements SnapableObject
 {
     protected const MAX_EVENTS = 128; // TODO: Is this limit also on client? If not, this can be removed
 
@@ -26,7 +27,7 @@ class GameWorld implements SnapableObject
 
     protected SnapIdPool $snapIdPool;
 
-    public function __construct(protected TickHandler $tickHandler, protected GameController $controller)
+    public function __construct(protected TickHandler $tickHandler, protected AbstractWorldController $controller)
     {
         $this->snapIdPool = new SnapIdPool();
     }
@@ -41,7 +42,7 @@ class GameWorld implements SnapableObject
         return $this->snapIdPool;
     }
 
-    public function controller(): GameController
+    public function controller(): AbstractWorldController
     {
         return $this->controller;
     }
@@ -81,10 +82,16 @@ class GameWorld implements SnapableObject
         );
     }
 
-    public function onTick(): void
+    public function doTick(): void
     {
+        // TODO: apply new input
+
+        // TODO: Implement GameServer()->OnTick()
+
+        $this->controller()->doTick();
+        
         foreach ($this->entities as $entity) {
-            $entity->tick();
+            $entity->doTick();
 
             if ($entity->isToDestroy()) {
                 $this->removeEntity($entity);
@@ -95,20 +102,22 @@ class GameWorld implements SnapableObject
     /**
      * @return AbstractSnapItem[]
      */
-    public function doSnap(Player $requestingPlayer): array
+    public function doSnap(AbstractTee $requestingTee): array
     {
+        // TODO: DoSnapshot()
+
         return [
-            ...$this->controller()->doSnap($requestingPlayer),
-            ...$this->doPlayerSnap($requestingPlayer),
-            ...$this->doEventSnap($requestingPlayer),
-            ...$this->doEntitySnap($requestingPlayer),
+            ...$this->controller()->doSnap($requestingTee),
+            ...$this->doPlayerSnap($requestingTee),
+            ...$this->doEventSnap($requestingTee),
+            ...$this->doEntitySnap($requestingTee),
         ];
     }
 
     /**
      * @return AbstractSnapItem[]
      */
-    protected function doPlayerSnap(Player $requestingPlayer): array
+    protected function doPlayerSnap(AbstractTee $requestingTee): array
     {
         $snaps = [];
 
@@ -119,12 +128,12 @@ class GameWorld implements SnapableObject
     /**
      * @return AbstractSnapItem[]
      */
-    protected function doEventSnap(Player $requestingPlayer): array
+    protected function doEventSnap(AbstractTee $requestingTee): array
     {
         $snaps = [];
 
         foreach ($this->pendingEvents as $i => $event) {
-            if ($requestingPlayer->viewPosition->distance(new Vector2($event->x, $event->y)) > 1500) {
+            if ($requestingTee->viewPosition->distance(new Vector2($event->x, $event->y)) > 1500) {
                 continue;
             }
 
@@ -139,7 +148,7 @@ class GameWorld implements SnapableObject
     /**
      * @return AbstractSnapItem[]
      */
-    protected function doEntitySnap(Player $requestingPlayer): array
+    protected function doEntitySnap(AbstractTee $requestingTee): array
     {
         $snaps = [];
 
@@ -148,11 +157,11 @@ class GameWorld implements SnapableObject
                 continue;
             }
 
-            if ($requestingPlayer->viewPosition->distance($entity->position) > 1100) {
+            if ($requestingTee->viewPosition->distance($entity->position) > 1100) {
                 continue;
             }
 
-            $entitySnaps        = $entity->doSnap($requestingPlayer);
+            $entitySnaps        = $entity->doSnap($requestingTee);
             $entityAllocatedIds = $entity->getAllocatedSnapIds();
 
             while (count($entityAllocatedIds) < count($entitySnaps)) {

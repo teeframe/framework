@@ -3,8 +3,8 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\Core\Vector2;
-use TeeFrame\Game\GameWorld;
-use TeeFrame\Game\Player;
+use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\ObjProjectileItem;
 
 class ProjectileEntity extends AbstractEntity
@@ -21,16 +21,11 @@ class ProjectileEntity extends AbstractEntity
         // ...
     }
 
-    public function setWorld(GameWorld $world): void
+    public function setWorld(AbstractWorld $world): void
     {
         parent::setWorld($world);
 
         $this->startTick = $world->getCurrentTick();
-    }
-
-    public function tick(): void
-    {
-        // ...
     }
 
     public function getHitBoxRadius(): int
@@ -38,7 +33,12 @@ class ProjectileEntity extends AbstractEntity
         return 0;
     }
 
-    protected function doRawSnap(Player $requestingPlayer): array
+    public function doTick(): void
+    {
+        // ...
+    }
+
+    public function doSnap(AbstractTee $requestingTee): array
     {
         return [
             new ObjProjectileItem(

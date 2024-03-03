@@ -3,8 +3,9 @@
 namespace TeeFrame\Server;
 
 use Swoole\Server;
-use TeeFrame\Game\GameWorld;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Player;
+use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\InputTimingChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
@@ -25,11 +26,11 @@ class ConnectionSlot extends AbstractConnection
     const STATE_READY      = 3;
     const STATE_INGAME     = 4;
 
-    protected Player $player;
+    protected PlayerTee $tee;
 
     public int $state;
 
-    public function __construct(protected int $slotIndex, protected Server $socket, protected GameWorld $world)
+    public function __construct(protected int $slotIndex, protected Server $socket, protected AbstractWorld $world)
     {
         parent::__construct();
     }
@@ -38,16 +39,16 @@ class ConnectionSlot extends AbstractConnection
     {
         parent::reset();
 
-        $this->player = new Player();
+        $this->tee    = new PlayerTee();
         $this->state  = static::STATE_EMPTY;
     }
 
-    public function player(): Player
+    public function tee(): PlayerTee
     {
-        return $this->player;
+        return $this->tee;
     }
 
-    public function world(): GameWorld
+    public function world(): AbstractWorld
     {
         return $this->world;
     }

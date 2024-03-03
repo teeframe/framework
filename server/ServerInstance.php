@@ -3,7 +3,7 @@
 namespace TeeFrame\Server;
 
 use TeeFrame\Game\Core\TickHandler;
-use TeeFrame\Game\GameWorld;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
@@ -15,7 +15,7 @@ use TeeFrame\Server\Sockets\AbstractSocket;
 abstract class AbstractServerInstance
 {
     /**
-     * @var GameWorld[]
+     * @var AbstractWorld[]
      */
     protected array $worlds = [];
 
@@ -35,7 +35,7 @@ abstract class AbstractServerInstance
 
     abstract protected function bootSockets(): void;
 
-    abstract protected function selectWorldForNewConnection(): GameWorld;
+    abstract protected function selectWorldForNewConnection(): AbstractWorld;
 
     public function start()
     {
@@ -51,7 +51,7 @@ abstract class AbstractServerInstance
         }
 
         swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
-            $this->onTick();
+            $this->doTick();
         });
         
         foreach ($this->sockets as $socket) {
@@ -75,22 +75,24 @@ abstract class AbstractServerInstance
         }
     }
 
-    protected function onTick(): void
+    protected function doTick(): void
     {
         foreach ($this->worlds as $world) {
-            $world->onTick();
+            $world->doTick();
         }
 
-        $this->onSnap();
+        $this->doSnap();
 
         $this->tickHandler->next();
 
         if ($this->tickHandler->get() >= NetworkParams::MAXIMUM_TICK) {
             $this->shutdown();
         }
+
+        // TODO: master server stuff
     }
 
-    protected function onSnap(): void
+    protected function doSnap(): void
     {
         foreach ($this->connectionHandler->getConnections() as $connection) {
             if ($connection->state !== ConnectionSlot::STATE_INGAME) {
@@ -99,7 +101,7 @@ abstract class AbstractServerInstance
 
             $connection->snaps()->sendItems(
                 currentTick: $this->tickHandler->get(), 
-                rawItems: $connection->world()->doSnap($connection->player()),
+                rawItems: $connection->world()->doSnap($connection->tee()),
             );
         }
 

@@ -2,7 +2,7 @@
 
 namespace TeeFrame\Server;
 
-use TeeFrame\Game\GameWorld;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -19,7 +19,7 @@ class ConnectionHandler
     {
     }
 
-    public function startNew(AbstractSocket $socket, GameWorld $world): ConnectionSlot|false
+    public function startNew(AbstractSocket $socket, AbstractWorld $world): ConnectionSlot|false
     {
         if (count($this->slots) >= $this->slotsLimit) {
             return false;

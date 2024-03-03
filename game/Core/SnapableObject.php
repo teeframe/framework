@@ -2,7 +2,7 @@
 
 namespace TeeFrame\Game\Core;
 
-use TeeFrame\Game\Player;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 interface SnapableObject
@@ -10,5 +10,5 @@ interface SnapableObject
     /**
      * @return AbstractSnapItem[]
      */
-    public function doSnap(Player $requestingPlayer): array;
+    public function doSnap(AbstractTee $requestingTee): array;
 }

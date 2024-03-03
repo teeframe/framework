@@ -3,7 +3,7 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\Core\Vector2;
-use TeeFrame\Game\Player;
+use TeeFrame\Game\Tees\AbstractTee;
 
 class CharacterEntity extends AbstractEntity
 {
@@ -17,17 +17,17 @@ class CharacterEntity extends AbstractEntity
         // ...
     }
 
-    public function tick(): void
-    {
-        // ...
-    }
-
     public function getHitBoxRadius(): int
     {
         return 28;
     }
 
-    protected function doRawSnap(Player $requestingPlayer): array
+    public function doTick(): void
+    {
+        // ...
+    }
+
+    public function doSnap(AbstractTee $requestingTee): array
     {
         return [
             
