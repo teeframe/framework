@@ -2,7 +2,6 @@
 
 namespace TeeFrame\Server;
 
-use Swoole\Server;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\System\InputChunk;
@@ -14,6 +13,7 @@ use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
+use TeeFrame\Server\Sockets\AbstractSocket;
 
 class ConnectionSlot extends AbstractConnection
 {
@@ -29,7 +29,7 @@ class ConnectionSlot extends AbstractConnection
 
     public int $state;
 
-    public function __construct(protected int $slotIndex, protected Server $socket, protected AbstractWorld $world)
+    public function __construct(protected int $slotIndex, protected AbstractSocket $socket, protected AbstractWorld $world)
     {
         parent::__construct();
     }

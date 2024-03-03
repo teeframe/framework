@@ -2,7 +2,7 @@
 
 namespace TeeFrame\Game\Tees;
 
-use Server\AbstractWorld;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Core\SnapableObject;
 use TeeFrame\Game\Core\Vector2;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;

@@ -5,6 +5,7 @@ namespace TeeFrame\Game;
 use TeeFrame\Game\Core\SnapableObject;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 class AbstractWorldController implements SnapableObject
 {

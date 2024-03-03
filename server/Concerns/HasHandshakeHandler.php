@@ -124,13 +124,13 @@ trait HasHandshakeHandler
 
     protected function handleClStartInfoChunk(ConnectionSlot $connection, ClStartInfoChunk $chunk): void
     {
-        $connection->player()->name           = $chunk->name;
-        $connection->player()->clan           = $chunk->clan;
-        $connection->player()->country        = $chunk->country;
-        $connection->player()->skinName       = $chunk->skinName;
-        $connection->player()->useCustomColor = $chunk->useCustomColor;
-        $connection->player()->colorBody      = $chunk->colorBody;
-        $connection->player()->colorFeet      = $chunk->colorFeet;
+        $connection->tee()->name           = $chunk->name;
+        $connection->tee()->clan           = $chunk->clan;
+        $connection->tee()->country        = $chunk->country;
+        $connection->tee()->skinName       = $chunk->skinName;
+        $connection->tee()->useCustomColor = $chunk->useCustomColor;
+        $connection->tee()->colorBody      = $chunk->colorBody;
+        $connection->tee()->colorFeet      = $chunk->colorFeet;
 
         $connection->chunks()->add(
             new SvVoteClearOptionsChunk,
