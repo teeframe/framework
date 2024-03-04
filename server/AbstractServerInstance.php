@@ -25,7 +25,7 @@ abstract class AbstractServerInstance
 
     protected ConnectionHandler $connectionHandler;
 
-    public function __construct(protected TickHandler $tickHandler)
+    public function __construct(protected TickHandler $tickHandler, protected string $password = '')
     {
         $this->connectionHandler = new ConnectionHandler(slotsLimit: 64);
     }
@@ -110,7 +110,7 @@ abstract class AbstractServerInstance
     {
         if ($connectionSlot = $this->connectionHandler->tryToMatch($clientInfo)) {
             if ($connectionSlot->state !== ConnectionSlot::STATE_INGAME) {
-                $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet);
+                $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet, $this->password);
 
                 return;
             }

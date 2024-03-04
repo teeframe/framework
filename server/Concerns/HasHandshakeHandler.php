@@ -5,8 +5,6 @@ namespace TeeFrame\Server\Concerns;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvReadyToEnterChunk;
-use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
-use TeeFrame\Network\Chunks\Game\SvVoteClearOptionsChunk;
 use TeeFrame\Network\Chunks\System\ConReadyChunk;
 use TeeFrame\Network\Chunks\System\EnterGameChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
@@ -30,7 +28,7 @@ trait HasHandshakeHandler
         $connection->consoleInfo('got connection, sending accept');
     }
 
-    public function handleConnectionHandshake(ConnectionSlot $connection, AbstractPacket $packet): bool
+    public function handleConnectionHandshake(ConnectionSlot $connection, AbstractPacket $packet, string $password): bool
     {
         if (! ($packet instanceof DefaultPacket)) {
             return false;
@@ -41,7 +39,7 @@ trait HasHandshakeHandler
             if ($chunk instanceof InfoChunk) {
                 $connection->consoleInfo('player sent info');
 
-                if (! $this->handleInfoChunk($connection, $chunk)) {
+                if (! $this->handleInfoChunk($connection, $chunk, $password)) {
                     return false;
                 }
             }
@@ -84,7 +82,7 @@ trait HasHandshakeHandler
         return true;
     }
 
-    protected function handleInfoChunk(ConnectionSlot $connection, InfoChunk $chunk): bool
+    protected function handleInfoChunk(ConnectionSlot $connection, InfoChunk $chunk, string $password): bool
     {
         if ($chunk->version !== '0.6 626fce9a778df4d4') {
             $connection->closeConnection('Wrong client version');
@@ -92,7 +90,11 @@ trait HasHandshakeHandler
             return false;
         }
 
-        // TODO: Implement password system
+        if ($chunk->password !== $password) {
+            $connection->closeConnection('Wrong password');
+
+            return false;
+        }
 
         [$mapName, $mapCrc, $mapSize] = $connection->world()->getMapInfo();
 
