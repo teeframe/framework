@@ -5,7 +5,7 @@ namespace TeeFrame\Game\Entities;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Vector2;
+use TeeFrame\Game\World\Vector2;
 
 abstract class AbstractEntity implements SnapableObject, TickableObject
 {

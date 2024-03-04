@@ -4,13 +4,14 @@ namespace TeeFrame\Game;
 
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
-class EmptyWorldController implements SnapableObject, TickableObject
+class EmptyGameController implements SnapableObject, TickableObject
 {
-    public function __construct(protected AbstractWorld $world)
+    public function __construct(protected TickHandler $tickHandler)
     {
     }
 
@@ -27,7 +28,7 @@ class EmptyWorldController implements SnapableObject, TickableObject
             new ObjGameInfoItem(
                 gameFlags: 0,
                 gameStateFlags: 0,
-                roundStartTick: $this->world->getCurrentTick(),
+                roundStartTick: $this->tickHandler->get(),
                 warmupTimer: 0,
                 scoreLimit: 0,
                 timeLimit: 0,

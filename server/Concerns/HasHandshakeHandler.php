@@ -118,12 +118,12 @@ trait HasHandshakeHandler
     {
         $connection->state = ConnectionSlot::STATE_READY;
 
-        // TODO: Add CNetMsg_Sv_VoteOptionListAdd OptionMsg (To send votes list)
-
-        // TODO: Add CGameContext::SendVoteSet(int ClientID), (To send if there is a vote running)
+        if ($runningVote = $connection->world()->voteController()->getRunningVote($connection->playerTee())) {
+            $connection->chunks()->add($runningVote);
+        }
 
         $connection->chunks()->add(
-            new SvMotdChunk('Welcome to the server!')
+            new SvMotdChunk($connection->world()->getMotd($connection->playerTee()))
         )->add(
             new ConReadyChunk
         )->send();
@@ -131,52 +131,23 @@ trait HasHandshakeHandler
 
     protected function handleClStartInfoChunk(ConnectionSlot $connection, ClStartInfoChunk $chunk): void
     {
-        $connection->playerTee()->name           = $chunk->name;
-        $connection->playerTee()->clan           = $chunk->clan;
-        $connection->playerTee()->country        = $chunk->country;
-        $connection->playerTee()->skinName       = $chunk->skinName;
-        $connection->playerTee()->useCustomColor = $chunk->useCustomColor;
-        $connection->playerTee()->colorBody      = $chunk->colorBody;
-        $connection->playerTee()->colorFeet      = $chunk->colorFeet;
+        $connection->playerTee()->setInfo(
+            name: $chunk->name,
+            clan: $chunk->clan,
+            country: $chunk->country,
+            skinName: $chunk->skinName,
+            useCustomColor: $chunk->useCustomColor,
+            colorBody: $chunk->colorBody,
+            colorFeet: $chunk->colorFeet
+        );
+        
+        $voteChunks = $connection->world()->voteController()->getInitialVoteChunks($connection->playerTee());
+        foreach ($voteChunks as $voteChunk) {
+            $connection->chunks()->add($voteChunk);
+        }
 
         $connection->chunks()->add(
-            new SvVoteClearOptionsChunk,
-        )->add(
-            new SvTuneParamsChunk( // TODO: Implement this to world
-                groundControlSpeed: 1000,
-                groundControlAccel: 200,
-                groundFriction: 50,
-                groundJumpImpulse: 1320,
-                airJumpImpulse: 1200,
-                airControlSpeed: 500,
-                airControlAccel: 150,
-                airFriction: 95,
-                hookLength: 38000,
-                hookFireSpeed: 8000,
-                hookDragAccel: 300,
-                hookDragSpeed: 1500,
-                gravity: 50,
-                velrampStart: 55000,
-                velrampRange: 200000,
-                velrampCurvature: 140,
-                gunCurvature: 125,
-                gunSpeed: 220000,
-                gunLifetime: 200,
-                shotgunCurvature: 125,
-                shotgunSpeed: 275000,
-                shotgunSpeeddiff: 80,
-                shotgunLifetime: 20,
-                grenadeCurvature: 700,
-                grenadeSpeed: 100000,
-                grenadeLifetime: 200,
-                laserReach: 80000,
-                laserBounceDelay: 15000,
-                laserBounceNum: 100,
-                laserBounceCost: 0,
-                laserDamage: 500,
-                playerCollision: 100,
-                playerHooking: 100
-            )
+            $connection->world()->tuneController()->getTuneParamsChunk()
         )->add(
             new SvReadyToEnterChunk
         )->send();

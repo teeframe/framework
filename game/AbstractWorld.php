@@ -2,12 +2,12 @@
 
 namespace TeeFrame\Game;
 
-use Map\Map;
+use TeeFrame\Map\Map;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\SnapIdPool;
-use TeeFrame\Game\Vector2;
+use TeeFrame\Game\World\Vector2;
+use TeeFrame\Game\World\SnapIdPool;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
@@ -32,21 +32,44 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
      */
     protected array $tees = [];
 
+    /**
+     * @var int[]
+     */
+    protected array $releasedTeeIndexes = [];
+
     protected SnapIdPool $snapIdPool;
 
-    protected EmptyWorldController $controller;
+    protected EmptyGameController $gameController;
+
+    protected EmptyVoteController $voteController;
+
+    protected EmptyTuneController $tuneController;
 
     public function __construct(public string $identifier, protected TickHandler $tickHandler, protected Map $map)
     {
         $this->snapIdPool = new SnapIdPool;
 
-        $this->bootController();
+        $this->bootGameController();
+        $this->bootVoteController();
+        $this->bootTuneController();
     }
 
-    protected function bootController(): void
+    protected function bootGameController(): void
     {
-        $this->controller = new EmptyWorldController($this);
+        $this->gameController = new EmptyGameController($this->tickHandler);
     }
+
+    protected function bootVoteController(): void
+    {
+        $this->voteController = new EmptyVoteController();
+    }
+
+    protected function bootTuneController(): void
+    {
+        $this->tuneController = new EmptyTuneController();
+    }
+
+    abstract public function getMotd(AbstractTee $requestingTee): string;
 
     public function getCurrentTick(): int
     {
@@ -62,14 +85,19 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         ];
     }
 
-    public function snapIdPool(): SnapIdPool
+    public function gameController(): EmptyGameController
     {
-        return $this->snapIdPool;
+        return $this->gameController;
     }
 
-    public function controller(): EmptyWorldController
+    public function voteController(): EmptyVoteController
     {
-        return $this->controller;
+        return $this->voteController;
+    }
+
+    public function tuneController(): EmptyTuneController
+    {
+        return $this->tuneController;
     }
 
     public function addEvent(AbstractPositionedSnapItem $event): void
@@ -109,7 +137,13 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function addTee(AbstractTee $tee): void
     {
-        $tee->setWorld($this, count($this->tees));
+        if (count($this->releasedTeeIndexes) > 0) {
+            $index = array_pop($this->releasedTeeIndexes);
+        } else {
+            $index = count($this->tees);
+        }
+
+        $tee->setWorld($this, $index);
 
         $this->tees[] = $tee;
 
@@ -118,10 +152,15 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function removeTee(AbstractTee $tee): void
     {
-        $this->tees = array_filter(
-            $this->tees,
-            fn (AbstractTee $t) => $t !== $tee
-        );
+        foreach ($this->tees as $index => $tee) {
+            if ($tee !== $tee) {
+                continue;
+            }
+
+            $this->releasedTeeIndexes[] = $index;
+
+            unset($this->tees[$index]);
+        }
     }
 
     public function doTick(): void
@@ -130,7 +169,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         // TODO: Implement GameServer()->OnTick()
 
-        $this->controller()->doTick();
+        $this->gameController()->doTick();
 
         foreach ($this->entities as $entity) {
             $entity->doTick();
@@ -148,8 +187,13 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     {
         // TODO: DoSnapshot()
 
+        $gameControllerSnap = array_map(
+            fn (AbstractSnapItem $snap) => $snap->setId(0), 
+            $this->gameController()->doSnap($requestingTee)
+        );
+
         return [
-            ...array_map(fn (AbstractSnapItem $snap) => $snap->setId(0), $this->controller()->doSnap($requestingTee)),
+            ...$gameControllerSnap,
             ...$this->doPlayerSnap($requestingTee),
             ...$this->doEventSnap($requestingTee),
             ...$this->doEntitySnap($requestingTee),

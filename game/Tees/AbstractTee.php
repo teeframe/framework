@@ -4,7 +4,7 @@ namespace TeeFrame\Game\Tees;
 
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Vector2;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
 
@@ -30,7 +30,7 @@ abstract class AbstractTee implements SnapableObject
     // Tee On World
     public Vector2 $viewPosition;
 
-    public int $playerIndex;
+    public int $teeIndex;
 
     public function __construct()
     {
@@ -50,13 +50,24 @@ abstract class AbstractTee implements SnapableObject
 
         // Tee On World
         $this->viewPosition = new Vector2(0, 0);
-        $this->playerIndex  = -1;
+        $this->teeIndex  = -1;
+    }
+
+    public function setInfo(string $name, string $clan, int $country, string $skinName, bool $useCustomColor, int $colorBody, int $colorFeet): void 
+    {
+        $this->name           = $name;
+        $this->clan           = $clan;
+        $this->country        = $country;
+        $this->skinName       = $skinName;
+        $this->useCustomColor = $useCustomColor;
+        $this->colorBody      = $colorBody;
+        $this->colorFeet      = $colorFeet;
     }
 
     public function setWorld(AbstractWorld $world, int $index): void
     {
-        $this->world       = $world;
-        $this->playerIndex = $index;
+        $this->world    = $world;
+        $this->teeIndex = $index;
     }
 
     public function doSnap(AbstractTee $requestingTee): array
@@ -73,7 +84,7 @@ abstract class AbstractTee implements SnapableObject
             ),
             new ObjPlayerInfoItem(
                 local: $this === $requestingTee,
-                clientId: $this->playerIndex,
+                clientId: $this->teeIndex,
                 team: 0,
                 score: 0,
                 latency: 0, // TODO: Implement latency in the right way
