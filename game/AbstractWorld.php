@@ -15,8 +15,6 @@ use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 abstract class AbstractWorld implements SnapableObject, TickableObject
 {
-    protected const MAX_EVENTS = 128; // TODO: Is this limit also on client? If not, this can be removed
-
     /**
      * @var AbstractEntity[]
      */
@@ -102,10 +100,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function addEvent(AbstractPositionedSnapItem $event): void
     {
-        if (count($this->pendingEvents) >= self::MAX_EVENTS) {
-            throw new \RuntimeException('Too many pending events');
-        }
-
         $this->pendingEvents[] = $event;
     }
 
