@@ -4,10 +4,16 @@ namespace TeeFrame\Network;
 
 class RawPayload
 {
+    /**
+     * @param int[] $payload
+     */
     public function __construct(protected array $payload = [])
     {
     }
 
+    /**
+     * @return int[]
+     */
     public function encode(): array
     {
         return $this->payload;
@@ -83,6 +89,9 @@ class RawPayload
         return $string;
     }
 
+    /**
+     * @return int[]
+     */
     public function extractBytes(int $length): array
     {
         $safeLength = min($length, count($this->payload));

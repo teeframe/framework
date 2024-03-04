@@ -46,6 +46,9 @@ abstract class AbstractChunk
         return $this->isSystem;
     }
 
+    /**
+     * @return int[]
+     */
     public function encode(): array
     {
         $encodedPayload = $this->getPayload()->encode();

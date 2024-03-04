@@ -8,7 +8,7 @@ use TeeFrame\Network\NetworkBase;
 class DefaultPacket extends AbstractPacket
 {
     /**
-     * @param  array<int, AbstractChunk>  $chunks
+     * @param  AbstractChunk[]  $chunks
      */
     public function __construct(protected array $chunks, int $ack, bool $resend = false)
     {
@@ -29,7 +29,7 @@ class DefaultPacket extends AbstractPacket
     }
 
     /**
-     * @return array<int, AbstractChunk>
+     * @return AbstractChunk[]
      */
     public function getChunks(): array
     {

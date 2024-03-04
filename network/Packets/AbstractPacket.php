@@ -8,6 +8,9 @@ abstract class AbstractPacket
 {
     protected int $numChunks = 0;
 
+    /**
+     * @param int[] $payload
+     */
     public function __construct(
         protected int $flags,
         protected int $ack,
@@ -52,6 +55,9 @@ abstract class AbstractPacket
         return NetworkBase::packBuffer($this->encode());
     }
 
+    /**
+     * @return int[]
+     */
     protected function encode(): array
     {
         $encodedPayload = $this->payload;

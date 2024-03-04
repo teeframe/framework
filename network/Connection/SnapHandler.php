@@ -76,7 +76,7 @@ class SnapHandler
     }
 
     /**
-     * @param  AbstractSnapItem[]  $fullItems
+     * @param  AbstractSnapItem[]  $rawItems
      */
     public function sendItems(int $currentTick, array $rawItems): void
     {

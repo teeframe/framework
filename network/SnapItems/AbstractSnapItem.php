@@ -8,9 +8,6 @@ abstract class AbstractSnapItem
 {
     protected int $id = -1;
 
-    /**
-     * @param  array<int, int>  $integers
-     */
     public function __construct(protected int $itemId)
     {
     }
@@ -43,7 +40,7 @@ abstract class AbstractSnapItem
     }
 
     /**
-     * @return array<int, int>
+     * @return int[]
      */
     public function encode(): array
     {

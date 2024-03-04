@@ -163,6 +163,9 @@ class Huffman
         $this->set_bits_r($this->start_node_index, 0, 0);
     }
 
+    /**
+     * @return int[]
+     */
     public function compress(array $inp_buffer, int $start_index = 0, int $size = 0): array
     {
         $out_buffer = [];
@@ -204,6 +207,9 @@ class Huffman
         return $out_buffer;
     }
 
+    /**
+     * @return int[]
+     */
     public function decompress(array $inp_buffer, int $size = 0): array
     {
         $bits     = 0;
