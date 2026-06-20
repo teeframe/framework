@@ -149,8 +149,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function removeTee(AbstractTee $tee): void
     {
-        foreach ($this->tees as $index => $tee) {
-            if ($tee !== $tee) {
+        foreach ($this->tees as $index => $existingTee) {
+            if ($existingTee !== $tee) {
                 continue;
             }
 

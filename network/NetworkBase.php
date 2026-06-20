@@ -21,6 +21,10 @@ class NetworkBase
 
     protected static ?Huffman $huffmanInstance = null;
 
+    /**
+     * @param  int[]  $buffer
+     * @return int[]
+     */
     public static function compressHuffman(array $buffer): array
     {
         if (! self::$huffmanInstance) {
@@ -30,6 +34,10 @@ class NetworkBase
         return self::$huffmanInstance->compress($buffer);
     }
 
+    /**
+     * @param  int[]  $buffer
+     * @return int[]
+     */
     public static function decompressHuffman(array $buffer): array
     {
         if (! self::$huffmanInstance) {
@@ -51,11 +59,17 @@ class NetworkBase
         return $value & 0x80000000 ? -((~$value & 0xFFFFFFFF) + 1) : $value;
     }
 
+    /**
+     * @param  int[]  $buffer
+     */
     public static function packBuffer(array $buffer): string
     {
         return implode('', array_map('chr', $buffer));
     }
 
+    /**
+     * @return int[]
+     */
     public static function unpackBuffer(string $packet): array
     {
         $result = unpack('C*', $packet);
@@ -86,6 +100,9 @@ class NetworkBase
         return false;
     }
 
+    /**
+     * @return int[]
+     */
     public static function packInt(int $value): array
     {
         // TODO: Refactor this
@@ -117,6 +134,10 @@ class NetworkBase
         return $result;
     }
 
+    /**
+     * @param  int[]  $data
+     * @return array{int, int}
+     */
     public static function unpackInt(array $data): array
     {
         // TODO: Refactor this
