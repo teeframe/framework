@@ -91,6 +91,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $this->map;
     }
 
+    /**
+     * @return AbstractTee[]
+     */
+    public function getTees(): array
+    {
+        return $this->tees;
+    }
+
     public function gameController(): EmptyGameController
     {
         return $this->gameController;

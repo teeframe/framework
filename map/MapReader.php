@@ -89,20 +89,34 @@ class MapReader
         // Data
         $rawData = $reader->readBytes($dataSize);
 
-        if ($version === 4 && $dataSize > 0) {
-            $rawData = zlib_decode($rawData);
-            if ($rawData === false) {
-                $this->throwException('Failed to decompress data section');
+        if ($version === 4) {
+            // Version 4: each data block is individually compressed.
+            // dataOffsets point into the compressed stream, dataSizes are uncompressed sizes.
+            for ($i = 0; $i < $numData; $i++) {
+                $start  = $dataOffsets[$i];
+                $length = ($i + 1 < $numData)
+                    ? $dataOffsets[$i + 1] - $start
+                    : $dataSize - $start;
+
+                $compressed = substr($rawData, $start, $length);
+                $decompressed = zlib_decode($compressed);
+
+                if ($decompressed === false) {
+                    $this->throwException("Failed to decompress data block {$i}");
+                }
+
+                $this->dataBlocks[$i] = $decompressed;
             }
-        }
+        } else {
+            // Version 3: data is uncompressed, offsets point directly into raw data.
+            for ($i = 0; $i < $numData; $i++) {
+                $start  = $dataOffsets[$i];
+                $length = ($i + 1 < $numData)
+                    ? $dataOffsets[$i + 1] - $start
+                    : strlen($rawData) - $start;
 
-        for ($i = 0; $i < $numData; $i++) {
-            $start  = $dataOffsets[$i];
-            $length = ($i + 1 < $numData)
-                ? $dataOffsets[$i + 1] - $start
-                : strlen($rawData) - $start;
-
-            $this->dataBlocks[$i] = substr($rawData, $start, $length);
+                $this->dataBlocks[$i] = substr($rawData, $start, $length);
+            }
         }
     }
 

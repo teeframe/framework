@@ -111,3 +111,35 @@ test('dm1 map crc round-trips correctly through packInt', function () use ($mapP
 
     expect($unpacked)->toBe($crc);
 });
+
+test('dm1 map has spawn tiles', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+
+    $gameLayer = $map->getGameLayer();
+    expect($gameLayer)->not->toBeNull();
+
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+
+    // dm1.map should have spawn points
+    expect($entities)->not->toBeEmpty();
+
+    // Check that spawn entities have valid positions within the map bounds
+    foreach ($entities as $entity) {
+        expect($entity['x'])->toBeGreaterThan(0);
+        expect($entity['y'])->toBeGreaterThan(0);
+        expect($entity['x'])->toBeLessThan($gameLayer->width * 32);
+        expect($entity['y'])->toBeLessThan($gameLayer->height * 32);
+    }
+
+    // Verify at least one ENTITY_SPAWN (192) exists
+    $spawnPoints = array_filter($entities, fn (array $e) => $e['type'] === GameLayer::ENTITY_SPAWN);
+    expect($spawnPoints)->not->toBeEmpty();
+});
