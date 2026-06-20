@@ -22,7 +22,7 @@ class Vector2
     {
         $length = $this->length();
 
-        return new Vector2((int) ($this->x / $length), (int) ($this->y / $length));
+        return new Vector2($this->x / $length, $this->y / $length);
     }
 
     public function distance(Vector2 $other): float

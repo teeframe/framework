@@ -89,8 +89,12 @@ class Collision
     public function intersectLine(Vector2 $pos0, Vector2 $pos1): array
     {
         $distance = $pos0->distance($pos1);
-        $end      = (int) ($distance + 1);
-        $last     = $pos0;
+        if ($distance <= 0.0) {
+            return [0, $pos1, $pos1];
+        }
+
+        $end  = (int) ($distance + 1);
+        $last = $pos0;
 
         for ($i = 0; $i < $end; $i++) {
             $a   = $i / $distance;

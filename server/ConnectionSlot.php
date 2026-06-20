@@ -117,7 +117,15 @@ class ConnectionSlot extends AbstractConnection
                     timeLeft: (int) (($chunk->predictionTick - $this->world()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000),
                 ));
 
-                // TODO: Implement NETMSG_INPUT
+                // Feed input to the player's tee
+                $tee = $this->playerTee();
+                $tee->inputDirection = $chunk->inputDirection;
+                $tee->inputTargetX   = $chunk->inputTargetX;
+                $tee->inputTargetY   = $chunk->inputTargetY;
+                $tee->inputJump      = $chunk->inputJump;
+                $tee->inputFire      = $chunk->inputFire;
+                $tee->inputHook      = $chunk->inputHook;
+                $tee->inputWantedWeapon = $chunk->inputWantedWeapon;
             }
 
             // TODO: Implement NETMSG_PING
