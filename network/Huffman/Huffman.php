@@ -6,6 +6,7 @@ namespace TeeFrame\Network\Huffman;
 
 class Huffman
 {
+    /** @var int[] */
     public const FREQ_TABLE = [
         1 << 30, 4545, 2657, 431, 1950, 919, 444, 482, 2244, 617, 838, 542, 715, 1814, 304, 240, 754, 212, 647, 186,
         283, 131, 146, 166, 543, 164, 167, 136, 179, 859, 363, 113, 157, 154, 204, 108, 137, 180, 202, 176,
@@ -21,12 +22,15 @@ class Huffman
         12, 18, 18, 27, 20, 18, 15, 19, 11, 17, 33, 12, 18, 15, 19, 18, 16, 26, 17, 18,
         9, 10, 25, 22, 22, 17, 20, 16, 6, 16, 15, 20, 14, 18, 24, 335, 1517,
     ];
+
     public const HUFFMAN_EOF_SYMBOL  = 256;
     public const HUFFMAN_MAX_SYMBOLS = self::HUFFMAN_EOF_SYMBOL + 1;
     public const HUFFMAN_MAX_NODES   = self::HUFFMAN_MAX_SYMBOLS * 2 - 1;
     public const HUFFMAN_LUTBITS     = 10;
     public const HUFFMAN_LUTSIZE     = 1 << self::HUFFMAN_LUTBITS;
     public const HUFFMAN_LUTMASK     = self::HUFFMAN_LUTSIZE - 1;
+    public const HUFFMAN_NULL_NODE   = 0xFFFF;
+    public const HUFFMAN_UNSET_BITS  = 0xFFFFFFFF;
 
     /**
      * @var array<int, HuffmanNode>
@@ -36,12 +40,15 @@ class Huffman
     /**
      * @var array<int, int>
      */
-    public array $decode_lut;
+    public array $decodeLut;
 
-    public int $num_nodes;
+    public int $numNodes;
 
-    public int $start_node_index;
+    public int $startNodeIndex;
 
+    /**
+     * @param int[] $frequencies
+     */
     public function __construct(array $frequencies = self::FREQ_TABLE)
     {
         $this->nodes = [];
@@ -49,16 +56,16 @@ class Huffman
             $this->nodes[$i] = new HuffmanNode;
         }
 
-        $this->decode_lut       = array_fill(0, self::HUFFMAN_LUTSIZE, 0);
-        $this->num_nodes        = 0;
-        $this->start_node_index = 0;
+        $this->decodeLut      = array_fill(0, self::HUFFMAN_LUTSIZE, 0);
+        $this->numNodes       = 0;
+        $this->startNodeIndex = 0;
 
-        $this->construct_tree($frequencies);
+        $this->constructTree($frequencies);
 
         for ($i = 0; $i < self::HUFFMAN_LUTSIZE; $i++) {
             $bits  = $i;
-            $broke = false;
-            $index = $this->start_node_index;
+            $found = false;
+            $index = $this->startNodeIndex;
             for ($x = 0; $x < self::HUFFMAN_LUTBITS; $x++) {
                 if ($bits & 1) {
                     $index = $this->nodes[$index]->right;
@@ -66,210 +73,219 @@ class Huffman
                     $index = $this->nodes[$index]->left;
                 }
                 $bits >>= 1;
-                if ($this->nodes[$index]->numbits) {
-                    $this->decode_lut[$i] = $index;
-                    $broke                = true;
+                if ($this->nodes[$index]->numBits) {
+                    $this->decodeLut[$i] = $index;
+                    $found               = true;
                     break;
                 }
             }
-            if (! $broke) {
-                $this->decode_lut[$i] = $index;
+            if (! $found) {
+                $this->decodeLut[$i] = $index;
             }
         }
     }
 
-    public function set_bits_r(int $node_index, int $bits, int $depth): void
+    public function setBitsR(int $nodeIndex, int $bits, int $depth): void
     {
-        if ($this->nodes[$node_index]->right != 0xFFFF) {
-            $this->set_bits_r($this->nodes[$node_index]->right, $bits | (1 << $depth), $depth + 1);
+        if ($this->nodes[$nodeIndex]->right !== self::HUFFMAN_NULL_NODE) {
+            $this->setBitsR($this->nodes[$nodeIndex]->right, $bits | (1 << $depth), $depth + 1);
         }
-        if ($this->nodes[$node_index]->left != 0xFFFF) {
-            $this->set_bits_r($this->nodes[$node_index]->left, $bits, $depth + 1);
+        if ($this->nodes[$nodeIndex]->left !== self::HUFFMAN_NULL_NODE) {
+            $this->setBitsR($this->nodes[$nodeIndex]->left, $bits, $depth + 1);
         }
-        if ($this->nodes[$node_index]->numbits) {
-            $this->nodes[$node_index]->bits    = $bits;
-            $this->nodes[$node_index]->numbits = $depth;
+        if ($this->nodes[$nodeIndex]->numBits) {
+            $this->nodes[$nodeIndex]->bits    = $bits;
+            $this->nodes[$nodeIndex]->numBits = $depth;
         }
     }
 
     /**
-     * @param  array<int, int>  $index_list
-     * @param  array<int, HuffmanConstructNode>  $node_list
+     * @param  array<int, int>  $indexList
+     * @param  array<int, HuffmanConstructNode>  $nodeList
      * @return array<int, int>
      */
-    public function bubble_sort(array $index_list, array $node_list, int $size): array
+    public function bubbleSort(array $indexList, array $nodeList, int $size): array
     {
         $changed = true;
         while ($changed) {
             $changed = false;
             for ($i = 0; $i < $size - 1; $i++) {
-                if ($node_list[$index_list[$i]]->frequency < $node_list[$index_list[$i + 1]]->frequency) {
-                    $temp               = $index_list[$i];
-                    $index_list[$i]     = $index_list[$i + 1];
-                    $index_list[$i + 1] = $temp;
-                    $changed            = true;
+                if ($nodeList[$indexList[$i]]->frequency < $nodeList[$indexList[$i + 1]]->frequency) {
+                    $temp               = $indexList[$i];
+                    $indexList[$i]     = $indexList[$i + 1];
+                    $indexList[$i + 1] = $temp;
+                    $changed           = true;
                 }
             }
             $size--;
         }
 
-        return $index_list;
-    }
-
-    public function construct_tree(array $frequencies = self::FREQ_TABLE): void
-    {
-        $nodes_left_storage = [];
-
-        for ($i = 0; $i < self::HUFFMAN_MAX_SYMBOLS; $i++) {
-            $nodes_left_storage[$i] = new HuffmanConstructNode;
-        }
-
-        $nodes_left     = array_fill(0, self::HUFFMAN_MAX_SYMBOLS, 0);
-        $num_nodes_left = self::HUFFMAN_MAX_SYMBOLS;
-
-        for ($i = 0; $i < self::HUFFMAN_MAX_SYMBOLS; $i++) {
-            $this->nodes[$i]->numbits = 0xFFFFFFFF;
-            $this->nodes[$i]->symbol  = $i;
-            $this->nodes[$i]->left    = 0xFFFF;
-            $this->nodes[$i]->right   = 0xFFFF;
-
-            if ($i == self::HUFFMAN_EOF_SYMBOL) {
-                $nodes_left_storage[$i]->frequency = 1;
-            } else {
-                $nodes_left_storage[$i]->frequency = $frequencies[$i];
-            }
-
-            $nodes_left_storage[$i]->node_id = $i;
-            $nodes_left[$i]                  = $i;
-        }
-
-        $this->num_nodes = self::HUFFMAN_MAX_SYMBOLS;
-
-        while ($num_nodes_left > 1) {
-            $nodes_left = $this->bubble_sort($nodes_left, $nodes_left_storage, $num_nodes_left);
-
-            $this->nodes[$this->num_nodes]->numbits = 0;
-            $this->nodes[$this->num_nodes]->left    = $nodes_left_storage[$nodes_left[$num_nodes_left - 1]]->node_id;
-            $this->nodes[$this->num_nodes]->right   = $nodes_left_storage[$nodes_left[$num_nodes_left - 2]]->node_id;
-
-            $nodes_left_storage[$nodes_left[$num_nodes_left - 2]]->node_id   = $this->num_nodes;
-            $nodes_left_storage[$nodes_left[$num_nodes_left - 2]]->frequency = $nodes_left_storage[$nodes_left[$num_nodes_left - 1]]->frequency
-                                            + $nodes_left_storage[$nodes_left[$num_nodes_left - 2]]->frequency;
-            $this->num_nodes++;
-            $num_nodes_left--;
-        }
-
-        $this->start_node_index = $this->num_nodes - 1;
-        $this->set_bits_r($this->start_node_index, 0, 0);
+        return $indexList;
     }
 
     /**
-     * @return int[]
+     * @param int[] $frequencies
      */
-    public function compress(array $inp_buffer, int $start_index = 0, int $size = 0): array
+    public function constructTree(array $frequencies): void
     {
-        $out_buffer = [];
-        $bits       = 0;
-        $numbits    = 0;
-        $value      = 0;
+        /** @var array<int, HuffmanConstructNode> $nodesLeftStorage */
+        $nodesLeftStorage = [];
 
-        if ($size === 0) {
-            $size = count($inp_buffer);
+        for ($i = 0; $i < self::HUFFMAN_MAX_SYMBOLS; $i++) {
+            $nodesLeftStorage[$i] = new HuffmanConstructNode;
         }
 
-        for ($i = $start_index; $i < $size; $i++) {
-            $value = $inp_buffer[$i];
-            $bits |= $this->nodes[$value]->bits << $numbits;
-            $numbits += $this->nodes[$value]->numbits;
+        /** @var array<int, int> $nodesLeft */
+        $nodesLeft     = array_fill(0, self::HUFFMAN_MAX_SYMBOLS, 0);
+        $numNodesLeft = self::HUFFMAN_MAX_SYMBOLS;
 
-            while ($numbits >= 8) {
-                $out_buffer[] = $bits & 0xFF;
+        for ($i = 0; $i < self::HUFFMAN_MAX_SYMBOLS; $i++) {
+            $this->nodes[$i]->numBits = self::HUFFMAN_UNSET_BITS;
+            $this->nodes[$i]->symbol  = $i;
+            $this->nodes[$i]->left    = self::HUFFMAN_NULL_NODE;
+            $this->nodes[$i]->right   = self::HUFFMAN_NULL_NODE;
+
+            if ($i === self::HUFFMAN_EOF_SYMBOL) {
+                $nodesLeftStorage[$i]->frequency = 1;
+            } else {
+                $nodesLeftStorage[$i]->frequency = $frequencies[$i];
+            }
+
+            $nodesLeftStorage[$i]->nodeId = $i;
+            $nodesLeft[$i]                = $i;
+        }
+
+        $this->numNodes = self::HUFFMAN_MAX_SYMBOLS;
+
+        while ($numNodesLeft > 1) {
+            $nodesLeft = $this->bubbleSort($nodesLeft, $nodesLeftStorage, $numNodesLeft);
+
+            $this->nodes[$this->numNodes]->numBits = 0;
+            $this->nodes[$this->numNodes]->left    = $nodesLeftStorage[$nodesLeft[$numNodesLeft - 1]]->nodeId;
+            $this->nodes[$this->numNodes]->right   = $nodesLeftStorage[$nodesLeft[$numNodesLeft - 2]]->nodeId;
+
+            $nodesLeftStorage[$nodesLeft[$numNodesLeft - 2]]->nodeId    = $this->numNodes;
+            $nodesLeftStorage[$nodesLeft[$numNodesLeft - 2]]->frequency = $nodesLeftStorage[$nodesLeft[$numNodesLeft - 1]]->frequency
+                                            + $nodesLeftStorage[$nodesLeft[$numNodesLeft - 2]]->frequency;
+            $this->numNodes++;
+            $numNodesLeft--;
+        }
+
+        $this->startNodeIndex = $this->numNodes - 1;
+        $this->setBitsR($this->startNodeIndex, 0, 0);
+    }
+
+    /**
+     * @param  int[]  $inputBuffer
+     * @return int[]
+     */
+    public function compress(array $inputBuffer, int $startIndex = 0, int $size = 0): array
+    {
+        /** @var int[] $outputBuffer */
+        $outputBuffer = [];
+        $bits         = 0;
+        $numBits      = 0;
+        $value        = 0;
+
+        if ($size === 0) {
+            $size = count($inputBuffer);
+        }
+
+        for ($i = $startIndex; $i < $size; $i++) {
+            $value = $inputBuffer[$i];
+            $bits |= $this->nodes[$value]->bits << $numBits;
+            $numBits += $this->nodes[$value]->numBits;
+
+            while ($numBits >= 8) {
+                $outputBuffer[] = $bits & 0xFF;
                 $bits >>= 8;
-                $numbits -= 8;
+                $numBits -= 8;
             }
         }
 
         $value = self::HUFFMAN_EOF_SYMBOL;
 
-        $bits |= $this->nodes[$value]->bits << $numbits;
-        $numbits += $this->nodes[$value]->numbits;
+        $bits |= $this->nodes[$value]->bits << $numBits;
+        $numBits += $this->nodes[$value]->numBits;
 
-        while ($numbits >= 8) {
-            $out_buffer[] = $bits & 0xFF;
+        while ($numBits >= 8) {
+            $outputBuffer[] = $bits & 0xFF;
             $bits >>= 8;
-            $numbits -= 8;
+            $numBits -= 8;
         }
 
-        if ($numbits) {
-            $out_buffer[] = $bits;
+        if ($numBits) {
+            $outputBuffer[] = $bits;
         }
 
-        return $out_buffer;
+        return $outputBuffer;
     }
 
     /**
+     * @param  int[]  $inputBuffer
      * @return int[]
      */
-    public function decompress(array $inp_buffer, int $size = 0): array
+    public function decompress(array $inputBuffer, int $size = 0): array
     {
-        $bits     = 0;
-        $bitcount = 0;
-        $eof      = $this->nodes[self::HUFFMAN_EOF_SYMBOL];
-        $output   = [];
+        $bits      = 0;
+        $bitCount  = 0;
+        $eof       = $this->nodes[self::HUFFMAN_EOF_SYMBOL];
+        /** @var int[] $output */
+        $output    = [];
 
-        if ($size == 0) {
-            $size = count($inp_buffer);
+        if ($size === 0) {
+            $size = count($inputBuffer);
         }
-        $inp_buffer = array_slice($inp_buffer, 0, $size);
-        $src_index  = 0;
+        $inputBuffer = array_slice($inputBuffer, 0, $size);
+        $srcIndex    = 0;
 
         while (true) {
-            $node_i = -1;
+            $nodeIndex = -1;
 
-            if ($bitcount >= self::HUFFMAN_LUTBITS) {
-                $node_i = $this->decode_lut[$bits & self::HUFFMAN_LUTMASK];
+            if ($bitCount >= self::HUFFMAN_LUTBITS) {
+                $nodeIndex = $this->decodeLut[$bits & self::HUFFMAN_LUTMASK];
             }
 
-            while ($bitcount < 24 && $src_index != $size) {
-                $bits |= $inp_buffer[$src_index] << $bitcount;
-                $bitcount += 8;
-                $src_index++;
+            while ($bitCount < 24 && $srcIndex !== $size) {
+                $bits |= $inputBuffer[$srcIndex] << $bitCount;
+                $bitCount += 8;
+                $srcIndex++;
             }
 
-            if ($node_i == -1) {
-                $node_i = $this->decode_lut[$bits & self::HUFFMAN_LUTMASK];
+            if ($nodeIndex === -1) {
+                $nodeIndex = $this->decodeLut[$bits & self::HUFFMAN_LUTMASK];
             }
-            if ($this->nodes[$node_i]->numbits) {
-                $bits >>= $this->nodes[$node_i]->numbits;
-                $bitcount -= $this->nodes[$node_i]->numbits;
+            if ($this->nodes[$nodeIndex]->numBits) {
+                $bits >>= $this->nodes[$nodeIndex]->numBits;
+                $bitCount -= $this->nodes[$nodeIndex]->numBits;
             } else {
                 $bits >>= self::HUFFMAN_LUTBITS;
-                $bitcount -= self::HUFFMAN_LUTBITS;
+                $bitCount -= self::HUFFMAN_LUTBITS;
 
                 while (true) {
                     if ($bits & 1) {
-                        $node_i = $this->nodes[$node_i]->right;
+                        $nodeIndex = $this->nodes[$nodeIndex]->right;
                     } else {
-                        $node_i = $this->nodes[$node_i]->left;
+                        $nodeIndex = $this->nodes[$nodeIndex]->left;
                     }
-                    $bitcount -= 1;
+                    $bitCount -= 1;
                     $bits >>= 1;
 
-                    if ($this->nodes[$node_i]->numbits) {
+                    if ($this->nodes[$nodeIndex]->numBits) {
                         break;
                     }
-                    if ($bitcount == 0) {
+                    if ($bitCount === 0) {
                         // throw new \Exception("No more bits, decoding error");
                         break;
                     } // No more bits, decoding error
                 }
             }
 
-            if ($this->nodes[$node_i] == $eof) {
+            if ($this->nodes[$nodeIndex] === $eof) {
                 break;
             }
 
-            $output[] = $this->nodes[$node_i]->symbol;
+            $output[] = $this->nodes[$nodeIndex]->symbol;
         }
 
         return $output;

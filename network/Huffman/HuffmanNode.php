@@ -6,7 +6,7 @@ class HuffmanNode
 {
     public int $bits;
 
-    public int $numbits;
+    public int $numBits;
 
     public int $left;
 

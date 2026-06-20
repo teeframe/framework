@@ -4,7 +4,7 @@ namespace TeeFrame\Network\Huffman;
 
 class HuffmanConstructNode
 {
-    public int $node_id;
+    public int $nodeId;
 
     public int $frequency;
 }
