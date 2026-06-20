@@ -9,6 +9,7 @@ use TeeFrame\Network\Chunks\System\ConReadyChunk;
 use TeeFrame\Network\Chunks\System\EnterGameChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
 use TeeFrame\Network\Chunks\System\MapChangeChunk;
+use TeeFrame\Network\Chunks\System\MapDataChunk;
 use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
 use TeeFrame\Network\NetworkMessages;
@@ -109,11 +110,31 @@ trait HasHandshakeHandler
     {
         $connection->state = ConnectionSlot::STATE_LOADING;
 
-        // TODO: Implement map loading
+        $map       = $connection->world()->getMap();
+        $mapData   = $map->getRawData();
+        $mapSize   = $map->getSize();
+        $mapCrc    = $map->getCrc();
+        $chunkSize = 1024 - 128; // 896 bytes per chunk
+        $offset    = $chunk->chunk * $chunkSize;
+        $last      = 0;
 
-        $connection->closeConnection('Server cannot send map data yet');
+        // Drop faulty map data requests
+        if ($chunk->chunk < 0 || $offset > $mapSize) {
+            return true;
+        }
 
-        return false;
+        if ($offset + $chunkSize > $mapSize) {
+            $chunkSize = $mapSize - $offset;
+            $last      = 1;
+        }
+
+        $data = array_slice($mapData, $offset, $chunkSize);
+
+        $connection->chunks()->add(
+            new MapDataChunk($last, $mapCrc, $chunk->chunk, $chunkSize, $data)
+        )->send();
+
+        return true;
     }
 
     protected function handleReadyChunk(ConnectionSlot $connection, ReadyChunk $chunk): void

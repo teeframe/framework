@@ -86,6 +86,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         ];
     }
 
+    public function getMap(): Map
+    {
+        return $this->map;
+    }
+
     public function gameController(): EmptyGameController
     {
         return $this->gameController;

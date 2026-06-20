@@ -42,6 +42,24 @@ class MapBufferReader
         return $unpacked ? $unpacked[1] : 0;
     }
 
+    /**
+     * @return int[]
+     */
+    public function readInts(int $count): array
+    {
+        $ints = [];
+        for ($i = 0; $i < $count; $i++) {
+            $ints[] = $this->readInt();
+        }
+
+        return $ints;
+    }
+
+    public function remaining(): int
+    {
+        return strlen($this->buffer);
+    }
+
     protected function extractFromBuffer(int $length): string
     {
         $data         = substr($this->buffer, 0, $length);
