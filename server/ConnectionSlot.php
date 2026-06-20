@@ -126,6 +126,8 @@ class ConnectionSlot extends AbstractConnection
                 $tee->inputFire      = $chunk->inputFire;
                 $tee->inputHook      = $chunk->inputHook;
                 $tee->inputWantedWeapon = $chunk->inputWantedWeapon;
+                $tee->inputNextWeapon   = $chunk->inputNextWeapon;
+                $tee->inputPrevWeapon   = $chunk->inputPrevWeapon;
             }
 
             // TODO: Implement NETMSG_PING

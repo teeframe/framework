@@ -18,4 +18,11 @@ class PlayerTee extends AbstractTee
     public bool $inputFire      = false;
     public bool $inputHook      = false;
     public int $inputWantedWeapon = 0;
+    public int $inputNextWeapon   = 0;
+    public int $inputPrevWeapon   = 0;
+
+    // Previous input for press-counting (CountInput)
+    public int $prevInputWantedWeapon = 0;
+    public int $prevInputNextWeapon   = 0;
+    public int $prevInputPrevWeapon   = 0;
 }

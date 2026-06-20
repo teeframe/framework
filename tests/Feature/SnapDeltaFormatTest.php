@@ -16,21 +16,37 @@ class TestSnapHandler extends SnapHandler
         // Bypass the AbstractConnection dependency by using a mock-like approach
     }
 
+    /**
+     * @param  array<int, \TeeFrame\Network\SnapItems\AbstractSnapItem>  $items
+     */
     public function testCalculateCrc(array $items): int
     {
         return $this->calculateCrc($items);
     }
 
+    /**
+     * @param  array<int, \TeeFrame\Network\SnapItems\AbstractSnapItem>  $items
+     * @return array{array<int, int>, int, int}
+     */
     public function testCalculateSendablePayload(array $items): array
     {
         return $this->calculateSendablePayload($items);
     }
 
+    /**
+     * @param  \TeeFrame\Network\SnapItems\AbstractSnapItem  $deltaItem
+     * @param  \TeeFrame\Network\SnapItems\AbstractSnapItem  $item
+     * @return int[]
+     */
     public function testDiffItem($deltaItem, $item): array
     {
         return $this->diffItem($deltaItem, $item);
     }
 
+    /**
+     * @param  \TeeFrame\Network\SnapItems\AbstractSnapItem[]  $items
+     * @return array<int, \TeeFrame\Network\SnapItems\AbstractSnapItem>
+     */
     public function testIndexItemsList(array $items): array
     {
         return $this->indexItemsList($items);

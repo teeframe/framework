@@ -12,16 +12,34 @@ class CharacterEntity extends AbstractEntity
 {
     public const PHYS_SIZE = 28;
 
+    // Weapon constants (Teeworlds 0.6)
+    public const WEAPON_HAMMER  = 0;
+    public const WEAPON_GUN     = 1;
+    public const WEAPON_SHOTGUN = 2;
+    public const WEAPON_GRENADE = 3;
+    public const WEAPON_RIFLE   = 4;
+    public const WEAPON_NINJA   = 5;
+    public const NUM_WEAPONS    = 6;
+
+    public const INPUT_STATE_MASK = 0x3F;
+
     // Game state
     public int $health = 10;
     public int $armor = 0;
-    public int $activeWeapon = 1; // WEAPON_GUN
+    public int $activeWeapon = self::WEAPON_GUN;
+    public int $lastWeapon = self::WEAPON_HAMMER;
+    public int $queuedWeapon = -1;
     public bool $alive = false;
     public int $tick = 0;
     public int $attackTick = 0;
     public int $emote = 0;
     public int $playerFlags = 0;
     public int $reloadTimer = 0;
+
+    /**
+     * @var array<int, array{got: bool, ammo: int}>
+     */
+    public array $aWeapons = [];
 
     // Physics state
     public Vector2 $vel;
@@ -90,6 +108,20 @@ class CharacterEntity extends AbstractEntity
         $this->hookedPlayer  = -1;
         $this->jumped        = 0;
         $this->triggeredEvents = 0;
+
+        // Initialize weapons: hammer + gun
+        $this->aWeapons = [];
+        for ($i = 0; $i < self::NUM_WEAPONS; $i++) {
+            $this->aWeapons[$i] = ['got' => false, 'ammo' => 0];
+        }
+        $this->aWeapons[self::WEAPON_HAMMER] = ['got' => true, 'ammo' => -1];
+        $this->aWeapons[self::WEAPON_GUN]    = ['got' => true, 'ammo' => 10];
+
+        $this->activeWeapon = self::WEAPON_GUN;
+        $this->lastWeapon   = self::WEAPON_HAMMER;
+        $this->queuedWeapon = -1;
+        $this->reloadTimer  = 0;
+        $this->attackTick   = 0;
     }
 
     public function die(): void
@@ -122,6 +154,9 @@ class CharacterEntity extends AbstractEntity
             $targetY   = $this->tee->inputTargetY;
             $jump      = $this->tee->inputJump;
             $hook      = $this->tee->inputHook;
+
+            // Handle weapon switch from input
+            $this->handleWeaponSwitch();
         }
 
         $this->tickPhysics($direction, $targetX, $targetY, $jump, $hook, $collision);
@@ -129,14 +164,29 @@ class CharacterEntity extends AbstractEntity
 
         // Handle shooting
         if ($this->tee instanceof PlayerTee && $this->tee->inputFire && $this->reloadTimer <= 0) {
-            if ($this->activeWeapon === 1) {
-                $this->shootGun();
+            $this->doWeaponSwitch(); // execute queued switch before firing
+
+            switch ($this->activeWeapon) {
+                case self::WEAPON_GUN:
+                    $this->shootGun();
+                    $this->reloadTimer = 6; // ~125ms at 50 tick/s
+                    break;
+                case self::WEAPON_HAMMER:
+                    // TODO: Hammer attack
+                    $this->reloadTimer = 6;
+                    break;
             }
-            $this->reloadTimer = 6; // ~125ms at 50 tick/s
         }
 
         if ($this->reloadTimer > 0) {
             $this->reloadTimer--;
+        }
+
+        // Save previous input for next tick's CountInput
+        if ($this->tee instanceof PlayerTee) {
+            $this->tee->prevInputWantedWeapon = $this->tee->inputWantedWeapon;
+            $this->tee->prevInputNextWeapon   = $this->tee->inputNextWeapon;
+            $this->tee->prevInputPrevWeapon   = $this->tee->inputPrevWeapon;
         }
     }
 
@@ -385,6 +435,134 @@ class CharacterEntity extends AbstractEntity
         );
 
         $this->world->addEntity($proj);
+    }
+
+    // -- Weapon Switch --
+
+    /**
+     * Count how many press/release transitions happened between two input states.
+     * Ported from Teeworlds 0.6 CInputCount CountInput().
+     */
+    private function countInput(int $prev, int $cur): int
+    {
+        $prev &= self::INPUT_STATE_MASK;
+        $cur  &= self::INPUT_STATE_MASK;
+        $presses = 0;
+        $i = $prev;
+
+        while ($i !== $cur) {
+            $i = ($i + 1) & self::INPUT_STATE_MASK;
+            if ($i & 1) {
+                $presses++;
+            }
+        }
+
+        return $presses;
+    }
+
+    /**
+     * Process weapon switch input and queue the desired weapon.
+     * Ported from Teeworlds 0.6 CCharacter::HandleWeaponSwitch().
+     */
+    private function handleWeaponSwitch(): void
+    {
+        if (! $this->tee instanceof PlayerTee) {
+            return;
+        }
+
+        $wantedWeapon = $this->activeWeapon;
+        if ($this->queuedWeapon !== -1) {
+            $wantedWeapon = $this->queuedWeapon;
+        }
+
+        // Next / Prev weapon selection
+        $next = $this->countInput($this->tee->prevInputNextWeapon, $this->tee->inputNextWeapon);
+        $prev = $this->countInput($this->tee->prevInputPrevWeapon, $this->tee->inputPrevWeapon);
+
+        if ($next < 128) {
+            while ($next > 0) {
+                $wantedWeapon = ($wantedWeapon + 1) % self::NUM_WEAPONS;
+                if ($this->aWeapons[$wantedWeapon]['got']) {
+                    $next--;
+                }
+            }
+        }
+
+        if ($prev < 128) {
+            while ($prev > 0) {
+                $wantedWeapon = ($wantedWeapon - 1) < 0 ? self::NUM_WEAPONS - 1 : $wantedWeapon - 1;
+                if ($this->aWeapons[$wantedWeapon]['got']) {
+                    $prev--;
+                }
+            }
+        }
+
+        // Direct weapon selection (1-indexed from client, convert to 0-indexed)
+        if ($this->tee->inputWantedWeapon > 0) {
+            $wantedWeapon = $this->tee->inputWantedWeapon - 1;
+            $this->tee->inputWantedWeapon = 0; // clear after processing
+        }
+
+        // Queue the switch if valid
+        if ($wantedWeapon >= 0 && $wantedWeapon < self::NUM_WEAPONS
+            && $wantedWeapon !== $this->activeWeapon
+            && $this->aWeapons[$wantedWeapon]['got']) {
+            $this->queuedWeapon = $wantedWeapon;
+        }
+
+        $this->doWeaponSwitch();
+    }
+
+    /**
+     * Execute the queued weapon switch if conditions allow.
+     * Ported from Teeworlds 0.6 CCharacter::DoWeaponSwitch().
+     */
+    private function doWeaponSwitch(): void
+    {
+        // Can't switch while reloading, no weapon queued, or holding ninja
+        if ($this->reloadTimer !== 0 || $this->queuedWeapon === -1 || $this->aWeapons[self::WEAPON_NINJA]['got']) {
+            return;
+        }
+
+        $this->setWeapon($this->queuedWeapon);
+    }
+
+    /**
+     * Perform the actual weapon switch.
+     * Ported from Teeworlds 0.6 CCharacter::SetWeapon().
+     */
+    private function setWeapon(int $weapon): void
+    {
+        if ($weapon === $this->activeWeapon) {
+            return;
+        }
+
+        $this->lastWeapon   = $this->activeWeapon;
+        $this->queuedWeapon = -1;
+        $this->activeWeapon = $weapon;
+
+        if ($this->activeWeapon < 0 || $this->activeWeapon >= self::NUM_WEAPONS) {
+            $this->activeWeapon = 0;
+        }
+    }
+
+    /**
+     * Give a weapon to the character with the specified ammo.
+     * Ported from Teeworlds 0.6 CCharacter::GiveWeapon().
+     */
+    public function giveWeapon(int $weapon, int $ammo): bool
+    {
+        if ($weapon < 0 || $weapon >= self::NUM_WEAPONS) {
+            return false;
+        }
+
+        if ($this->aWeapons[$weapon]['ammo'] < 10 || ! $this->aWeapons[$weapon]['got']) {
+            $this->aWeapons[$weapon]['got']  = true;
+            $this->aWeapons[$weapon]['ammo'] = min(10, $ammo);
+            return true;
+        }
+
+        return false;
     }
 
     // -- Snap --
