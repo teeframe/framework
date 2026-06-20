@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Network\SnapItems;
 
+use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\RawPayload;
 
 abstract class AbstractSnapItem
@@ -48,7 +49,11 @@ abstract class AbstractSnapItem
             throw new \RuntimeException('Trying to encode a snap item without an id');
         }
 
-        return [$this->itemId, $this->id, ...$this->getPayload()->encode()];
+        return [
+            ...NetworkBase::packInt($this->itemId),
+            ...NetworkBase::packInt($this->id),
+            ...$this->getPayload()->encode(),
+        ];
     }
 
     protected function getPayload(): RawPayload

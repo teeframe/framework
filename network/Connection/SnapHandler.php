@@ -154,7 +154,10 @@ class SnapHandler
             if (! isset($items[$deltaItemKey])) {
                 $removedItemsCount++;
 
-                $removedItems = [...$removedItems, $deltaItem->getItemId(), $deltaItem->getId()];
+                $removedItems = [
+                    ...$removedItems,
+                    ...NetworkBase::packInt($deltaItem->getKey())
+                ];
             }
         }
 
@@ -192,7 +195,11 @@ class SnapHandler
             $diffPayload->addInt($itemInt - $deltaItemInts[$i]);
         }
 
-        return [$item->getItemId(), $item->getId(), ...$diffPayload->encode()];
+        return [
+            ...NetworkBase::packInt($item->getItemId()),
+            ...NetworkBase::packInt($item->getId()),
+            ...$diffPayload->encode(),
+        ];
     }
 
     /**
