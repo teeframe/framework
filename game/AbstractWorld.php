@@ -74,6 +74,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $this->tickHandler->get();
     }
 
+    /**
+     * @return array{string, int, int}
+     */
     public function getMapInfo(): array
     {
         return [
@@ -182,7 +185,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         // TODO: DoSnapshot()
 
         $gameControllerSnap = array_map(
-            fn (AbstractSnapItem $snap) => $snap->setId(0), 
+            fn (AbstractSnapItem $snap) => $snap->setId(0),
             $this->gameController()->doSnap($requestingTee)
         );
 
@@ -203,7 +206,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         foreach ($this->tees as $i => $tee) {
             $teeSnaps = $tee->doSnap($requestingTee);
-            
+
             foreach ($teeSnaps as $teeSnap) {
                 $teeSnap->setId($i);
             }

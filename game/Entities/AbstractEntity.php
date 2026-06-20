@@ -41,6 +41,9 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
         $this->toDestroy = true;
     }
 
+    /**
+     * @return int[]
+     */
     public function getAllocatedSnapIds(): array
     {
         return $this->allocatedSnapIds;

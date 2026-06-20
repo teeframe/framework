@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Network;
 
+use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvReadyToEnterChunk;
@@ -34,7 +35,7 @@ class PacketDecoder
         $flags     = $data[0] >> 4;
         $ack       = (($data[0] & 0xF) << 8) | $data[1];
         $numChunks = $data[2];
-        $isResend  = $flags & NetworkBase::PACKET_FLAG_RESEND;
+        $isResend  = (bool) ($flags & NetworkBase::PACKET_FLAG_RESEND);
 
         // TODO: Implement token support
 
@@ -60,6 +61,10 @@ class PacketDecoder
         return new DefaultPacket(chunks: $chunks, ack: $ack, resend: $isResend);
     }
 
+    /**
+     * @param int[] $payload
+     * @return AbstractChunk[]
+     */
     public static function decodeChunksFromPayload(array $payload): array
     {
         $pointer = 0;
@@ -78,7 +83,7 @@ class PacketDecoder
 
             $message = $payload[$pointer + $headerSize] >> 1;
 
-            $chunkClass = static::matchDecodedChunk($flags, $message, $payload[$pointer + $headerSize] & 1);
+            $chunkClass = static::matchDecodedChunk($flags, $message, (bool) ($payload[$pointer + $headerSize] & 1));
 
             if ($chunkClass instanceof UnsupportedChunk) {
                 $chunks[] = $chunkClass->setSequence($sequence);
