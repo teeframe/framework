@@ -9,9 +9,6 @@ class SnapIdPool
      */
     protected array $releasedIds = [];
 
-    /**
-     * @param  int[]  $allocatedIds
-     */
     public function __construct(protected int $lastAllocatedId = -1, protected int $maximumIdNumber = 16 * 1024)
     {
     }

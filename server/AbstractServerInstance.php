@@ -106,6 +106,9 @@ abstract class AbstractServerInstance
         }
     }
 
+    /**
+     * @param array{address: string, port: int} $clientInfo
+     */
     protected function onPacket(AbstractPacket $packet, array $clientInfo, AbstractSocket $socket): void
     {
         if ($connectionSlot = $this->connectionHandler->tryToMatch($clientInfo)) {

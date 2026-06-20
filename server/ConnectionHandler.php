@@ -31,6 +31,9 @@ class ConnectionHandler
         return $slot;
     }
 
+    /**
+     * @param array{address: string, port: int} $clientInfo
+     */
     public function tryToMatch(array $clientInfo): ConnectionSlot|false
     {
         foreach ($this->slots as $connection) {

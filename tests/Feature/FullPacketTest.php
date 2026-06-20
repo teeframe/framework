@@ -5,12 +5,16 @@ use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\Connection\AbstractConnection;
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\Packets\AbstractPacket;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Network\SnapItems\ObjPickupItem;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
 
+/**
+ * @return int[]
+ */
 function getExpectedPacket(): array
 {
     return NetworkBase::unpackBuffer(
@@ -25,6 +29,9 @@ function getExpectedPacket(): array
     );
 }
 
+/**
+ * @return AbstractSnapItem[]
+ */
 function getCommonSnapItems(): array
 {
     $pickUp = new ObjPickupItem(
@@ -156,6 +163,10 @@ test('can encode a full packet with multiple snap items through snap handler', f
         $connectionClass->snaps()->sendItems(4970, getCommonSnapItems());
     } catch (\Exception $e) {
         $encodedPacket = NetworkBase::unpackBuffer($e->getMessage());
+    }
+
+    if (! isset($encodedPacket)) {
+        throw new \Exception('Packet was not sent');
     }
 
     expect($encodedPacket)->toBe(getExpectedPacket());

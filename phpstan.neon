@@ -1,0 +1,11 @@
+parameters:
+	level: 6
+	paths:
+		- core
+		- game
+		- map
+		- network
+		- server
+		- tests
+	ignoreErrors:
+		- identifier: new.static

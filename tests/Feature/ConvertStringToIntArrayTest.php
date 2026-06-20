@@ -3,7 +3,7 @@
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 
-function createClientInfoItem(string $name)
+function createClientInfoItem(string $name): ObjClientInfoItem
 {
     $clan           = 'kj';
     $country        = -1;

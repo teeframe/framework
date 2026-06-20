@@ -43,6 +43,9 @@ class RawPayload
         return $this;
     }
 
+    /**
+     * @param int[] $value
+     */
     public function addBytes(array $value): static
     {
         $this->payload = [...$this->payload, ...$value];
