@@ -141,6 +141,15 @@ class CharacterEntity extends AbstractEntity
             return;
         }
 
+        // Update tee's viewPosition to follow the character.
+        // The viewPosition is used by doEntitySnap for distance culling.
+        if ($this->tee !== null) {
+            $this->tee->viewPosition = new Vector2(
+                (int) round($this->position->x),
+                (int) round($this->position->y),
+            );
+        }
+
         // Read input from the player's tee, or default to idle
         $direction = 0;
         $targetX   = 0;
