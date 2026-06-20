@@ -163,7 +163,15 @@ class CharacterEntity extends AbstractEntity
         $this->move($collision);
 
         // Handle shooting
-        if ($this->tee instanceof PlayerTee && $this->tee->inputFire && $this->reloadTimer <= 0) {
+        // m_Fire is an incrementing counter (like m_NextWeapon/m_PrevWeapon).
+        // Use CountInput to detect presses.
+        $firePressed = false;
+        if ($this->tee instanceof PlayerTee) {
+            $firePresses = $this->countInput($this->tee->prevInputFire, $this->tee->inputFire);
+            $firePressed = $firePresses > 0 && $firePresses < 128;
+        }
+
+        if ($this->tee instanceof PlayerTee && $firePressed && $this->reloadTimer <= 0) {
             $this->doWeaponSwitch(); // execute queued switch before firing
 
             switch ($this->activeWeapon) {
@@ -187,6 +195,7 @@ class CharacterEntity extends AbstractEntity
             $this->tee->prevInputWantedWeapon = $this->tee->inputWantedWeapon;
             $this->tee->prevInputNextWeapon   = $this->tee->inputNextWeapon;
             $this->tee->prevInputPrevWeapon   = $this->tee->inputPrevWeapon;
+            $this->tee->prevInputFire         = $this->tee->inputFire;
         }
     }
 

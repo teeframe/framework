@@ -15,7 +15,7 @@ class PlayerTee extends AbstractTee
     public int $inputTargetX    = 0;
     public int $inputTargetY    = 0;
     public bool $inputJump      = false;
-    public bool $inputFire      = false;
+    public int $inputFire       = 0;
     public bool $inputHook      = false;
     public int $inputWantedWeapon = 0;
     public int $inputNextWeapon   = 0;
@@ -25,4 +25,5 @@ class PlayerTee extends AbstractTee
     public int $prevInputWantedWeapon = 0;
     public int $prevInputNextWeapon   = 0;
     public int $prevInputPrevWeapon   = 0;
+    public int $prevInputFire         = 0;
 }

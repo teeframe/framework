@@ -118,7 +118,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputFire = true;
+    $tee->inputFire = 1;
     $tee->inputDirection = 1;
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
@@ -166,7 +166,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputFire = true;
+    $tee->inputFire = 1;
     $tee->inputDirection = 1;
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;

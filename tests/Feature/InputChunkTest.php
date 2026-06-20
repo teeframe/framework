@@ -12,7 +12,7 @@ test('InputChunk round-trips correctly with fire=false', function () {
         inputTargetX: 200,
         inputTargetY: -50,
         inputJump: false,
-        inputFire: false,
+        inputFire: 0,
         inputHook: false,
         inputPlayerFlag: 0,
         inputWantedWeapon: 0,
@@ -30,7 +30,7 @@ test('InputChunk round-trips correctly with fire=false', function () {
     expect($decoded->inputTargetX)->toBe(200);
     expect($decoded->inputTargetY)->toBe(-50);
     expect($decoded->inputJump)->toBeFalse();
-    expect($decoded->inputFire)->toBeFalse();
+    expect($decoded->inputFire)->toBe(0);
     expect($decoded->inputHook)->toBeFalse();
     expect($decoded->inputPlayerFlag)->toBe(0);
     expect($decoded->inputWantedWeapon)->toBe(0);
@@ -47,7 +47,7 @@ test('InputChunk round-trips correctly with fire=true', function () {
         inputTargetX: -100,
         inputTargetY: 300,
         inputJump: true,
-        inputFire: true,
+        inputFire: 1,
         inputHook: true,
         inputPlayerFlag: 1,
         inputWantedWeapon: 3,
@@ -65,7 +65,7 @@ test('InputChunk round-trips correctly with fire=true', function () {
     expect($decoded->inputTargetX)->toBe(-100);
     expect($decoded->inputTargetY)->toBe(300);
     expect($decoded->inputJump)->toBeTrue();
-    expect($decoded->inputFire)->toBeTrue();
+    expect($decoded->inputFire)->toBe(1);
     expect($decoded->inputHook)->toBeTrue();
     expect($decoded->inputPlayerFlag)->toBe(1);
     expect($decoded->inputWantedWeapon)->toBe(3);
@@ -82,7 +82,7 @@ test('InputChunk with all zero input round-trips correctly', function () {
         inputTargetX: 0,
         inputTargetY: 0,
         inputJump: false,
-        inputFire: false,
+        inputFire: 0,
         inputHook: false,
         inputPlayerFlag: 0,
         inputWantedWeapon: 0,
@@ -100,7 +100,7 @@ test('InputChunk with all zero input round-trips correctly', function () {
     expect($decoded->inputTargetX)->toBe(0);
     expect($decoded->inputTargetY)->toBe(0);
     expect($decoded->inputJump)->toBeFalse();
-    expect($decoded->inputFire)->toBeFalse();
+    expect($decoded->inputFire)->toBe(0);
     expect($decoded->inputHook)->toBeFalse();
 });
 
@@ -113,7 +113,7 @@ test('InputChunk encode output contains expected bytes', function () {
         inputTargetX: 0,
         inputTargetY: 0,
         inputJump: false,
-        inputFire: false,
+        inputFire: 0,
         inputHook: false,
         inputPlayerFlag: 0,
         inputWantedWeapon: 0,

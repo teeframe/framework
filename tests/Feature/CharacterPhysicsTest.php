@@ -39,7 +39,7 @@ test('character spawns and survives physics ticks at spawn position', function (
     $tee->inputTargetX   = 0;
     $tee->inputTargetY   = 0;
     $tee->inputJump      = false;
-    $tee->inputFire      = false;
+    $tee->inputFire      = 0;
     $tee->inputHook      = false;
 
     $character = new CharacterEntity(clone $spawnPos);
@@ -83,7 +83,7 @@ test('character with walk input survives physics ticks', function () use ($mapPa
     $tee->inputTargetX   = 100;
     $tee->inputTargetY   = 0;
     $tee->inputJump      = false;
-    $tee->inputFire      = false;
+    $tee->inputFire      = 0;
     $tee->inputHook      = false;
 
     $character = new CharacterEntity(clone $spawnPos);
@@ -126,7 +126,7 @@ test('character with hook input survives physics ticks', function () use ($mapPa
     $tee->inputTargetX   = 100;
     $tee->inputTargetY   = 0;
     $tee->inputJump      = false;
-    $tee->inputFire      = false;
+    $tee->inputFire      = 0;
     $tee->inputHook      = true;
 
     $character = new CharacterEntity($spawnPos);
@@ -168,7 +168,7 @@ test('character with firing input survives physics ticks', function () use ($map
     $tee->inputTargetX   = 100;
     $tee->inputTargetY   = -50;  // aiming up-right
     $tee->inputJump      = false;
-    $tee->inputFire      = true;
+    $tee->inputFire      = 1;
     $tee->inputHook      = false;
 
     $character = new CharacterEntity($spawnPos);
@@ -210,7 +210,7 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     $tee->inputTargetX   = 100;
     $tee->inputTargetY   = -100;
     $tee->inputJump      = true;
-    $tee->inputFire      = true;
+    $tee->inputFire      = 1;
     $tee->inputHook      = true;
 
     $character = new CharacterEntity($spawnPos);

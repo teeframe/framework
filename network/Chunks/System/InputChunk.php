@@ -16,7 +16,7 @@ class InputChunk extends AbstractChunk
         public int $inputTargetX,
         public int $inputTargetY,
         public bool $inputJump,
-        public bool $inputFire,
+        public int $inputFire,
         public bool $inputHook,
         public int $inputPlayerFlag,
         public int $inputWantedWeapon,
@@ -36,7 +36,7 @@ class InputChunk extends AbstractChunk
             $payload->extractInt(),
             $payload->extractInt(),
             $payload->extractBool(),
-            $payload->extractBool(),
+            $payload->extractInt(),
             $payload->extractBool(),
             $payload->extractInt(),
             $payload->extractInt(),
@@ -55,7 +55,7 @@ class InputChunk extends AbstractChunk
             ->addInt($this->inputTargetX)
             ->addInt($this->inputTargetY)
             ->addBool($this->inputJump)
-            ->addBool($this->inputFire)
+            ->addInt($this->inputFire)
             ->addBool($this->inputHook)
             ->addInt($this->inputPlayerFlag)
             ->addInt($this->inputWantedWeapon)

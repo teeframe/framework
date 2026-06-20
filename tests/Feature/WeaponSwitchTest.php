@@ -237,14 +237,14 @@ test('weapon switch is blocked during reload', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Fire to trigger reload
-    $tee->inputFire = true;
+    // Fire to trigger reload (inputFire is an incrementing counter; 1 press from prev=0 to cur=1)
+    $tee->inputFire = 1;
+    $tee->prevInputFire = 0;
     $character->doTick();
     expect($character->reloadTimer)->toBeGreaterThan(0);
 
-    // Try to switch during reload
+    // Try to switch during reload (no fire press this tick)
     $tee->inputWantedWeapon = 1; // hammer
-    $tee->inputFire = false;
 
     $character->doTick();
 
@@ -259,22 +259,23 @@ test('queued weapon executes after reload ends', function () {
     $character = createCharacterWithWorld($tee);
 
     // Fire to trigger reload
-    $tee->inputFire = true;
+    $tee->inputFire = 1;
+    $tee->prevInputFire = 0;
     $character->doTick();
 
-    // Queue hammer during reload
+    // Queue hammer during reload (no fire press this tick)
     $tee->inputWantedWeapon = 1;
-    $tee->inputFire = false;
     $character->doTick();
     expect($character->queuedWeapon)->toBe(CharacterEntity::WEAPON_HAMMER);
 
-    // Tick until reload ends
+    // Tick until reload ends (no fire presses)
     while ($character->reloadTimer > 0) {
         $character->doTick();
     }
 
     // Now fire again — doWeaponSwitch should execute before firing
-    $tee->inputFire = true;
+    // Need a new fire press: prevInputFire was saved as 1, set to 2
+    $tee->inputFire = 2;
     $character->doTick();
 
     expect($character->activeWeapon)->toBe(CharacterEntity::WEAPON_HAMMER);
