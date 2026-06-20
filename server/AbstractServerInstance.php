@@ -57,6 +57,7 @@ abstract class AbstractServerInstance
                     return;
                 }
 
+                /** @var array{address: string, port: int} $clientInfo */
                 $this->onPacket($packet, $clientInfo, $socket);
             });
 

@@ -82,7 +82,7 @@ class MapReader
         };
     }
 
-    protected function throwException(string $message): void
+    protected function throwException(string $message): never
     {
         throw new \RuntimeException("$this->path : {$message}");
     }

@@ -41,6 +41,11 @@ class ObjClientInfoItem extends AbstractSnapItem
     {
         $integers   = array_fill(0, $num, 0);
         $bytes      = unpack('c*', $string);
+
+        if ($bytes === false) {
+            return $integers;
+        }
+
         $bytesCount = count($bytes);
         $index      = 0;
 

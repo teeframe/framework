@@ -37,9 +37,9 @@ class MapBufferReader
 
     public function readInt(): int
     {
-        $int = unpack('V', $this->extractFromBuffer(4))[1];
+        $unpacked = unpack('V', $this->extractFromBuffer(4));
 
-        return $int;
+        return $unpacked ? $unpacked[1] : 0;
     }
 
     protected function extractFromBuffer(int $length): string
