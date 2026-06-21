@@ -41,8 +41,10 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         // Check collision
         $collision = $this->world->getMap()->getCollision();
         if ($collision !== null) {
-            [$hit] = $collision->intersectLine($prevPos, $curPos);
+            [$hit, $colPos] = $collision->intersectLine($prevPos, $curPos);
             if ($hit) {
+                $this->position->x = $colPos->x;
+                $this->position->y = $colPos->y;
                 $this->markToDestroy();
 
                 return;

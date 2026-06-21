@@ -237,3 +237,60 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
         expect($val)->toBeInt();
     }
 });
+
+test('hook stops at wall collision point not past it', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    $tee = new PlayerTee;
+    $character = new PvpCharacterEntity(clone $spawnPos);
+    $character->spawn(clone $spawnPos, $tee);
+
+    // Set hook state to flying toward the right
+    $character->hookState = 4; // HOOK_FLYING
+    $character->hookDir = new Vector2(1, 0);
+    $character->hookPos = clone $character->position;
+
+    // Compute full extension point (where hook would go without collision)
+    $fullExtension = new Vector2(
+        $character->hookPos->x + $character->hookDir->x * $character->hookFireSpeed,
+        $character->hookPos->y + $character->hookDir->y * $character->hookFireSpeed,
+    );
+
+    // Check if there's a wall between hookPos and fullExtension
+    [$hit, $expectedColPos] = $collision->intersectLine($character->hookPos, $fullExtension);
+
+    if (! $hit) {
+        // No wall in range, can't test collision — but hook should still extend
+        return;
+    }
+
+    // Run the hook state machine
+    $ref = new ReflectionClass($character);
+    $method = $ref->getMethod('tickHookStateMachine');
+    $method->setAccessible(true);
+    $method->invoke($character, $collision);
+
+    // hookPos must be at the collision point, not past it (at the full extension)
+    expect($character->hookPos->x)->toBe($expectedColPos->x);
+    expect($character->hookPos->y)->toBe($expectedColPos->y);
+});

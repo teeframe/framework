@@ -225,3 +225,37 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
         expect($val)->toBeInt();
     }
 });
+
+test('projectile snap uses start position not current position', function () {
+    $startPos = new Vector2(100, 200);
+
+    $proj = new PvpProjectileEntity(
+        position: clone $startPos,
+        direction: new Vector2(1, 0),
+        type: PvpProjectileEntity::WEAPON_GUN,
+    );
+
+    // Simulate setWorld to set startTick
+    $ref = new ReflectionClass($proj);
+    $prop = $ref->getProperty('startTick');
+    $prop->setAccessible(true);
+    $prop->setValue($proj, 42);
+
+    // Simulate doTick advancing the position (as if projectile flew forward)
+    $proj->position->x = 500;
+    $proj->position->y = 600;
+
+    $tee = new PlayerTee;
+    $snaps = $proj->doSnap($tee);
+    $ints = $snaps[0]->getInts();
+
+    // Snap x/y must be startPos (100, 200), not current position (500, 600).
+    // The client uses snap x/y as the starting point and computes displacement
+    // from direction, startTick, and curvature. Sending the current position
+    // would cause the client to double-apply displacement.
+    expect($ints[0])->toBe(100);
+    expect($ints[1])->toBe(200);
+
+    // startTick must be correct
+    expect($ints[5])->toBe(42);
+});

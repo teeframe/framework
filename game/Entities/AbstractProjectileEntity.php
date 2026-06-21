@@ -59,8 +59,8 @@ abstract class AbstractProjectileEntity extends AbstractEntity
     {
         return [
             new ObjProjectileItem(
-                x: (int) $this->position->x,
-                y: (int) $this->position->y,
+                x: (int) $this->startPos->x,
+                y: (int) $this->startPos->y,
                 velX: (int) ($this->direction->x * 100),
                 velY: (int) ($this->direction->y * 100),
                 type: $this->type,
