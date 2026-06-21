@@ -35,7 +35,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     // Fire a projectile to the right
     $proj = new ProjectileEntity(
         position: clone $spawnPos,
-        direction: new Vector2(2200, 0),  // gun speed right
+        direction: new Vector2(1 * 2200, 0),  // full velocity (dir * speed)
         type: 1,
     );
 
@@ -208,7 +208,7 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
 
     $proj = new ProjectileEntity(
         position: clone $spawnPos,
-        direction: new Vector2(2200, 0),
+        direction: new Vector2(1 * 2200, 0),
         type: 1,
     );
 
