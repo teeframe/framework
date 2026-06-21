@@ -3,6 +3,7 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
 use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
 
 /**
@@ -11,6 +12,8 @@ use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
  */
 class PvpCharacterEntity extends AbstractCharacterEntity
 {
+    public int $damageTaken = 0;
+    public int $damageTakenTick = 0;
     protected function shootHammer(): int
     {
         $world = $this->world;
@@ -229,6 +232,54 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         if ($this->aWeapons[$this->activeWeapon]['ammo'] > 0) {
             $this->aWeapons[$this->activeWeapon]['ammo']--;
+        }
+    }
+
+    public function takeDamage(Vector2 $force, int $damage, AbstractCharacterEntity $inflictor): void
+    {
+        parent::takeDamage($force, $damage, $inflictor);
+
+        if (! $this->alive || $this->world === null || $damage <= 0) {
+            return;
+        }
+
+        $this->damageTaken++;
+
+        $currentTick = $this->world->getCurrentTick();
+
+        if ($currentTick < $this->damageTakenTick + 25) {
+            // make sure that the damage indicators don't group together
+            $this->createDamageInd($this->damageTaken * 0.25, $damage);
+        } else {
+            $this->damageTaken = 0;
+            $this->createDamageInd(0, $damage);
+        }
+
+        $this->damageTakenTick = $currentTick;
+    }
+
+    /**
+     * Create damage indicator events.
+     * Ported from Teeworlds 0.6 CGameContext::CreateDamageInd().
+     */
+    private function createDamageInd(float $angleMod, int $amount): void
+    {
+        if ($this->world === null) {
+            return;
+        }
+
+        $a = 3 * M_PI / 2 + $angleMod;
+        $s = $a - M_PI / 3;
+        $e = $a + M_PI / 3;
+
+        for ($i = 0; $i < $amount; $i++) {
+            $f = $s + ($e - $s) * (($i + 1) / ($amount + 2));
+
+            $this->world->addEvent(new ObjEventDamageIndItem(
+                x: (int) round($this->position->x),
+                y: (int) round($this->position->y),
+                angle: (int) round($f * 256.0),
+            ));
         }
     }
 }

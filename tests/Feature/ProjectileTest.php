@@ -652,3 +652,136 @@ test('projectile does not collide with owner character', function () use ($mapPa
     // Owner should not have taken damage (projectile skips owner)
     expect($ownerChar->health)->toBe(10);
 });
+
+test('damage indicators are created on takeDamage', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    // Attacker
+    $attackerTee = new PlayerTee;
+    $world->addTee($attackerTee);
+
+    $attacker = new PvpCharacterEntity(clone $spawnPos);
+    $attacker->spawn(clone $spawnPos, $attackerTee);
+    $world->addEntity($attacker);
+
+    // Target
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+
+    $target = new PvpCharacterEntity(new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $target->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $targetTee);
+    $world->addEntity($target);
+
+    // Deal 3 damage to target
+    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+
+    // Check damage indicator events were created (one per point of damage)
+    $ref = new ReflectionClass($world);
+    $prop = $ref->getProperty('pendingEvents');
+    $prop->setAccessible(true);
+    $events = $prop->getValue($world);
+
+    $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof \TeeFrame\Network\SnapItems\ObjEventDamageIndItem));
+    expect($damageInds)->toHaveCount(3);
+
+    // Each damage indicator should have valid angle values
+    foreach ($damageInds as $ind) {
+        $ints = $ind->getInts();
+        expect($ints)->toHaveCount(3);
+        expect($ints[0])->toBe((int) round($target->position->x));
+        expect($ints[1])->toBe((int) round($target->position->y));
+        expect($ints[2])->toBeInt();
+    }
+});
+
+test('damage indicators group when damage taken in quick succession', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    // Attacker
+    $attackerTee = new PlayerTee;
+    $world->addTee($attackerTee);
+
+    $attacker = new PvpCharacterEntity(clone $spawnPos);
+    $attacker->spawn(clone $spawnPos, $attackerTee);
+    $world->addEntity($attacker);
+
+    // Target
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+
+    $target = new PvpCharacterEntity(new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $target->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $targetTee);
+    $world->addEntity($target);
+
+    // First hit: 3 damage
+    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+
+    // Second hit within 25 ticks: 2 damage — should use angle offset
+    $target->takeDamage(new Vector2(0, 0), 2, $attacker);
+
+    // Total damage indicator events: 3 + 2 = 5
+    $ref = new ReflectionClass($world);
+    $prop = $ref->getProperty('pendingEvents');
+    $prop->setAccessible(true);
+    $events = $prop->getValue($world);
+
+    $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof \TeeFrame\Network\SnapItems\ObjEventDamageIndItem));
+    expect($damageInds)->toHaveCount(5);
+
+    // damageTaken should be incremented (grouping counter)
+    expect($target->damageTaken)->toBe(2);
+});

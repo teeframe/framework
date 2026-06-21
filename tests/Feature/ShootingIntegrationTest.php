@@ -427,3 +427,79 @@ test('character snap id matches tee index when pickups are present', function ()
     // otherwise the DDNet client won't recognize it as the local player.
     expect($charSnap->getId())->toBe($tee->teeIndex);
 });
+
+test('character death sets respawn on tee and notifies game controller', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(100);
+
+    $deathNotified = false;
+    $deathVictim   = null;
+    $deathKiller   = -1;
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public int $deathNotifiedCount = 0;
+
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    // Override game controller to track onCharacterDeath calls
+    $worldRef = new ReflectionClass($world);
+    $gcProp = $worldRef->getProperty('gameController');
+    $gcProp->setAccessible(true);
+
+    $gc = new class($tickHandler) extends \TeeFrame\Game\EmptyGameController
+    {
+        public bool $deathCalled = false;
+        public ?\TeeFrame\Game\Entities\AbstractCharacterEntity $victim = null;
+        public int $killerTeeIndex = -1;
+
+        public function onCharacterDeath(\TeeFrame\Game\Entities\AbstractCharacterEntity $victim, int $killerTeeIndex): void
+        {
+            $this->deathCalled = true;
+            $this->victim = $victim;
+            $this->killerTeeIndex = $killerTeeIndex;
+        }
+    };
+    $gcProp->setValue($world, $gc);
+
+    $spawnPos = new Vector2(50 * 32, 25 * 32);
+
+    $attackerTee = new PlayerTee;
+    $world->addTee($attackerTee);
+
+    $attacker = new PvpCharacterEntity(clone $spawnPos);
+    $attacker->spawn(clone $spawnPos, $attackerTee);
+    $world->addEntity($attacker);
+
+    $victimTee = new PlayerTee;
+    $world->addTee($victimTee);
+
+    $victim = new PvpCharacterEntity(new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $victim->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $victimTee);
+    $world->addEntity($victim);
+
+    // Kill the victim
+    $victim->takeDamage(new Vector2(0, 0), 10, $attacker);
+
+    // Victim should be dead
+    expect($victim->alive)->toBeFalse();
+
+    // Game controller should have been notified
+    expect($gc->deathCalled)->toBeTrue();
+    expect($gc->victim)->toBe($victim);
+    expect($gc->killerTeeIndex)->toBe($attackerTee->teeIndex);
+
+    // Tee should be set to respawn
+    expect($victimTee->spawning)->toBeTrue();
+    expect($victimTee->respawnTick)->toBe($tickHandler->get() + 25); // 0.5s = 25 ticks
+});

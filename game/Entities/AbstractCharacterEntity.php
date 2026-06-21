@@ -124,10 +124,22 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->attackTick   = 0;
     }
 
-    public function die(): void
+    public function die(int $killerTeeIndex = -1): void
     {
         $this->alive = false;
         $this->markToDestroy();
+
+        // Notify game controller for scoring
+        if ($this->world !== null) {
+            $this->world->gameController()->onCharacterDeath($this, $killerTeeIndex);
+        }
+
+        // Set respawn on the tee
+        if ($this->tee instanceof PlayerTee) {
+            $respawnDelay = $killerTeeIndex === -1 ? 150 : 25; // 3s for self-kill, 0.5s normal
+            $this->tee->respawnTick = $this->world !== null ? $this->world->getCurrentTick() + $respawnDelay : $respawnDelay;
+            $this->tee->spawning = true;
+        }
     }
 
     public function increaseHealth(int $amount): bool
@@ -178,7 +190,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->vel->y += $force->y;
 
         if ($this->health <= 0) {
-            $this->die();
+            $killerTeeIndex = $inflictor->tee !== null ? $inflictor->tee->teeIndex : -1;
+            $this->die($killerTeeIndex);
 
             // Add death event
             if ($this->world !== null) {
