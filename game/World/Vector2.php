@@ -52,8 +52,13 @@ class Vector2
 
     public function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd): Vector2
     {
-        $line           = $lineEnd->diff($lineStart);
-        $lineLength     = $line->length();
+        $line       = $lineEnd->diff($lineStart);
+        $lineLength = $line->length();
+
+        if ($lineLength < 0.0001) {
+            return clone $lineStart;
+        }
+
         $lineNormalized = $line->normalize();
 
         $point = $this->diff($lineStart);

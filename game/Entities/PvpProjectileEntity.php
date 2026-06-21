@@ -40,29 +40,40 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         $prevPos = $this->getPos($pt);
         $curPos  = $this->getPos($ct);
 
-        // Check collision
+        // Check map collision
         $collision = $this->world->getMap()->getCollision();
+        $mapCollide = false;
         if ($collision !== null) {
             [$hit, $colPos] = $collision->intersectLine($prevPos, $curPos);
             if ($hit) {
-                $this->position->x = $colPos->x;
-                $this->position->y = $colPos->y;
-
-                if ($this->type === self::WEAPON_GRENADE) {
-                    $this->explode($colPos);
-                }
-
-                $this->markToDestroy();
-
-                return;
+                $curPos = $colPos;
+                $mapCollide = true;
             }
+        }
+
+        // Check character collision (always, using potentially shortened curPos)
+        [$targetChar, $charHitPos] = $this->intersectCharacter($prevPos, $curPos);
+        if ($targetChar !== null) {
+            $curPos = $charHitPos;
         }
 
         $this->lifeSpan--;
 
-        if ($this->lifeSpan < 0) {
+        if ($targetChar !== null || $mapCollide || $this->lifeSpan < 0) {
+            $this->position->x = $curPos->x;
+            $this->position->y = $curPos->y;
+
             if ($this->type === self::WEAPON_GRENADE) {
                 $this->explode($curPos);
+            } elseif ($targetChar !== null) {
+                // Direct hit damage for gun/shotgun
+                $ownerChar = $this->findOwnerCharacter();
+                $inflictor = $ownerChar ?? $targetChar;
+                $targetChar->takeDamage(
+                    new Vector2($this->direction->x * 0.001, $this->direction->y * 0.001),
+                    1,
+                    $inflictor,
+                );
             }
 
             $this->markToDestroy();
@@ -73,6 +84,63 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         // Update visual position to current
         $this->position->x = $curPos->x;
         $this->position->y = $curPos->y;
+    }
+
+    /**
+     * Find the closest character intersecting the line segment.
+     * Ported from Teeworlds 0.6 CGameWorld::IntersectCharacter().
+     *
+     * @return array{0: AbstractCharacterEntity|null, 1: Vector2}
+     */
+    private function intersectCharacter(Vector2 $pos0, Vector2 $pos1): array
+    {
+        if ($this->world === null) {
+            return [null, $pos1];
+        }
+
+        $closestLen = $pos0->distance($pos1) * 100.0;
+        $closest    = null;
+        $closestPos = $pos1;
+
+        foreach ($this->world->getEntities() as $entity) {
+            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
+                continue;
+            }
+
+            // Skip owner
+            if ($entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
+                continue;
+            }
+
+            $intersectPos = $entity->position->closestPointOnLine($pos0, $pos1);
+            $len = $entity->position->distance($intersectPos);
+
+            if ($len < AbstractCharacterEntity::PHYS_SIZE * 0.5 + $this->getHitBoxRadius()) {
+                $lineDist = $pos0->distance($intersectPos);
+                if ($lineDist < $closestLen) {
+                    $closestLen = $lineDist;
+                    $closest    = $entity;
+                    $closestPos = $intersectPos;
+                }
+            }
+        }
+
+        return [$closest, $closestPos];
+    }
+
+    private function findOwnerCharacter(): ?AbstractCharacterEntity
+    {
+        if ($this->world === null) {
+            return null;
+        }
+
+        foreach ($this->world->getEntities() as $entity) {
+            if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
+                return $entity;
+            }
+        }
+
+        return null;
     }
 
     private function explode(Vector2 $pos): void
@@ -88,13 +156,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         ));
 
         // Find the owner character for damage attribution
-        $ownerChar = null;
-        foreach ($this->world->getEntities() as $entity) {
-            if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
-                $ownerChar = $entity;
-                break;
-            }
-        }
+        $ownerChar = $this->findOwnerCharacter();
 
         if ($ownerChar === null) {
             return;

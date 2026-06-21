@@ -392,22 +392,77 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             }
 
             [$hit, $colPos] = $collision->intersectLine($this->hookPos, $newHookPos);
+            $goingToHitGround = false;
+            $goingToRetract   = false;
+
             if ($hit) {
                 if ($hit & Collision::COLFLAG_NOHOOK) {
-                    $this->triggeredEvents |= 0x20;
-                    $this->hookState = 1;
+                    $goingToRetract = true;
                 } else {
-                    $this->triggeredEvents |= 0x10;
-                    $this->hookState = 5;
+                    $goingToHitGround = true;
                 }
 
                 $newHookPos = $colPos;
+            }
+
+            // Check against other players
+            if ($this->world !== null && $this->playerHooking > 0) {
+                $closestDist = PHP_FLOAT_MAX;
+
+                foreach ($this->world->getEntities() as $entity) {
+                    if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
+                        continue;
+                    }
+
+                    $closestPoint = $entity->position->closestPointOnLine($this->hookPos, $newHookPos);
+                    $dist = $entity->position->distance($closestPoint);
+
+                    if ($dist < self::PHYS_SIZE + 2.0) {
+                        $lineDist = $this->hookPos->distance($closestPoint);
+                        if ($lineDist < $closestDist) {
+                            $closestDist = $lineDist;
+                            $this->triggeredEvents |= 0x08; // COREEVENT_HOOK_ATTACH_PLAYER
+                            $this->hookState = 5; // HOOK_GRABBED
+                            $this->hookedPlayer = $entity->tee !== null ? $entity->tee->teeIndex : -1;
+                        }
+                    }
+                }
+            }
+
+            if ($this->hookState === 4) {
+                if ($goingToHitGround) {
+                    $this->triggeredEvents |= 0x10;
+                    $this->hookState = 5;
+                } elseif ($goingToRetract) {
+                    $this->triggeredEvents |= 0x20;
+                    $this->hookState = 1;
+                }
             }
 
             $this->hookPos = $newHookPos;
         }
 
         if ($this->hookState === 5) {
+            // Follow hooked player's position
+            if ($this->hookedPlayer !== -1 && $this->world !== null) {
+                $hookedChar = null;
+                foreach ($this->world->getEntities() as $entity) {
+                    if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex === $this->hookedPlayer) {
+                        $hookedChar = $entity;
+                        break;
+                    }
+                }
+
+                if ($hookedChar !== null) {
+                    $this->hookPos = clone $hookedChar->position;
+                } else {
+                    // Hooked player left — release hook
+                    $this->hookedPlayer = -1;
+                    $this->hookState = -1;
+                    $this->hookPos = $this->position;
+                }
+            }
+
             if ($this->hookedPlayer === -1 && $this->hookPos->distance($this->position) > 46.0) {
                 $hookVel = $this->hookPos->diff($this->position)->normalize();
                 $hookVel->x *= $this->hookDragAccel;

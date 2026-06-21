@@ -429,3 +429,226 @@ test('non-grenade projectile does not create explosion event', function () use (
     $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
     expect($explosionEvents)->toHaveCount(0);
 });
+
+test('grenade collides with character and explodes', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    // Owner character at spawn
+    $ownerTee = new PlayerTee;
+    $world->addTee($ownerTee);
+
+    $ownerChar = new PvpCharacterEntity(clone $spawnPos);
+    $ownerChar->spawn(clone $spawnPos, $ownerTee);
+    $world->addEntity($ownerChar);
+
+    // Target character 50 units to the right (within projectile path)
+    $targetPos = new Vector2($spawnPos->x + 50, $spawnPos->y);
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+
+    $targetChar = new PvpCharacterEntity(clone $targetPos);
+    $targetChar->spawn(clone $targetPos, $targetTee);
+    $world->addEntity($targetChar);
+
+    expect($targetChar->health)->toBe(10);
+
+    // Grenade fired to the right from offset position
+    $offset = 28 * 0.75; // PHYS_SIZE * 0.75
+    $proj = new PvpProjectileEntity(
+        position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
+        direction: new Vector2(1, 0),
+        type: PvpProjectileEntity::WEAPON_GRENADE,
+        owner: $ownerTee->teeIndex,
+    );
+    $proj->setTuning(1000.0, 7.0, 100);
+    $world->addEntity($proj);
+
+    // Tick until projectile hits something or expires
+    for ($i = 0; $i < 50; $i++) {
+        $tickHandler->next();
+        $proj->doTick();
+        if ($proj->isToDestroy()) {
+            break;
+        }
+    }
+
+    // Projectile should be destroyed (hit the character)
+    expect($proj->isToDestroy())->toBeTrue();
+
+    // Target should have taken explosion damage
+    expect($targetChar->health)->toBeLessThan(10);
+
+    // Explosion event should have been created
+    $ref = new ReflectionClass($world);
+    $prop = $ref->getProperty('pendingEvents');
+    $prop->setAccessible(true);
+    $events = $prop->getValue($world);
+
+    $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
+    expect($explosionEvents)->toHaveCount(1);
+});
+
+test('gun projectile damages character on hit', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    // Owner character at spawn
+    $ownerTee = new PlayerTee;
+    $world->addTee($ownerTee);
+
+    $ownerChar = new PvpCharacterEntity(clone $spawnPos);
+    $ownerChar->spawn(clone $spawnPos, $ownerTee);
+    $world->addEntity($ownerChar);
+
+    // Target character 30 units to the right (hit on first tick, before any wall)
+    $targetPos = new Vector2($spawnPos->x + 30, $spawnPos->y);
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+
+    $targetChar = new PvpCharacterEntity(clone $targetPos);
+    $targetChar->spawn(clone $targetPos, $targetTee);
+    $world->addEntity($targetChar);
+
+    expect($targetChar->health)->toBe(10);
+
+    // Gun projectile fired to the right from offset position
+    $offset = 28 * 0.75; // PHYS_SIZE * 0.75
+    $proj = new PvpProjectileEntity(
+        position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
+        direction: new Vector2(1, 0),
+        type: PvpProjectileEntity::WEAPON_GUN,
+        owner: $ownerTee->teeIndex,
+    );
+    $proj->setTuning(2200.0, 1.25, 100);
+    $world->addEntity($proj);
+
+    // Tick until projectile hits something or expires
+    for ($i = 0; $i < 50; $i++) {
+        $tickHandler->next();
+        $proj->doTick();
+        if ($proj->isToDestroy()) {
+            break;
+        }
+    }
+
+    // Projectile should be destroyed (hit the character)
+    expect($proj->isToDestroy())->toBeTrue();
+
+    // Target should have taken 1 damage from direct hit
+    expect($targetChar->health)->toBe(9);
+});
+
+test('projectile does not collide with owner character', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    // Owner character at spawn position
+    $ownerTee = new PlayerTee;
+    $world->addTee($ownerTee);
+
+    $ownerChar = new PvpCharacterEntity(clone $spawnPos);
+    $ownerChar->spawn(clone $spawnPos, $ownerTee);
+    $world->addEntity($ownerChar);
+
+    // Gun projectile fired upward from offset position (open sky)
+    $offset = 28 * 0.75; // PHYS_SIZE * 0.75
+    $proj = new PvpProjectileEntity(
+        position: new Vector2($spawnPos->x, $spawnPos->y - $offset),
+        direction: new Vector2(0, -1),
+        type: PvpProjectileEntity::WEAPON_GUN,
+        owner: $ownerTee->teeIndex,
+    );
+    $proj->setTuning(2200.0, 1.25, 100);
+    $world->addEntity($proj);
+
+    // Tick a few times — projectile should survive (not hit owner)
+    for ($i = 0; $i < 5; $i++) {
+        $tickHandler->next();
+        $proj->doTick();
+        if ($proj->isToDestroy()) {
+            break;
+        }
+    }
+
+    // Owner should not have taken damage (projectile skips owner)
+    expect($ownerChar->health)->toBe(10);
+});
