@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Game;
 
+use TeeFrame\Game\Entities\AbstractCharacterEntity;
 use TeeFrame\Map\Map;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
@@ -129,6 +130,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $entity->setWorld($this);
 
         $this->entities[] = $entity;
+    }
+
+    /**
+     * @return AbstractEntity[]
+     */
+    public function getEntities(): array
+    {
+        return $this->entities;
     }
 
     public function removeEntity(AbstractEntity $entity): void
@@ -266,15 +275,23 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 continue;
             }
 
-            $entitySnaps        = $entity->doSnap($requestingTee);
-            $entityAllocatedIds = $entity->getAllocatedSnapIds();
+            $entitySnaps = $entity->doSnap($requestingTee);
 
-            while (count($entityAllocatedIds) < count($entitySnaps)) {
-                $entity->addAllocatedSnapId($entityAllocatedIds[] = $this->snapIdPool->allocId());
-            }
+            // Character entities must use the tee's index as snap ID
+            if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex >= 0) {
+                foreach ($entitySnaps as $snap) {
+                    $snap->setId($entity->tee->teeIndex);
+                }
+            } else {
+                $entityAllocatedIds = $entity->getAllocatedSnapIds();
 
-            foreach ($entitySnaps as $i => $snap) {
-                $snap->setId($entityAllocatedIds[$i]);
+                while (count($entityAllocatedIds) < count($entitySnaps)) {
+                    $entity->addAllocatedSnapId($entityAllocatedIds[] = $this->snapIdPool->allocId());
+                }
+
+                foreach ($entitySnaps as $i => $snap) {
+                    $snap->setId($entityAllocatedIds[$i]);
+                }
             }
 
             $snaps = [...$snaps, ...$entitySnaps];
