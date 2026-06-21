@@ -8,6 +8,16 @@ class Vector2
     {
     }
 
+    public function add(Vector2 $other): Vector2
+    {
+        return new Vector2($this->x + $other->x, $this->y + $other->y);
+    }
+
+    public function mul(float $scalar): Vector2
+    {
+        return new Vector2($this->x * $scalar, $this->y * $scalar);
+    }
+
     public function diff(Vector2 $other): Vector2
     {
         return new Vector2($this->x - $other->x, $this->y - $other->y);
