@@ -74,4 +74,10 @@ class NetworkMessages
     const NETOBJTYPE_PLAYERINFO = 10;
     const NETOBJTYPE_CLIENTINFO = 11;
     const NETOBJTYPE_SPECTATOR  = 12;
+
+    /*
+     * Event Types
+     */
+    const NETEVENTTYPE_HAMMERHIT = 16;
+    const NETEVENTTYPE_DEATH     = 17;
 }
