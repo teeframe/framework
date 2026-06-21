@@ -377,3 +377,53 @@ test('projectile snap velocity is normalized direction times 100', function () u
     expect($velMagnitude)->toBeGreaterThan(95);
     expect($velMagnitude)->toBeLessThan(105);
 });
+
+test('character snap id matches tee index when pickups are present', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    // Add pickups first (simulating PickupSpawner)
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer !== null) {
+        \TeeFrame\Game\World\PickupSpawner::spawn($world, $gameLayer);
+    }
+
+    // Now add a player character
+    $spawnPos = new Vector2(50 * 32, 25 * 32);
+    $tee = new PlayerTee;
+    $world->addTee($tee);
+
+    $character = new CharacterEntity($spawnPos);
+    $character->spawn($spawnPos, $tee);
+    $world->addEntity($character);
+
+    // Set viewPosition to match character position (distance culling)
+    $tee->viewPosition = clone $spawnPos;
+
+    // Get the world snap
+    $snaps = $world->doSnap($tee);
+
+    // Find the character snap item
+    $charSnaps = array_filter($snaps, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_CHARACTER);
+    expect($charSnaps)->not->toBeEmpty();
+
+    $charSnap = array_values($charSnaps)[0];
+
+    // The character snap ID must match the tee's index (client ID),
+    // otherwise the DDNet client won't recognize it as the local player.
+    expect($charSnap->getId())->toBe($tee->teeIndex);
+});
