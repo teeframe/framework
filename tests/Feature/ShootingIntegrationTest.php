@@ -177,6 +177,99 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     expect($target->health)->toBeLessThan(10);
 });
 
+test('hammer hits target at edge of reach range', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $world = createWorld($map);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
+    $spawnPos = new Vector2(50 * 32, 25 * 32);
+
+    // Create attacker looking right
+    $attackerTee = new PlayerTee;
+    $attackerTee->inputDirection = 1;
+    $attackerTee->inputTargetX = 100;
+    $attackerTee->inputTargetY = 0;
+
+    $attacker = new PvpCharacterEntity($spawnPos);
+    $attacker->spawn($spawnPos, $attackerTee);
+    $world->addEntity($attacker);
+    $attacker->tickPhysics(1, 100, 0, false, false, $collision);
+    $attacker->move($collision);
+
+    // ProjStartPos = spawnPos + right * PHYS_SIZE * 0.75 = spawnPos + right * 21
+    // Hit radius = PHYS_SIZE * 1.5 = 42
+    // Max reach from spawnPos: 21 + 42 = 63
+    // Place target at spawnPos + 50 (well within max range, but beyond the old 14+21=35 range)
+    $targetPos = new Vector2($spawnPos->x + 50, $spawnPos->y);
+
+    $targetTee = new PlayerTee;
+    $target = new class($targetPos) extends PvpCharacterEntity {};
+    $target->spawn($targetPos, $targetTee);
+    $world->addEntity($target);
+
+    // Shoot hammer
+    $ref = new ReflectionClass($attacker);
+    $method = $ref->getMethod('shootHammer');
+    $method->setAccessible(true);
+    $reloadTimer = $method->invoke($attacker);
+
+    // Should hit (return 16 = hit cooldown)
+    expect($reloadTimer)->toBe(16);
+    expect($target->health)->toBeLessThan(10);
+});
+
+test('hammer does not hit target beyond reach range', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $world = createWorld($map);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
+    $spawnPos = new Vector2(50 * 32, 25 * 32);
+
+    // Create attacker looking right
+    $attackerTee = new PlayerTee;
+    $attackerTee->inputDirection = 1;
+    $attackerTee->inputTargetX = 100;
+    $attackerTee->inputTargetY = 0;
+
+    $attacker = new PvpCharacterEntity($spawnPos);
+    $attacker->spawn($spawnPos, $attackerTee);
+    $world->addEntity($attacker);
+    $attacker->tickPhysics(1, 100, 0, false, false, $collision);
+    $attacker->move($collision);
+
+    // Place target beyond max range (max reach = 21 + 42 = 63 from spawnPos)
+    $targetPos = new Vector2($spawnPos->x + 70, $spawnPos->y);
+
+    $targetTee = new PlayerTee;
+    $target = new class($targetPos) extends PvpCharacterEntity {};
+    $target->spawn($targetPos, $targetTee);
+    $world->addEntity($target);
+
+    // Shoot hammer
+    $ref = new ReflectionClass($attacker);
+    $method = $ref->getMethod('shootHammer');
+    $method->setAccessible(true);
+    $reloadTimer = $method->invoke($attacker);
+
+    // Should NOT hit (return 6 = no-hit cooldown)
+    expect($reloadTimer)->toBe(6);
+    expect($target->health)->toBe(10);
+});
+
 test('projectile getPos returns forward displacement', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         return;

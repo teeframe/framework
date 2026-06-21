@@ -50,6 +50,11 @@ class Vector2
         );
     }
 
+    public function dot(Vector2 $other): float
+    {
+        return $this->x * $other->x + $this->y * $other->y;
+    }
+
     public function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd): Vector2
     {
         $line       = $lineEnd->diff($lineStart);

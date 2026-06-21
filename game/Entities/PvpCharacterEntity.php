@@ -31,7 +31,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         );
 
         $hits = 0;
-        $hitRadius = self::PHYS_SIZE * 0.5;
+        $hitRadius = self::PHYS_SIZE * 1.5; // m_ProximityRadius + m_ProximityRadius*0.5 = 28 + 14 = 42
 
         foreach ($world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity) {

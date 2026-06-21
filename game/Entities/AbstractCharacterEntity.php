@@ -381,6 +381,55 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         $this->tickHookStateMachine($collision);
 
+        // Handle player <-> player collision and hook influence
+        if ($this->world !== null) {
+            foreach ($this->world->getEntities() as $entity) {
+                if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
+                    continue;
+                }
+
+                $distance = $this->position->distance($entity->position);
+                $dir = $this->position->diff($entity->position);
+                $dirLen = $dir->length();
+                if ($dirLen > 0.0) {
+                    $dir = $dir->normalize();
+                } else {
+                    $dir = new Vector2(1, 0);
+                }
+
+                // Player collision
+                if ($this->playerCollision > 0 && $distance < $physSize * 1.25 && $distance > 0.0) {
+                    $a = ($physSize * 1.45 - $distance);
+                    $velocity = 0.5;
+
+                    if ($this->vel->length() > 0.0001) {
+                        $velocity = 1 - ($this->vel->normalize()->dot($dir) + 1) / 2;
+                    }
+
+                    $this->vel->x += $dir->x * $a * ($velocity * 0.75);
+                    $this->vel->y += $dir->y * $a * ($velocity * 0.75);
+                    $this->vel->x *= 0.85;
+                    $this->vel->y *= 0.85;
+                }
+
+                // Handle hook influence
+                if ($entity->tee !== null && $this->hookedPlayer === $entity->tee->teeIndex && $this->playerHooking > 0) {
+                    if ($distance > $physSize * 1.50) {
+                        $hookAccel = $this->hookDragAccel * ($distance / $this->hookLength);
+                        $hookDragSpeed = $this->hookDragSpeed;
+
+                        // add force to the hooked player
+                        $entity->vel->x = $this->saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $entity->vel->x, $hookAccel * $dir->x * 1.5);
+                        $entity->vel->y = $this->saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $entity->vel->y, $hookAccel * $dir->y * 1.5);
+
+                        // add a little bit force to the guy who has the grip
+                        $this->vel->x = $this->saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $this->vel->x, -$hookAccel * $dir->x * 0.25);
+                        $this->vel->y = $this->saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $this->vel->y, -$hookAccel * $dir->y * 0.25);
+                    }
+                }
+            }
+        }
+
         $speed = $this->vel->length();
         if ($speed > 6000) {
             $this->vel = $this->vel->normalize();

@@ -294,3 +294,61 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
     expect($character->hookPos->x)->toBe($expectedColPos->x);
     expect($character->hookPos->y)->toBe($expectedColPos->y);
 });
+
+test('players push each other apart when overlapping', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    // Create world so tickPhysics can access other entities
+    $world = new class('test', new \TeeFrame\Core\TickHandler, $map) extends \TeeFrame\Game\AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    // Player 1 at spawn
+    $tee1 = new PlayerTee;
+    $char1 = new PvpCharacterEntity(clone $spawnPos);
+    $char1->spawn(clone $spawnPos, $tee1);
+    $world->addEntity($char1);
+
+    // Player 2 at same position (overlapping)
+    $tee2 = new PlayerTee;
+    $char2 = new PvpCharacterEntity(clone $spawnPos);
+    $char2->spawn(clone $spawnPos, $tee2);
+    $world->addEntity($char2);
+
+    // Run one physics tick for both — they should push apart
+    $char1->tickPhysics(0, 0, 0, false, false, $collision);
+    $char1->move($collision);
+    $char2->tickPhysics(0, 0, 0, false, false, $collision);
+    $char2->move($collision);
+
+    // After collision resolution, velocities should push them apart
+    // (collision modifies vel, move applies position change)
+    $dist = $char1->position->distance($char2->position);
+    expect($dist)->toBeGreaterThan(0);
+});
