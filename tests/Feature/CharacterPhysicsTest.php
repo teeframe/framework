@@ -1,13 +1,13 @@
 <?php
 
-use TeeFrame\Game\Entities\CharacterEntity;
+use TeeFrame\Game\Entities\PvpCharacterEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 
-$mapPath = __DIR__ . '/../../../teeworlds/data/maps/dm1.map';
+$mapPath = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('character spawns and survives physics ticks at spawn position', function () use ($mapPath, $mapExists) {
@@ -42,7 +42,7 @@ test('character spawns and survives physics ticks at spawn position', function (
     $tee->inputFire      = 0;
     $tee->inputHook      = false;
 
-    $character = new CharacterEntity(clone $spawnPos);
+    $character = new PvpCharacterEntity(clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
     for ($tick = 0; $tick < 100; $tick++) {
@@ -86,7 +86,7 @@ test('character with walk input survives physics ticks', function () use ($mapPa
     $tee->inputFire      = 0;
     $tee->inputHook      = false;
 
-    $character = new CharacterEntity(clone $spawnPos);
+    $character = new PvpCharacterEntity(clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
     for ($tick = 0; $tick < 100; $tick++) {
@@ -129,7 +129,7 @@ test('character with hook input survives physics ticks', function () use ($mapPa
     $tee->inputFire      = 0;
     $tee->inputHook      = true;
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
 
     for ($tick = 0; $tick < 50; $tick++) {
@@ -171,7 +171,7 @@ test('character with firing input survives physics ticks', function () use ($map
     $tee->inputFire      = 1;
     $tee->inputHook      = false;
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
 
     for ($tick = 0; $tick < 50; $tick++) {
@@ -213,7 +213,7 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     $tee->inputFire      = 1;
     $tee->inputHook      = true;
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
 
     // Run a few ticks to exercise hook state machine
@@ -226,12 +226,14 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     $snaps = $character->doSnap($tee);
     expect($snaps)->toHaveCount(1);
 
-    $ints = $snaps[0]->getInts();
-    expect($ints)->toHaveCount(22); // ObjCharacterItem has 22 fields
+    $item = $snaps[0];
+    expect($item->getItemId())->toBe(9); // NETOBJTYPE_CHARACTER
 
-    // All values should be finite integers
+    $ints = $item->getInts();
+    expect(count($ints))->toBe(22);
+
+    // All ints should be finite
     foreach ($ints as $val) {
-        expect(is_finite($val))->toBeTrue();
         expect($val)->toBeInt();
     }
 });

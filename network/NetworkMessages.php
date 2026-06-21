@@ -80,4 +80,12 @@ class NetworkMessages
      */
     const NETEVENTTYPE_HAMMERHIT = 16;
     const NETEVENTTYPE_DEATH     = 17;
+
+    /*
+     * Pickup Types
+     */
+    const POWERUP_HEALTH = 0;
+    const POWERUP_ARMOR  = 1;
+    const POWERUP_WEAPON = 2;
+    const POWERUP_NINJA  = 3;
 }

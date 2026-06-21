@@ -1,12 +1,12 @@
 <?php
 
-use TeeFrame\Game\Entities\CharacterEntity;
-use TeeFrame\Game\Entities\ProjectileEntity;
+use TeeFrame\Game\Entities\PvpCharacterEntity;
+use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 
-$mapPath = __DIR__ . '/../../../teeworlds/data/maps/dm1.map';
+$mapPath = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('projectile survives full lifecycle', function () use ($mapPath, $mapExists) {
@@ -33,7 +33,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Fire a projectile to the right
-    $proj = new ProjectileEntity(
+    $proj = new PvpProjectileEntity(
         position: clone $spawnPos,
         direction: new Vector2(1 * 2200, 0),  // full velocity (dir * speed)
         type: 1,
@@ -85,7 +85,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     expect($p2->x)->not->toEqual($p1->x);
 });
 
-function getProjectilePos(ProjectileEntity $proj, float $time): Vector2
+function getProjectilePos(PvpProjectileEntity $proj, float $time): Vector2
 {
     $ref = new ReflectionClass($proj);
     $method = $ref->getMethod('getPos');
@@ -125,7 +125,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     $tee->inputJump = false;
     $tee->inputHook = false;
 
-    $character = new CharacterEntity(clone $spawnPos);
+    $character = new PvpCharacterEntity(clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
     // Tick once to set up angle (needed for shoot direction)
@@ -173,7 +173,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $tee->inputJump = false;
     $tee->inputHook = false;
 
-    $character = new CharacterEntity(clone $spawnPos);
+    $character = new PvpCharacterEntity(clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
     $ref = new ReflectionClass($character);
@@ -206,7 +206,7 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
 
     $spawnPos = new Vector2($pos[0]['x'], $pos[0]['y']);
 
-    $proj = new ProjectileEntity(
+    $proj = new PvpProjectileEntity(
         position: clone $spawnPos,
         direction: new Vector2(1 * 2200, 0),
         type: 1,

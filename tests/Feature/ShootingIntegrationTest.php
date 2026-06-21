@@ -1,14 +1,14 @@
 <?php
 
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Entities\CharacterEntity;
-use TeeFrame\Game\Entities\ProjectileEntity;
+use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\Entities\PvpCharacterEntity;
+use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
-use TeeFrame\Core\TickHandler;
 
-$mapPath = __DIR__ . '/../../../teeworlds/data/maps/dm1.map';
+$mapPath = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 function createWorld(Map $map): AbstractWorld
@@ -25,7 +25,7 @@ function createWorld(Map $map): AbstractWorld
 }
 
 /**
- * @return array{CharacterEntity, AbstractWorld}
+ * @return array{PvpCharacterEntity, AbstractWorld}
  */
 function setupCharacter(Map $map): array
 {
@@ -43,7 +43,7 @@ function setupCharacter(Map $map): array
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
 
     $world->addEntity($character);
@@ -74,7 +74,7 @@ test('shootGun creates projectile that appears in world entities', function () u
 
     $entities = $world->getEntities();
     $projectile = $entities[1];
-    expect($projectile)->toBeInstanceOf(ProjectileEntity::class);
+    expect($projectile)->toBeInstanceOf(PvpProjectileEntity::class);
 });
 
 test('projectile snap item has correct type and velocity', function () use ($mapPath, $mapExists) {
@@ -147,7 +147,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $attackerTee->inputTargetX = 100;
     $attackerTee->inputTargetY = 0;
 
-    $attacker = new CharacterEntity($spawnPos);
+    $attacker = new PvpCharacterEntity($spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $attacker->tickPhysics(1, 100, 0, false, false, $collision);
@@ -157,7 +157,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $targetPos = new Vector2($spawnPos->x + 20, $spawnPos->y); // 20 units in front
 
     $targetTee = new PlayerTee;
-    $target = new CharacterEntity($targetPos);
+    $target = new class($targetPos) extends PvpCharacterEntity {};
     $target->spawn($targetPos, $targetTee);
     $world->addEntity($target);
 
@@ -223,7 +223,7 @@ test('character tick is updated from world tick in doTick', function () use ($ma
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $tee = new PlayerTee;
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -260,7 +260,7 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -305,10 +305,10 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
     // Direction is normalized (matching original Teeworlds)
-    $proj = new ProjectileEntity(
+    $proj = new PvpProjectileEntity(
         position: clone $spawnPos,
         direction: new Vector2(1, 0),
-        type: 1,
+        type: PvpProjectileEntity::WEAPON_GUN,
     );
     $world->addEntity($proj);
 
@@ -352,7 +352,7 @@ test('projectile snap velocity is normalized direction times 100', function () u
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -407,7 +407,7 @@ test('character snap id matches tee index when pickups are present', function ()
     $tee = new PlayerTee;
     $world->addTee($tee);
 
-    $character = new CharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 

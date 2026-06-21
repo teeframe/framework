@@ -4,7 +4,7 @@ use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Map\Collision;
 
-$mapPath = __DIR__ . '/../../../teeworlds/data/maps/dm1.map';
+$mapPath = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('loads dm1 map and computes correct crc', function () use ($mapPath, $mapExists) {

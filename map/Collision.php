@@ -84,7 +84,7 @@ class Collision
     }
 
     /**
-     * @return array{0: int, 1: Vector2|null, 2: Vector2|null}
+     * @return array{0: int, 1: Vector2, 2: Vector2}
      */
     public function intersectLine(Vector2 $pos0, Vector2 $pos1): array
     {

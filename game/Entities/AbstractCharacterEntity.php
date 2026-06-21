@@ -8,7 +8,7 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Collision;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 
-class CharacterEntity extends AbstractEntity
+abstract class AbstractCharacterEntity extends AbstractEntity
 {
     public const PHYS_SIZE = 28;
 
@@ -130,11 +130,75 @@ class CharacterEntity extends AbstractEntity
         $this->markToDestroy();
     }
 
+    public function increaseHealth(int $amount): bool
+    {
+        if ($this->health >= 10) {
+            return false;
+        }
+        $this->health = min(10, $this->health + $amount);
+        return true;
+    }
+
+    public function increaseArmor(int $amount): bool
+    {
+        if ($this->armor >= 10) {
+            return false;
+        }
+        $this->armor = min(10, $this->armor + $amount);
+        return true;
+    }
+
+    public function giveNinja(): void
+    {
+        $this->aWeapons[self::WEAPON_NINJA]['got']  = true;
+        $this->aWeapons[self::WEAPON_NINJA]['ammo'] = -1;
+        if ($this->activeWeapon !== self::WEAPON_NINJA) {
+            $this->lastWeapon = $this->activeWeapon;
+        }
+        $this->activeWeapon = self::WEAPON_NINJA;
+    }
+
+    public function setEmote(int $emote, int $tick): void
+    {
+        $this->emote = $emote;
+    }
+
+    /**
+     * Apply damage and knockback to this character.
+     * Ported from Teeworlds 0.6 CCharacter::TakeDamage().
+     */
+    public function takeDamage(Vector2 $force, int $damage, AbstractCharacterEntity $inflictor): void
+    {
+        if (! $this->alive) {
+            return;
+        }
+
+        $this->health -= $damage;
+        $this->vel->x += $force->x;
+        $this->vel->y += $force->y;
+
+        if ($this->health <= 0) {
+            $this->die();
+
+            // Add death event
+            if ($this->world !== null) {
+                $teeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
+                $this->world->addEvent(new \TeeFrame\Network\SnapItems\ObjEventDeathItem(
+                    x: (int) round($this->position->x),
+                    y: (int) round($this->position->y),
+                    clientId: $teeIndex,
+                ));
+            }
+        }
+    }
+
     public function doTick(): void
     {
         if (! $this->alive || $this->world === null) {
             return;
         }
+
+        $this->tick = $this->world->getCurrentTick();
 
         $collision = $this->world->getMap()->getCollision();
         if ($collision === null) {
@@ -180,20 +244,7 @@ class CharacterEntity extends AbstractEntity
             $firePressed = $firePresses > 0 && $firePresses < 128;
         }
 
-        if ($this->tee instanceof PlayerTee && $firePressed && $this->reloadTimer <= 0) {
-            $this->doWeaponSwitch(); // execute queued switch before firing
-
-            switch ($this->activeWeapon) {
-                case self::WEAPON_GUN:
-                    $this->shootGun();
-                    $this->reloadTimer = 6; // ~125ms at 50 tick/s
-                    break;
-                case self::WEAPON_HAMMER:
-                    // TODO: Hammer attack
-                    $this->reloadTimer = 6;
-                    break;
-            }
-        }
+        $this->handleWeapons($firePressed);
 
         if ($this->reloadTimer > 0) {
             $this->reloadTimer--;
@@ -231,12 +282,12 @@ class CharacterEntity extends AbstractEntity
 
         $this->direction = $inputDirection;
 
-        // Setup angle
+        // Setup angle (original Teeworlds 0.6: atan(y/x) + pi if x < 0)
         $a = 0.0;
         if ($inputTargetX === 0) {
-            $a = atan2((float) $inputTargetY, 0.01);
+            $a = atan((float) $inputTargetY);
         } else {
-            $a = atan2((float) $inputTargetY, (float) $inputTargetX);
+            $a = atan((float) $inputTargetY / (float) $inputTargetX);
         }
         if ($inputTargetX < 0) {
             $a += M_PI;
@@ -436,24 +487,17 @@ class CharacterEntity extends AbstractEntity
 
     // -- Shooting --
 
-    private function shootGun(): void
+    /**
+     * Handle weapon firing. Override in game-mode subclasses for custom weapon logic.
+     * Default: no-op (framework is game-mode agnostic).
+     */
+    protected function handleWeapons(bool $firePressed): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
-        $angle = $this->angle / 256.0;
-        $dir   = new Vector2(cos($angle), sin($angle));
-        $speed = 2200.0;
-
-        $proj = new ProjectileEntity(
-            position: new Vector2($this->position->x, $this->position->y),
-            direction: new Vector2($dir->x * $speed, $dir->y * $speed),
-            type: 1,
-        );
-
-        $this->world->addEntity($proj);
     }
+
+    abstract protected function shootHammer(): int;
+
+    abstract protected function shootGun(): int;
 
     // -- Weapon Switch --
 
@@ -535,7 +579,7 @@ class CharacterEntity extends AbstractEntity
      * Execute the queued weapon switch if conditions allow.
      * Ported from Teeworlds 0.6 CCharacter::DoWeaponSwitch().
      */
-    private function doWeaponSwitch(): void
+    protected function doWeaponSwitch(): void
     {
         // Can't switch while reloading, no weapon queued, or holding ninja
         if ($this->reloadTimer !== 0 || $this->queuedWeapon === -1 || $this->aWeapons[self::WEAPON_NINJA]['got']) {
@@ -611,7 +655,7 @@ class CharacterEntity extends AbstractEntity
                 playerFlags: $this->playerFlags,
                 health: $this->health,
                 armor: $this->armor,
-                ammoCount: 10,
+                ammoCount: $this->aWeapons[$this->activeWeapon]['ammo'],
                 weapon: $this->activeWeapon,
                 emote: $this->emote,
                 attackTick: $this->attackTick,
