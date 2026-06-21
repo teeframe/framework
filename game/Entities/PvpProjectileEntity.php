@@ -5,6 +5,7 @@ namespace TeeFrame\Game\Entities;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
+use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
 /**
  * PvP projectile — contains the collision-based physics.
@@ -154,6 +155,13 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         $this->world->addEvent(new ObjEventExplosionItem(
             x: (int) round($pos->x),
             y: (int) round($pos->y),
+        ));
+
+        // Explosion sound
+        $this->world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($pos->x),
+            y: (int) round($pos->y),
+            soundId: GameConstants::SOUND_GRENADE_EXPLODE,
         ));
 
         // Find the owner character for damage attribution

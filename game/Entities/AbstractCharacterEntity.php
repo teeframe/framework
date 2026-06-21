@@ -67,6 +67,18 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public float $playerCollision      = 1.0;
     public float $playerHooking        = 1.0;
 
+    // Ninja state
+    public int $ninjaActivationTick = 0;
+    public Vector2 $ninjaActivationDir;
+    public int $ninjaCurrentMoveTime = 0;
+    public float $ninjaOldVelAmount = 0.0;
+    public int $ninjaNumObjectsHit = 0;
+
+    /**
+     * @var array<int, AbstractCharacterEntity|null>
+     */
+    public array $ninjaHitObjects = [];
+
     public ?AbstractTee $tee = null;
 
     public function __construct(public Vector2 $position)
@@ -102,6 +114,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->hookedPlayer  = -1;
         $this->jumped        = 0;
         $this->triggeredEvents = 0;
+        $this->ninjaNumObjectsHit = 0;
+        $this->ninjaHitObjects    = [];
 
         // Initialize weapons: hammer + gun
         $this->aWeapons = [];
@@ -160,6 +174,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public function giveNinja(): void
     {
+        $this->ninjaActivationTick = $this->world !== null ? $this->world->getCurrentTick() : 0;
+        $this->ninjaCurrentMoveTime = 0;
+        $this->ninjaNumObjectsHit = 0;
+        $this->ninjaHitObjects = [];
+
         $this->aWeapons[GameConstants::WEAPON_NINJA]['got']  = true;
         $this->aWeapons[GameConstants::WEAPON_NINJA]['ammo'] = -1;
         if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
@@ -327,12 +346,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                     $this->triggeredEvents |= 0x01;
                     $this->vel->y = -$this->groundJumpImpulse;
                     $this->jumped |= 1;
-                    $this->createSound(GameConstants::SOUND_PLAYER_JUMP);
                 } elseif (! ($this->jumped & 2)) {
                     $this->triggeredEvents |= 0x02;
                     $this->vel->y = -$this->airJumpImpulse;
                     $this->jumped |= 3;
-                    $this->createSound(GameConstants::SOUND_PLAYER_AIRJUMP);
                 }
             }
         } else {
@@ -501,7 +518,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                             $this->triggeredEvents |= 0x08; // COREEVENT_HOOK_ATTACH_PLAYER
                             $this->hookState = 5; // HOOK_GRABBED
                             $this->hookedPlayer = $entity->tee !== null ? $entity->tee->teeIndex : -1;
-                            $this->createSound(GameConstants::SOUND_HOOK_ATTACH_PLAYER);
                         }
                     }
                 }
@@ -511,11 +527,9 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 if ($goingToHitGround) {
                     $this->triggeredEvents |= 0x10;
                     $this->hookState = 5;
-                    $this->createSound(GameConstants::SOUND_HOOK_ATTACH_GROUND);
                 } elseif ($goingToRetract) {
                     $this->triggeredEvents |= 0x20;
                     $this->hookState = 1;
-                    $this->createSound(GameConstants::SOUND_HOOK_NOATTACH);
                 }
             }
 
@@ -730,7 +744,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
      * Perform the actual weapon switch.
      * Ported from Teeworlds 0.6 CCharacter::SetWeapon().
      */
-    private function setWeapon(int $weapon): void
+    protected function setWeapon(int $weapon): void
     {
         if ($weapon === $this->activeWeapon) {
             return;

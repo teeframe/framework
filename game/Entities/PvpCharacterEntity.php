@@ -228,6 +228,9 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function handleWeapons(bool $firePressed): void
     {
+        // Ninja handling runs every tick (duration, dash, hits)
+        $this->handleNinja();
+
         if (! $firePressed || $this->reloadTimer > 0) {
             return;
         }
@@ -262,6 +265,9 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 break;
             case GameConstants::WEAPON_RIFLE:
                 $this->reloadTimer = $this->shootRifle();
+                break;
+            case GameConstants::WEAPON_NINJA:
+                $this->reloadTimer = $this->shootNinja();
                 break;
         }
 
@@ -318,5 +324,123 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 angle: (int) round($f * 256.0),
             ));
         }
+    }
+
+    /**
+     * Handle ninja state machine.
+     * Ported from Teeworlds 0.6 CCharacter::HandleNinja().
+     */
+    private function handleNinja(): void
+    {
+        if ($this->activeWeapon !== GameConstants::WEAPON_NINJA || $this->world === null) {
+            return;
+        }
+
+        $world = $this->world;
+
+        $currentTick = $world->getCurrentTick();
+
+        // Ninja duration: 15 seconds
+        if (($currentTick - $this->ninjaActivationTick) > (int) (15 * 50)) {
+            // Time's up, return to last weapon
+            $this->aWeapons[GameConstants::WEAPON_NINJA]['got'] = false;
+            $this->activeWeapon = $this->lastWeapon;
+
+            $this->setWeapon($this->activeWeapon);
+
+            return;
+        }
+
+        // Force ninja weapon
+        $this->setWeapon(GameConstants::WEAPON_NINJA);
+
+        $this->ninjaCurrentMoveTime--;
+
+        if ($this->ninjaCurrentMoveTime === 0) {
+            // Reset velocity
+            $this->vel->x = $this->ninjaActivationDir->x * $this->ninjaOldVelAmount;
+            $this->vel->y = $this->ninjaActivationDir->y * $this->ninjaOldVelAmount;
+        }
+
+        if ($this->ninjaCurrentMoveTime > 0) {
+            // Set velocity
+            $this->vel->x = $this->ninjaActivationDir->x * 800;
+            $this->vel->y = $this->ninjaActivationDir->y * 800;
+
+            $oldPos = clone $this->position;
+
+            $collision = $world->getMap()->getCollision();
+            if ($collision !== null) {
+                $physSize = self::PHYS_SIZE;
+                $collision->moveBox($this->position, $this->vel, new Vector2($physSize, $physSize), 0.0);
+            }
+
+            // Reset velocity so the client doesn't predict stuff
+            $this->vel->x = 0.0;
+            $this->vel->y = 0.0;
+
+            // Check if we hit anything along the way
+            $dir    = $this->position->diff($oldPos);
+            $radius = self::PHYS_SIZE * 2.0;
+            $center = new Vector2($oldPos->x + $dir->x * 0.5, $oldPos->y + $dir->y * 0.5);
+
+            foreach ($world->getEntities() as $entity) {
+                if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
+                    continue;
+                }
+
+                // Make sure we haven't hit this object before
+                $alreadyHit = false;
+                foreach ($this->ninjaHitObjects as $hitObj) {
+                    if ($hitObj === $entity) {
+                        $alreadyHit = true;
+                        break;
+                    }
+                }
+                if ($alreadyHit) {
+                    continue;
+                }
+
+                // Check so we are sufficiently close
+                if ($entity->position->distance($this->position) > self::PHYS_SIZE * 2.0) {
+                    continue;
+                }
+
+                // Hit a player
+                $world->addEvent(new ObjEventSoundWorldItem(
+                    x: (int) round($entity->position->x),
+                    y: (int) round($entity->position->y),
+                    soundId: GameConstants::SOUND_NINJA_HIT,
+                ));
+
+                if ($this->ninjaNumObjectsHit < 10) {
+                    $this->ninjaHitObjects[$this->ninjaNumObjectsHit++] = $entity;
+                }
+
+                $entity->takeDamage(new Vector2(0, -10.0), 9, $this);
+            }
+        }
+    }
+
+    protected function shootNinja(): int
+    {
+        if ($this->world === null) {
+            return 0;
+        }
+
+        $angle = $this->angle / 256.0;
+        $this->ninjaActivationDir = new Vector2(cos($angle), sin($angle));
+        $this->ninjaCurrentMoveTime = 25; // 500ms at 50 tick/s
+        $this->ninjaOldVelAmount = $this->vel->length();
+        $this->ninjaNumObjectsHit = 0;
+        $this->ninjaHitObjects = [];
+
+        $this->world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            soundId: GameConstants::SOUND_NINJA_FIRE,
+        ));
+
+        return 0;
     }
 }
