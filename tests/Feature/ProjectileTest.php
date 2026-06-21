@@ -2,6 +2,7 @@
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -235,7 +236,7 @@ test('projectile snap uses start position not current position', function () {
     $proj = new PvpProjectileEntity(
         position: clone $startPos,
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GUN,
+        type: GameConstants::WEAPON_GUN,
     );
 
     // Simulate setWorld to set startTick
@@ -296,7 +297,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
     $proj = new PvpProjectileEntity(
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GRENADE,
+        type: GameConstants::WEAPON_GRENADE,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0); // lifespan = 0, expires immediately
@@ -342,7 +343,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
     $proj = new PvpProjectileEntity(
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GRENADE,
+        type: GameConstants::WEAPON_GRENADE,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0);
@@ -382,7 +383,7 @@ test('grenade explosion does not damage character outside radius', function () u
     $proj = new PvpProjectileEntity(
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GRENADE,
+        type: GameConstants::WEAPON_GRENADE,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0);
@@ -413,7 +414,7 @@ test('non-grenade projectile does not create explosion event', function () use (
     $proj = new PvpProjectileEntity(
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GUN,
+        type: GameConstants::WEAPON_GUN,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 0);
@@ -484,7 +485,7 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     $proj = new PvpProjectileEntity(
         position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GRENADE,
+        type: GameConstants::WEAPON_GRENADE,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 100);
@@ -569,7 +570,7 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
     $proj = new PvpProjectileEntity(
         position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GUN,
+        type: GameConstants::WEAPON_GUN,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 100);
@@ -577,7 +578,6 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
 
     // Tick until projectile hits something or expires
     for ($i = 0; $i < 50; $i++) {
-        $tickHandler->next();
         $proj->doTick();
         if ($proj->isToDestroy()) {
             break;
@@ -634,7 +634,7 @@ test('projectile does not collide with owner character', function () use ($mapPa
     $proj = new PvpProjectileEntity(
         position: new Vector2($spawnPos->x, $spawnPos->y - $offset),
         direction: new Vector2(0, -1),
-        type: PvpProjectileEntity::WEAPON_GUN,
+        type: GameConstants::WEAPON_GUN,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 100);

@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Game\Entities;
 
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
 
@@ -63,7 +64,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             $this->position->x = $curPos->x;
             $this->position->y = $curPos->y;
 
-            if ($this->type === self::WEAPON_GRENADE) {
+            if ($this->type === GameConstants::WEAPON_GRENADE) {
                 $this->explode($curPos);
             } elseif ($targetChar !== null) {
                 // Direct hit damage for gun/shotgun

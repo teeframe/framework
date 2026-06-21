@@ -2,9 +2,11 @@
 
 namespace TeeFrame\Game\Entities;
 
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
 use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
+use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
 /**
  * PvP character — contains weapon firing logic (hammer, gun) with ammo.
@@ -32,6 +34,12 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $hits = 0;
         $hitRadius = self::PHYS_SIZE * 1.5; // m_ProximityRadius + m_ProximityRadius*0.5 = 28 + 14 = 42
+
+        $world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            soundId: GameConstants::SOUND_HAMMER_FIRE,
+        ));
 
         foreach ($world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity) {
@@ -101,11 +109,17 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 $this->position->y + $dir->y * $offset,
             ),
             direction: $dir,
-            type: PvpProjectileEntity::WEAPON_GUN,
+            type: GameConstants::WEAPON_GUN,
             owner: $this->tee->teeIndex,
         );
 
         $this->world->addEntity($proj);
+
+        $this->world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            soundId: GameConstants::SOUND_GUN_FIRE,
+        ));
 
         return 6;
     }
@@ -136,13 +150,19 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             $proj = new PvpProjectileEntity(
                 position: clone $projStartPos,
                 direction: $bulletDir,
-                type: PvpProjectileEntity::WEAPON_SHOTGUN,
+                type: GameConstants::WEAPON_SHOTGUN,
                 owner: $this->tee->teeIndex,
             );
             $proj->setTuning(2750.0 * $speed, 1.25, 10);
 
             $this->world->addEntity($proj);
         }
+
+        $this->world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            soundId: GameConstants::SOUND_SHOTGUN_FIRE,
+        ));
 
         return 10; // ~200ms at 50 tick/s
     }
@@ -163,12 +183,18 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 $this->position->y + $dir->y * $offset,
             ),
             direction: $dir,
-            type: PvpProjectileEntity::WEAPON_GRENADE,
+            type: GameConstants::WEAPON_GRENADE,
             owner: $this->tee->teeIndex,
         );
         $proj->setTuning(1000.0, 7.0, 100);
 
         $this->world->addEntity($proj);
+
+        $this->world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            soundId: GameConstants::SOUND_GRENADE_FIRE,
+        ));
 
         return 10;
     }
@@ -191,6 +217,12 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->world->addEntity($laser);
 
+        $this->world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            soundId: GameConstants::SOUND_RIFLE_FIRE,
+        ));
+
         return 16; // ~320ms at 50 tick/s
     }
 
@@ -206,23 +238,29 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         if ($weaponAmmo === 0) {
             $this->reloadTimer = (int) round(125 * 50 / 1000);
 
+            $this->world?->addEvent(new ObjEventSoundWorldItem(
+                x: (int) round($this->position->x),
+                y: (int) round($this->position->y),
+                soundId: GameConstants::SOUND_WEAPON_NOAMMO,
+            ));
+
             return;
         }
 
         switch ($this->activeWeapon) {
-            case self::WEAPON_GUN:
+            case GameConstants::WEAPON_GUN:
                 $this->reloadTimer = $this->shootGun();
                 break;
-            case self::WEAPON_HAMMER:
+            case GameConstants::WEAPON_HAMMER:
                 $this->reloadTimer = $this->shootHammer();
                 break;
-            case self::WEAPON_SHOTGUN:
+            case GameConstants::WEAPON_SHOTGUN:
                 $this->reloadTimer = $this->shootShotgun();
                 break;
-            case self::WEAPON_GRENADE:
+            case GameConstants::WEAPON_GRENADE:
                 $this->reloadTimer = $this->shootGrenade();
                 break;
-            case self::WEAPON_RIFLE:
+            case GameConstants::WEAPON_RIFLE:
                 $this->reloadTimer = $this->shootRifle();
                 break;
         }

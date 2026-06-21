@@ -3,10 +3,12 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Entities\AbstractCharacterEntity;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjPickupItem;
 
 class PickupEntity extends AbstractEntity
@@ -81,33 +83,53 @@ class PickupEntity extends AbstractEntity
      */
     private function onPickup(AbstractCharacterEntity $character): int
     {
+        $soundId = -1;
+        $respawnTime = -1;
+
         switch ($this->type) {
             case NetworkMessages::POWERUP_HEALTH:
                 if ($character->increaseHealth(1)) {
-                    return $this->respawnTime;
+                    $soundId = GameConstants::SOUND_PICKUP_HEALTH;
+                    $respawnTime = $this->respawnTime;
                 }
                 break;
 
             case NetworkMessages::POWERUP_ARMOR:
                 if ($character->increaseArmor(1)) {
-                    return $this->respawnTime;
+                    $soundId = GameConstants::SOUND_PICKUP_ARMOR;
+                    $respawnTime = $this->respawnTime;
                 }
                 break;
 
             case NetworkMessages::POWERUP_WEAPON:
-                if ($this->subType >= 0 && $this->subType < AbstractCharacterEntity::NUM_WEAPONS) {
+                if ($this->subType >= 0 && $this->subType < GameConstants::NUM_WEAPONS) {
                     if ($character->giveWeapon($this->subType, 10)) {
-                        return $this->respawnTime;
+                        $soundId = match ($this->subType) {
+                            GameConstants::WEAPON_SHOTGUN => GameConstants::SOUND_PICKUP_SHOTGUN,
+                            GameConstants::WEAPON_GRENADE => GameConstants::SOUND_PICKUP_GRENADE,
+                            default => GameConstants::SOUND_PICKUP_SHOTGUN,
+                        };
+                        $respawnTime = $this->respawnTime;
                     }
                 }
                 break;
 
             case NetworkMessages::POWERUP_NINJA:
                 $character->giveNinja();
-                return $this->respawnTime;
+                $soundId = GameConstants::SOUND_PICKUP_NINJA;
+                $respawnTime = $this->respawnTime;
+                break;
         }
 
-        return -1;
+        if ($soundId >= 0 && $this->world !== null) {
+            $this->world->addEvent(new ObjEventSoundWorldItem(
+                x: (int) round($this->position->x),
+                y: (int) round($this->position->y),
+                soundId: $soundId,
+            ));
+        }
+
+        return $respawnTime;
     }
 
     /**

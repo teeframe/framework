@@ -9,10 +9,6 @@ use TeeFrame\Network\SnapItems\ObjProjectileItem;
 
 abstract class AbstractProjectileEntity extends AbstractEntity
 {
-    public const WEAPON_GUN     = 1;
-    public const WEAPON_SHOTGUN = 2;
-    public const WEAPON_GRENADE = 3;
-
     protected int $startTick = -1;
     protected int $lifeSpan;
     protected float $curvature;

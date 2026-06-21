@@ -79,9 +79,12 @@ class NetworkMessages
      * Event Types
      */
     const NETEVENTTYPE_EXPLOSION = 14;
-    const NETEVENTTYPE_DAMAGEIND = 20;
+
     const NETEVENTTYPE_HAMMERHIT = 16;
     const NETEVENTTYPE_DEATH     = 17;
+
+    const NETEVENTTYPE_SOUNDWORLD = 19;
+    const NETEVENTTYPE_DAMAGEIND = 20;
 
     /*
      * Pickup Types

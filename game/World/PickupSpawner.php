@@ -3,6 +3,7 @@
 namespace TeeFrame\Game\World;
 
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Map\MapLayers\GameLayer;
@@ -39,9 +40,9 @@ class PickupSpawner
         return match ($entityType) {
             GameLayer::ENTITY_ARMOR_1       => new PickupEntity($pos, NetworkMessages::POWERUP_ARMOR, respawnTime: $respawn),
             GameLayer::ENTITY_HEALTH_1      => new PickupEntity($pos, NetworkMessages::POWERUP_HEALTH, respawnTime: $respawn),
-            GameLayer::ENTITY_WEAPON_SHOTGUN => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, AbstractCharacterEntity::WEAPON_SHOTGUN, respawnTime: $respawn),
-            GameLayer::ENTITY_WEAPON_GRENADE => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, AbstractCharacterEntity::WEAPON_GRENADE, respawnTime: $respawn),
-            GameLayer::ENTITY_WEAPON_RIFLE  => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, AbstractCharacterEntity::WEAPON_RIFLE, respawnTime: $respawn),
+            GameLayer::ENTITY_WEAPON_SHOTGUN => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_SHOTGUN, respawnTime: $respawn),
+            GameLayer::ENTITY_WEAPON_GRENADE => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_GRENADE, respawnTime: $respawn),
+            GameLayer::ENTITY_WEAPON_RIFLE  => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_RIFLE, respawnTime: $respawn),
             GameLayer::ENTITY_POWERUP_NINJA => new PickupEntity($pos, NetworkMessages::POWERUP_NINJA, respawnTime: $respawn),
             default                         => null,
         };

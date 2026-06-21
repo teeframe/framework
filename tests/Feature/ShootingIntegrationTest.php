@@ -2,6 +2,7 @@
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -405,7 +406,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     $proj = new PvpProjectileEntity(
         position: clone $spawnPos,
         direction: new Vector2(1, 0),
-        type: PvpProjectileEntity::WEAPON_GUN,
+        type: GameConstants::WEAPON_GUN,
     );
     $world->addEntity($proj);
 

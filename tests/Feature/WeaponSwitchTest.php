@@ -1,6 +1,7 @@
 <?php
 
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\PvpCharacterEntity;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -69,15 +70,15 @@ test('character spawns with hammer and gun, gun active', function () use ($makeC
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
-    expect($character->lastWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
+    expect($character->lastWeapon)->toBe(GameConstants::WEAPON_HAMMER);
     expect($character->queuedWeapon)->toBe(-1);
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_HAMMER]['got'])->toBeTrue();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_GUN]['got'])->toBeTrue();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_SHOTGUN]['got'])->toBeFalse();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_GRENADE]['got'])->toBeFalse();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_RIFLE]['got'])->toBeFalse();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_NINJA]['got'])->toBeFalse();
+    expect($character->aWeapons[GameConstants::WEAPON_HAMMER]['got'])->toBeTrue();
+    expect($character->aWeapons[GameConstants::WEAPON_GUN]['got'])->toBeTrue();
+    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['got'])->toBeFalse();
+    expect($character->aWeapons[GameConstants::WEAPON_GRENADE]['got'])->toBeFalse();
+    expect($character->aWeapons[GameConstants::WEAPON_RIFLE]['got'])->toBeFalse();
+    expect($character->aWeapons[GameConstants::WEAPON_NINJA]['got'])->toBeFalse();
 });
 
 // --- Direct weapon selection ---
@@ -91,8 +92,8 @@ test('direct weapon selection switches to hammer', function () {
 
     $character->doTick();
 
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
-    expect($character->lastWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
+    expect($character->lastWeapon)->toBe(GameConstants::WEAPON_GUN);
     expect($character->queuedWeapon)->toBe(-1);
 });
 
@@ -105,7 +106,7 @@ test('direct weapon selection to unowned weapon is ignored', function () {
 
     $character->doTick();
 
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
     expect($character->queuedWeapon)->toBe(-1);
 });
 
@@ -122,7 +123,7 @@ test('next weapon cycles to hammer from gun', function () {
     $character->doTick();
 
     // Gun(1) -> next owned: Hammer(0)
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 });
 
 test('next weapon skips unowned weapons', function () {
@@ -130,13 +131,13 @@ test('next weapon skips unowned weapons', function () {
     $character = createCharacterWithWorld($tee);
 
     // Give shotgun so we can test skipping
-    $character->giveWeapon(AbstractCharacterEntity::WEAPON_SHOTGUN, 10);
+    $character->giveWeapon(GameConstants::WEAPON_SHOTGUN, 10);
 
     // Switch to hammer first, then press next twice
     // Hammer(0) -> Gun(1) -> Shotgun(2)
     $tee->inputWantedWeapon = 1; // hammer
     $character->doTick();
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 
     // Save prev state
     $tee->prevInputNextWeapon = $tee->inputNextWeapon;
@@ -147,7 +148,7 @@ test('next weapon skips unowned weapons', function () {
     $character->doTick();
 
     // Hammer(0) -> next owned: Gun(1) -> next owned: Shotgun(2)
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_SHOTGUN);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_SHOTGUN);
 });
 
 // --- Previous weapon cycling ---
@@ -163,7 +164,7 @@ test('prev weapon cycles from gun to hammer', function () {
     $character->doTick();
 
     // Gun(1) -> prev owned: Hammer(0)
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 });
 
 test('prev weapon wraps around from hammer to gun', function () {
@@ -173,7 +174,7 @@ test('prev weapon wraps around from hammer to gun', function () {
     // Switch to hammer first
     $tee->inputWantedWeapon = 1;
     $character->doTick();
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 
     // Save prev state
     $tee->prevInputPrevWeapon = $tee->inputPrevWeapon;
@@ -184,7 +185,7 @@ test('prev weapon wraps around from hammer to gun', function () {
     $character->doTick();
 
     // Hammer(0) -> prev owned: wraps to Gun(1)
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
 });
 
 // --- CountInput press detection ---
@@ -254,9 +255,9 @@ test('weapon switch is blocked during reload', function () {
     $character->doTick();
 
     // Should still be gun because reload blocks switch
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
     // But weapon should be queued
-    expect($character->queuedWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->queuedWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 });
 
 test('queued weapon executes after reload ends', function () {
@@ -274,7 +275,7 @@ test('queued weapon executes after reload ends', function () {
     // Queue hammer during reload (no fire press this tick)
     $tee->inputWantedWeapon = 1;
     $character->doTick();
-    expect($character->queuedWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->queuedWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 
     // Tick until reload ends (no fire presses)
     while ($character->reloadTimer > 0) {
@@ -286,7 +287,7 @@ test('queued weapon executes after reload ends', function () {
     $tee->inputFire = 2;
     $character->doTick();
 
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
     expect($character->queuedWeapon)->toBe(-1);
 });
 
@@ -297,15 +298,15 @@ test('cannot switch away from ninja', function () {
     $character = createCharacterWithWorld($tee);
 
     // Give ninja
-    $character->aWeapons[AbstractCharacterEntity::WEAPON_NINJA] = ['got' => true, 'ammo' => -1];
-    $character->activeWeapon = AbstractCharacterEntity::WEAPON_NINJA;
+    $character->aWeapons[GameConstants::WEAPON_NINJA] = ['got' => true, 'ammo' => -1];
+    $character->activeWeapon = GameConstants::WEAPON_NINJA;
 
     // Try to switch to hammer
     $tee->inputWantedWeapon = 1;
     $character->doTick();
 
     // Should stay on ninja
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_NINJA);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_NINJA);
 });
 
 // --- giveWeapon ---
@@ -315,10 +316,10 @@ test('giveWeapon grants a new weapon', function () use ($makeChar) {
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
-    $result = $character->giveWeapon(AbstractCharacterEntity::WEAPON_SHOTGUN, 10);
+    $result = $character->giveWeapon(GameConstants::WEAPON_SHOTGUN, 10);
     expect($result)->toBeTrue();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_SHOTGUN]['got'])->toBeTrue();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_SHOTGUN]['ammo'])->toBe(10);
+    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['got'])->toBeTrue();
+    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['ammo'])->toBe(10);
 });
 
 test('giveWeapon caps ammo at 10', function () use ($makeChar) {
@@ -326,9 +327,9 @@ test('giveWeapon caps ammo at 10', function () use ($makeChar) {
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
-    $result = $character->giveWeapon(AbstractCharacterEntity::WEAPON_SHOTGUN, 999);
+    $result = $character->giveWeapon(GameConstants::WEAPON_SHOTGUN, 999);
     expect($result)->toBeTrue();
-    expect($character->aWeapons[AbstractCharacterEntity::WEAPON_SHOTGUN]['ammo'])->toBe(10);
+    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['ammo'])->toBe(10);
 });
 
 test('giveWeapon returns false when already at max ammo', function () use ($makeChar) {
@@ -337,7 +338,7 @@ test('giveWeapon returns false when already at max ammo', function () use ($make
     $character->spawn(new Vector2(100, 100), $tee);
 
     // Gun already has 10 ammo from spawn
-    $result = $character->giveWeapon(AbstractCharacterEntity::WEAPON_GUN, 10);
+    $result = $character->giveWeapon(GameConstants::WEAPON_GUN, 10);
     expect($result)->toBeFalse();
 });
 
@@ -368,7 +369,7 @@ test('snap output reflects active weapon after switch', function () {
 
     $ints = $snaps[0]->getInts();
     // weapon is the 20th field (index 19, 0-based)
-    expect($ints[19])->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
+    expect($ints[19])->toBe(GameConstants::WEAPON_HAMMER);
 });
 
 // --- setWeapon via reflection ---
@@ -382,12 +383,12 @@ test('setWeapon updates lastWeapon and clears queuedWeapon', function () use ($m
     $character->spawn(new Vector2(100, 100), $tee);
 
     // Queue a weapon first
-    $character->queuedWeapon = AbstractCharacterEntity::WEAPON_HAMMER;
+    $character->queuedWeapon = GameConstants::WEAPON_HAMMER;
 
-    $method->invoke($character, AbstractCharacterEntity::WEAPON_HAMMER);
+    $method->invoke($character, GameConstants::WEAPON_HAMMER);
 
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER);
-    expect($character->lastWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
+    expect($character->lastWeapon)->toBe(GameConstants::WEAPON_GUN);
     expect($character->queuedWeapon)->toBe(-1);
 });
 
@@ -400,13 +401,13 @@ test('setWeapon is no-op for same weapon', function () use ($makeChar) {
     $character->spawn(new Vector2(100, 100), $tee);
 
     $oldLastWeapon = $character->lastWeapon;
-    $character->queuedWeapon = AbstractCharacterEntity::WEAPON_HAMMER;
+    $character->queuedWeapon = GameConstants::WEAPON_HAMMER;
 
-    $method->invoke($character, AbstractCharacterEntity::WEAPON_GUN); // same as active
+    $method->invoke($character, GameConstants::WEAPON_GUN); // same as active
 
-    expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
     expect($character->lastWeapon)->toBe($oldLastWeapon);
-    expect($character->queuedWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER); // unchanged
+    expect($character->queuedWeapon)->toBe(GameConstants::WEAPON_HAMMER); // unchanged
 });
 
 // --- No-ammo behavior ---
@@ -416,7 +417,7 @@ test('no ammo does not set attackTick', function () {
     $character = createCharacterWithWorld($tee);
 
     // Deplete gun ammo
-    $character->aWeapons[AbstractCharacterEntity::WEAPON_GUN]['ammo'] = 0;
+    $character->aWeapons[GameConstants::WEAPON_GUN]['ammo'] = 0;
 
     // First tick: syncs prev inputs (no fire detected)
     $tee->inputFire = 0;

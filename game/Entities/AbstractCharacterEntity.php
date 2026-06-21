@@ -5,29 +5,22 @@ namespace TeeFrame\Game\Entities;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Map\Collision;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
+use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
 abstract class AbstractCharacterEntity extends AbstractEntity
 {
     public const PHYS_SIZE = 28;
-
-    // Weapon constants (Teeworlds 0.6)
-    public const WEAPON_HAMMER  = 0;
-    public const WEAPON_GUN     = 1;
-    public const WEAPON_SHOTGUN = 2;
-    public const WEAPON_GRENADE = 3;
-    public const WEAPON_RIFLE   = 4;
-    public const WEAPON_NINJA   = 5;
-    public const NUM_WEAPONS    = 6;
 
     public const INPUT_STATE_MASK = 0x3F;
 
     // Game state
     public int $health = 10;
     public int $armor = 0;
-    public int $activeWeapon = self::WEAPON_GUN;
-    public int $lastWeapon = self::WEAPON_HAMMER;
+    public int $activeWeapon = GameConstants::WEAPON_GUN;
+    public int $lastWeapon = GameConstants::WEAPON_HAMMER;
     public int $queuedWeapon = -1;
     public bool $alive = false;
     public int $tick = 0;
@@ -112,14 +105,14 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         // Initialize weapons: hammer + gun
         $this->aWeapons = [];
-        for ($i = 0; $i < self::NUM_WEAPONS; $i++) {
+        for ($i = 0; $i < GameConstants::NUM_WEAPONS; $i++) {
             $this->aWeapons[$i] = ['got' => false, 'ammo' => 0];
         }
-        $this->aWeapons[self::WEAPON_HAMMER] = ['got' => true, 'ammo' => -1];
-        $this->aWeapons[self::WEAPON_GUN]    = ['got' => true, 'ammo' => 10];
+        $this->aWeapons[GameConstants::WEAPON_HAMMER] = ['got' => true, 'ammo' => -1];
+        $this->aWeapons[GameConstants::WEAPON_GUN]    = ['got' => true, 'ammo' => 10];
 
-        $this->activeWeapon = self::WEAPON_GUN;
-        $this->lastWeapon   = self::WEAPON_HAMMER;
+        $this->activeWeapon = GameConstants::WEAPON_GUN;
+        $this->lastWeapon   = GameConstants::WEAPON_HAMMER;
         $this->queuedWeapon = -1;
         $this->reloadTimer  = 0;
         $this->attackTick   = 0;
@@ -130,6 +123,9 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         $this->alive = false;
         $this->markToDestroy();
+
+        // Player die sound
+        $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 
         // Notify game controller for scoring
         if ($this->world !== null) {
@@ -164,12 +160,12 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public function giveNinja(): void
     {
-        $this->aWeapons[self::WEAPON_NINJA]['got']  = true;
-        $this->aWeapons[self::WEAPON_NINJA]['ammo'] = -1;
-        if ($this->activeWeapon !== self::WEAPON_NINJA) {
+        $this->aWeapons[GameConstants::WEAPON_NINJA]['got']  = true;
+        $this->aWeapons[GameConstants::WEAPON_NINJA]['ammo'] = -1;
+        if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
             $this->lastWeapon = $this->activeWeapon;
         }
-        $this->activeWeapon = self::WEAPON_NINJA;
+        $this->activeWeapon = GameConstants::WEAPON_NINJA;
     }
 
     public function setEmote(int $emote, int $tick): void
@@ -190,6 +186,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->health -= $damage;
         $this->vel->x += $force->x;
         $this->vel->y += $force->y;
+
+        // Player pain sound
+        if ($this->world !== null && $damage > 0) {
+            $this->createSound($damage > 2 ? GameConstants::SOUND_PLAYER_PAIN_LONG : GameConstants::SOUND_PLAYER_PAIN_SHORT);
+        }
 
         if ($this->health <= 0) {
             $killerTeeIndex = $inflictor->tee !== null ? $inflictor->tee->teeIndex : -1;
@@ -326,10 +327,12 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                     $this->triggeredEvents |= 0x01;
                     $this->vel->y = -$this->groundJumpImpulse;
                     $this->jumped |= 1;
+                    $this->createSound(GameConstants::SOUND_PLAYER_JUMP);
                 } elseif (! ($this->jumped & 2)) {
                     $this->triggeredEvents |= 0x02;
                     $this->vel->y = -$this->airJumpImpulse;
                     $this->jumped |= 3;
+                    $this->createSound(GameConstants::SOUND_PLAYER_AIRJUMP);
                 }
             }
         } else {
@@ -498,6 +501,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                             $this->triggeredEvents |= 0x08; // COREEVENT_HOOK_ATTACH_PLAYER
                             $this->hookState = 5; // HOOK_GRABBED
                             $this->hookedPlayer = $entity->tee !== null ? $entity->tee->teeIndex : -1;
+                            $this->createSound(GameConstants::SOUND_HOOK_ATTACH_PLAYER);
                         }
                     }
                 }
@@ -507,9 +511,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 if ($goingToHitGround) {
                     $this->triggeredEvents |= 0x10;
                     $this->hookState = 5;
+                    $this->createSound(GameConstants::SOUND_HOOK_ATTACH_GROUND);
                 } elseif ($goingToRetract) {
                     $this->triggeredEvents |= 0x20;
                     $this->hookState = 1;
+                    $this->createSound(GameConstants::SOUND_HOOK_NOATTACH);
                 }
             }
 
@@ -674,7 +680,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         if ($next < 128) {
             while ($next > 0) {
-                $wantedWeapon = ($wantedWeapon + 1) % self::NUM_WEAPONS;
+                $wantedWeapon = ($wantedWeapon + 1) % GameConstants::NUM_WEAPONS;
                 if ($this->aWeapons[$wantedWeapon]['got']) {
                     $next--;
                 }
@@ -683,7 +689,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         if ($prev < 128) {
             while ($prev > 0) {
-                $wantedWeapon = ($wantedWeapon - 1) < 0 ? self::NUM_WEAPONS - 1 : $wantedWeapon - 1;
+                $wantedWeapon = ($wantedWeapon - 1) < 0 ? GameConstants::NUM_WEAPONS - 1 : $wantedWeapon - 1;
                 if ($this->aWeapons[$wantedWeapon]['got']) {
                     $prev--;
                 }
@@ -697,7 +703,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         }
 
         // Queue the switch if valid
-        if ($wantedWeapon >= 0 && $wantedWeapon < self::NUM_WEAPONS
+        if ($wantedWeapon >= 0 && $wantedWeapon < GameConstants::NUM_WEAPONS
             && $wantedWeapon !== $this->activeWeapon
             && $this->aWeapons[$wantedWeapon]['got']) {
             $this->queuedWeapon = $wantedWeapon;
@@ -713,7 +719,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     protected function doWeaponSwitch(): void
     {
         // Can't switch while reloading, no weapon queued, or holding ninja
-        if ($this->reloadTimer !== 0 || $this->queuedWeapon === -1 || $this->aWeapons[self::WEAPON_NINJA]['got']) {
+        if ($this->reloadTimer !== 0 || $this->queuedWeapon === -1 || $this->aWeapons[GameConstants::WEAPON_NINJA]['got']) {
             return;
         }
 
@@ -734,7 +740,9 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->queuedWeapon = -1;
         $this->activeWeapon = $weapon;
 
-        if ($this->activeWeapon < 0 || $this->activeWeapon >= self::NUM_WEAPONS) {
+        $this->createSound(GameConstants::SOUND_WEAPON_SWITCH);
+
+        if ($this->activeWeapon < 0 || $this->activeWeapon >= GameConstants::NUM_WEAPONS) {
             $this->activeWeapon = 0;
         }
     }
@@ -745,7 +753,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
      */
     public function giveWeapon(int $weapon, int $ammo): bool
     {
-        if ($weapon < 0 || $weapon >= self::NUM_WEAPONS) {
+        if ($weapon < 0 || $weapon >= GameConstants::NUM_WEAPONS) {
             return false;
         }
 
@@ -792,5 +800,18 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 attackTick: $this->attackTick,
             ),
         ];
+    }
+
+    private function createSound(int $soundId): void
+    {
+        if ($this->world === null) {
+            return;
+        }
+
+        $this->world->addEvent(new ObjEventSoundWorldItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            soundId: $soundId,
+        ));
     }
 }
