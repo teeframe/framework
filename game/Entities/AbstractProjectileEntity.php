@@ -23,6 +23,7 @@ abstract class AbstractProjectileEntity extends AbstractEntity
         public Vector2 $position,
         public Vector2 $direction,
         public int $type,
+        public int $owner = -1,
     ) {
         parent::__construct(position: $position);
 

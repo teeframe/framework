@@ -84,7 +84,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootGun(): int
     {
-        if ($this->world === null) {
+        if ($this->world === null || $this->tee === null) {
             return 0;
         }
 
@@ -99,6 +99,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             ),
             direction: $dir,
             type: PvpProjectileEntity::WEAPON_GUN,
+            owner: $this->tee->teeIndex,
         );
 
         $this->world->addEntity($proj);
@@ -108,7 +109,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootShotgun(): int
     {
-        if ($this->world === null) {
+        if ($this->world === null || $this->tee === null) {
             return 0;
         }
 
@@ -133,6 +134,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 position: clone $projStartPos,
                 direction: $bulletDir,
                 type: PvpProjectileEntity::WEAPON_SHOTGUN,
+                owner: $this->tee->teeIndex,
             );
             $proj->setTuning(2750.0 * $speed, 1.25, 10);
 
@@ -144,7 +146,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootGrenade(): int
     {
-        if ($this->world === null) {
+        if ($this->world === null || $this->tee === null) {
             return 0;
         }
 
@@ -159,6 +161,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             ),
             direction: $dir,
             type: PvpProjectileEntity::WEAPON_GRENADE,
+            owner: $this->tee->teeIndex,
         );
         $proj->setTuning(1000.0, 7.0, 100);
 

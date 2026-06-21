@@ -1,10 +1,13 @@
 <?php
 
+use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\Entities\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
 
 $mapPath = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
@@ -258,4 +261,171 @@ test('projectile snap uses start position not current position', function () {
 
     // startTick must be correct
     expect($ints[5])->toBe(42);
+});
+
+// --- Grenade explosion tests ---
+
+function createTestWorld(Map $map): AbstractWorld
+{
+    return new class('test', new TickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+}
+
+test('grenade creates explosion event on lifespan expiry', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $world = createTestWorld($map);
+
+    $ownerTee = new PlayerTee;
+    $world->addTee($ownerTee);
+
+    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
+    $world->addEntity($ownerChar);
+
+    $proj = new PvpProjectileEntity(
+        position: new Vector2(100, 100),
+        direction: new Vector2(1, 0),
+        type: PvpProjectileEntity::WEAPON_GRENADE,
+        owner: $ownerTee->teeIndex,
+    );
+    $proj->setTuning(1000.0, 7.0, 0); // lifespan = 0, expires immediately
+    $world->addEntity($proj);
+
+    $proj->doTick();
+
+    // Check that an explosion event was added
+    $ref = new ReflectionClass($world);
+    $prop = $ref->getProperty('pendingEvents');
+    $prop->setAccessible(true);
+    $events = $prop->getValue($world);
+
+    $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
+    expect($explosionEvents)->toHaveCount(1);
+});
+
+test('grenade explosion damages nearby character', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $world = createTestWorld($map);
+
+    $ownerTee = new PlayerTee;
+    $world->addTee($ownerTee);
+
+    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
+    $world->addEntity($ownerChar);
+
+    // Target 50 units away (within 135 radius, outside 48 inner radius)
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+
+    $targetChar = new PvpCharacterEntity(new Vector2(150, 100));
+    $targetChar->spawn(new Vector2(150, 100), $targetTee);
+    $world->addEntity($targetChar);
+
+    expect($targetChar->health)->toBe(10);
+
+    $proj = new PvpProjectileEntity(
+        position: new Vector2(100, 100),
+        direction: new Vector2(1, 0),
+        type: PvpProjectileEntity::WEAPON_GRENADE,
+        owner: $ownerTee->teeIndex,
+    );
+    $proj->setTuning(1000.0, 7.0, 0);
+    $world->addEntity($proj);
+
+    $proj->doTick();
+
+    // Target at distance 50: l = 1 - (50-48)/(135-48) = 1 - 2/87 ≈ 0.977
+    // dmg = (int)(6 * 0.977) = (int)(5.86) = 5
+    expect($targetChar->health)->toBeLessThan(10);
+    expect($targetChar->health)->toBeGreaterThan(0);
+});
+
+test('grenade explosion does not damage character outside radius', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $world = createTestWorld($map);
+
+    $ownerTee = new PlayerTee;
+    $world->addTee($ownerTee);
+
+    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
+    $world->addEntity($ownerChar);
+
+    // Target 200 units away (outside 135 radius)
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+
+    $targetChar = new PvpCharacterEntity(new Vector2(300, 100));
+    $targetChar->spawn(new Vector2(300, 100), $targetTee);
+    $world->addEntity($targetChar);
+
+    $proj = new PvpProjectileEntity(
+        position: new Vector2(100, 100),
+        direction: new Vector2(1, 0),
+        type: PvpProjectileEntity::WEAPON_GRENADE,
+        owner: $ownerTee->teeIndex,
+    );
+    $proj->setTuning(1000.0, 7.0, 0);
+    $world->addEntity($proj);
+
+    $proj->doTick();
+
+    // Target outside radius should not take damage
+    expect($targetChar->health)->toBe(10);
+});
+
+test('non-grenade projectile does not create explosion event', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $world = createTestWorld($map);
+
+    $ownerTee = new PlayerTee;
+    $world->addTee($ownerTee);
+
+    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
+    $world->addEntity($ownerChar);
+
+    // Gun projectile with lifespan = 0
+    $proj = new PvpProjectileEntity(
+        position: new Vector2(100, 100),
+        direction: new Vector2(1, 0),
+        type: PvpProjectileEntity::WEAPON_GUN,
+        owner: $ownerTee->teeIndex,
+    );
+    $proj->setTuning(2200.0, 1.25, 0);
+    $world->addEntity($proj);
+
+    $proj->doTick();
+
+    $ref = new ReflectionClass($world);
+    $prop = $ref->getProperty('pendingEvents');
+    $prop->setAccessible(true);
+    $events = $prop->getValue($world);
+
+    $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
+    expect($explosionEvents)->toHaveCount(0);
 });
