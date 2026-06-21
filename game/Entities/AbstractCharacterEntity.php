@@ -391,7 +391,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 );
             }
 
-            [$hit] = $collision->intersectLine($this->hookPos, $newHookPos);
+            [$hit, $colPos] = $collision->intersectLine($this->hookPos, $newHookPos);
             if ($hit) {
                 if ($hit & Collision::COLFLAG_NOHOOK) {
                     $this->triggeredEvents |= 0x20;
@@ -400,6 +400,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                     $this->triggeredEvents |= 0x10;
                     $this->hookState = 5;
                 }
+
+                $newHookPos = $colPos;
             }
 
             $this->hookPos = $newHookPos;
