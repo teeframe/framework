@@ -164,7 +164,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $tee->setWorld($this, $index);
 
-        $this->tees[] = $tee;
+        $this->tees[$index] = $tee;
 
         // TODO: GameServer()->OnClientEnter(ClientID)
     }

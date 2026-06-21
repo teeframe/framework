@@ -92,7 +92,10 @@ class ConnectionSlot extends AbstractConnection
         if ($message === NetworkMessages::CONTROL_CLOSE) {
             $this->consoleInfo('Closed reason='.$packet->getControlMessageExtra());
 
+            $this->world()->removeTee($this->playerTee);
+
             $this->reset();
+            $this->state = static::STATE_CLOSED;
         }
 
         // CONTROL_KEEP_ALIVE is used just to keep the connection alive
@@ -119,6 +122,16 @@ class ConnectionSlot extends AbstractConnection
 
                 // Feed input to the player's tee
                 $tee = $this->playerTee();
+
+                // On first input from client, sync prevInputFire to avoid
+                // spurious presses from the client's pre-existing m_Fire counter.
+                if ($tee->prevInputFire === 0 && $chunk->inputFire !== 0) {
+                    $tee->prevInputFire         = $chunk->inputFire;
+                    $tee->prevInputWantedWeapon = $chunk->inputWantedWeapon;
+                    $tee->prevInputNextWeapon   = $chunk->inputNextWeapon;
+                    $tee->prevInputPrevWeapon   = $chunk->inputPrevWeapon;
+                }
+
                 $tee->inputDirection = $chunk->inputDirection;
                 $tee->inputTargetX   = $chunk->inputTargetX;
                 $tee->inputTargetY   = $chunk->inputTargetY;

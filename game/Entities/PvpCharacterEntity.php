@@ -205,7 +205,6 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $weaponAmmo = $this->aWeapons[$this->activeWeapon]['ammo'];
         if ($weaponAmmo === 0) {
             $this->reloadTimer = (int) round(125 * 50 / 1000);
-            $this->attackTick  = $this->tick;
 
             return;
         }

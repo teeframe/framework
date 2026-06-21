@@ -254,8 +254,7 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->prevInputFire = 0;
+    $tee->inputFire = 0;
     $tee->inputDirection = 1;
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
@@ -264,6 +263,11 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
+    // First tick: syncs prev inputs
+    $character->doTick();
+
+    // Second tick: fire press (prev=0, cur=1 → 1 press)
+    $tee->inputFire = 1;
     $character->doTick();
 
     // attackTick should be set to the world tick (100), not 0
@@ -346,8 +350,7 @@ test('projectile snap velocity is normalized direction times 100', function () u
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->prevInputFire = 0;
+    $tee->inputFire = 0;
     $tee->inputDirection = 1;
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
@@ -356,6 +359,11 @@ test('projectile snap velocity is normalized direction times 100', function () u
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
+    // First tick: syncs prev inputs
+    $character->doTick();
+
+    // Second tick: fire press (prev=0, cur=1 → 1 press)
+    $tee->inputFire = 1;
     $character->doTick();
 
     $entities = $world->getEntities();
@@ -502,4 +510,68 @@ test('character death sets respawn on tee and notifies game controller', functio
     // Tee should be set to respawn
     expect($victimTee->spawning)->toBeTrue();
     expect($victimTee->respawnTick)->toBe($tickHandler->get() + 25); // 0.5s = 25 ticks
+});
+
+test('tee index is reused on reconnect and snap id matches', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+
+    $spawnPos = new Vector2(50 * 32, 25 * 32);
+
+    // First connection: tee gets index 0
+    $tee1 = new PlayerTee;
+    $world->addTee($tee1);
+    expect($tee1->teeIndex)->toBe(0);
+
+    $char1 = new PvpCharacterEntity(clone $spawnPos);
+    $char1->spawn(clone $spawnPos, $tee1);
+    $world->addEntity($char1);
+
+    // Set viewPosition to character position to avoid distance culling
+    $tee1->viewPosition = clone $spawnPos;
+
+    // Snap ID must match tee index
+    $worldSnaps = $world->doSnap($tee1);
+    $charSnap = array_values(array_filter($worldSnaps, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_CHARACTER));
+    expect($charSnap[0]->getId())->toBe(0);
+
+    $playerInfo = array_values(array_filter($worldSnaps, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_PLAYERINFO));
+    expect($playerInfo[0]->getId())->toBe(0);
+
+    // Disconnect: remove tee, index 0 released
+    $world->removeTee($tee1);
+
+    // Reconnect: new tee should reuse index 0
+    $tee2 = new PlayerTee;
+    $world->addTee($tee2);
+    expect($tee2->teeIndex)->toBe(0);
+
+    $char2 = new PvpCharacterEntity(clone $spawnPos);
+    $char2->spawn(clone $spawnPos, $tee2);
+    $world->addEntity($char2);
+
+    // Set viewPosition to character position to avoid distance culling
+    $tee2->viewPosition = clone $spawnPos;
+
+    // Snap ID must still match tee index after reconnect
+    $worldSnaps2 = $world->doSnap($tee2);
+    $charSnap2 = array_values(array_filter($worldSnaps2, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_CHARACTER));
+    expect($charSnap2[0]->getId())->toBe(0);
+
+    $playerInfo2 = array_values(array_filter($worldSnaps2, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_PLAYERINFO));
+    expect($playerInfo2[0]->getId())->toBe(0);
 });

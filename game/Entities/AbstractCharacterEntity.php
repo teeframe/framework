@@ -52,6 +52,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public int $direction = 0;
     public int $angle = 0;
     public int $triggeredEvents = 0;
+    private bool $inputInitialized = false;
 
     // Tuning parameters (Teeworlds 0.6 defaults)
     public float $gravity              = 0.5;
@@ -122,6 +123,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->queuedWeapon = -1;
         $this->reloadTimer  = 0;
         $this->attackTick   = 0;
+        $this->inputInitialized = false;
     }
 
     public function die(int $killerTeeIndex = -1): void
@@ -253,6 +255,16 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         // Use CountInput to detect presses.
         $firePressed = false;
         if ($this->tee instanceof PlayerTee) {
+            // On the first tick, sync prev inputs to current to avoid
+            // spurious presses from the client's pre-existing counter state.
+            if (! $this->inputInitialized) {
+                $this->tee->prevInputFire         = $this->tee->inputFire;
+                $this->tee->prevInputWantedWeapon = $this->tee->inputWantedWeapon;
+                $this->tee->prevInputNextWeapon   = $this->tee->inputNextWeapon;
+                $this->tee->prevInputPrevWeapon   = $this->tee->inputPrevWeapon;
+                $this->inputInitialized = true;
+            }
+
             $firePresses = $this->countInput($this->tee->prevInputFire, $this->tee->inputFire);
             $firePressed = $firePresses > 0 && $firePresses < 128;
         }

@@ -239,9 +239,12 @@ test('weapon switch is blocked during reload', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Fire to trigger reload (inputFire is an incrementing counter; 1 press from prev=0 to cur=1)
+    // First tick: syncs prev inputs
+    $tee->inputFire = 0;
+    $character->doTick();
+
+    // Second tick: fire press (prev=0, cur=1 → 1 press)
     $tee->inputFire = 1;
-    $tee->prevInputFire = 0;
     $character->doTick();
     expect($character->reloadTimer)->toBeGreaterThan(0);
 
@@ -260,9 +263,12 @@ test('queued weapon executes after reload ends', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Fire to trigger reload
+    // First tick: syncs prev inputs
+    $tee->inputFire = 0;
+    $character->doTick();
+
+    // Second tick: fire to trigger reload (prev=0, cur=1 → 1 press)
     $tee->inputFire = 1;
-    $tee->prevInputFire = 0;
     $character->doTick();
 
     // Queue hammer during reload (no fire press this tick)
@@ -401,4 +407,61 @@ test('setWeapon is no-op for same weapon', function () use ($makeChar) {
     expect($character->activeWeapon)->toBe(AbstractCharacterEntity::WEAPON_GUN);
     expect($character->lastWeapon)->toBe($oldLastWeapon);
     expect($character->queuedWeapon)->toBe(AbstractCharacterEntity::WEAPON_HAMMER); // unchanged
+});
+
+// --- No-ammo behavior ---
+
+test('no ammo does not set attackTick', function () {
+    $tee = new PlayerTee;
+    $character = createCharacterWithWorld($tee);
+
+    // Deplete gun ammo
+    $character->aWeapons[AbstractCharacterEntity::WEAPON_GUN]['ammo'] = 0;
+
+    // First tick: syncs prev inputs (no fire detected)
+    $tee->inputFire = 0;
+    $character->doTick();
+
+    // Second tick: real fire press (prev=0, cur=1 → 1 press)
+    $tee->inputFire = 1;
+    $character->doTick();
+
+    // attackTick should NOT be updated (no shot was fired — no ammo)
+    expect($character->attackTick)->toBe(0);
+
+    // reloadTimer should be set (click delay)
+    expect($character->reloadTimer)->toBeGreaterThan(0);
+});
+
+// --- First-tick input sync ---
+
+test('first tick syncs prevInputFire to avoid spurious presses', function () {
+    $tee = new PlayerTee;
+    $character = createCharacterWithWorld($tee);
+
+    // Simulate client connecting with fire counter already at 4 (even = not pressing)
+    $tee->inputFire = 4;
+
+    $character->doTick();
+
+    // Should NOT fire — prev was synced to cur on first tick
+    expect($character->reloadTimer)->toBe(0);
+    expect($character->attackTick)->toBe(0);
+});
+
+test('second tick detects real fire press after first-tick sync', function () {
+    $tee = new PlayerTee;
+    $character = createCharacterWithWorld($tee);
+
+    // First tick: client sends fire=4 (even, not pressing), prev synced to 4
+    $tee->inputFire = 4;
+    $character->doTick();
+    expect($character->reloadTimer)->toBe(0); // no shot
+
+    // Second tick: client sends fire=5 (odd, pressing — one press: 4→5)
+    $tee->inputFire = 5;
+    $character->doTick();
+
+    // Should fire — one press detected, reloadTimer set
+    expect($character->reloadTimer)->toBeGreaterThan(0);
 });
