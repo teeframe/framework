@@ -202,9 +202,26 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             return;
         }
 
-        $this->health -= $damage;
         $this->vel->x += $force->x;
         $this->vel->y += $force->y;
+
+        // Armor absorption (ported from Teeworlds 0.6 CCharacter::TakeDamage)
+        if ($damage > 0 && $this->armor > 0) {
+            if ($damage > 1) {
+                $this->health--;
+                $damage--;
+            }
+
+            if ($damage > $this->armor) {
+                $damage -= $this->armor;
+                $this->armor = 0;
+            } else {
+                $this->armor -= $damage;
+                $damage = 0;
+            }
+        }
+
+        $this->health -= $damage;
 
         // Player pain sound
         if ($this->world !== null && $damage > 0) {
