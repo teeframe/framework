@@ -364,8 +364,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         if ($this->ninjaCurrentMoveTime > 0) {
             // Set velocity
-            $this->vel->x = $this->ninjaActivationDir->x * 800;
-            $this->vel->y = $this->ninjaActivationDir->y * 800;
+            $this->vel->x = $this->ninjaActivationDir->x * 50;
+            $this->vel->y = $this->ninjaActivationDir->y * 50;
 
             $oldPos = clone $this->position;
 
@@ -430,7 +430,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $angle = $this->angle / 256.0;
         $this->ninjaActivationDir = new Vector2(cos($angle), sin($angle));
-        $this->ninjaCurrentMoveTime = 25; // 500ms at 50 tick/s
+        $this->ninjaCurrentMoveTime = 10; // 200ms at 50 tick/s
         $this->ninjaOldVelAmount = $this->vel->length();
         $this->ninjaNumObjectsHit = 0;
         $this->ninjaHitObjects = [];
