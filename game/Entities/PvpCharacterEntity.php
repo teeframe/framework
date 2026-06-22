@@ -441,6 +441,6 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             soundId: GameConstants::SOUND_NINJA_FIRE,
         ));
 
-        return 0;
+        return 25; // 500ms firedelay at 50 tick/s
     }
 }

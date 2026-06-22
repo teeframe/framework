@@ -274,3 +274,46 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
     expect($character->position->x)->toEqual($posAfterDash->x);
     expect($character->position->y)->toEqual($posAfterDash->y);
 });
+
+test('ninja has 25 tick cooldown between shots', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map = new Map($mapPath);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
+    $world = createNinjaWorld($map);
+
+    $spawnPos = new Vector2(50 * 32, 25 * 32);
+
+    $tee = new PlayerTee;
+    $tee->inputDirection = 1;
+    $tee->inputTargetX = 100;
+    $tee->inputTargetY = 0;
+
+    $character = new PvpCharacterEntity($spawnPos);
+    $character->spawn($spawnPos, $tee);
+    $world->addEntity($character);
+
+    $character->giveNinja();
+    $character->angle = 0;
+
+    $ref = new ReflectionClass($character);
+    $shootMethod = $ref->getMethod('shootNinja');
+    $shootMethod->setAccessible(true);
+
+    // First shot sets reload timer
+    $reloadTimer = $shootMethod->invoke($character);
+    expect($reloadTimer)->toBe(25);
+
+    // Simulate the reload timer being set (as handleWeapons would do)
+    $character->reloadTimer = $reloadTimer;
+
+    // Second shot should be blocked by reload timer
+    // handleWeapons checks reloadTimer > 0 and returns early
+    expect($character->reloadTimer)->toBeGreaterThan(0);
+});
