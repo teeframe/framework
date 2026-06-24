@@ -275,7 +275,7 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
     expect($character->position->y)->toEqual($posAfterDash->y);
 });
 
-test('ninja has 25 tick cooldown between shots', function () use ($mapPath, $mapExists) {
+test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         return;
     }
@@ -308,7 +308,7 @@ test('ninja has 25 tick cooldown between shots', function () use ($mapPath, $map
 
     // First shot sets reload timer
     $reloadTimer = $shootMethod->invoke($character);
-    expect($reloadTimer)->toBe(25);
+    expect($reloadTimer)->toBe(40);
 
     // Simulate the reload timer being set (as handleWeapons would do)
     $character->reloadTimer = $reloadTimer;

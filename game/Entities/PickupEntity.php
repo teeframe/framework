@@ -19,12 +19,14 @@ class PickupEntity extends AbstractEntity
 
     /**
      * @param int $respawnTime Respawn time in ticks after being picked up (-1 = never respawn).
+     * @param int $spawnDelay  Initial spawn delay in ticks before the pickup first appears (0 = immediately available).
      */
     public function __construct(
         Vector2 $position,
         private int $type,
         private int $subType = 0,
         private int $respawnTime = -1,
+        private int $spawnDelay = 0,
     ) {
         parent::__construct(position: $position);
     }
@@ -33,9 +35,11 @@ class PickupEntity extends AbstractEntity
     {
         parent::setWorld($world);
 
-        // Pickups are immediately available (spawn delay = 0),
-        // matching Teeworlds 0.6 DM datafile defaults.
-        $this->spawnTick = -1;
+        if ($this->spawnDelay > 0) {
+            $this->spawnTick = $world->getCurrentTick() + $this->spawnDelay;
+        } else {
+            $this->spawnTick = -1;
+        }
     }
 
     public function getHitBoxRadius(): int

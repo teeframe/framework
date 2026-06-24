@@ -16,6 +16,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 {
     public int $damageTaken = 0;
     public int $damageTakenTick = 0;
+    public int $ammoRegenStart = -1;
     protected function shootHammer(): int
     {
         $world = $this->world;
@@ -164,7 +165,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             soundId: GameConstants::SOUND_SHOTGUN_FIRE,
         ));
 
-        return 10; // ~200ms at 50 tick/s
+        return 25; // 500ms at 50 tick/s
     }
 
     protected function shootGrenade(): int
@@ -196,7 +197,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             soundId: GameConstants::SOUND_GRENADE_FIRE,
         ));
 
-        return 10;
+        return 25; // 500ms at 50 tick/s
     }
 
     protected function shootRifle(): int
@@ -223,7 +224,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             soundId: GameConstants::SOUND_RIFLE_FIRE,
         ));
 
-        return 16; // ~320ms at 50 tick/s
+        return 40; // 800ms at 50 tick/s
     }
 
     protected function handleWeapons(bool $firePressed): void
@@ -232,6 +233,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $this->handleNinja();
 
         if (! $firePressed || $this->reloadTimer > 0) {
+            $this->tickAmmoRegen();
+
             return;
         }
 
@@ -246,6 +249,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 y: (int) round($this->position->y),
                 soundId: GameConstants::SOUND_WEAPON_NOAMMO,
             ));
+
+            $this->ammoRegenStart = -1;
 
             return;
         }
@@ -275,6 +280,46 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         if ($this->aWeapons[$this->activeWeapon]['ammo'] > 0) {
             $this->aWeapons[$this->activeWeapon]['ammo']--;
+        }
+
+        $this->ammoRegenStart = -1;
+    }
+
+    /**
+     * Ammo regeneration for the gun.
+     * Ported from Teeworlds 0.6 CCharacter::HandleWeapons() ammo regen section.
+     */
+    private function tickAmmoRegen(): void
+    {
+        // Only the gun regenerates ammo
+        if ($this->activeWeapon !== GameConstants::WEAPON_GUN) {
+            $this->ammoRegenStart = -1;
+
+            return;
+        }
+
+        // Pause during reload — don't reset, just wait
+        if ($this->reloadTimer > 0) {
+            return;
+        }
+
+        $weaponAmmo = $this->aWeapons[$this->activeWeapon]['ammo'];
+        $weaponGot  = $this->aWeapons[$this->activeWeapon]['got'];
+
+        if (! $weaponGot || $weaponAmmo < 0 || $weaponAmmo >= 10) {
+            $this->ammoRegenStart = -1;
+
+            return;
+        }
+
+        if ($this->ammoRegenStart < 0) {
+            $this->ammoRegenStart = $this->tick;
+        }
+
+        // 500ms at 50 tick/s = 25 ticks
+        if (($this->tick - $this->ammoRegenStart) >= 25) {
+            $this->aWeapons[$this->activeWeapon]['ammo'] = min(10, $weaponAmmo + 1);
+            $this->ammoRegenStart = -1;
         }
     }
 
@@ -429,6 +474,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
 
         $angle = $this->angle / 256.0;
+
         $this->ninjaActivationDir = new Vector2(cos($angle), sin($angle));
         $this->ninjaCurrentMoveTime = 10; // 200ms at 50 tick/s
         $this->ninjaOldVelAmount = $this->vel->length();
@@ -441,6 +487,6 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             soundId: GameConstants::SOUND_NINJA_FIRE,
         ));
 
-        return 25; // 500ms firedelay at 50 tick/s
+        return 40; // 800ms at 50 tick/s
     }
 }
