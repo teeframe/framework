@@ -319,7 +319,7 @@ test('players push each other apart when overlapping', function () use ($mapPath
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Create world so tickPhysics can access other entities
-    $world = new class('test', new \TeeFrame\Core\TickHandler, $map) extends \TeeFrame\Game\AbstractWorld
+    $world = new class('test', new \TeeFrame\Core\TickHandler, $map, $GLOBALS['mockGameServer']) extends \TeeFrame\Game\AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {

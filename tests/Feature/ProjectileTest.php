@@ -268,7 +268,7 @@ test('projectile snap uses start position not current position', function () {
 
 function createTestWorld(Map $map): AbstractWorld
 {
-    return new class('test', new TickHandler, $map) extends AbstractWorld
+    return new class('test', new TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -439,7 +439,7 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -524,7 +524,7 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -599,7 +599,7 @@ test('projectile does not collide with owner character', function () use ($mapPa
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -661,7 +661,7 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -729,7 +729,7 @@ test('damage indicators group when damage taken in quick succession', function (
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {

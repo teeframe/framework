@@ -34,14 +34,15 @@ function createCharacterWithWorld(PlayerTee $tee): AbstractCharacterEntity
     $collision = $map->getCollision();
 
     // Create a minimal mock world
-    $world = new class('test', new \TeeFrame\Core\TickHandler, $map) extends AbstractWorld
+    $world = new class('test', new \TeeFrame\Core\TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function __construct(
             string $identifier,
             \TeeFrame\Core\TickHandler $tickHandler,
             Map $map,
+            \TeeFrame\Server\AbstractServerInstance $server,
         ) {
-            parent::__construct($identifier, $tickHandler, $map);
+            parent::__construct($identifier, $tickHandler, $map, $server);
         }
 
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string

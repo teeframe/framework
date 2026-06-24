@@ -12,19 +12,6 @@ use TeeFrame\Map\Map;
 $mapPath = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
-function createWorld(Map $map): AbstractWorld
-{
-    return new class('test', new TickHandler, $map) extends AbstractWorld
-    {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        public function doTick(): void {}
-    };
-}
-
 /**
  * @return array{PvpCharacterEntity, AbstractWorld}
  */
@@ -304,7 +291,7 @@ test('character tick is updated from world tick in doTick', function () use ($ma
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(42);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -336,7 +323,7 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(100);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -384,7 +371,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     $tickHandler = new TickHandler(0);
 
     // World that properly ticks entities
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -432,7 +419,7 @@ test('projectile snap velocity is normalized direction times 100', function () u
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -488,7 +475,7 @@ test('character snap id matches tee index when pickups are present', function ()
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
@@ -542,7 +529,7 @@ test('character death sets respawn on tee and notifies game controller', functio
     $deathVictim   = null;
     $deathKiller   = -1;
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public int $deathNotifiedCount = 0;
 
@@ -614,7 +601,7 @@ test('tee index is reused on reconnect and snap id matches', function () use ($m
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map) extends AbstractWorld
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {

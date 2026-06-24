@@ -34,3 +34,55 @@
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Core\TickHandler;
+use TeeFrame\Map\Map;
+
+/**
+ * A mock server with sendToTee tracking.
+ */
+$GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerInstance {
+    /** @var int[] */
+    public array $sentTeeIndexes = [];
+
+    public function __construct()
+    {
+        // bypass parent constructor
+    }
+
+    protected function boot(): void {}
+
+    protected function selectWorldForNewConnection(): AbstractWorld
+    {
+        throw new \RuntimeException('not implemented');
+    }
+
+    public function sendToTee(AbstractWorld $world, int $teeIndex, \TeeFrame\Network\Chunks\AbstractChunk $chunk): void
+    {
+        $this->sentTeeIndexes[] = $teeIndex;
+    }
+
+    public function resetSentTees(): void
+    {
+        $this->sentTeeIndexes = [];
+    }
+};
+
+function resetMockServer(): void
+{
+    $GLOBALS['mockGameServer']->resetSentTees();
+}
+
+function createWorld(Map $map): AbstractWorld
+{
+    return new class('test', new TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    {
+        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        public function doTick(): void {}
+    };
+}

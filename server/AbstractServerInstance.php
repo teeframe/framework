@@ -4,6 +4,7 @@ namespace TeeFrame\Server;
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
@@ -104,6 +105,21 @@ abstract class AbstractServerInstance
 
         foreach ($this->worlds as $world) {
             $world->clearEvents();
+        }
+    }
+
+    public function sendToTee(AbstractWorld $world, int $teeIndex, AbstractChunk $chunk): void
+    {
+        foreach ($this->connectionHandler->getConnections() as $connection) {
+            if ($connection->state !== ConnectionSlot::STATE_INGAME) {
+                continue;
+            }
+
+            if ($connection->world() === $world && $connection->playerTee()->teeIndex === $teeIndex) {
+                $connection->chunks()->add($chunk);
+
+                return;
+            }
         }
     }
 

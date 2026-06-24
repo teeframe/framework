@@ -30,6 +30,9 @@ class PlayerTee extends AbstractTee
     public int $prevInputPrevWeapon   = 0;
     public int $prevInputFire         = 0;
 
+    // Spam protection (CPlayer::m_LastChat)
+    public int $lastChatTick = 0;
+
     public function doSnap(AbstractTee $requestingTee): array
     {
         return [

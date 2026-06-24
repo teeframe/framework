@@ -11,8 +11,13 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\World\SnapIdPool;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\ClSayChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
+use TeeFrame\Server\AbstractServerInstance;
 
 abstract class AbstractWorld implements SnapableObject, TickableObject
 {
@@ -44,7 +49,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected EmptyTuneController $tuneController;
 
-    public function __construct(public string $identifier, protected TickHandler $tickHandler, protected Map $map)
+    public function __construct(public string $identifier, protected TickHandler $tickHandler, protected Map $map, protected AbstractServerInstance $server)
     {
         $this->snapIdPool = new SnapIdPool;
 
@@ -180,6 +185,95 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
             unset($this->tees[$index]);
         }
+    }
+
+    /**
+     * Handle a game message from a tee.
+     * Ported from Teeworlds 0.6 CGameContext::OnMessage().
+     */
+    public function onMessage(AbstractTee $tee, AbstractChunk $chunk): void
+    {
+        if ($chunk instanceof ClSayChunk) {
+            $this->handleChatMessage($tee, $chunk);
+        }
+    }
+
+    private function handleChatMessage(AbstractTee $tee, ClSayChunk $chunk): void
+    {
+        $message = trim($chunk->text);
+
+        if ($message === '') {
+            return;
+        }
+
+        // Spam protection: max ~16 characters per second (CPlayer::m_LastChat)
+        if ($tee instanceof PlayerTee) {
+            $currentTick = $this->getCurrentTick();
+
+            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (50 * ((15 + strlen($message)) / 16)) > $currentTick) {
+                return;
+            }
+
+            $tee->lastChatTick = $currentTick;
+        }
+
+        // Check for whisper command: /w <name> or /whisper <name>
+        // Supports quoted names: /w "Player Name" message
+        if (preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches)) {
+            $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
+            $whisperMsg = $matches[3];
+
+            $this->sendWhisper($tee, $targetName, $whisperMsg);
+            return;
+        }
+
+        $this->sendChat($tee, $chunk->team, $message);
+    }
+
+    public function sendChat(AbstractTee $from, bool $team, string $message): void
+    {
+        $chunk = new SvChatChunk(
+            team: $team ? 1 : 0,
+            clientId: $from->teeIndex,
+            text: $message,
+        );
+
+        foreach ($this->tees as $tee) {
+            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
+        }
+    }
+
+    public function sendWhisper(AbstractTee $from, string $targetName, string $message): void
+    {
+        $targetTee = null;
+        foreach ($this->tees as $tee) {
+            if (strcasecmp($tee->name, $targetName) === 0) {
+                $targetTee = $tee;
+                break;
+            }
+        }
+
+        if ($targetTee === null) {
+            $this->server->sendToTee($this, $from->teeIndex, new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: "Player '{$targetName}' not found",
+            ));
+
+            return;
+        }
+
+        $this->server->sendToTee($this, $targetTee->teeIndex, new SvChatChunk(
+            team: 2,
+            clientId: $from->teeIndex,
+            text: $message,
+        ));
+
+        $this->server->sendToTee($this, $from->teeIndex, new SvChatChunk(
+            team: 3,
+            clientId: $from->teeIndex,
+            text: $message,
+        ));
     }
 
     public function doTick(): void

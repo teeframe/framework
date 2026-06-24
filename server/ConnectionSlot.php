@@ -108,8 +108,11 @@ class ConnectionSlot extends AbstractConnection
     protected function handleDefaultPacket(DefaultPacket $packet): bool
     {
         foreach ($packet->getChunks() as $chunk) {
+            // GameServer()->OnMessage
             if (! $chunk->isSystem()) {
-                // TODO: Implement GameServer()->OnMessage
+                $this->world()->onMessage($this->playerTee(), $chunk);
+
+                continue;
             }
 
             if ($chunk instanceof InputChunk) {
