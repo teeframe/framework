@@ -2,6 +2,9 @@
 
 namespace TeeFrame\Game;
 
+use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\PingCommand;
+use TeeFrame\Game\Commands\WhisperCommand;
 use TeeFrame\Game\Entities\AbstractCharacterEntity;
 use TeeFrame\Map\Map;
 use TeeFrame\Core\SnapableObject;
@@ -21,6 +24,11 @@ use TeeFrame\Server\AbstractServerInstance;
 
 abstract class AbstractWorld implements SnapableObject, TickableObject
 {
+    /**
+     * @var AbstractCommand[]
+     */
+    protected array $commands = [];
+
     /**
      * @var AbstractEntity[]
      */
@@ -53,9 +61,21 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     {
         $this->snapIdPool = new SnapIdPool;
 
+        $this->bootCommands();
         $this->bootGameController();
         $this->bootVoteController();
         $this->bootTuneController();
+    }
+
+    protected function bootCommands(): void
+    {
+        $this->registerCommand(new WhisperCommand);
+        $this->registerCommand(new PingCommand);
+    }
+
+    public function registerCommand(AbstractCommand $command): void
+    {
+        $this->commands[] = $command;
     }
 
     protected function bootGameController(): void
@@ -103,6 +123,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getTees(): array
     {
         return $this->tees;
+    }
+
+    public function getServer(): AbstractServerInstance
+    {
+        return $this->server;
     }
 
     public function gameController(): EmptyGameController
@@ -217,14 +242,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $tee->lastChatTick = $currentTick;
         }
 
-        // Check for whisper command: /w <name> or /whisper <name>
-        // Supports quoted names: /w "Player Name" message
-        if (preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches)) {
-            $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
-            $whisperMsg = $matches[3];
-
-            $this->sendWhisper($tee, $targetName, $whisperMsg);
-            return;
+        // Check for registered commands
+        foreach ($this->commands as $command) {
+            if (preg_match($command->getPattern(), $message, $matches)) {
+                $command->execute($this, $tee, $matches);
+                return;
+            }
         }
 
         $this->sendChat($tee, $chunk->team, $message);
@@ -243,38 +266,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
-    public function sendWhisper(AbstractTee $from, string $targetName, string $message): void
-    {
-        $targetTee = null;
-        foreach ($this->tees as $tee) {
-            if (strcasecmp($tee->name, $targetName) === 0) {
-                $targetTee = $tee;
-                break;
-            }
-        }
 
-        if ($targetTee === null) {
-            $this->server->sendToTee($this, $from->teeIndex, new SvChatChunk(
-                team: 0,
-                clientId: -1,
-                text: "Player '{$targetName}' not found",
-            ));
-
-            return;
-        }
-
-        $this->server->sendToTee($this, $targetTee->teeIndex, new SvChatChunk(
-            team: 2,
-            clientId: $from->teeIndex,
-            text: $message,
-        ));
-
-        $this->server->sendToTee($this, $from->teeIndex, new SvChatChunk(
-            team: 3,
-            clientId: $from->teeIndex,
-            text: $message,
-        ));
-    }
 
     public function doTick(): void
     {

@@ -145,7 +145,7 @@ test('onMessage handles whisper command via ClSayChunk', function () use ($mapPa
     expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([1, 0]);
 });
 
-test('sendWhisper finds target by name case-insensitively', function () use ($mapPath, $mapExists) {
+test('WhisperCommand finds target by name case-insensitively', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         return;
     }
@@ -168,12 +168,13 @@ test('sendWhisper finds target by name case-insensitively', function () use ($ma
     $prop->setAccessible(true);
     $prop->setValue($world, [$from, $target]);
 
-    $world->sendWhisper($from, 'targetplayer', 'secret');
+    $command = new \TeeFrame\Game\Commands\WhisperCommand;
+    $command->execute($world, $from, ['', '', 'targetplayer', 'secret']);
 
     expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([1, 0]);
 });
 
-test('sendWhisper notifies sender when target not found', function () use ($mapPath, $mapExists) {
+test('WhisperCommand notifies sender when target not found', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         return;
     }
@@ -192,7 +193,8 @@ test('sendWhisper notifies sender when target not found', function () use ($mapP
     $prop->setAccessible(true);
     $prop->setValue($world, [$from]);
 
-    $world->sendWhisper($from, 'NonExistent', 'secret');
+    $command = new \TeeFrame\Game\Commands\WhisperCommand;
+    $command->execute($world, $from, ['', '', 'NonExistent', 'secret']);
 
     expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0]);
 });
