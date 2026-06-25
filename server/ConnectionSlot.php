@@ -118,6 +118,8 @@ class ConnectionSlot extends AbstractConnection
             if ($chunk instanceof InputChunk) {
                 $this->snaps()->setLastAckedTick($chunk->ackGameTick);
 
+                $this->playerTee()->latency = $this->snaps()->getLatency();
+
                 $this->chunks()->add(new InputTimingChunk(
                     intendedTick: $chunk->predictionTick,
                     timeLeft: (int) (($chunk->predictionTick - $this->world()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000),
@@ -146,7 +148,8 @@ class ConnectionSlot extends AbstractConnection
                 $tee->inputPrevWeapon   = $chunk->inputPrevWeapon;
             }
 
-            // TODO: Implement NETMSG_PING
+            // NOTE: NETMSG_PING chunk is only sent manually by the client
+            // Therefore, is not implemented here
 
             // TODO: Implement NETMSG_RCON_CMD
 

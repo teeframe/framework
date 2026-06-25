@@ -57,17 +57,18 @@ class SnapHandler
 
     public function setLastAckedTick(int $tick): void
     {
-        $this->latency       = (int) round(($tick - $this->lastAckedTick) / NetworkParams::TICKS_PER_SECOND * 1000);
         $this->lastAckedTick = $tick;
 
         if ($this->state !== self::STATE_FULL) {
             $this->state = self::STATE_FULL;
         }
 
-        // Select new delta snap
+        // Select new delta snap and compute latency from wall-clock send time.
+        // Ported from Teeworlds 0.6: (time_get() - TagTime) * 1000 / time_freq()
         foreach ($this->sentList as $snap) {
             if ($snap->getTick() === $this->lastAckedTick) {
                 $this->deltaSnap = $snap;
+                $this->latency   = (int) round((microtime(true) - $snap->getSendTime()) * 1000);
             }
         }
 
@@ -124,7 +125,7 @@ class SnapHandler
             }
         }
 
-        $this->sentList[] = new ConnectionSnap($currentTick, $indexedItems);
+        $this->sentList[] = new ConnectionSnap($currentTick, $indexedItems, microtime(true));
     }
 
     /**

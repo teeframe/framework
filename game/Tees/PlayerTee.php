@@ -2,9 +2,6 @@
 
 namespace TeeFrame\Game\Tees;
 
-use TeeFrame\Network\SnapItems\ObjClientInfoItem;
-use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
-
 class PlayerTee extends AbstractTee
 {
     public int $score = 0;
@@ -33,25 +30,8 @@ class PlayerTee extends AbstractTee
     // Spam protection (CPlayer::m_LastChat)
     public int $lastChatTick = 0;
 
-    public function doSnap(AbstractTee $requestingTee): array
+    protected function getSnapScore(): int
     {
-        return [
-            new ObjClientInfoItem(
-                name: $this->name,
-                clan: $this->clan,
-                country: $this->country,
-                skinName: $this->skinName,
-                useCustomColor: $this->useCustomColor,
-                colorBody: $this->colorBody,
-                colorFoot: $this->colorFeet,
-            ),
-            new ObjPlayerInfoItem(
-                local: $this === $requestingTee,
-                clientId: $this->teeIndex,
-                team: 0,
-                score: $this->score,
-                latency: 0,
-            ),
-        ];
+        return $this->score;
     }
 }

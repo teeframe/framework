@@ -32,6 +32,8 @@ abstract class AbstractTee implements SnapableObject
 
     public int $teeIndex;
 
+    public int $latency = 0;
+
     public function __construct()
     {
         $this->reset();
@@ -49,11 +51,12 @@ abstract class AbstractTee implements SnapableObject
         $this->colorFeet      = 0;
 
         // Tee On World
-        $this->viewPosition = new Vector2(0, 0);
-        $this->teeIndex  = -1;
+        $this->viewPosition  = new Vector2(0, 0);
+        $this->teeIndex      = -1;
+        $this->latency       = 0;
     }
 
-    public function setInfo(string $name, string $clan, int $country, string $skinName, bool $useCustomColor, int $colorBody, int $colorFeet): void 
+    public function setInfo(string $name, string $clan, int $country, string $skinName, bool $useCustomColor, int $colorBody, int $colorFeet): void
     {
         $this->name           = $name;
         $this->clan           = $clan;
@@ -86,9 +89,14 @@ abstract class AbstractTee implements SnapableObject
                 local: $this === $requestingTee,
                 clientId: $this->teeIndex,
                 team: 0,
-                score: 0,
-                latency: 0, // TODO: Implement latency in the right way
+                score: $this->getSnapScore(),
+                latency: $this->latency,
             ),
         ];
+    }
+
+    protected function getSnapScore(): int
+    {
+        return 0;
     }
 }

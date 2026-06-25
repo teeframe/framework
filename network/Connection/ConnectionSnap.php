@@ -11,13 +11,19 @@ class ConnectionSnap
      */
     public function __construct(
         protected int $tick,
-        protected array $snapItems
+        protected array $snapItems,
+        protected float $sendTime,
     ) {
     }
 
     public function getTick(): int
     {
         return $this->tick;
+    }
+
+    public function getSendTime(): float
+    {
+        return $this->sendTime;
     }
 
     /**

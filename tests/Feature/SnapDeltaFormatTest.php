@@ -108,7 +108,7 @@ test('delta payload uses item keys for removed items', function () {
     $oldChar->setId(1);
 
     $oldItems = $handler->testIndexItemsList([$oldChar]);
-    $handler->setDeltaSnap(new ConnectionSnap(100, $oldItems));
+    $handler->setDeltaSnap(new ConnectionSnap(100, $oldItems, 0));
 
     // Current items: empty (character was removed)
     $currentItems = $handler->testIndexItemsList([]);
@@ -182,7 +182,7 @@ test('full delta payload matches libtw2 snapshot delta format', function () {
     $oldProj->setId(2);
 
     $oldItems = $handler->testIndexItemsList([$oldChar, $oldProj]);
-    $handler->setDeltaSnap(new ConnectionSnap(100, $oldItems));
+    $handler->setDeltaSnap(new ConnectionSnap(100, $oldItems, 0));
 
     // --- Build the "new" snapshot ---
     // Character removed, projectile updated
