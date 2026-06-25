@@ -8,15 +8,12 @@ use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
 use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
-/**
- * PvP character — contains weapon firing logic (hammer, gun) with ammo.
- * Used by PvP game modes (DM, TDM, CTF). DDNet modes extend AbstractCharacterEntity directly.
- */
 class PvpCharacterEntity extends AbstractCharacterEntity
 {
     public int $damageTaken = 0;
     public int $damageTakenTick = 0;
     public int $ammoRegenStart = -1;
+
     protected function shootHammer(): int
     {
         $world = $this->world;

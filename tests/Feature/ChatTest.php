@@ -203,6 +203,7 @@ test('whisper regex parses quoted name with spaces', function () {
     $message = '/w "[D] abidi" hello';
 
     preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches);
+    assert(isset($matches[1], $matches[2], $matches[3]));
 
     $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
     $whisperMsg = $matches[3];
@@ -215,6 +216,7 @@ test('whisper regex parses unquoted single-word name', function () {
     $message = '/w PlayerName hello world';
 
     preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches);
+    assert(isset($matches[1], $matches[2], $matches[3]));
 
     $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
     $whisperMsg = $matches[3];
@@ -227,6 +229,7 @@ test('/whisper command works with quoted name', function () {
     $message = '/whisper "Someone" secret message here';
 
     preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches);
+    assert(isset($matches[1], $matches[2], $matches[3]));
 
     $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
     $whisperMsg = $matches[3];

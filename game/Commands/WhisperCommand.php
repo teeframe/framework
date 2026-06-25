@@ -18,6 +18,9 @@ class WhisperCommand extends AbstractCommand
         return '/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s';
     }
 
+    /**
+     * @param  string[]  $matches
+     */
     public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
     {
         $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];

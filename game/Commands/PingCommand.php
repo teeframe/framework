@@ -18,6 +18,9 @@ class PingCommand extends AbstractCommand
         return '/^\/ping$/i';
     }
 
+    /**
+     * @param  string[]  $matches
+     */
     public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
     {
         $world->getServer()->sendToTee($world, $tee->teeIndex, new SvChatChunk(

@@ -11,5 +11,8 @@ abstract class AbstractCommand
 
     abstract public function getPattern(): string;
 
+    /**
+     * @param  string[]  $matches
+     */
     abstract public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void;
 }
