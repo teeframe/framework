@@ -47,17 +47,17 @@ test('character spawns and survives physics ticks at spawn position', function (
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 100; $tick++) {
         $character->core->tick(0, 0, 0, false, false, $collision, $tune, []);
         $character->core->move($collision, $tune);
-        $character->position->x = $character->core->position->x;
-        $character->position->y = $character->core->position->y;
+        $character->getPosition()->x = $character->core->position->x;
+        $character->getPosition()->y = $character->core->position->y;
     }
 
     expect($character->alive)->toBeTrue();
-    expect($character->position->y)->toBeGreaterThan($initialY);
+    expect($character->getPosition()->y)->toBeGreaterThan($initialY);
 });
 
 test('character with walk input survives physics ticks', function () use ($mapPath, $mapExists) {
@@ -96,17 +96,17 @@ test('character with walk input survives physics ticks', function () use ($mapPa
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 100; $tick++) {
         $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
         $character->core->move($collision, $tune);
-        $character->position->x = $character->core->position->x;
-        $character->position->y = $character->core->position->y;
+        $character->getPosition()->x = $character->core->position->x;
+        $character->getPosition()->y = $character->core->position->y;
     }
 
     expect($character->alive)->toBeTrue();
-    expect($character->position->x)->toBeGreaterThan($initialX);
+    expect($character->getPosition()->x)->toBeGreaterThan($initialX);
 });
 
 test('character with hook input survives physics ticks', function () use ($mapPath, $mapExists) {
@@ -144,7 +144,7 @@ test('character with hook input survives physics ticks', function () use ($mapPa
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
 
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 50; $tick++) {
         $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
@@ -189,7 +189,7 @@ test('character with firing input survives physics ticks', function () use ($map
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
 
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 50; $tick++) {
         $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
@@ -235,7 +235,7 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     $character->spawn($spawnPos, $tee);
 
     // Run a few ticks to exercise hook state machine
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 10; $tick++) {
         $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
@@ -286,12 +286,12 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
 
     // Set hook state to flying toward the right
     $character->core->hookState = 4; // HOOK_FLYING
     $character->core->hookDir = new Vector2(1, 0);
-    $character->core->hookPos = clone $character->position;
+    $character->core->hookPos = clone $character->getPosition();
 
     // Compute full extension point (where hook would go without collision)
     $fullExtension = new Vector2(
@@ -357,19 +357,19 @@ test('players push each other apart when overlapping', function () use ($mapPath
     $world->addEntity($char2);
 
     // Run one physics tick for both — they should push apart
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
 
     $char1->core->tick(0, 0, 0, false, false, $collision, $tune, [$tee2->teeIndex => $char2->core]);
     $char1->core->move($collision, $tune);
-    $char1->position->x = $char1->core->position->x;
-    $char1->position->y = $char1->core->position->y;
+    $char1->getPosition()->x = $char1->core->position->x;
+    $char1->getPosition()->y = $char1->core->position->y;
     $char2->core->tick(0, 0, 0, false, false, $collision, $tune, [$tee1->teeIndex => $char1->core]);
     $char2->core->move($collision, $tune);
-    $char2->position->x = $char2->core->position->x;
-    $char2->position->y = $char2->core->position->y;
+    $char2->getPosition()->x = $char2->core->position->x;
+    $char2->getPosition()->y = $char2->core->position->y;
 
     // After collision resolution, velocities should push them apart
     // (collision modifies vel, move applies position change)
-    $dist = $char1->position->distance($char2->position);
+    $dist = $char1->getPosition()->distance($char2->getPosition());
     expect($dist)->toBeGreaterThan(0);
 });

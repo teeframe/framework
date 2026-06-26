@@ -141,7 +141,7 @@ trait HasHandshakeHandler
     {
         $connection->state = ConnectionSlot::STATE_READY;
 
-        if ($runningVote = $connection->world()->voteController()->getRunningVote($connection->playerTee())) {
+        if ($runningVote = $connection->world()->getVoteController()->getRunningVote($connection->playerTee())) {
             $connection->chunks()->add($runningVote);
         }
 
@@ -164,13 +164,13 @@ trait HasHandshakeHandler
             colorFeet: $chunk->colorFeet
         );
         
-        $voteChunks = $connection->world()->voteController()->getInitialVoteChunks($connection->playerTee());
+        $voteChunks = $connection->world()->getVoteController()->getInitialVoteChunks($connection->playerTee());
         foreach ($voteChunks as $voteChunk) {
             $connection->chunks()->add($voteChunk);
         }
 
         $connection->chunks()->add(
-            $connection->world()->tuneController()->getTuneParamsChunk()
+            $connection->world()->getTuneController()->getTuneParamsChunk()
         )->add(
             new SvReadyToEnterChunk
         )->send();

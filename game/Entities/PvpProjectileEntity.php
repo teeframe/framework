@@ -104,8 +104,8 @@ class PvpProjectileEntity extends AbstractProjectileEntity
                 continue;
             }
 
-            $intersectPos = $entity->position->closestPointOnLine($pos0, $pos1);
-            $len = $entity->position->distance($intersectPos);
+            $intersectPos = $entity->getPosition()->closestPointOnLine($pos0, $pos1);
+            $len = $entity->getPosition()->distance($intersectPos);
 
             if ($len < AbstractCharacterEntity::PHYS_SIZE * 0.5 + $this->getHitBoxRadius()) {
                 $lineDist = $pos0->distance($intersectPos);
@@ -164,8 +164,8 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             }
 
             $diff = new Vector2(
-                $entity->position->x - $pos->x,
-                $entity->position->y - $pos->y,
+                $entity->getPosition()->x - $pos->x,
+                $entity->getPosition()->y - $pos->y,
             );
 
             $dist = $diff->length();

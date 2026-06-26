@@ -68,13 +68,13 @@ test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, 
     $handleMethod = $ref->getMethod('handleNinja');
     $handleMethod->setAccessible(true);
 
-    $startX = $character->position->x;
+    $startX = $character->getPosition()->x;
 
     // Run 1 tick of dash
     advanceWorldTick($world);
     $handleMethod->invoke($character);
 
-    $distance = $character->position->x - $startX;
+    $distance = $character->getPosition()->x - $startX;
 
     // At velocity 50, one tick should move ~50 units (not ~800)
     expect($distance)->toBeGreaterThan(30);
@@ -150,7 +150,7 @@ test('ninja dash moves character forward by expected distance', function () use 
     $shootMethod->setAccessible(true);
     $shootMethod->invoke($character);
 
-    $startX = $character->position->x;
+    $startX = $character->getPosition()->x;
 
     // Run 3 ticks of dash
     $handleMethod = $ref->getMethod('handleNinja');
@@ -162,7 +162,7 @@ test('ninja dash moves character forward by expected distance', function () use 
     }
 
     // After 3 ticks at velocity 50, the character should have moved ~150 units right
-    $distance = $character->position->x - $startX;
+    $distance = $character->getPosition()->x - $startX;
     expect($distance)->toBeGreaterThan(100);
     expect($distance)->toBeLessThan(200);
 });
@@ -262,7 +262,7 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
         $handleMethod->invoke($character);
     }
 
-    $posAfterDash = clone $character->position;
+    $posAfterDash = clone $character->getPosition();
 
     // Run 5 more ticks — should not move further
     for ($i = 0; $i < 5; $i++) {
@@ -271,8 +271,8 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
     }
 
     // Position should be the same as after the dash ended
-    expect($character->position->x)->toEqual($posAfterDash->x);
-    expect($character->position->y)->toEqual($posAfterDash->y);
+    expect($character->getPosition()->x)->toEqual($posAfterDash->x);
+    expect($character->getPosition()->y)->toEqual($posAfterDash->y);
 });
 
 test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $mapExists) {

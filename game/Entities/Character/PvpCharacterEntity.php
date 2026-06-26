@@ -44,7 +44,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 continue;
             }
 
-            $targetPos = $entity->position;
+            $targetPos = $entity->getPosition();
 
             if ($projStartPos->distance($targetPos) > $hitRadius) {
                 continue;
@@ -99,7 +99,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $offset = self::PHYS_SIZE * 0.75;
 
-        $tune = $this->world->tuneController();
+        $tune = $this->world->getTuneController();
 
         $proj = new PvpProjectileEntity(
             world: $this->world,
@@ -151,7 +151,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             $speed = 0.8 + (1.0 - 0.8) * $v; // mix(speeddiff, 1.0, v)
             $bulletDir = new Vector2(cos($a), sin($a));
 
-            $tune = $this->world->tuneController();
+            $tune = $this->world->getTuneController();
 
             $proj = new PvpProjectileEntity($this->world,
                 position: clone $projStartPos,
@@ -187,7 +187,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $dir    = new Vector2(cos($angle), sin($angle));
         $offset = self::PHYS_SIZE * 0.75;
 
-        $tune = $this->world->tuneController();
+        $tune = $this->world->getTuneController();
 
         $proj = new PvpProjectileEntity($this->world,
             position: new Vector2(
@@ -224,7 +224,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $angle = $this->core->angle / 256.0;
         $dir   = new Vector2(cos($angle), sin($angle));
 
-        $tune = $this->world->tuneController();
+        $tune = $this->world->getTuneController();
 
         $laser = new PvpLaserEntity($this->world,
             position: clone $this->position,
@@ -464,14 +464,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 }
 
                 // Check so we are sufficiently close
-                if ($entity->position->distance($this->position) > self::PHYS_SIZE * 2.0) {
+                if ($entity->getPosition()->distance($this->position) > self::PHYS_SIZE * 2.0) {
                     continue;
                 }
 
                 // Hit a player
                 $world->addEvent(new ObjEventSoundWorldItem(
-                    x: (int) round($entity->position->x),
-                    y: (int) round($entity->position->y),
+                    x: (int) round($entity->getPosition()->x),
+                    y: (int) round($entity->getPosition()->y),
                     soundId: GameConstants::SOUND_NINJA_HIT,
                 ));
 

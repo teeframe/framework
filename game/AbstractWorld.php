@@ -130,17 +130,17 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $this->server;
     }
 
-    public function gameController(): EmptyGameController
+    public function getGameController(): EmptyGameController
     {
         return $this->gameController;
     }
 
-    public function voteController(): EmptyVoteController
+    public function getVoteController(): EmptyVoteController
     {
         return $this->voteController;
     }
 
-    public function tuneController(): EmptyTuneController
+    public function getTuneController(): EmptyTuneController
     {
         return $this->tuneController;
     }
@@ -272,7 +272,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         // TODO: Implement GameServer()->OnTick()
 
-        $this->gameController()->doTick();
+        $this->getGameController()->doTick();
 
         foreach ($this->entities as $entity) {
             $entity->doTick();
@@ -292,7 +292,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $gameControllerSnap = array_map(
             fn (AbstractSnapItem $snap) => $snap->setId(0),
-            $this->gameController()->doSnap($requestingTee)
+            $this->getGameController()->doSnap($requestingTee)
         );
 
         return [
@@ -355,7 +355,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 continue;
             }
 
-            if ($requestingTee->viewPosition->distance($entity->position) > 1100) {
+            if ($requestingTee->viewPosition->distance($entity->getPosition()) > 1100) {
                 continue;
             }
 

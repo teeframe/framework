@@ -31,7 +31,7 @@ class PvpLaserEntity extends AbstractLaserEntity
     ) {
         parent::__construct($world, $position, $direction, $energy, $owner);
 
-        $tune = $world->tuneController();
+        $tune = $world->getTuneController();
         $this->bounceDelay = $tune->laserBounceDelay / 100.0;
         $this->bounceNum   = (int) ($tune->laserBounceNum / 100);
         $this->bounceCost  = $tune->laserBounceCost / 100.0;
@@ -119,9 +119,9 @@ class PvpLaserEntity extends AbstractLaserEntity
 
             // Check intersection with character hitbox
             $radius = $entity->getHitBoxRadius();
-            $projected = $this->closestPointOnLine($from, $to, $entity->position);
+            $projected = $this->closestPointOnLine($from, $to, $entity->getPosition());
 
-            $dist = $projected->distance($entity->position);
+            $dist = $projected->distance($entity->getPosition());
             if ($dist <= $radius) {
                 $lineDist = $projected->distance($from);
                 if ($lineDist < $closestDist) {
@@ -134,8 +134,8 @@ class PvpLaserEntity extends AbstractLaserEntity
         if ($closestEntity !== null) {
             $this->from = clone $from;
             $this->position = new Vector2(
-                $closestEntity->position->x,
-                $closestEntity->position->y,
+                $closestEntity->getPosition()->x,
+                $closestEntity->getPosition()->y,
             );
             $this->energy = -1;
             $closestEntity->takeDamage(new Vector2(0, 0), $this->damage, $closestEntity);

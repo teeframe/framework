@@ -106,7 +106,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 
         // Notify game controller for scoring
-        $this->world->gameController()->onCharacterDeath($this, $killerTeeIndex);
+        $this->world->getGameController()->onCharacterDeath($this, $killerTeeIndex);
 
         // Set respawn on the tee
         if ($this->tee instanceof PlayerTee) {
@@ -246,7 +246,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         // Build otherCores array keyed by tee index
         $otherCores = $this->buildOtherCores();
 
-        $tune = $this->world->tuneController();
+        $tune = $this->world->getTuneController();
         $this->core->tick($direction, $targetX, $targetY, $jump, $hook, $collision, $tune, $otherCores);
         $this->core->move($collision, $tune);
 

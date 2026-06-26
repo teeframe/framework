@@ -35,7 +35,7 @@ function setupCharacter(Map $map): array
     $character->spawn($spawnPos, $tee);
 
     $world->addEntity($character);
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->core->move($collision, $tune);
 
@@ -139,7 +139,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->core->move($collision, $tune);
 
@@ -190,7 +190,7 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->core->move($collision, $tune);
 
@@ -239,7 +239,7 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->core->move($collision, $tune);
 
@@ -277,7 +277,7 @@ test('projectile getPos returns forward displacement', function () use ($mapPath
 
     $entities = $world->getEntities();
     $projectile = $entities[1];
-    $startX = $projectile->position->x;
+    $startX = $projectile->getPosition()->x;
 
     $projRef = new ReflectionClass($projectile);
     $getPosRef = $projRef->getMethod('getPos');
@@ -409,7 +409,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     $world->addEntity($character);
 
     // Tick once to set up angle, then shoot through the character
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->core->move($collision, $tune);
 
@@ -434,7 +434,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
 
     // Position should have moved forward
     // At 2200 units/s, after 0.1s: ~220 units forward
-    expect($proj->position->x)->toBeGreaterThan($spawnPos->x + 100);
+    expect($proj->getPosition()->x)->toBeGreaterThan($spawnPos->x + 100);
 });
 
 test('projectile snap velocity is normalized direction times 100', function () use ($mapPath, $mapExists) {

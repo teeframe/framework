@@ -58,7 +58,7 @@ class PickupEntity extends AbstractEntity
                 continue;
             }
 
-            $dist = $this->position->distance($entity->position);
+            $dist = $this->position->distance($entity->getPosition());
             if ($dist > self::PICKUP_PHYS_SIZE + $entity->getHitBoxRadius()) {
                 continue;
             }

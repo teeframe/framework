@@ -50,7 +50,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     $world->addEntity($character);
 
     // Tick once to set up angle (needed for shoot direction)
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->core->move($collision, $tune);
 
@@ -122,7 +122,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     $character->spawn(clone $spawnPos, $tee);
 
     // Tick once to set up angle (needed for shoot direction)
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->core->move($collision, $tune);
 
@@ -176,7 +176,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $method->setAccessible(true);
 
     // Simulate 20 rapid shots (way more than the reload timer allows)
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     for ($i = 0; $i < 20; $i++) {
         $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
         $character->core->move($collision, $tune);
@@ -221,7 +221,7 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
     $world->addEntity($character);
 
     // Tick once to set up angle, then shoot through the character
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->core->move($collision, $tune);
 
@@ -270,7 +270,7 @@ test('projectile snap uses start position not current position', function () use
     $world->addEntity($character);
 
     // Tick once to set up angle, then shoot through the character
-    $tune = $world->tuneController();
+    $tune = $world->getTuneController();
     $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->core->move($collision, $tune);
 
@@ -282,8 +282,8 @@ test('projectile snap uses start position not current position', function () use
     $proj = $world->getEntities()[1];
 
     // Simulate doTick advancing the position (as if projectile flew forward)
-    $proj->position->x = 500;
-    $proj->position->y = 600;
+    $proj->getPosition()->x = 500;
+    $proj->getPosition()->y = 600;
 
     $snaps = $proj->doSnap($tee);
     $ints = $snaps[0]->getInts();
@@ -760,8 +760,8 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     foreach ($damageInds as $ind) {
         $ints = $ind->getInts();
         expect($ints)->toHaveCount(3);
-        expect($ints[0])->toBe((int) round($target->position->x));
-        expect($ints[1])->toBe((int) round($target->position->y));
+        expect($ints[0])->toBe((int) round($target->getPosition()->x));
+        expect($ints[1])->toBe((int) round($target->getPosition()->y));
         expect($ints[2])->toBeInt();
     }
 });
