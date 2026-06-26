@@ -9,7 +9,7 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
 
-$makeChar = fn () => new PvpCharacterEntity(new Vector2(0, 0));
+$makeChar = fn () => new PvpCharacterEntity(createWorld(new Map(__DIR__ . '/../dm1.map')), new Vector2(0, 0));
 
 /**
  * Helper: invoke a private method on CharacterEntity via reflection.
@@ -53,7 +53,7 @@ function createCharacterWithWorld(PlayerTee $tee): AbstractCharacterEntity
         public function doTick(): void {}
     };
 
-    $character = new PvpCharacterEntity(new Vector2(0, 0));
+    $character = new PvpCharacterEntity(createWorld(new Map(__DIR__ . '/../dm1.map')), new Vector2(0, 0));
     $character->spawn(new Vector2(100, 100), $tee);
 
     // Inject world via reflection (protected property from AbstractEntity)

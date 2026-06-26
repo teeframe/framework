@@ -21,7 +21,7 @@ class PickupSpawner
     {
         foreach ($gameLayer->getEntityPositions() as $entity) {
             $pos    = new Vector2($entity['x'], $entity['y']);
-            $pickup = self::createPickup($entity['type'], $pos, $respawnTimes, $spawnDelays);
+            $pickup = self::createPickup($entity['type'], $pos, $world, $respawnTimes, $spawnDelays);
 
             if ($pickup !== null) {
                 $world->addEntity($pickup);
@@ -35,18 +35,18 @@ class PickupSpawner
      * @param  array<int, int>  $respawnTimes
      * @param  array<int, int>  $spawnDelays
      */
-    private static function createPickup(int $entityType, Vector2 $pos, array $respawnTimes, array $spawnDelays): ?PickupEntity
+    private static function createPickup(int $entityType, Vector2 $pos, AbstractWorld $world, array $respawnTimes, array $spawnDelays): ?PickupEntity
     {
         $respawn    = $respawnTimes[$entityType] ?? -1;
         $spawnDelay = $spawnDelays[$entityType] ?? 0;
 
         return match ($entityType) {
-            GameLayer::ENTITY_ARMOR_1       => new PickupEntity($pos, NetworkMessages::POWERUP_ARMOR, respawnTime: $respawn, spawnDelay: $spawnDelay),
-            GameLayer::ENTITY_HEALTH_1      => new PickupEntity($pos, NetworkMessages::POWERUP_HEALTH, respawnTime: $respawn, spawnDelay: $spawnDelay),
-            GameLayer::ENTITY_WEAPON_SHOTGUN => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_SHOTGUN, respawnTime: $respawn, spawnDelay: $spawnDelay),
-            GameLayer::ENTITY_WEAPON_GRENADE => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_GRENADE, respawnTime: $respawn, spawnDelay: $spawnDelay),
-            GameLayer::ENTITY_WEAPON_RIFLE  => new PickupEntity($pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_RIFLE, respawnTime: $respawn, spawnDelay: $spawnDelay),
-            GameLayer::ENTITY_POWERUP_NINJA => new PickupEntity($pos, NetworkMessages::POWERUP_NINJA, respawnTime: $respawn, spawnDelay: $spawnDelay),
+            GameLayer::ENTITY_ARMOR_1       => new PickupEntity($world, $pos, NetworkMessages::POWERUP_ARMOR, respawnTime: $respawn, spawnDelay: $spawnDelay),
+            GameLayer::ENTITY_HEALTH_1      => new PickupEntity($world, $pos, NetworkMessages::POWERUP_HEALTH, respawnTime: $respawn, spawnDelay: $spawnDelay),
+            GameLayer::ENTITY_WEAPON_SHOTGUN => new PickupEntity($world, $pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_SHOTGUN, respawnTime: $respawn, spawnDelay: $spawnDelay),
+            GameLayer::ENTITY_WEAPON_GRENADE => new PickupEntity($world, $pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_GRENADE, respawnTime: $respawn, spawnDelay: $spawnDelay),
+            GameLayer::ENTITY_WEAPON_RIFLE  => new PickupEntity($world, $pos, NetworkMessages::POWERUP_WEAPON, GameConstants::WEAPON_RIFLE, respawnTime: $respawn, spawnDelay: $spawnDelay),
+            GameLayer::ENTITY_POWERUP_NINJA => new PickupEntity($world, $pos, NetworkMessages::POWERUP_NINJA, respawnTime: $respawn, spawnDelay: $spawnDelay),
             default                         => null,
         };
     }

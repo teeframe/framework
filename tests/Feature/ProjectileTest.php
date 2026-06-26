@@ -34,6 +34,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
         return;
     }
 
+    $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Fire a projectile to the right
@@ -41,6 +42,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
         position: clone $spawnPos,
         direction: new Vector2(1 * 2200, 0),  // full velocity (dir * speed)
         type: 1,
+            world: $world,
     );
 
     // Run ticks until projectile dies (200 ticks max = 4 seconds)
@@ -119,6 +121,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
         return;
     }
 
+    $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
@@ -129,7 +132,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     $tee->inputJump = false;
     $tee->inputHook = false;
 
-    $character = new PvpCharacterEntity(clone $spawnPos);
+    $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
     // Tick once to set up angle (needed for shoot direction)
@@ -167,6 +170,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
         return;
     }
 
+    $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
@@ -177,7 +181,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $tee->inputJump = false;
     $tee->inputHook = false;
 
-    $character = new PvpCharacterEntity(clone $spawnPos);
+    $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
     $ref = new ReflectionClass($character);
@@ -208,12 +212,15 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
         return;
     }
 
-    $spawnPos = new Vector2($pos[0]['x'], $pos[0]['y']);
+    $map       = new Map($mapPath);
+    $world     = createWorld($map);
+    $spawnPos  = new Vector2($pos[0]['x'], $pos[0]['y']);
 
     $proj = new PvpProjectileEntity(
         position: clone $spawnPos,
         direction: new Vector2(1 * 2200, 0),
         type: 1,
+            world: $world,
     );
 
     $tee = new PlayerTee;
@@ -230,13 +237,19 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
     }
 });
 
-test('projectile snap uses start position not current position', function () {
+test('projectile snap uses start position not current position', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $world    = createWorld(new Map($mapPath));
     $startPos = new Vector2(100, 200);
 
     $proj = new PvpProjectileEntity(
         position: clone $startPos,
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GUN,
+            world: $world,
     );
 
     // Simulate setWorld to set startTick
@@ -290,7 +303,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
 
-    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar = new PvpCharacterEntity($world, new Vector2(100, 100));
     $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
     $world->addEntity($ownerChar);
 
@@ -298,6 +311,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
+            world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0); // lifespan = 0, expires immediately
@@ -326,7 +340,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
 
-    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar = new PvpCharacterEntity($world, new Vector2(100, 100));
     $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
     $world->addEntity($ownerChar);
 
@@ -334,7 +348,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
     $targetTee = new PlayerTee;
     $world->addTee($targetTee);
 
-    $targetChar = new PvpCharacterEntity(new Vector2(150, 100));
+    $targetChar = new PvpCharacterEntity($world, new Vector2(150, 100));
     $targetChar->spawn(new Vector2(150, 100), $targetTee);
     $world->addEntity($targetChar);
 
@@ -344,6 +358,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
+            world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0);
@@ -368,7 +383,7 @@ test('grenade explosion does not damage character outside radius', function () u
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
 
-    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar = new PvpCharacterEntity($world, new Vector2(100, 100));
     $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
     $world->addEntity($ownerChar);
 
@@ -376,7 +391,7 @@ test('grenade explosion does not damage character outside radius', function () u
     $targetTee = new PlayerTee;
     $world->addTee($targetTee);
 
-    $targetChar = new PvpCharacterEntity(new Vector2(300, 100));
+    $targetChar = new PvpCharacterEntity($world, new Vector2(300, 100));
     $targetChar->spawn(new Vector2(300, 100), $targetTee);
     $world->addEntity($targetChar);
 
@@ -384,6 +399,7 @@ test('grenade explosion does not damage character outside radius', function () u
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
+            world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0);
@@ -406,7 +422,7 @@ test('non-grenade projectile does not create explosion event', function () use (
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
 
-    $ownerChar = new PvpCharacterEntity(new Vector2(100, 100));
+    $ownerChar = new PvpCharacterEntity($world, new Vector2(100, 100));
     $ownerChar->spawn(new Vector2(100, 100), $ownerTee);
     $world->addEntity($ownerChar);
 
@@ -415,6 +431,7 @@ test('non-grenade projectile does not create explosion event', function () use (
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GUN,
+            world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 0);
@@ -459,13 +476,14 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
         return;
     }
 
+
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Owner character at spawn
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
 
-    $ownerChar = new PvpCharacterEntity(clone $spawnPos);
+    $ownerChar = new PvpCharacterEntity($world, clone $spawnPos);
     $ownerChar->spawn(clone $spawnPos, $ownerTee);
     $world->addEntity($ownerChar);
 
@@ -474,7 +492,7 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     $targetTee = new PlayerTee;
     $world->addTee($targetTee);
 
-    $targetChar = new PvpCharacterEntity(clone $targetPos);
+    $targetChar = new PvpCharacterEntity($world, clone $targetPos);
     $targetChar->spawn(clone $targetPos, $targetTee);
     $world->addEntity($targetChar);
 
@@ -486,6 +504,7 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
         position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
+            world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 100);
@@ -544,13 +563,14 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
         return;
     }
 
+    $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Owner character at spawn
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
 
-    $ownerChar = new PvpCharacterEntity(clone $spawnPos);
+    $ownerChar = new PvpCharacterEntity($world, clone $spawnPos);
     $ownerChar->spawn(clone $spawnPos, $ownerTee);
     $world->addEntity($ownerChar);
 
@@ -559,7 +579,7 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
     $targetTee = new PlayerTee;
     $world->addTee($targetTee);
 
-    $targetChar = new PvpCharacterEntity(clone $targetPos);
+    $targetChar = new PvpCharacterEntity($world, clone $targetPos);
     $targetChar->spawn(clone $targetPos, $targetTee);
     $world->addEntity($targetChar);
 
@@ -571,6 +591,7 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
         position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GUN,
+            world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 100);
@@ -619,13 +640,14 @@ test('projectile does not collide with owner character', function () use ($mapPa
         return;
     }
 
+    $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Owner character at spawn position
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
 
-    $ownerChar = new PvpCharacterEntity(clone $spawnPos);
+    $ownerChar = new PvpCharacterEntity($world, clone $spawnPos);
     $ownerChar->spawn(clone $spawnPos, $ownerTee);
     $world->addEntity($ownerChar);
 
@@ -635,6 +657,7 @@ test('projectile does not collide with owner character', function () use ($mapPa
         position: new Vector2($spawnPos->x, $spawnPos->y - $offset),
         direction: new Vector2(0, -1),
         type: GameConstants::WEAPON_GUN,
+            world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 100);
@@ -681,13 +704,14 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
         return;
     }
 
+    $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Attacker
     $attackerTee = new PlayerTee;
     $world->addTee($attackerTee);
 
-    $attacker = new PvpCharacterEntity(clone $spawnPos);
+    $attacker = new PvpCharacterEntity($world, clone $spawnPos);
     $attacker->spawn(clone $spawnPos, $attackerTee);
     $world->addEntity($attacker);
 
@@ -695,7 +719,7 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     $targetTee = new PlayerTee;
     $world->addTee($targetTee);
 
-    $target = new PvpCharacterEntity(new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $target = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
     $target->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $targetTee);
     $world->addEntity($target);
 
@@ -749,13 +773,14 @@ test('damage indicators group when damage taken in quick succession', function (
         return;
     }
 
+    $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Attacker
     $attackerTee = new PlayerTee;
     $world->addTee($attackerTee);
 
-    $attacker = new PvpCharacterEntity(clone $spawnPos);
+    $attacker = new PvpCharacterEntity($world, clone $spawnPos);
     $attacker->spawn(clone $spawnPos, $attackerTee);
     $world->addEntity($attacker);
 
@@ -763,7 +788,7 @@ test('damage indicators group when damage taken in quick succession', function (
     $targetTee = new PlayerTee;
     $world->addTee($targetTee);
 
-    $target = new PvpCharacterEntity(new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $target = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
     $target->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $targetTee);
     $world->addEntity($target);
 

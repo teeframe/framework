@@ -2,7 +2,10 @@
 
 namespace TeeFrame\Game\Entities;
 
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Network\SnapItems\ObjLaserItem;
 
 /**
  * PvP laser — contains bouncing and character-hit logic.
@@ -15,9 +18,17 @@ class PvpLaserEntity extends AbstractLaserEntity
     private float $bounceCost = 0;
     private int $damage = 5;
 
-    public function setWorld(\TeeFrame\Game\AbstractWorld $world): void
-    {
-        parent::setWorld($world);
+    private Vector2 $from;
+    private int $evalTick = 0;
+
+    public function __construct(
+        AbstractWorld $world,
+        Vector2 $position,
+        Vector2 $direction,
+        float $energy,
+        int $owner,
+    ) {
+        parent::__construct($world, $position, $direction, $energy, $owner);
 
         $this->from     = clone $this->position;
         $this->evalTick = $world->getCurrentTick();
@@ -26,10 +37,6 @@ class PvpLaserEntity extends AbstractLaserEntity
 
     public function doTick(): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
         $currentTick = $this->world->getCurrentTick();
 
         if ($currentTick > $this->evalTick + (int) round(50 * $this->bounceDelay / 1000)) {
@@ -39,10 +46,6 @@ class PvpLaserEntity extends AbstractLaserEntity
 
     private function doBounce(): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
         $this->evalTick = $this->world->getCurrentTick();
 
         if ($this->energy < 0) {
@@ -94,10 +97,6 @@ class PvpLaserEntity extends AbstractLaserEntity
 
     private function hitCharacter(Vector2 $from, Vector2 $to): bool
     {
-        if ($this->world === null) {
-            return false;
-        }
-
         $closestDist = PHP_FLOAT_MAX;
         $closestEntity = null;
 
@@ -156,5 +155,18 @@ class PvpLaserEntity extends AbstractLaserEntity
             $lineStart->x + $t * $dx,
             $lineStart->y + $t * $dy,
         );
+    }
+
+    public function doSnap(AbstractTee $requestingTee): array
+    {
+        return [
+            new ObjLaserItem(
+                x: (int) round($this->position->x),
+                y: (int) round($this->position->y),
+                fromX: (int) round($this->from->x),
+                fromY: (int) round($this->from->y),
+                startTick: $this->evalTick,
+            ),
+        ];
     }
 }

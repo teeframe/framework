@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Game\Entities;
 
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -47,26 +48,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public int $triggeredEvents = 0;
     private bool $inputInitialized = false;
 
-    // Tuning parameters (Teeworlds 0.6 defaults)
-    public float $gravity              = 0.5;
-    public float $groundControlSpeed   = 10.0;
-    public float $groundControlAccel   = 2.0;
-    public float $groundFriction       = 0.5;
-    public float $groundJumpImpulse    = 13.2;
-    public float $airJumpImpulse       = 12.0;
-    public float $airControlSpeed      = 5.0;
-    public float $airControlAccel      = 1.5;
-    public float $airFriction          = 0.95;
-    public float $hookLength           = 380.0;
-    public float $hookFireSpeed        = 80.0;
-    public float $hookDragAccel        = 3.0;
-    public float $hookDragSpeed        = 15.0;
-    public float $velrampStart         = 550.0;
-    public float $velrampRange         = 2000.0;
-    public float $velrampCurvature     = 1.4;
-    public float $playerCollision      = 1.0;
-    public float $playerHooking        = 1.0;
-
     // Ninja state
     public int $ninjaActivationTick = 0;
     public Vector2 $ninjaActivationDir;
@@ -81,13 +62,13 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public ?AbstractTee $tee = null;
 
-    public function __construct(public Vector2 $position)
+    public function __construct(\TeeFrame\Game\AbstractWorld $world, public Vector2 $position)
     {
-        parent::__construct(position: $position);
+        parent::__construct(world: $world, position: $position);
 
-        $this->vel     = new Vector2(0, 0);
-        $this->hookPos = new Vector2(0, 0);
-        $this->hookDir = new Vector2(0, 0);
+        $this->vel             = new Vector2(0, 0);
+        $this->hookPos         = new Vector2(0, 0);
+        $this->hookDir         = new Vector2(0, 0);
     }
 
     public function getHitBoxRadius(): int
@@ -142,14 +123,12 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 
         // Notify game controller for scoring
-        if ($this->world !== null) {
-            $this->world->gameController()->onCharacterDeath($this, $killerTeeIndex);
-        }
+        $this->world->gameController()->onCharacterDeath($this, $killerTeeIndex);
 
         // Set respawn on the tee
         if ($this->tee instanceof PlayerTee) {
             $respawnDelay = $killerTeeIndex === -1 ? 150 : 25; // 3s for self-kill, 0.5s normal
-            $this->tee->respawnTick = $this->world !== null ? $this->world->getCurrentTick() + $respawnDelay : $respawnDelay;
+            $this->tee->respawnTick = $this->world->getCurrentTick() + $respawnDelay;
             $this->tee->spawning = true;
         }
     }
@@ -174,7 +153,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public function giveNinja(): void
     {
-        $this->ninjaActivationTick = $this->world !== null ? $this->world->getCurrentTick() : 0;
+        $this->ninjaActivationTick = $this->world->getCurrentTick();
         $this->ninjaCurrentMoveTime = 0;
         $this->ninjaNumObjectsHit = 0;
         $this->ninjaHitObjects = [];
@@ -224,7 +203,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->health -= $damage;
 
         // Player pain sound
-        if ($this->world !== null && $damage > 0) {
+        if ($damage > 0) {
             $this->createSound($damage > 2 ? GameConstants::SOUND_PLAYER_PAIN_LONG : GameConstants::SOUND_PLAYER_PAIN_SHORT);
         }
 
@@ -233,20 +212,18 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $this->die($killerTeeIndex);
 
             // Add death event
-            if ($this->world !== null) {
-                $teeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
-                $this->world->addEvent(new \TeeFrame\Network\SnapItems\ObjEventDeathItem(
-                    x: (int) round($this->position->x),
-                    y: (int) round($this->position->y),
-                    clientId: $teeIndex,
-                ));
-            }
+            $teeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
+            $this->world->addEvent(new \TeeFrame\Network\SnapItems\ObjEventDeathItem(
+                x: (int) round($this->position->x),
+                y: (int) round($this->position->y),
+                clientId: $teeIndex,
+            ));
         }
     }
 
     public function doTick(): void
     {
-        if (! $this->alive || $this->world === null) {
+        if (! $this->alive) {
             return;
         }
 
@@ -336,11 +313,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $grounded = true;
         }
 
-        $this->vel->y += $this->gravity;
+        $this->vel->y += $this->world->tuneController()->gravity / 100.0;
 
-        $maxSpeed  = $grounded ? $this->groundControlSpeed : $this->airControlSpeed;
-        $accel     = $grounded ? $this->groundControlAccel : $this->airControlAccel;
-        $friction  = $grounded ? $this->groundFriction : $this->airFriction;
+        $maxSpeed  = $grounded ? $this->world->tuneController()->groundControlSpeed / 100.0 : $this->world->tuneController()->airControlSpeed / 100.0;
+        $accel     = $grounded ? $this->world->tuneController()->groundControlAccel / 100.0 : $this->world->tuneController()->airControlAccel / 100.0;
+        $friction  = $grounded ? $this->world->tuneController()->groundFriction / 100.0 : $this->world->tuneController()->airFriction / 100.0;
 
         $this->direction = $inputDirection;
 
@@ -361,11 +338,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             if (! ($this->jumped & 1)) {
                 if ($grounded) {
                     $this->triggeredEvents |= 0x01;
-                    $this->vel->y = -$this->groundJumpImpulse;
+                    $this->vel->y = -$this->world->tuneController()->groundJumpImpulse / 100.0;
                     $this->jumped |= 1;
                 } elseif (! ($this->jumped & 2)) {
                     $this->triggeredEvents |= 0x02;
-                    $this->vel->y = -$this->airJumpImpulse;
+                    $this->vel->y = -$this->world->tuneController()->airJumpImpulse / 100.0;
                     $this->jumped |= 3;
                 }
             }
@@ -419,11 +396,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->tickHookStateMachine($collision);
 
         // Handle player <-> player collision and hook influence
-        if ($this->world !== null) {
-            foreach ($this->world->getEntities() as $entity) {
-                if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
-                    continue;
-                }
+        foreach ($this->world->getEntities() as $entity) {
+            if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
+                continue;
+            }
 
                 $distance = $this->position->distance($entity->position);
                 $dir = $this->position->diff($entity->position);
@@ -435,7 +411,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 }
 
                 // Player collision
-                if ($this->playerCollision > 0 && $distance < $physSize * 1.25 && $distance > 0.0) {
+                if ($this->world->tuneController()->playerCollision / 100.0 > 0 && $distance < $physSize * 1.25 && $distance > 0.0) {
                     $a = ($physSize * 1.45 - $distance);
                     $velocity = 0.5;
 
@@ -450,10 +426,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 }
 
                 // Handle hook influence
-                if ($entity->tee !== null && $this->hookedPlayer === $entity->tee->teeIndex && $this->playerHooking > 0) {
+                if ($entity->tee !== null && $this->hookedPlayer === $entity->tee->teeIndex && $this->world->tuneController()->playerHooking / 100.0 > 0) {
                     if ($distance > $physSize * 1.50) {
-                        $hookAccel = $this->hookDragAccel * ($distance / $this->hookLength);
-                        $hookDragSpeed = $this->hookDragSpeed;
+                        $hookAccel = ($this->world->tuneController()->hookDragAccel / 100.0) * ($distance / ($this->world->tuneController()->hookLength / 100.0));
+                        $hookDragSpeed = $this->world->tuneController()->hookDragSpeed / 100.0;
 
                         // add force to the hooked player
                         $entity->vel->x = $this->saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $entity->vel->x, $hookAccel * $dir->x * 1.5);
@@ -465,7 +441,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                     }
                 }
             }
-        }
 
         $speed = $this->vel->length();
         if ($speed > 6000) {
@@ -488,17 +463,17 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $this->triggeredEvents |= 0x40;
         } elseif ($this->hookState === 4) {
             $newHookPos = new Vector2(
-                $this->hookPos->x + $this->hookDir->x * $this->hookFireSpeed,
-                $this->hookPos->y + $this->hookDir->y * $this->hookFireSpeed,
+                $this->hookPos->x + $this->hookDir->x * ($this->world->tuneController()->hookFireSpeed / 100.0),
+                $this->hookPos->y + $this->hookDir->y * ($this->world->tuneController()->hookFireSpeed / 100.0),
             );
 
-            if ($this->position->distance($newHookPos) > $this->hookLength) {
+            if ($this->position->distance($newHookPos) > ($this->world->tuneController()->hookLength / 100.0)) {
                 $this->hookState = 1;
                 $diff = $newHookPos->diff($this->position);
                 $normalized = $diff->normalize();
                 $newHookPos = new Vector2(
-                    $this->position->x + $normalized->x * $this->hookLength,
-                    $this->position->y + $normalized->y * $this->hookLength,
+                    $this->position->x + $normalized->x * ($this->world->tuneController()->hookLength / 100.0),
+                    $this->position->y + $normalized->y * ($this->world->tuneController()->hookLength / 100.0),
                 );
             }
 
@@ -517,7 +492,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             }
 
             // Check against other players
-            if ($this->world !== null && $this->playerHooking > 0) {
+            if ($this->world->tuneController()->playerHooking / 100.0 > 0) {
                 $closestDist = PHP_FLOAT_MAX;
 
                 foreach ($this->world->getEntities() as $entity) {
@@ -555,7 +530,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         if ($this->hookState === 5) {
             // Follow hooked player's position
-            if ($this->hookedPlayer !== -1 && $this->world !== null) {
+            if ($this->hookedPlayer !== -1) {
                 $hookedChar = null;
                 foreach ($this->world->getEntities() as $entity) {
                     if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex === $this->hookedPlayer) {
@@ -576,8 +551,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
             if ($this->hookedPlayer === -1 && $this->hookPos->distance($this->position) > 46.0) {
                 $hookVel = $this->hookPos->diff($this->position)->normalize();
-                $hookVel->x *= $this->hookDragAccel;
-                $hookVel->y *= $this->hookDragAccel;
+                $hookVel->x *= $this->world->tuneController()->hookDragAccel / 100.0;
+                $hookVel->y *= $this->world->tuneController()->hookDragAccel / 100.0;
 
                 if ($hookVel->y > 0) {
                     $hookVel->y *= 0.3;
@@ -591,7 +566,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
                 $newVel = new Vector2($this->vel->x + $hookVel->x, $this->vel->y + $hookVel->y);
 
-                if ($newVel->length() < $this->hookDragSpeed || $newVel->length() < $this->vel->length()) {
+                if ($newVel->length() < ($this->world->tuneController()->hookDragSpeed / 100.0) || $newVel->length() < $this->vel->length()) {
                     $this->vel = $newVel;
                 }
             }
@@ -609,7 +584,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         $speed = $this->vel->length();
 
-        $rampValue = $this->velocityRamp($speed * 50, $this->velrampStart, $this->velrampRange, $this->velrampCurvature);
+        $rampValue = $this->velocityRamp($speed * 50, $this->world->tuneController()->velrampStart / 100.0, $this->world->tuneController()->velrampRange / 100.0, $this->world->tuneController()->velrampCurvature / 100.0);
 
         $this->vel->x *= $rampValue;
 
@@ -835,10 +810,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     private function createSound(int $soundId): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
         $this->world->addEvent(new ObjEventSoundWorldItem(
             x: (int) round($this->position->x),
             y: (int) round($this->position->y),

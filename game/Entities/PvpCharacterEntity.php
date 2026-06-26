@@ -16,12 +16,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootHammer(): int
     {
-        $world = $this->world;
-        if ($world === null) {
-            return 0;
-        }
-
-        $collision = $world->getMap()->getCollision();
+        $collision = $this->world->getMap()->getCollision();
 
         $angle = $this->angle / 256.0;
         $direction = new Vector2(cos($angle), sin($angle));
@@ -33,13 +28,13 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $hits = 0;
         $hitRadius = self::PHYS_SIZE * 1.5; // m_ProximityRadius + m_ProximityRadius*0.5 = 28 + 14 = 42
 
-        $world->addEvent(new ObjEventSoundWorldItem(
+        $this->world->addEvent(new ObjEventSoundWorldItem(
             x: (int) round($this->position->x),
             y: (int) round($this->position->y),
             soundId: GameConstants::SOUND_HAMMER_FIRE,
         ));
 
-        foreach ($world->getEntities() as $entity) {
+        foreach ($this->world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity) {
                 continue;
             }
@@ -67,7 +62,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 $hitPos = clone $projStartPos;
             }
 
-            $world->addEvent(new ObjEventHammerHitItem(
+            $this->world->addEvent(new ObjEventHammerHitItem(
                 x: (int) round($hitPos->x),
                 y: (int) round($hitPos->y),
             ));
@@ -93,7 +88,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootGun(): int
     {
-        if ($this->world === null || $this->tee === null) {
+        if ($this->tee === null) {
             return 0;
         }
 
@@ -101,7 +96,9 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $dir   = new Vector2(cos($angle), sin($angle));
 
         $offset = self::PHYS_SIZE * 0.75;
-        $proj = new PvpProjectileEntity(
+
+        $this->world->addEntity(new PvpProjectileEntity(
+            world: $this->world,
             position: new Vector2(
                 $this->position->x + $dir->x * $offset,
                 $this->position->y + $dir->y * $offset,
@@ -109,9 +106,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             direction: $dir,
             type: GameConstants::WEAPON_GUN,
             owner: $this->tee->teeIndex,
-        );
-
-        $this->world->addEntity($proj);
+        ));
 
         $this->world->addEvent(new ObjEventSoundWorldItem(
             x: (int) round($this->position->x),
@@ -124,7 +119,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootShotgun(): int
     {
-        if ($this->world === null || $this->tee === null) {
+        if ($this->tee === null) {
             return 0;
         }
 
@@ -145,7 +140,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             $speed = 0.8 + (1.0 - 0.8) * $v; // mix(speeddiff, 1.0, v)
             $bulletDir = new Vector2(cos($a), sin($a));
 
-            $proj = new PvpProjectileEntity(
+            $proj = new PvpProjectileEntity($this->world,
                 position: clone $projStartPos,
                 direction: $bulletDir,
                 type: GameConstants::WEAPON_SHOTGUN,
@@ -167,7 +162,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootGrenade(): int
     {
-        if ($this->world === null || $this->tee === null) {
+        if ($this->tee === null) {
             return 0;
         }
 
@@ -175,7 +170,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $dir    = new Vector2(cos($angle), sin($angle));
         $offset = self::PHYS_SIZE * 0.75;
 
-        $proj = new PvpProjectileEntity(
+        $proj = new PvpProjectileEntity($this->world,
             position: new Vector2(
                 $this->position->x + $dir->x * $offset,
                 $this->position->y + $dir->y * $offset,
@@ -199,14 +194,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootRifle(): int
     {
-        if ($this->world === null || $this->tee === null) {
+        if ($this->tee === null) {
             return 0;
         }
 
         $angle = $this->angle / 256.0;
         $dir   = new Vector2(cos($angle), sin($angle));
 
-        $laser = new PvpLaserEntity(
+        $laser = new PvpLaserEntity($this->world,
             position: clone $this->position,
             direction: $dir,
             energy: 800.0,
@@ -241,7 +236,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         if ($weaponAmmo === 0) {
             $this->reloadTimer = (int) round(125 * 50 / 1000);
 
-            $this->world?->addEvent(new ObjEventSoundWorldItem(
+            $this->world->addEvent(new ObjEventSoundWorldItem(
                 x: (int) round($this->position->x),
                 y: (int) round($this->position->y),
                 soundId: GameConstants::SOUND_WEAPON_NOAMMO,
@@ -324,7 +319,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
     {
         parent::takeDamage($force, $damage, $inflictor);
 
-        if (! $this->alive || $this->world === null || $damage <= 0) {
+        if (! $this->alive || $damage <= 0) {
             return;
         }
 
@@ -349,10 +344,6 @@ class PvpCharacterEntity extends AbstractCharacterEntity
      */
     private function createDamageInd(float $angleMod, int $amount): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
         $a = 3 * M_PI / 2 + $angleMod;
         $s = $a - M_PI / 3;
         $e = $a + M_PI / 3;
@@ -374,7 +365,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
      */
     private function handleNinja(): void
     {
-        if ($this->activeWeapon !== GameConstants::WEAPON_NINJA || $this->world === null) {
+        if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
             return;
         }
 
@@ -466,10 +457,6 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootNinja(): int
     {
-        if ($this->world === null) {
-            return 0;
-        }
-
         $angle = $this->angle / 256.0;
 
         $this->ninjaActivationDir = new Vector2(cos($angle), sin($angle));

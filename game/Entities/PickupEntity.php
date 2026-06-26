@@ -22,18 +22,14 @@ class PickupEntity extends AbstractEntity
      * @param int $spawnDelay  Initial spawn delay in ticks before the pickup first appears (0 = immediately available).
      */
     public function __construct(
+        AbstractWorld $world,
         Vector2 $position,
         private int $type,
         private int $subType = 0,
         private int $respawnTime = -1,
         private int $spawnDelay = 0,
     ) {
-        parent::__construct(position: $position);
-    }
-
-    public function setWorld(AbstractWorld $world): void
-    {
-        parent::setWorld($world);
+        parent::__construct(world: $world, position: $position);
 
         if ($this->spawnDelay > 0) {
             $this->spawnTick = $world->getCurrentTick() + $this->spawnDelay;
@@ -49,10 +45,6 @@ class PickupEntity extends AbstractEntity
 
     public function doTick(): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
         $currentTick = $this->world->getCurrentTick();
 
         // Wait for spawn delay
@@ -125,7 +117,7 @@ class PickupEntity extends AbstractEntity
                 break;
         }
 
-        if ($soundId >= 0 && $this->world !== null) {
+        if ($soundId >= 0) {
             $this->world->addEvent(new ObjEventSoundWorldItem(
                 x: (int) round($this->position->x),
                 y: (int) round($this->position->y),
@@ -142,7 +134,7 @@ class PickupEntity extends AbstractEntity
     public function doSnap(AbstractTee $requestingTee): array
     {
         // Don't snap if in spawn delay
-        if ($this->spawnTick > 0 && ($this->world === null || $this->world->getCurrentTick() <= $this->spawnTick)) {
+        if ($this->spawnTick > 0 && $this->world->getCurrentTick() <= $this->spawnTick) {
             return [];
         }
 

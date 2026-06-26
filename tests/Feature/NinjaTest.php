@@ -53,7 +53,7 @@ test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, 
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -101,7 +101,7 @@ test('ninja move time is 10 ticks', function () use ($mapPath, $mapExists) {
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -138,7 +138,7 @@ test('ninja dash moves character forward by expected distance', function () use 
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -187,7 +187,7 @@ test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -241,7 +241,7 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -295,7 +295,7 @@ test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $map
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 

@@ -16,20 +16,13 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
 
     protected bool $toDestroy = false;
 
-    protected ?AbstractWorld $world = null;
-
-    public function __construct(public Vector2 $position)
+    public function __construct(protected AbstractWorld $world, public Vector2 $position)
     {
     }
 
     abstract public function getHitBoxRadius(): int;
 
     abstract public function doTick(): void;
-
-    public function setWorld(AbstractWorld $world): void
-    {
-        $this->world = $world;
-    }
 
     public function isToDestroy(): bool
     {

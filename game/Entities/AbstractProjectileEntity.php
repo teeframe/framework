@@ -16,14 +16,16 @@ abstract class AbstractProjectileEntity extends AbstractEntity
     protected Vector2 $startPos;
 
     public function __construct(
+        AbstractWorld $world,
         public Vector2 $position,
         public Vector2 $direction,
         public int $type,
         public int $owner = -1,
     ) {
-        parent::__construct(position: $position);
+        parent::__construct(world: $world, position: $position);
 
-        $this->startPos = clone $position;
+        $this->startPos  = clone $position;
+        $this->startTick = $world->getCurrentTick();
     }
 
     public function setTuning(float $speed, float $curvature, int $lifeSpan): void
@@ -31,13 +33,6 @@ abstract class AbstractProjectileEntity extends AbstractEntity
         $this->speed     = $speed;
         $this->curvature = $curvature;
         $this->lifeSpan  = $lifeSpan;
-    }
-
-    public function setWorld(AbstractWorld $world): void
-    {
-        parent::setWorld($world);
-
-        $this->startTick = $world->getCurrentTick();
     }
 
     public function getHitBoxRadius(): int

@@ -31,7 +31,7 @@ function setupCharacter(Map $map): array
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
 
     $world->addEntity($character);
@@ -135,7 +135,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $attackerTee->inputTargetX = 100;
     $attackerTee->inputTargetY = 0;
 
-    $attacker = new PvpCharacterEntity($spawnPos);
+    $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $attacker->tickPhysics(1, 100, 0, false, false, $collision);
@@ -145,7 +145,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $targetPos = new Vector2($spawnPos->x + 20, $spawnPos->y); // 20 units in front
 
     $targetTee = new PlayerTee;
-    $target = new class($targetPos) extends PvpCharacterEntity {};
+    $target = new class($world, $targetPos) extends PvpCharacterEntity {};
     $target->spawn($targetPos, $targetTee);
     $world->addEntity($target);
 
@@ -185,7 +185,7 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $attackerTee->inputTargetX = 100;
     $attackerTee->inputTargetY = 0;
 
-    $attacker = new PvpCharacterEntity($spawnPos);
+    $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $attacker->tickPhysics(1, 100, 0, false, false, $collision);
@@ -198,7 +198,7 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $targetPos = new Vector2($spawnPos->x + 50, $spawnPos->y);
 
     $targetTee = new PlayerTee;
-    $target = new class($targetPos) extends PvpCharacterEntity {};
+    $target = new class($world, $targetPos) extends PvpCharacterEntity {};
     $target->spawn($targetPos, $targetTee);
     $world->addEntity($target);
 
@@ -233,7 +233,7 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $attackerTee->inputTargetX = 100;
     $attackerTee->inputTargetY = 0;
 
-    $attacker = new PvpCharacterEntity($spawnPos);
+    $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $attacker->tickPhysics(1, 100, 0, false, false, $collision);
@@ -243,7 +243,7 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $targetPos = new Vector2($spawnPos->x + 70, $spawnPos->y);
 
     $targetTee = new PlayerTee;
-    $target = new class($targetPos) extends PvpCharacterEntity {};
+    $target = new class($world, $targetPos) extends PvpCharacterEntity {};
     $target->spawn($targetPos, $targetTee);
     $world->addEntity($target);
 
@@ -304,7 +304,7 @@ test('character tick is updated from world tick in doTick', function () use ($ma
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $tee = new PlayerTee;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -340,7 +340,7 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -394,6 +394,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
         position: clone $spawnPos,
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GUN,
+            world: $world,
     );
     $world->addEntity($proj);
 
@@ -436,7 +437,7 @@ test('projectile snap velocity is normalized direction times 100', function () u
     $tee->inputTargetX = 100;
     $tee->inputTargetY = 0;
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -496,7 +497,7 @@ test('character snap id matches tee index when pickups are present', function ()
     $tee = new PlayerTee;
     $world->addTee($tee);
 
-    $character = new PvpCharacterEntity($spawnPos);
+    $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
@@ -566,14 +567,14 @@ test('character death sets respawn on tee and notifies game controller', functio
     $attackerTee = new PlayerTee;
     $world->addTee($attackerTee);
 
-    $attacker = new PvpCharacterEntity(clone $spawnPos);
+    $attacker = new PvpCharacterEntity($world, clone $spawnPos);
     $attacker->spawn(clone $spawnPos, $attackerTee);
     $world->addEntity($attacker);
 
     $victimTee = new PlayerTee;
     $world->addTee($victimTee);
 
-    $victim = new PvpCharacterEntity(new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $victim = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
     $victim->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $victimTee);
     $world->addEntity($victim);
 
@@ -618,7 +619,7 @@ test('tee index is reused on reconnect and snap id matches', function () use ($m
     $world->addTee($tee1);
     expect($tee1->teeIndex)->toBe(0);
 
-    $char1 = new PvpCharacterEntity(clone $spawnPos);
+    $char1 = new PvpCharacterEntity($world, clone $spawnPos);
     $char1->spawn(clone $spawnPos, $tee1);
     $world->addEntity($char1);
 
@@ -641,7 +642,7 @@ test('tee index is reused on reconnect and snap id matches', function () use ($m
     $world->addTee($tee2);
     expect($tee2->teeIndex)->toBe(0);
 
-    $char2 = new PvpCharacterEntity(clone $spawnPos);
+    $char2 = new PvpCharacterEntity($world, clone $spawnPos);
     $char2->spawn(clone $spawnPos, $tee2);
     $world->addEntity($char2);
 

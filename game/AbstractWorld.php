@@ -157,8 +157,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function addEntity(AbstractEntity $entity): void
     {
-        $entity->setWorld($this);
-
         $this->entities[] = $entity;
     }
 

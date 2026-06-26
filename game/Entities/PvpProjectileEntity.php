@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Game\Entities;
 
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
@@ -14,12 +15,13 @@ use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 class PvpProjectileEntity extends AbstractProjectileEntity
 {
     public function __construct(
+        AbstractWorld $world,
         Vector2 $position,
         Vector2 $direction,
         int $type,
         int $owner = -1,
     ) {
-        parent::__construct($position, $direction, $type, $owner);
+        parent::__construct($world, $position, $direction, $type, $owner);
 
         // Default PvP tuning (gun)
         $this->speed     = 2200.0;
@@ -29,10 +31,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
 
     public function doTick(): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
         $currentTick = $this->world->getCurrentTick();
         $tickSpeed   = 50.0;
 
@@ -96,10 +94,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
      */
     private function intersectCharacter(Vector2 $pos0, Vector2 $pos1): array
     {
-        if ($this->world === null) {
-            return [null, $pos1];
-        }
-
         $closestLen = $pos0->distance($pos1) * 100.0;
         $closest    = null;
         $closestPos = $pos1;
@@ -132,10 +126,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
 
     private function findOwnerCharacter(): ?AbstractCharacterEntity
     {
-        if ($this->world === null) {
-            return null;
-        }
-
         foreach ($this->world->getEntities() as $entity) {
             if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
                 return $entity;
@@ -147,10 +137,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
 
     private function explode(Vector2 $pos): void
     {
-        if ($this->world === null) {
-            return;
-        }
-
+        $innerRadius = 48.0;
         // Create explosion event (visual effect on client)
         $this->world->addEvent(new ObjEventExplosionItem(
             x: (int) round($pos->x),
