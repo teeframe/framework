@@ -5,7 +5,7 @@ namespace TeeFrame\Game\Entities;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
-use TeeFrame\Game\Entities\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;

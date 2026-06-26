@@ -2,8 +2,8 @@
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
-use TeeFrame\Game\Entities\AbstractCharacterEntity;
-use TeeFrame\Game\Entities\PvpCharacterEntity;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;

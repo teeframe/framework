@@ -5,7 +5,7 @@ namespace TeeFrame\Game;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\Entities\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;

@@ -4,7 +4,7 @@ namespace TeeFrame\Game\World;
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
-use TeeFrame\Game\Entities\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\NetworkMessages;

@@ -5,7 +5,7 @@ namespace TeeFrame\Game;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\PingCommand;
 use TeeFrame\Game\Commands\WhisperCommand;
-use TeeFrame\Game\Entities\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Map\Map;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;

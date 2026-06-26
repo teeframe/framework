@@ -10,10 +10,12 @@ use TeeFrame\Network\SnapItems\ObjProjectileItem;
 abstract class AbstractProjectileEntity extends AbstractEntity
 {
     protected int $startTick = -1;
+
+    protected Vector2 $startPos;
+
     protected int $lifeSpan;
     protected float $curvature;
     protected float $speed;
-    protected Vector2 $startPos;
 
     public function __construct(
         AbstractWorld $world,

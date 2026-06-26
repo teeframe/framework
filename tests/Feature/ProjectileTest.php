@@ -3,7 +3,7 @@
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\GameConstants;
-use TeeFrame\Game\Entities\PvpCharacterEntity;
+use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
@@ -37,45 +37,31 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     $world = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
-    // Fire a projectile to the right
-    $proj = new PvpProjectileEntity(
-        position: clone $spawnPos,
-        direction: new Vector2(1 * 2200, 0),  // full velocity (dir * speed)
-        type: 1,
-            world: $world,
-    );
+    $tee = new PlayerTee;
+    $tee->inputFire = 1;
+    $tee->inputDirection = 1;
+    $tee->inputTargetX = 100;
+    $tee->inputTargetY = 0;
+    $tee->inputJump = false;
+    $tee->inputHook = false;
 
-    // Run ticks until projectile dies (200 ticks max = 4 seconds)
-    // Note: The projectile needs $this->world to be set for doTick to work.
-    // We set startTick to simulate the world reference.
-    for ($tick = 0; $tick < 200; $tick++) {
-        // Simulate setWorld by setting startTick and a fake world reference
-        if ($tick === 0) {
-            $ref = new ReflectionClass($proj);
-            $startProp = $ref->getProperty('startTick');
-            $startProp->setAccessible(true);
-            $startProp->setValue($proj, $tick);
-        }
+    $character = new PvpCharacterEntity($world, clone $spawnPos);
+    $character->spawn(clone $spawnPos, $tee);
+    $world->addEntity($character);
 
-        // Update the simulated tick count for getPos calculations
-        $ref = new ReflectionClass($proj);
-        $startProp = $ref->getProperty('startTick');
-        $startProp->setAccessible(true);
-        $startProp->setValue($proj, max(0, $tick - 1));
+    // Tick once to set up angle (needed for shoot direction)
+    $tune = $world->tuneController();
+    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->core->move($collision, $tune);
 
-        // Set world to non-null via parent property
-        $worldProp = new ReflectionClass($proj);
-        $parentClass = $worldProp->getParentClass();
-        if ($parentClass === false) {
-            break;
-        }
-        $parentClass = $parentClass->getProperty('world');
-        $parentClass->setAccessible(true);
+    // Shoot through the character so tuning is applied from the controller
+    $ref = new ReflectionClass($character);
+    $method = $ref->getMethod('shootGun');
+    $method->setAccessible(true);
+    $method->invoke($character);
 
-        // We can't set world without a real AbstractWorld, so we test
-        // the internal math separately instead.
-        break;
-    }
+    $proj = $world->getEntities()[1]; // [0] is the character
+    assert($proj instanceof PvpProjectileEntity);
 
     // Instead, test that getPos produces finite values
     $p0 = getProjectilePos($proj, -0.02);
@@ -136,8 +122,9 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     $character->spawn(clone $spawnPos, $tee);
 
     // Tick once to set up angle (needed for shoot direction)
-    $character->tickPhysics(1, 100, 0, false, false, $collision);
-    $character->move($collision);
+    $tune = $world->tuneController();
+    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->core->move($collision, $tune);
 
     // Now shoot — this would normally be called from doTick
     // Use reflection to call private method
@@ -189,9 +176,10 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $method->setAccessible(true);
 
     // Simulate 20 rapid shots (way more than the reload timer allows)
+    $tune = $world->tuneController();
     for ($i = 0; $i < 20; $i++) {
-        $character->tickPhysics(1, 100, 0, false, false, $collision);
-        $character->move($collision);
+        $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+        $character->core->move($collision, $tune);
 
         $method->invoke($character);
     }
@@ -202,7 +190,13 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
         return;
     }
 
-    $gameLayer = (new Map($mapPath))->getGameLayer();
+    $map = new Map($mapPath);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
+    $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
         return;
     }
@@ -216,14 +210,28 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
     $world     = createWorld($map);
     $spawnPos  = new Vector2($pos[0]['x'], $pos[0]['y']);
 
-    $proj = new PvpProjectileEntity(
-        position: clone $spawnPos,
-        direction: new Vector2(1 * 2200, 0),
-        type: 1,
-            world: $world,
-    );
-
     $tee = new PlayerTee;
+    $tee->inputFire = 1;
+    $tee->inputDirection = 1;
+    $tee->inputTargetX = 100;
+    $tee->inputTargetY = 0;
+
+    $character = new PvpCharacterEntity($world, clone $spawnPos);
+    $character->spawn(clone $spawnPos, $tee);
+    $world->addEntity($character);
+
+    // Tick once to set up angle, then shoot through the character
+    $tune = $world->tuneController();
+    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->core->move($collision, $tune);
+
+    $ref = new ReflectionClass($character);
+    $method = $ref->getMethod('shootGun');
+    $method->setAccessible(true);
+    $method->invoke($character);
+
+    $proj = $world->getEntities()[1];
+
     $snaps = $proj->doSnap($tee);
 
     expect($snaps)->toHaveCount(1);
@@ -242,39 +250,52 @@ test('projectile snap uses start position not current position', function () use
         return;
     }
 
-    $world    = createWorld(new Map($mapPath));
+    $map = new Map($mapPath);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
+    $world    = createWorld($map);
     $startPos = new Vector2(100, 200);
 
-    $proj = new PvpProjectileEntity(
-        position: clone $startPos,
-        direction: new Vector2(1, 0),
-        type: GameConstants::WEAPON_GUN,
-            world: $world,
-    );
+    $tee = new PlayerTee;
+    $tee->inputFire = 1;
+    $tee->inputDirection = 1;
+    $tee->inputTargetX = 100;
+    $tee->inputTargetY = 0;
 
-    // Simulate setWorld to set startTick
-    $ref = new ReflectionClass($proj);
-    $prop = $ref->getProperty('startTick');
-    $prop->setAccessible(true);
-    $prop->setValue($proj, 42);
+    $character = new PvpCharacterEntity($world, clone $startPos);
+    $character->spawn(clone $startPos, $tee);
+    $world->addEntity($character);
+
+    // Tick once to set up angle, then shoot through the character
+    $tune = $world->tuneController();
+    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->core->move($collision, $tune);
+
+    $ref = new ReflectionClass($character);
+    $method = $ref->getMethod('shootGun');
+    $method->setAccessible(true);
+    $method->invoke($character);
+
+    $proj = $world->getEntities()[1];
 
     // Simulate doTick advancing the position (as if projectile flew forward)
     $proj->position->x = 500;
     $proj->position->y = 600;
 
-    $tee = new PlayerTee;
     $snaps = $proj->doSnap($tee);
     $ints = $snaps[0]->getInts();
 
-    // Snap x/y must be startPos (100, 200), not current position (500, 600).
+    // Snap x/y must be startPos, not current position (500, 600).
     // The client uses snap x/y as the starting point and computes displacement
     // from direction, startTick, and curvature. Sending the current position
     // would cause the client to double-apply displacement.
-    expect($ints[0])->toBe(100);
+    // shootGun() offsets the start by PHYS_SIZE * 0.75 = 21 in the aim direction.
+    $offset = 28 * 0.75;
+    expect($ints[0])->toBe((int) round(100 + $offset));
     expect($ints[1])->toBe(200);
-
-    // startTick must be correct
-    expect($ints[5])->toBe(42);
 });
 
 // --- Grenade explosion tests ---

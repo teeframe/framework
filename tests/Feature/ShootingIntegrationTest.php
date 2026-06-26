@@ -3,7 +3,7 @@
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\GameConstants;
-use TeeFrame\Game\Entities\PvpCharacterEntity;
+use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
@@ -35,8 +35,9 @@ function setupCharacter(Map $map): array
     $character->spawn($spawnPos, $tee);
 
     $world->addEntity($character);
-    $character->tickPhysics(1, 100, 0, false, false, $collision);
-    $character->move($collision);
+    $tune = $world->tuneController();
+    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->core->move($collision, $tune);
 
     return [$character, $world];
 }
@@ -138,8 +139,9 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
-    $attacker->tickPhysics(1, 100, 0, false, false, $collision);
-    $attacker->move($collision);
+    $tune = $world->tuneController();
+    $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->core->move($collision, $tune);
 
     // Create target tee and character right in front of attacker (within hammer range)
     $targetPos = new Vector2($spawnPos->x + 20, $spawnPos->y); // 20 units in front
@@ -188,8 +190,9 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
-    $attacker->tickPhysics(1, 100, 0, false, false, $collision);
-    $attacker->move($collision);
+    $tune = $world->tuneController();
+    $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->core->move($collision, $tune);
 
     // ProjStartPos = spawnPos + right * PHYS_SIZE * 0.75 = spawnPos + right * 21
     // Hit radius = PHYS_SIZE * 1.5 = 42
@@ -236,8 +239,9 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
-    $attacker->tickPhysics(1, 100, 0, false, false, $collision);
-    $attacker->move($collision);
+    $tune = $world->tuneController();
+    $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->core->move($collision, $tune);
 
     // Place target beyond max range (max reach = 21 + 42 = 63 from spawnPos)
     $targetPos = new Vector2($spawnPos->x + 70, $spawnPos->y);
@@ -368,6 +372,11 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     }
 
     $map = new Map($mapPath);
+    $collision = $map->getCollision();
+    if ($collision === null) {
+        return;
+    }
+
     $tickHandler = new TickHandler(0);
 
     // World that properly ticks entities
@@ -386,22 +395,38 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
         }
     };
 
-    // Spawn projectile in open area of the map (center, where spawn points are)
+    // Spawn character in open area of the map (center, where spawn points are)
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
-    // Direction is normalized (matching original Teeworlds)
-    $proj = new PvpProjectileEntity(
-        position: clone $spawnPos,
-        direction: new Vector2(1, 0),
-        type: GameConstants::WEAPON_GUN,
-            world: $world,
-    );
-    $world->addEntity($proj);
+    $tee = new PlayerTee;
+    $tee->inputFire = 1;
+    $tee->inputDirection = 1;
+    $tee->inputTargetX = 100;
+    $tee->inputTargetY = 0;
+
+    $character = new PvpCharacterEntity($world, $spawnPos);
+    $character->spawn($spawnPos, $tee);
+    $world->addEntity($character);
+
+    // Tick once to set up angle, then shoot through the character
+    $tune = $world->tuneController();
+    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->core->move($collision, $tune);
+
+    $ref = new ReflectionClass($character);
+    $method = $ref->getMethod('shootGun');
+    $method->setAccessible(true);
+    $method->invoke($character);
+
+    $proj = $world->getEntities()[1];
 
     // Advance 5 ticks (0.1 seconds) — projectile should survive in open spawn area
     for ($i = 0; $i < 5; $i++) {
         $tickHandler->next();
-        $world->doTick();
+        $proj->doTick();
+        if ($proj->isToDestroy()) {
+            break;
+        }
     }
 
     // Projectile should still be alive
@@ -550,10 +575,10 @@ test('character death sets respawn on tee and notifies game controller', functio
     $gc = new class($tickHandler) extends \TeeFrame\Game\EmptyGameController
     {
         public bool $deathCalled = false;
-        public ?\TeeFrame\Game\Entities\AbstractCharacterEntity $victim = null;
+        public ?\TeeFrame\Game\Entities\Character\AbstractCharacterEntity $victim = null;
         public int $killerTeeIndex = -1;
 
-        public function onCharacterDeath(\TeeFrame\Game\Entities\AbstractCharacterEntity $victim, int $killerTeeIndex): void
+        public function onCharacterDeath(\TeeFrame\Game\Entities\Character\AbstractCharacterEntity $victim, int $killerTeeIndex): void
         {
             $this->deathCalled = true;
             $this->victim = $victim;
