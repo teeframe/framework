@@ -3,11 +3,10 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
-/**
- * Abstract laser — game-mode agnostic skeleton.
- */
 abstract class AbstractLaserEntity extends AbstractEntity
 {
     public function __construct(
@@ -28,7 +27,7 @@ abstract class AbstractLaserEntity extends AbstractEntity
     abstract public function doTick(): void;
 
     /**
-     * @return \TeeFrame\Network\SnapItems\AbstractSnapItem[]
+     * @return AbstractSnapItem[]
      */
-    abstract public function doSnap(\TeeFrame\Game\Tees\AbstractTee $requestingTee): array;
+    abstract public function doSnap(AbstractTee $requestingTee): array;
 }

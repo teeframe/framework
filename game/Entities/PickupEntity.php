@@ -8,6 +8,7 @@ use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjPickupItem;
 
@@ -129,7 +130,7 @@ class PickupEntity extends AbstractEntity
     }
 
     /**
-     * @return \TeeFrame\Network\SnapItems\AbstractSnapItem[]
+     * @return AbstractSnapItem[]
      */
     public function doSnap(AbstractTee $requestingTee): array
     {

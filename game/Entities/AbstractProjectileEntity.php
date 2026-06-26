@@ -5,6 +5,7 @@ namespace TeeFrame\Game\Entities;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjProjectileItem;
 
 abstract class AbstractProjectileEntity extends AbstractEntity
@@ -47,7 +48,7 @@ abstract class AbstractProjectileEntity extends AbstractEntity
     abstract protected function getPos(float $time): Vector2;
 
     /**
-     * @return \TeeFrame\Network\SnapItems\AbstractSnapItem[]
+     * @return AbstractSnapItem[]
      */
     public function doSnap(AbstractTee $requestingTee): array
     {

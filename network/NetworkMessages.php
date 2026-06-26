@@ -56,10 +56,11 @@ class NetworkMessages
     const SV_READYTOENTER = 8;
 
     // const SV_WEAPONPICKUP = 9;
-    // const SV_EMOTICON = 10;
+    const SV_EMOTICON         = 10;
     const SV_VOTECLEAROPTIONS = 11;
     const CL_SAY              = 17;
     const CL_START_INFO       = 20;
+    const CL_EMOTICON         = 23;
 
     /*
      * Snap Items

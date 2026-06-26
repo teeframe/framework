@@ -16,8 +16,10 @@ use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Server\AbstractServerInstance;
@@ -210,14 +212,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
-    /**
-     * Handle a game message from a tee.
-     * Ported from Teeworlds 0.6 CGameContext::OnMessage().
-     */
     public function onMessage(AbstractTee $tee, AbstractChunk $chunk): void
     {
         if ($chunk instanceof ClSayChunk) {
             $this->handleChatMessage($tee, $chunk);
+        } elseif ($chunk instanceof ClEmoticonChunk) {
+            $this->handleEmoticonMessage($tee, $chunk);
         }
     }
 
@@ -248,14 +248,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             }
         }
 
-        $this->sendChat($tee, $chunk->team, $message);
-    }
-
-    public function sendChat(AbstractTee $from, bool $team, string $message): void
-    {
+        // Send chat message
         $chunk = new SvChatChunk(
-            team: $team ? 1 : 0,
-            clientId: $from->teeIndex,
+            team: $chunk->team ? 1 : 0,
+            clientId: $tee->teeIndex, // From
             text: $message,
         );
 
@@ -264,7 +260,17 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
+    private function handleEmoticonMessage(AbstractTee $tee, ClEmoticonChunk $chunk): void
+    {
+        $chunk = new SvEmoticonChunk(
+            clientId: $tee->teeIndex,
+            emoticon: $chunk->emoticon,
+        );
 
+        foreach ($this->tees as $tee) {
+            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
+        }
+    }
 
     public function doTick(): void
     {

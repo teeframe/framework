@@ -3,9 +3,11 @@
 namespace TeeFrame\Network;
 
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvReadyToEnterChunk;
 use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
@@ -129,9 +131,11 @@ class PacketDecoder
             NetworkMessages::SV_MOTD             => SvMotdChunk::class,
             NetworkMessages::SV_TUNEPARAMS       => SvTuneParamsChunk::class,
             NetworkMessages::SV_READYTOENTER     => SvReadyToEnterChunk::class,
+            NetworkMessages::SV_EMOTICON         => SvEmoticonChunk::class,
             NetworkMessages::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
             NetworkMessages::CL_SAY              => ClSayChunk::class,
             NetworkMessages::CL_START_INFO       => ClStartInfoChunk::class,
+            NetworkMessages::CL_EMOTICON         => ClEmoticonChunk::class,
             default                              => new UnsupportedChunk($message, $flags, false),
         };
     }
