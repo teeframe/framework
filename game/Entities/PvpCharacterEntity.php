@@ -97,7 +97,9 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $offset = self::PHYS_SIZE * 0.75;
 
-        $this->world->addEntity(new PvpProjectileEntity(
+        $tune = $this->world->tuneController();
+
+        $proj = new PvpProjectileEntity(
             world: $this->world,
             position: new Vector2(
                 $this->position->x + $dir->x * $offset,
@@ -106,7 +108,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             direction: $dir,
             type: GameConstants::WEAPON_GUN,
             owner: $this->tee->teeIndex,
-        ));
+        );
+        $proj->setTuning(
+            $tune->gunSpeed / 100.0,
+            $tune->gunCurvature / 100.0,
+            (int) ($tune->gunLifetime / 2),
+        );
+
+        $this->world->addEntity($proj);
 
         $this->world->addEvent(new ObjEventSoundWorldItem(
             x: (int) round($this->position->x),
@@ -140,13 +149,19 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             $speed = 0.8 + (1.0 - 0.8) * $v; // mix(speeddiff, 1.0, v)
             $bulletDir = new Vector2(cos($a), sin($a));
 
+            $tune = $this->world->tuneController();
+
             $proj = new PvpProjectileEntity($this->world,
                 position: clone $projStartPos,
                 direction: $bulletDir,
                 type: GameConstants::WEAPON_SHOTGUN,
                 owner: $this->tee->teeIndex,
             );
-            $proj->setTuning(2750.0 * $speed, 1.25, 10);
+            $proj->setTuning(
+                ($tune->shotgunSpeed / 100.0) * $speed,
+                $tune->shotgunCurvature / 100.0,
+                (int) ($tune->shotgunLifetime / 2),
+            );
 
             $this->world->addEntity($proj);
         }
@@ -170,6 +185,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $dir    = new Vector2(cos($angle), sin($angle));
         $offset = self::PHYS_SIZE * 0.75;
 
+        $tune = $this->world->tuneController();
+
         $proj = new PvpProjectileEntity($this->world,
             position: new Vector2(
                 $this->position->x + $dir->x * $offset,
@@ -179,7 +196,11 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             type: GameConstants::WEAPON_GRENADE,
             owner: $this->tee->teeIndex,
         );
-        $proj->setTuning(1000.0, 7.0, 100);
+        $proj->setTuning(
+            $tune->grenadeSpeed / 100.0,
+            $tune->grenadeCurvature / 100.0,
+            (int) ($tune->grenadeLifetime / 2),
+        );
 
         $this->world->addEntity($proj);
 
@@ -201,10 +222,12 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $angle = $this->angle / 256.0;
         $dir   = new Vector2(cos($angle), sin($angle));
 
+        $tune = $this->world->tuneController();
+
         $laser = new PvpLaserEntity($this->world,
             position: clone $this->position,
             direction: $dir,
-            energy: 800.0,
+            energy: $tune->laserReach / 100.0,
             owner: $this->tee->teeIndex,
         );
 

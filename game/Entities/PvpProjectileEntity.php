@@ -22,11 +22,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         int $owner = -1,
     ) {
         parent::__construct($world, $position, $direction, $type, $owner);
-
-        // Default PvP tuning (gun)
-        $this->speed     = 2200.0;
-        $this->curvature = 1.25;
-        $this->lifeSpan  = 100;
     }
 
     public function doTick(): void

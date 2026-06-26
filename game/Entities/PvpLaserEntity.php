@@ -13,10 +13,10 @@ use TeeFrame\Network\SnapItems\ObjLaserItem;
 class PvpLaserEntity extends AbstractLaserEntity
 {
     private int $bounces = 0;
-    private float $bounceDelay = 150;  // ms
-    private int $bounceNum = 100;
-    private float $bounceCost = 0;
-    private int $damage = 5;
+    private float $bounceDelay;
+    private int $bounceNum;
+    private float $bounceCost;
+    private int $damage;
 
     private Vector2 $from;
     private int $evalTick = 0;
@@ -29,6 +29,12 @@ class PvpLaserEntity extends AbstractLaserEntity
         int $owner,
     ) {
         parent::__construct($world, $position, $direction, $energy, $owner);
+
+        $tune = $world->tuneController();
+        $this->bounceDelay = $tune->laserBounceDelay / 100.0;
+        $this->bounceNum   = (int) ($tune->laserBounceNum / 100);
+        $this->bounceCost  = $tune->laserBounceCost / 100.0;
+        $this->damage      = (int) ($tune->laserDamage / 100);
 
         $this->from     = clone $this->position;
         $this->evalTick = $world->getCurrentTick();
