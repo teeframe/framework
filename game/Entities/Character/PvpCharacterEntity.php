@@ -20,7 +20,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
     {
         $collision = $this->world->getMap()->getCollision();
 
-        $angle = $this->core->angle / 256.0;
+        $angle = $this->angle / 256.0;
         $direction = new Vector2(cos($angle), sin($angle));
         $projStartPos = new Vector2(
             $this->position->x + $direction->x * self::PHYS_SIZE * 0.75,
@@ -94,7 +94,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle = $this->core->angle / 256.0;
+        $angle = $this->angle / 256.0;
         $dir   = new Vector2(cos($angle), sin($angle));
 
         $offset = self::PHYS_SIZE * 0.75;
@@ -134,7 +134,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle  = $this->core->angle / 256.0;
+        $angle  = $this->angle / 256.0;
         $dir    = new Vector2(cos($angle), sin($angle));
         $offset = self::PHYS_SIZE * 0.75;
         $projStartPos = new Vector2(
@@ -183,7 +183,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle  = $this->core->angle / 256.0;
+        $angle  = $this->angle / 256.0;
         $dir    = new Vector2(cos($angle), sin($angle));
         $offset = self::PHYS_SIZE * 0.75;
 
@@ -221,7 +221,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle = $this->core->angle / 256.0;
+        $angle = $this->angle / 256.0;
         $dir   = new Vector2(cos($angle), sin($angle));
 
         $tune = $this->world->getTuneController();
@@ -302,11 +302,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $this->ammoRegenStart = -1;
     }
 
-    /**
-     * Ammo regeneration for the gun.
-     * Ported from Teeworlds 0.6 CCharacter::HandleWeapons() ammo regen section.
-     */
-    private function tickAmmoRegen(): void
+    protected function tickAmmoRegen(): void
     {
         // Only the gun regenerates ammo
         if ($this->activeWeapon !== GameConstants::WEAPON_GUN) {
@@ -363,11 +359,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $this->damageTakenTick = $currentTick;
     }
 
-    /**
-     * Create damage indicator events.
-     * Ported from Teeworlds 0.6 CGameContext::CreateDamageInd().
-     */
-    private function createDamageInd(float $angleMod, int $amount): void
+    protected function createDamageInd(float $angleMod, int $amount): void
     {
         $a = 3 * M_PI / 2 + $angleMod;
         $s = $a - M_PI / 3;
@@ -384,11 +376,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
     }
 
-    /**
-     * Handle ninja state machine.
-     * Ported from Teeworlds 0.6 CCharacter::HandleNinja().
-     */
-    private function handleNinja(): void
+    protected function handleNinja(): void
     {
         if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
             return;
@@ -416,30 +404,26 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         if ($this->ninjaCurrentMoveTime === 0) {
             // Reset velocity
-            $this->core->vel->x = $this->ninjaActivationDir->x * $this->ninjaOldVelAmount;
-            $this->core->vel->y = $this->ninjaActivationDir->y * $this->ninjaOldVelAmount;
+            $this->vel->x = $this->ninjaActivationDir->x * $this->ninjaOldVelAmount;
+            $this->vel->y = $this->ninjaActivationDir->y * $this->ninjaOldVelAmount;
         }
 
         if ($this->ninjaCurrentMoveTime > 0) {
             // Set velocity
-            $this->core->vel->x = $this->ninjaActivationDir->x * 50;
-            $this->core->vel->y = $this->ninjaActivationDir->y * 50;
+            $this->vel->x = $this->ninjaActivationDir->x * 50;
+            $this->vel->y = $this->ninjaActivationDir->y * 50;
 
-            $oldPos = clone $this->core->position;
+            $oldPos = clone $this->position;
 
             $collision = $world->getMap()->getCollision();
             if ($collision !== null) {
                 $physSize = self::PHYS_SIZE;
-                $collision->moveBox($this->core->position, $this->core->vel, new Vector2($physSize, $physSize), 0.0);
+                $collision->moveBox($this->position, $this->vel, new Vector2($physSize, $physSize), 0.0);
             }
 
-            // Sync entity position from core
-            $this->position->x = $this->core->position->x;
-            $this->position->y = $this->core->position->y;
-
             // Reset velocity so the client doesn't predict stuff
-            $this->core->vel->x = 0.0;
-            $this->core->vel->y = 0.0;
+            $this->vel->x = 0.0;
+            $this->vel->y = 0.0;
 
             // Check if we hit anything along the way
             $dir    = $this->position->diff($oldPos);
@@ -486,11 +470,11 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function shootNinja(): int
     {
-        $angle = $this->core->angle / 256.0;
+        $angle = $this->angle / 256.0;
 
         $this->ninjaActivationDir = new Vector2(cos($angle), sin($angle));
         $this->ninjaCurrentMoveTime = 10; // 200ms at 50 tick/s
-        $this->ninjaOldVelAmount = $this->core->vel->length();
+        $this->ninjaOldVelAmount = $this->vel->length();
         $this->ninjaNumObjectsHit = 0;
         $this->ninjaHitObjects = [];
 

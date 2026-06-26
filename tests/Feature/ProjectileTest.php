@@ -51,8 +51,8 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
 
     // Tick once to set up angle (needed for shoot direction)
     $tune = $world->getTuneController();
-    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $character->core->move($collision, $tune);
+    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->move($collision, $tune);
 
     // Shoot through the character so tuning is applied from the controller
     $ref = new ReflectionClass($character);
@@ -123,8 +123,8 @@ test('character firing creates valid projectile snap', function () use ($mapPath
 
     // Tick once to set up angle (needed for shoot direction)
     $tune = $world->getTuneController();
-    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $character->core->move($collision, $tune);
+    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->move($collision, $tune);
 
     // Now shoot — this would normally be called from doTick
     // Use reflection to call private method
@@ -178,8 +178,8 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     // Simulate 20 rapid shots (way more than the reload timer allows)
     $tune = $world->getTuneController();
     for ($i = 0; $i < 20; $i++) {
-        $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-        $character->core->move($collision, $tune);
+        $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+        $character->move($collision, $tune);
 
         $method->invoke($character);
     }
@@ -222,8 +222,8 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
 
     // Tick once to set up angle, then shoot through the character
     $tune = $world->getTuneController();
-    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $character->core->move($collision, $tune);
+    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->move($collision, $tune);
 
     $ref = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
@@ -271,8 +271,8 @@ test('projectile snap uses start position not current position', function () use
 
     // Tick once to set up angle, then shoot through the character
     $tune = $world->getTuneController();
-    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $character->core->move($collision, $tune);
+    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->move($collision, $tune);
 
     $ref = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');

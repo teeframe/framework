@@ -1,6 +1,5 @@
 <?php
 
-use TeeFrame\Game\Entities\Character\CharacterCore;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
@@ -50,10 +49,8 @@ test('character spawns and survives physics ticks at spawn position', function (
     $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 100; $tick++) {
-        $character->core->tick(0, 0, 0, false, false, $collision, $tune, []);
-        $character->core->move($collision, $tune);
-        $character->getPosition()->x = $character->core->position->x;
-        $character->getPosition()->y = $character->core->position->y;
+        $character->tick(0, 0, 0, false, false, $collision, $tune, []);
+        $character->move($collision, $tune);
     }
 
     expect($character->alive)->toBeTrue();
@@ -99,10 +96,8 @@ test('character with walk input survives physics ticks', function () use ($mapPa
     $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 100; $tick++) {
-        $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
-        $character->core->move($collision, $tune);
-        $character->getPosition()->x = $character->core->position->x;
-        $character->getPosition()->y = $character->core->position->y;
+        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->move($collision, $tune);
     }
 
     expect($character->alive)->toBeTrue();
@@ -147,8 +142,8 @@ test('character with hook input survives physics ticks', function () use ($mapPa
     $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 50; $tick++) {
-        $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
-        $character->core->move($collision, $tune);
+        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->move($collision, $tune);
     }
 
     expect($character->alive)->toBeTrue();
@@ -192,8 +187,8 @@ test('character with firing input survives physics ticks', function () use ($map
     $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 50; $tick++) {
-        $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
-        $character->core->move($collision, $tune);
+        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->move($collision, $tune);
     }
 
     expect($character->alive)->toBeTrue();
@@ -238,8 +233,8 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 10; $tick++) {
-        $character->core->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
-        $character->core->move($collision, $tune);
+        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->move($collision, $tune);
     }
 
     // Snap should produce valid items
@@ -289,18 +284,18 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
     $tune = $world->getTuneController();
 
     // Set hook state to flying toward the right
-    $character->core->hookState = 4; // HOOK_FLYING
-    $character->core->hookDir = new Vector2(1, 0);
-    $character->core->hookPos = clone $character->getPosition();
+    $character->hookState = 4; // HOOK_FLYING
+    $character->hookDir = new Vector2(1, 0);
+    $character->hookPos = clone $character->getPosition();
 
     // Compute full extension point (where hook would go without collision)
     $fullExtension = new Vector2(
-        $character->core->hookPos->x + $character->core->hookDir->x * 80.0,
-        $character->core->hookPos->y + $character->core->hookDir->y * 80.0,
+        $character->hookPos->x + $character->hookDir->x * 80.0,
+        $character->hookPos->y + $character->hookDir->y * 80.0,
     );
 
     // Check if there's a wall between hookPos and fullExtension
-    [$hit, $expectedColPos] = $collision->intersectLine($character->core->hookPos, $fullExtension);
+    [$hit, $expectedColPos] = $collision->intersectLine($character->hookPos, $fullExtension);
 
     if (! $hit) {
         // No wall in range, can't test collision — but hook should still extend
@@ -308,14 +303,14 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
     }
 
     // Run the hook state machine
-    $ref = new ReflectionClass(CharacterCore::class);
+    $ref = new ReflectionClass(PvpCharacterEntity::class);
     $method = $ref->getMethod('tickHookStateMachine');
     $method->setAccessible(true);
-    $method->invoke($character->core, $collision, $tune, []);
+    $method->invoke($character, $collision, $tune, []);
 
     // hookPos must be at the collision point, not past it (at the full extension)
-    expect($character->core->hookPos->x)->toBe($expectedColPos->x);
-    expect($character->core->hookPos->y)->toBe($expectedColPos->y);
+    expect($character->hookPos->x)->toBe($expectedColPos->x);
+    expect($character->hookPos->y)->toBe($expectedColPos->y);
 });
 
 test('players push each other apart when overlapping', function () use ($mapPath, $mapExists) {
@@ -359,14 +354,10 @@ test('players push each other apart when overlapping', function () use ($mapPath
     // Run one physics tick for both — they should push apart
     $tune = $world->getTuneController();
 
-    $char1->core->tick(0, 0, 0, false, false, $collision, $tune, [$tee2->teeIndex => $char2->core]);
-    $char1->core->move($collision, $tune);
-    $char1->getPosition()->x = $char1->core->position->x;
-    $char1->getPosition()->y = $char1->core->position->y;
-    $char2->core->tick(0, 0, 0, false, false, $collision, $tune, [$tee1->teeIndex => $char1->core]);
-    $char2->core->move($collision, $tune);
-    $char2->getPosition()->x = $char2->core->position->x;
-    $char2->getPosition()->y = $char2->core->position->y;
+    $char1->tick(0, 0, 0, false, false, $collision, $tune, [$tee2->teeIndex => $char2]);
+    $char1->move($collision, $tune);
+    $char2->tick(0, 0, 0, false, false, $collision, $tune, [$tee1->teeIndex => $char1]);
+    $char2->move($collision, $tune);
 
     // After collision resolution, velocities should push them apart
     // (collision modifies vel, move applies position change)

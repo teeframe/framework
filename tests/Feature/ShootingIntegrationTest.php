@@ -36,8 +36,8 @@ function setupCharacter(Map $map): array
 
     $world->addEntity($character);
     $tune = $world->getTuneController();
-    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $character->core->move($collision, $tune);
+    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->move($collision, $tune);
 
     return [$character, $world];
 }
@@ -140,8 +140,8 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
-    $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $attacker->core->move($collision, $tune);
+    $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->move($collision, $tune);
 
     // Create target tee and character right in front of attacker (within hammer range)
     $targetPos = new Vector2($spawnPos->x + 20, $spawnPos->y); // 20 units in front
@@ -191,8 +191,8 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
-    $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $attacker->core->move($collision, $tune);
+    $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->move($collision, $tune);
 
     // ProjStartPos = spawnPos + right * PHYS_SIZE * 0.75 = spawnPos + right * 21
     // Hit radius = PHYS_SIZE * 1.5 = 42
@@ -240,8 +240,8 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
-    $attacker->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $attacker->core->move($collision, $tune);
+    $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->move($collision, $tune);
 
     // Place target beyond max range (max reach = 21 + 42 = 63 from spawnPos)
     $targetPos = new Vector2($spawnPos->x + 70, $spawnPos->y);
@@ -410,8 +410,8 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
 
     // Tick once to set up angle, then shoot through the character
     $tune = $world->getTuneController();
-    $character->core->tick(1, 100, 0, false, false, $collision, $tune, []);
-    $character->core->move($collision, $tune);
+    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->move($collision, $tune);
 
     $ref = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');

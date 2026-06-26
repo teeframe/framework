@@ -58,7 +58,7 @@ test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, 
     $world->addEntity($character);
 
     $character->giveNinja();
-    $character->core->angle = 0; // facing right
+    $character->angle = 0; // facing right
 
     $ref = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');
@@ -106,7 +106,7 @@ test('ninja move time is 10 ticks', function () use ($mapPath, $mapExists) {
     $world->addEntity($character);
 
     $character->giveNinja();
-    $character->core->angle = 0;
+    $character->angle = 0;
 
     $ref = new ReflectionClass($character);
     $method = $ref->getMethod('shootNinja');
@@ -143,7 +143,7 @@ test('ninja dash moves character forward by expected distance', function () use 
     $world->addEntity($character);
 
     $character->giveNinja();
-    $character->core->angle = 0; // facing right
+    $character->angle = 0; // facing right
 
     $ref = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');
@@ -246,7 +246,7 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
     $world->addEntity($character);
 
     $character->giveNinja();
-    $character->core->angle = 0;
+    $character->angle = 0;
 
     $ref = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');
@@ -300,7 +300,7 @@ test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $map
     $world->addEntity($character);
 
     $character->giveNinja();
-    $character->core->angle = 0;
+    $character->angle = 0;
 
     $ref = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');

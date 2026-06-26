@@ -1,22 +1,21 @@
 <?php
 
-namespace TeeFrame\Game\Entities\Character;
+namespace TeeFrame\Game\Entities\Character\Concerns;
 
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\EmptyTuneController;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
 
 /**
  * Character physics core — pure physics, no game logic.
- * Ported from Teeworlds 0.6 CCharacterCore.
  *
- * This class handles: position, velocity, hook state machine, movement,
- * player-player collision, and hook influence. It does NOT handle weapons,
- * health, spawning, or any game-mode-specific logic.
+ * Handles: velocity, hook state machine, movement, player-player collision,
+ * and hook influence. Does NOT handle weapons, health, spawning, or any
+ * game-mode-specific logic.
  */
-class CharacterCore
+trait HasCharacterCore
 {
-    public Vector2 $position;
     public Vector2 $vel;
     public Vector2 $hookPos;
     public Vector2 $hookDir;
@@ -28,15 +27,22 @@ class CharacterCore
     public int $angle = 0;
     public int $triggeredEvents = 0;
 
-    public function __construct(Vector2 $position)
+    protected function initCore(Vector2 $position): void
     {
         $this->position = clone $position;
         $this->vel      = new Vector2(0, 0);
         $this->hookPos  = new Vector2(0, 0);
         $this->hookDir  = new Vector2(0, 0);
+        $this->hookTick       = 0;
+        $this->hookState      = 0;
+        $this->hookedPlayer   = -1;
+        $this->jumped         = 0;
+        $this->direction      = 0;
+        $this->angle          = 0;
+        $this->triggeredEvents = 0;
     }
 
-    public function reset(): void
+    public function resetCore(): void
     {
         $this->vel            = new Vector2(0, 0);
         $this->hookPos        = new Vector2(0, 0);
@@ -49,10 +55,7 @@ class CharacterCore
     }
 
     /**
-     * Run one tick of physics.
-     * Ported from Teeworlds 0.6 CCharacterCore::Tick().
-     *
-     * @param array<int, CharacterCore> $otherCores  other characters' cores for collision/hooking, keyed by tee index
+     * @param array<int, AbstractCharacterEntity> $otherCharacters
      */
     public function tick(
         int $inputDirection,
@@ -62,7 +65,7 @@ class CharacterCore
         bool $inputHook,
         Collision $collision,
         EmptyTuneController $tune,
-        array $otherCores,
+        array $otherCharacters,
     ): void {
         $physSize = 28.0;
         $this->triggeredEvents = 0;
@@ -83,7 +86,7 @@ class CharacterCore
 
         $this->direction = $inputDirection;
 
-        // Setup angle (original Teeworlds 0.6: atan(y/x) + pi if x < 0)
+        // Setup angle: atan(y/x) + pi if x < 0
         $a = 0.0;
         if ($inputTargetX === 0) {
             $a = atan((float) $inputTargetY);
@@ -155,10 +158,10 @@ class CharacterCore
             $this->jumped &= ~2;
         }
 
-        $this->tickHookStateMachine($collision, $tune, $otherCores);
+        $this->tickHookStateMachine($collision, $tune, $otherCharacters);
 
         // Handle player <-> player collision and hook influence
-        foreach ($otherCores as $teeIndex => $otherCore) {
+        foreach ($otherCharacters as $teeIndex => $otherCore) {
             $distance = $this->position->distance($otherCore->position);
             $dir = $this->position->diff($otherCore->position);
             $dirLen = $dir->length();
@@ -208,10 +211,6 @@ class CharacterCore
         }
     }
 
-    /**
-     * Move the character through the collision world.
-     * Ported from Teeworlds 0.6 CCharacterCore::Move().
-     */
     public function move(Collision $collision, EmptyTuneController $tune): void
     {
         $speed = $this->vel->length();
@@ -230,12 +229,9 @@ class CharacterCore
     }
 
     /**
-     * Hook state machine.
-     * Ported from Teeworlds 0.6 CCharacterCore::Tick() hook section.
-     *
-     * @param array<int, CharacterCore> $otherCores
+     * @param array<int, AbstractCharacterEntity> $otherCharacters
      */
-    private function tickHookStateMachine(Collision $collision, EmptyTuneController $tune, array $otherCores): void
+    protected function tickHookStateMachine(Collision $collision, EmptyTuneController $tune, array $otherCharacters): void
     {
         if ($this->hookState === 0) {
             $this->hookedPlayer = -1;
@@ -280,7 +276,7 @@ class CharacterCore
             if ($tune->playerHooking / 100.0 > 0) {
                 $closestDist = PHP_FLOAT_MAX;
 
-                foreach ($otherCores as $teeIdx => $otherCore) {
+                foreach ($otherCharacters as $teeIdx => $otherCore) {
                     $closestPoint = $otherCore->position->closestPointOnLine($this->hookPos, $newHookPos);
                     $dist = $otherCore->position->distance($closestPoint);
 
@@ -312,8 +308,8 @@ class CharacterCore
         if ($this->hookState === 5) {
             // Follow hooked player's position
             if ($this->hookedPlayer >= 0) {
-                if (isset($otherCores[$this->hookedPlayer])) {
-                    $this->hookPos = clone $otherCores[$this->hookedPlayer]->position;
+                if (isset($otherCharacters[$this->hookedPlayer])) {
+                    $this->hookPos = clone $otherCharacters[$this->hookedPlayer]->position;
                 } else {
                     // Hooked player left — release hook
                     $this->hookedPlayer = -1;
