@@ -13,7 +13,6 @@ trait HasCharacterLifecycle
 {
     public function spawn(Vector2 $pos, ?AbstractTee $tee = null): void
     {
-        $this->position   = $pos;
         $this->health     = 10;
         $this->armor      = 0;
         $this->alive      = true;

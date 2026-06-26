@@ -64,6 +64,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->initCore($position);
     }
 
+    abstract protected function handleWeapons(bool $firePressed): void;
+
     public function getHitBoxRadius(): int
     {
         return self::PHYS_SIZE;
@@ -188,12 +190,4 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             ),
         ];
     }
-
-    protected function handleWeapons(bool $firePressed): void
-    {
-    }
-
-    abstract protected function shootHammer(): int;
-
-    abstract protected function shootGun(): int;
 }

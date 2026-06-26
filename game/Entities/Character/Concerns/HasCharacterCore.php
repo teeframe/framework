@@ -42,18 +42,6 @@ trait HasCharacterCore
         $this->triggeredEvents = 0;
     }
 
-    public function resetCore(): void
-    {
-        $this->vel            = new Vector2(0, 0);
-        $this->hookPos        = new Vector2(0, 0);
-        $this->hookDir        = new Vector2(0, 0);
-        $this->hookTick       = 0;
-        $this->hookState      = 0;
-        $this->hookedPlayer   = -1;
-        $this->jumped         = 0;
-        $this->triggeredEvents = 0;
-    }
-
     /**
      * @param array<int, AbstractCharacterEntity> $otherCharacters
      */
@@ -161,9 +149,9 @@ trait HasCharacterCore
         $this->tickHookStateMachine($collision, $tune, $otherCharacters);
 
         // Handle player <-> player collision and hook influence
-        foreach ($otherCharacters as $teeIndex => $otherCore) {
-            $distance = $this->position->distance($otherCore->position);
-            $dir = $this->position->diff($otherCore->position);
+        foreach ($otherCharacters as $teeIndex => $otherCharacter) {
+            $distance = $this->position->distance($otherCharacter->position);
+            $dir = $this->position->diff($otherCharacter->position);
             $dirLen = $dir->length();
             if ($dirLen > 0.0) {
                 $dir = $dir->normalize();
@@ -193,8 +181,8 @@ trait HasCharacterCore
                     $hookDragSpeed = $tune->hookDragSpeed / 100.0;
 
                     // add force to the hooked player
-                    $otherCore->vel->x = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $otherCore->vel->x, $hookAccel * $dir->x * 1.5);
-                    $otherCore->vel->y = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $otherCore->vel->y, $hookAccel * $dir->y * 1.5);
+                    $otherCharacter->vel->x = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $otherCharacter->vel->x, $hookAccel * $dir->x * 1.5);
+                    $otherCharacter->vel->y = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $otherCharacter->vel->y, $hookAccel * $dir->y * 1.5);
 
                     // add a little bit force to the guy who has the grip
                     $this->vel->x = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $this->vel->x, -$hookAccel * $dir->x * 0.25);
@@ -276,9 +264,9 @@ trait HasCharacterCore
             if ($tune->playerHooking / 100.0 > 0) {
                 $closestDist = PHP_FLOAT_MAX;
 
-                foreach ($otherCharacters as $teeIdx => $otherCore) {
-                    $closestPoint = $otherCore->position->closestPointOnLine($this->hookPos, $newHookPos);
-                    $dist = $otherCore->position->distance($closestPoint);
+                foreach ($otherCharacters as $teeIdx => $otherCharacter) {
+                    $closestPoint = $otherCharacter->position->closestPointOnLine($this->hookPos, $newHookPos);
+                    $dist = $otherCharacter->position->distance($closestPoint);
 
                     if ($dist < 28.0 + 2.0) {
                         $lineDist = $this->hookPos->distance($closestPoint);
