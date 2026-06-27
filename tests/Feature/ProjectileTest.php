@@ -1,16 +1,18 @@
 <?php
 
-use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
+use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
 use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('projectile survives full lifecycle', function () use ($mapPath, $mapExists) {
@@ -18,7 +20,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -34,7 +36,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
         return;
     }
 
-    $world = createWorld($map);
+    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
@@ -49,7 +51,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     $character->move($collision, $tune);
 
     // Shoot through the character so tuning is applied from the controller
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
     $method->invoke($character);
@@ -73,7 +75,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
 
 function getProjectilePos(PvpProjectileEntity $proj, float $time): Vector2
 {
-    $ref = new ReflectionClass($proj);
+    $ref    = new ReflectionClass($proj);
     $method = $ref->getMethod('getPos');
     $method->setAccessible(true);
 
@@ -85,7 +87,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -101,7 +103,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
         return;
     }
 
-    $world = createWorld($map);
+    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
@@ -116,7 +118,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
 
     // Now shoot — this would normally be called from doTick
     // Use reflection to call private method
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
 
@@ -129,7 +131,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -145,7 +147,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
         return;
     }
 
-    $world = createWorld($map);
+    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
@@ -153,7 +155,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
 
@@ -172,7 +174,7 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -188,9 +190,9 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
         return;
     }
 
-    $map       = new Map($mapPath);
-    $world     = createWorld($map);
-    $spawnPos  = new Vector2($pos[0]['x'], $pos[0]['y']);
+    $map      = new Map($mapPath);
+    $world    = createWorld($map);
+    $spawnPos = new Vector2($pos[0]['x'], $pos[0]['y']);
 
     $tee = new PlayerTee;
 
@@ -203,7 +205,7 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
     $character->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
     $method->invoke($character);
@@ -228,7 +230,7 @@ test('projectile snap uses start position not current position', function () use
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -248,7 +250,7 @@ test('projectile snap uses start position not current position', function () use
     $character->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
     $method->invoke($character);
@@ -260,7 +262,7 @@ test('projectile snap uses start position not current position', function () use
     $proj->getPosition()->y = 600;
 
     $snaps = $proj->doSnap($tee);
-    $ints = $snaps[0]->getInts();
+    $ints  = $snaps[0]->getInts();
 
     // Snap x/y must be startPos, not current position (500, 600).
     // The client uses snap x/y as the starting point and computes displacement
@@ -278,14 +280,14 @@ function createTestWorld(Map $map): AbstractWorld
 {
     return new class('test', new TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -297,7 +299,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
         return;
     }
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createTestWorld($map);
 
     $ownerTee = new PlayerTee;
@@ -311,7 +313,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
-            world: $world,
+        world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0); // lifespan = 0, expires immediately
@@ -320,7 +322,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
     $proj->doTick();
 
     // Check that an explosion event was added
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('pendingEvents');
     $prop->setAccessible(true);
     $events = $prop->getValue($world);
@@ -334,7 +336,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
         return;
     }
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createTestWorld($map);
 
     $ownerTee = new PlayerTee;
@@ -358,7 +360,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
-            world: $world,
+        world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0);
@@ -377,7 +379,7 @@ test('grenade explosion does not damage character outside radius', function () u
         return;
     }
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createTestWorld($map);
 
     $ownerTee = new PlayerTee;
@@ -399,7 +401,7 @@ test('grenade explosion does not damage character outside radius', function () u
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
-            world: $world,
+        world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 0);
@@ -416,7 +418,7 @@ test('non-grenade projectile does not create explosion event', function () use (
         return;
     }
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createTestWorld($map);
 
     $ownerTee = new PlayerTee;
@@ -431,7 +433,7 @@ test('non-grenade projectile does not create explosion event', function () use (
         position: new Vector2(100, 100),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GUN,
-            world: $world,
+        world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 0);
@@ -439,7 +441,7 @@ test('non-grenade projectile does not create explosion event', function () use (
 
     $proj->doTick();
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('pendingEvents');
     $prop->setAccessible(true);
     $events = $prop->getValue($world);
@@ -453,19 +455,19 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -480,7 +482,6 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     if (empty($entities)) {
         return;
     }
-
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
@@ -505,11 +506,11 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
 
     // Grenade fired to the right from offset position
     $offset = 28 * 0.75; // PHYS_SIZE * 0.75
-    $proj = new PvpProjectileEntity(
+    $proj   = new PvpProjectileEntity(
         position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GRENADE,
-            world: $world,
+        world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(1000.0, 7.0, 100);
@@ -531,7 +532,7 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     expect($targetChar->health)->toBeLessThan(10);
 
     // Explosion event should have been created
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('pendingEvents');
     $prop->setAccessible(true);
     $events = $prop->getValue($world);
@@ -545,19 +546,19 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -573,7 +574,7 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
         return;
     }
 
-    $world = createWorld($map);
+    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Owner character at spawn
@@ -597,11 +598,11 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
 
     // Gun projectile fired to the right from offset position
     $offset = 28 * 0.75; // PHYS_SIZE * 0.75
-    $proj = new PvpProjectileEntity(
+    $proj   = new PvpProjectileEntity(
         position: new Vector2($spawnPos->x + $offset, $spawnPos->y),
         direction: new Vector2(1, 0),
         type: GameConstants::WEAPON_GUN,
-            world: $world,
+        world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 100);
@@ -627,19 +628,19 @@ test('projectile does not collide with owner character', function () use ($mapPa
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -655,7 +656,7 @@ test('projectile does not collide with owner character', function () use ($mapPa
         return;
     }
 
-    $world = createWorld($map);
+    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Owner character at spawn position
@@ -668,11 +669,11 @@ test('projectile does not collide with owner character', function () use ($mapPa
 
     // Gun projectile fired upward from offset position (open sky)
     $offset = 28 * 0.75; // PHYS_SIZE * 0.75
-    $proj = new PvpProjectileEntity(
+    $proj   = new PvpProjectileEntity(
         position: new Vector2($spawnPos->x, $spawnPos->y - $offset),
         direction: new Vector2(0, -1),
         type: GameConstants::WEAPON_GUN,
-            world: $world,
+        world: $world,
         owner: $ownerTee->teeIndex,
     );
     $proj->setTuning(2200.0, 1.25, 100);
@@ -696,19 +697,19 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -724,7 +725,7 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
         return;
     }
 
-    $world = createWorld($map);
+    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Attacker
@@ -747,12 +748,12 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     $target->takeDamage(new Vector2(0, 0), 3, $attacker);
 
     // Check damage indicator events were created (one per point of damage)
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('pendingEvents');
     $prop->setAccessible(true);
     $events = $prop->getValue($world);
 
-    $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof \TeeFrame\Network\SnapItems\ObjEventDamageIndItem));
+    $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
     expect($damageInds)->toHaveCount(3);
 
     // Each damage indicator should have valid angle values
@@ -770,19 +771,19 @@ test('damage indicators group when damage taken in quick succession', function (
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -798,7 +799,7 @@ test('damage indicators group when damage taken in quick succession', function (
         return;
     }
 
-    $world = createWorld($map);
+    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Attacker
@@ -824,14 +825,87 @@ test('damage indicators group when damage taken in quick succession', function (
     $target->takeDamage(new Vector2(0, 0), 2, $attacker);
 
     // Total damage indicator events: 3 + 2 = 5
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('pendingEvents');
     $prop->setAccessible(true);
     $events = $prop->getValue($world);
 
-    $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof \TeeFrame\Network\SnapItems\ObjEventDamageIndItem));
+    $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
     expect($damageInds)->toHaveCount(5);
 
     // damageTaken should be incremented (grouping counter)
     expect($target->damageTaken)->toBe(2);
+});
+
+test('killing blow still emits damage indicators', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $map         = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    {
+        public function getMotd(AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new TestGameController($this->tickHandler);
+        }
+
+        public function doTick(): void {}
+    };
+
+    $gameLayer = $map->getGameLayer();
+    if ($gameLayer === null) {
+        return;
+    }
+
+    $entities = $gameLayer->getEntityPositions();
+    if (empty($entities)) {
+        return;
+    }
+
+    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
+
+    $attackerTee = new PlayerTee;
+    $world->addTee($attackerTee);
+
+    $attacker = new PvpCharacterEntity($world, clone $spawnPos);
+    $attacker->spawn(clone $spawnPos, $attackerTee);
+    $world->addEntity($attacker);
+
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+
+    $target = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $target->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $targetTee);
+    $world->addEntity($target);
+
+    // Three hits of 3 damage each: 3 + 3 + 3 = 9 total. Target starts with
+    // 10 health, so the third hit (bringing total to 9) is NOT lethal yet.
+    // A fourth hit of 3 damage would be the killing blow (total 12 > 10).
+    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+
+    expect($target->alive)->toBeTrue();
+
+    // Killing blow: 3 damage that brings health to/below 0.
+    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+
+    expect($target->alive)->toBeFalse();
+
+    // The killing blow must still emit its 3 damage indicators.
+    $ref  = new ReflectionClass($world);
+    $prop = $ref->getProperty('pendingEvents');
+    $prop->setAccessible(true);
+    $events = $prop->getValue($world);
+
+    $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
+    expect($damageInds)->toHaveCount(12); // 3 + 3 + 3 + 3
 });

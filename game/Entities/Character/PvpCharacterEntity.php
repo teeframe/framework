@@ -2,10 +2,10 @@
 
 namespace TeeFrame\Game\Entities\Character;
 
+use TeeFrame\Game\Entities\PvpLaserEntity;
+use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
-use TeeFrame\Game\Entities\PvpProjectileEntity;
-use TeeFrame\Game\Entities\PvpLaserEntity;
 use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
 use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
@@ -13,21 +13,23 @@ use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 class PvpCharacterEntity extends AbstractCharacterEntity
 {
     public int $damageTaken = 0;
+
     public int $damageTakenTick = 0;
+
     public int $ammoRegenStart = -1;
 
     protected function shootHammer(): int
     {
         $collision = $this->world->getMap()->getCollision();
 
-        $angle = $this->angle / 256.0;
-        $direction = new Vector2(cos($angle), sin($angle));
+        $angle        = $this->angle / 256.0;
+        $direction    = new Vector2(cos($angle), sin($angle));
         $projStartPos = new Vector2(
             $this->position->x + $direction->x * self::PHYS_SIZE * 0.75,
             $this->position->y + $direction->y * self::PHYS_SIZE * 0.75,
         );
 
-        $hits = 0;
+        $hits      = 0;
         $hitRadius = self::PHYS_SIZE * 1.5; // m_ProximityRadius + m_ProximityRadius*0.5 = 28 + 14 = 42
 
         $this->world->addEvent(new ObjEventSoundWorldItem(
@@ -112,7 +114,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             owner: $this->tee->teeIndex,
         );
         $proj->setTuning(
-            $tune->gunSpeed / 100.0,
+            $tune->gunSpeed     / 100.0,
             $tune->gunCurvature / 100.0,
             (int) ($tune->gunLifetime / 2),
         );
@@ -134,21 +136,21 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle  = $this->angle / 256.0;
-        $dir    = new Vector2(cos($angle), sin($angle));
-        $offset = self::PHYS_SIZE * 0.75;
+        $angle        = $this->angle / 256.0;
+        $dir          = new Vector2(cos($angle), sin($angle));
+        $offset       = self::PHYS_SIZE * 0.75;
         $projStartPos = new Vector2(
             $this->position->x + $dir->x * $offset,
             $this->position->y + $dir->y * $offset,
         );
 
         $shotSpread = 2;
-        $spreading = [-0.185, -0.070, 0, 0.070, 0.185];
+        $spreading  = [-0.185, -0.070, 0, 0.070, 0.185];
 
         for ($i = -$shotSpread; $i <= $shotSpread; $i++) {
-            $a = atan2($dir->y, $dir->x) + $spreading[$i + 2];
-            $v = 1 - (abs($i) / $shotSpread);
-            $speed = 0.8 + (1.0 - 0.8) * $v; // mix(speeddiff, 1.0, v)
+            $a         = atan2($dir->y, $dir->x) + $spreading[$i + 2];
+            $v         = 1 - (abs($i) / $shotSpread);
+            $speed     = 0.8 + (1.0 - 0.8) * $v; // mix(speeddiff, 1.0, v)
             $bulletDir = new Vector2(cos($a), sin($a));
 
             $tune = $this->world->getTuneController();
@@ -199,7 +201,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             owner: $this->tee->teeIndex,
         );
         $proj->setTuning(
-            $tune->grenadeSpeed / 100.0,
+            $tune->grenadeSpeed     / 100.0,
             $tune->grenadeCurvature / 100.0,
             (int) ($tune->grenadeLifetime / 2),
         );
@@ -332,18 +334,21 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         // 500ms at 50 tick/s = 25 ticks
         if (($this->tick - $this->ammoRegenStart) >= 25) {
             $this->weapons[$this->activeWeapon]->ammo = min(10, $weaponAmmo + 1);
-            $this->ammoRegenStart = -1;
+            $this->ammoRegenStart                     = -1;
         }
     }
 
     public function takeDamage(Vector2 $force, int $damage, AbstractCharacterEntity $inflictor): void
     {
-        parent::takeDamage($force, $damage, $inflictor);
-
         if (! $this->alive || $damage <= 0) {
+            parent::takeDamage($force, $damage, $inflictor);
+
             return;
         }
 
+        // Emit damage indicators before applying the damage, so the killing blow
+        // still shows its stars (mirrors CCharacter::TakeDamage in teeworlds 0.6,
+        // where CreateDamageInd runs before the death check).
         $this->damageTaken++;
 
         $currentTick = $this->world->getCurrentTick();
@@ -357,11 +362,13 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
 
         $this->damageTakenTick = $currentTick;
+
+        parent::takeDamage($force, $damage, $inflictor);
     }
 
     protected function createDamageInd(float $angleMod, int $amount): void
     {
-        $a = 3 * M_PI / 2 + $angleMod;
+        $a = 3 * M_PI  / 2 + $angleMod;
         $s = $a - M_PI / 3;
         $e = $a + M_PI / 3;
 
@@ -390,7 +397,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         if (($currentTick - $this->ninjaActivationTick) > (int) (15 * 50)) {
             // Time's up, return to last weapon
             $this->weapons[GameConstants::WEAPON_NINJA]->got = false;
-            $this->activeWeapon = $this->lastWeapon;
+            $this->activeWeapon                              = $this->lastWeapon;
 
             $this->setWeapon($this->activeWeapon);
 
@@ -472,11 +479,11 @@ class PvpCharacterEntity extends AbstractCharacterEntity
     {
         $angle = $this->angle / 256.0;
 
-        $this->ninjaActivationDir = new Vector2(cos($angle), sin($angle));
+        $this->ninjaActivationDir   = new Vector2(cos($angle), sin($angle));
         $this->ninjaCurrentMoveTime = 10; // 200ms at 50 tick/s
-        $this->ninjaOldVelAmount = $this->vel->length();
-        $this->ninjaNumObjectsHit = 0;
-        $this->ninjaHitObjects = [];
+        $this->ninjaOldVelAmount    = $this->vel->length();
+        $this->ninjaNumObjectsHit   = 0;
+        $this->ninjaHitObjects      = [];
 
         $this->world->addEvent(new ObjEventSoundWorldItem(
             x: (int) round($this->position->x),
