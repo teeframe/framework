@@ -91,11 +91,11 @@ trait HasCharacterCore
         if ($inputJump) {
             if (! ($this->jumped & 1)) {
                 if ($grounded) {
-                    $this->triggeredEvents |= 0x01;
+                    $this->triggeredEvents |= GameConstants::COREEVENT_GROUND_JUMP;
                     $this->vel->y = -$tune->groundJumpImpulse / 100.0;
                     $this->jumped |= 1;
                 } elseif (! ($this->jumped & 2)) {
-                    $this->triggeredEvents |= 0x02;
+                    $this->triggeredEvents |= GameConstants::COREEVENT_AIR_JUMP;
                     $this->vel->y = -$tune->airJumpImpulse / 100.0;
                     $this->jumped |= 3;
                 }
@@ -123,7 +123,7 @@ trait HasCharacterCore
                     );
                     $this->hookedPlayer = -1;
                     $this->hookTick = 0;
-                    $this->triggeredEvents |= 0x04;
+                    $this->triggeredEvents |= GameConstants::COREEVENT_HOOK_LAUNCH;
                 }
             }
         } else {
@@ -230,7 +230,7 @@ trait HasCharacterCore
             $this->hookState++;
         } elseif ($this->hookState === GameConstants::HOOK_RETRACT_END) {
             $this->hookState = GameConstants::HOOK_RETRACTED;
-            $this->triggeredEvents |= 0x40;
+            $this->triggeredEvents |= GameConstants::COREEVENT_HOOK_RETRACT;
         } elseif ($this->hookState === GameConstants::HOOK_FLYING) {
             $newHookPos = new Vector2(
                 $this->hookPos->x + $this->hookDir->x * ($tune->hookFireSpeed / 100.0),
@@ -273,7 +273,7 @@ trait HasCharacterCore
                         $lineDist = $this->hookPos->distance($closestPoint);
                         if ($lineDist < $closestDist) {
                             $closestDist = $lineDist;
-                            $this->triggeredEvents |= 0x08; // COREEVENT_HOOK_ATTACH_PLAYER
+                            $this->triggeredEvents |= GameConstants::COREEVENT_HOOK_ATTACH_PLAYER;
                             $this->hookState = GameConstants::HOOK_GRABBED;
                             $this->hookedPlayer = $teeIdx;
                         }
@@ -283,10 +283,10 @@ trait HasCharacterCore
 
             if ($this->hookState === GameConstants::HOOK_FLYING) {
                 if ($goingToHitGround) {
-                    $this->triggeredEvents |= 0x10;
+                    $this->triggeredEvents |= GameConstants::COREEVENT_HOOK_ATTACH_GROUND;
                     $this->hookState = GameConstants::HOOK_GRABBED;
                 } elseif ($goingToRetract) {
-                    $this->triggeredEvents |= 0x20;
+                    $this->triggeredEvents |= GameConstants::COREEVENT_HOOK_HIT_NOHOOK;
                     $this->hookState = GameConstants::HOOK_RETRACT_START;
                 }
             }

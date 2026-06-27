@@ -194,7 +194,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         // not emit them to avoid duplication. SOUND_HOOK_ATTACH_PLAYER is not
         // predicted by the client, so the server emits it.
         $events = $this->triggeredEvents;
-        if ($events & 0x08) {
+        if ($events & GameConstants::COREEVENT_HOOK_ATTACH_PLAYER) {
             $this->createSound(GameConstants::SOUND_HOOK_ATTACH_PLAYER);
         }
 

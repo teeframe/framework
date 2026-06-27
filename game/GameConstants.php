@@ -14,12 +14,21 @@ class GameConstants
     public const NUM_WEAPONS    = 6;
 
     // Hook state constants (Teeworlds 0.6)
-    public const HOOK_RETRACTED   = -1;
-    public const HOOK_IDLE        = 0;
+    public const HOOK_RETRACTED     = -1;
+    public const HOOK_IDLE          = 0;
     public const HOOK_RETRACT_START = 1;
-    public const HOOK_RETRACT_END  = 3;
-    public const HOOK_FLYING      = 4;
-    public const HOOK_GRABBED     = 5;
+    public const HOOK_RETRACT_END   = 3;
+    public const HOOK_FLYING        = 4;
+    public const HOOK_GRABBED       = 5;
+
+    // Core event bit flags (Teeworlds 0.6)
+    public const COREEVENT_GROUND_JUMP        = 0x01;
+    public const COREEVENT_AIR_JUMP           = 0x02;
+    public const COREEVENT_HOOK_LAUNCH        = 0x04;
+    public const COREEVENT_HOOK_ATTACH_PLAYER = 0x08;
+    public const COREEVENT_HOOK_ATTACH_GROUND = 0x10;
+    public const COREEVENT_HOOK_HIT_NOHOOK    = 0x20;
+    public const COREEVENT_HOOK_RETRACT       = 0x40;
 
     // Sound constants (Teeworlds 0.6)
     public const SOUND_GUN_FIRE = 0;
@@ -54,4 +63,5 @@ class GameConstants
     public const SOUND_WEAPON_SPAWN = 29;
     public const SOUND_WEAPON_NOAMMO = 30;
     public const SOUND_HIT = 31;
+
 }
