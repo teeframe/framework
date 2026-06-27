@@ -2,8 +2,6 @@
 
 namespace TeeFrame\Network\Huffman;
 
-// TODO: Refactor this entirely
-
 class Huffman
 {
     /** @var int[] */

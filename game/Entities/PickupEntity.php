@@ -14,9 +14,9 @@ use TeeFrame\Network\SnapItems\ObjPickupItem;
 
 class PickupEntity extends AbstractEntity
 {
-    private const PICKUP_PHYS_SIZE = 14;
+    const PICKUP_PHYS_SIZE = 14;
 
-    private int $spawnTick = -1;
+    protected int $spawnTick = -1;
 
     /**
      * @param int $respawnTime Respawn time in ticks after being picked up (-1 = never respawn).
@@ -25,10 +25,10 @@ class PickupEntity extends AbstractEntity
     public function __construct(
         AbstractWorld $world,
         Vector2 $position,
-        private int $type,
-        private int $subType = 0,
-        private int $respawnTime = -1,
-        private int $spawnDelay = 0,
+        protected int $type,
+        protected int $subType = 0,
+        protected int $respawnTime = -1,
+        protected int $spawnDelay = 0,
     ) {
         parent::__construct(world: $world, position: $position);
 
@@ -78,7 +78,7 @@ class PickupEntity extends AbstractEntity
      * Handle a character picking up this item.
      * Returns respawn time in ticks, or -1 if not picked up.
      */
-    private function onPickup(AbstractCharacterEntity $character): int
+    protected function onPickup(AbstractCharacterEntity $character): int
     {
         $soundId = -1;
         $respawnTime = -1;

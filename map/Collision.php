@@ -14,10 +14,10 @@ class Collision
     /**
      * @var array<int, int>
      */
-    private array $tiles = [];
+    protected array $tiles = [];
 
-    private int $width  = 0;
-    private int $height = 0;
+    protected int $width  = 0;
+    protected int $height = 0;
 
     public function __construct()
     {
@@ -58,7 +58,7 @@ class Collision
         return $this->height;
     }
 
-    private function getTile(int $x, int $y): int
+    protected function getTile(int $x, int $y): int
     {
         $nx = max(0, min((int) ($x / 32), $this->width - 1));
         $ny = max(0, min((int) ($y / 32), $this->height - 1));
@@ -68,7 +68,7 @@ class Collision
         return $index > 128 ? 0 : $index;
     }
 
-    private function isTileSolid(int $x, int $y): bool
+    protected function isTileSolid(int $x, int $y): bool
     {
         return ($this->getTile($x, $y) & self::COLFLAG_SOLID) !== 0;
     }

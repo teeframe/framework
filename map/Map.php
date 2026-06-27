@@ -13,27 +13,27 @@ class Map
     /**
      * @var array<int, GroupItem>
      */
-    private array $groups = [];
+    protected array $groups = [];
 
     /**
      * @var array<int, LayerItem>
      */
-    private array $layers = [];
+    protected array $layers = [];
 
-    private ?GameLayer $gameLayer = null;
+    protected ?GameLayer $gameLayer = null;
 
-    private ?Collision $collision = null;
+    protected ?Collision $collision = null;
 
-    private ?MapReader $reader = null;
+    protected ?MapReader $reader = null;
 
-    private string $name = '';
+    protected string $name = '';
 
-    private int $crc = 0;
+    protected int $crc = 0;
 
-    private int $size = 0;
+    protected int $size = 0;
 
     /** @var int[] */
-    private array $rawData = [];
+    protected array $rawData = [];
 
     /**
      * @param  string  $mapPath  Path to the .map file (e.g., "maps/dm1.map")

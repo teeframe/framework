@@ -33,7 +33,7 @@ class GameLayer extends TileLayer
     /**
      * @var array<int, array{x: int, y: int, type: int}>
      */
-    private array $entityPositions = [];
+    protected array $entityPositions = [];
 
     public function __construct(int $width, int $height, string $rawData, int $version = 3)
     {

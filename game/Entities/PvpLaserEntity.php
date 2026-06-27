@@ -13,14 +13,14 @@ use TeeFrame\Network\SnapItems\ObjLaserItem;
  */
 class PvpLaserEntity extends AbstractLaserEntity
 {
-    private int $bounces = 0;
-    private float $bounceDelay;
-    private int $bounceNum;
-    private float $bounceCost;
-    private int $damage;
+    protected int $bounces = 0;
+    protected float $bounceDelay;
+    protected int $bounceNum;
+    protected float $bounceCost;
+    protected int $damage;
 
-    private Vector2 $from;
-    private int $evalTick = 0;
+    protected Vector2 $from;
+    protected int $evalTick = 0;
 
     public function __construct(
         AbstractWorld $world,
@@ -51,7 +51,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         }
     }
 
-    private function doBounce(): void
+    protected function doBounce(): void
     {
         $this->evalTick = $this->world->getCurrentTick();
 
@@ -102,7 +102,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         }
     }
 
-    private function hitCharacter(Vector2 $from, Vector2 $to): bool
+    protected function hitCharacter(Vector2 $from, Vector2 $to): bool
     {
         $closestDist = PHP_FLOAT_MAX;
         $closestEntity = null;
@@ -146,7 +146,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         return false;
     }
 
-    private function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd, Vector2 $point): Vector2
+    protected function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd, Vector2 $point): Vector2
     {
         $dx = $lineEnd->x - $lineStart->x;
         $dy = $lineEnd->y - $lineStart->y;

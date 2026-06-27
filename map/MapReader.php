@@ -9,17 +9,17 @@ class MapReader
     /**
      * @var array<int, array{typeId: int, start: int, num: int}>
      */
-    private array $itemTypes = [];
+    protected array $itemTypes = [];
 
     /**
      * @var array<int, array{typeId: int, id: int, size: int, data: string}>
      */
-    private array $items = [];
+    protected array $items = [];
 
     /**
      * @var array<int, string>
      */
-    private array $dataBlocks = [];
+    protected array $dataBlocks = [];
 
     public function __construct(protected string $path)
     {

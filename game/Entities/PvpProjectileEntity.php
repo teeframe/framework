@@ -88,7 +88,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
      *
      * @return array{0: AbstractCharacterEntity|null, 1: Vector2}
      */
-    private function intersectCharacter(Vector2 $pos0, Vector2 $pos1): array
+    protected function intersectCharacter(Vector2 $pos0, Vector2 $pos1): array
     {
         $closestLen = $pos0->distance($pos1) * 100.0;
         $closest    = null;
@@ -120,7 +120,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         return [$closest, $closestPos];
     }
 
-    private function findOwnerCharacter(): ?AbstractCharacterEntity
+    protected function findOwnerCharacter(): ?AbstractCharacterEntity
     {
         foreach ($this->world->getEntities() as $entity) {
             if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
@@ -131,7 +131,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         return null;
     }
 
-    private function explode(Vector2 $pos): void
+    protected function explode(Vector2 $pos): void
     {
         $innerRadius = 48.0;
         // Create explosion event (visual effect on client)

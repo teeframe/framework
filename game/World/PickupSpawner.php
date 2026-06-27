@@ -35,7 +35,7 @@ class PickupSpawner
      * @param  array<int, int>  $respawnTimes
      * @param  array<int, int>  $spawnDelays
      */
-    private static function createPickup(int $entityType, Vector2 $pos, AbstractWorld $world, array $respawnTimes, array $spawnDelays): ?PickupEntity
+    protected static function createPickup(int $entityType, Vector2 $pos, AbstractWorld $world, array $respawnTimes, array $spawnDelays): ?PickupEntity
     {
         $respawn    = $respawnTimes[$entityType] ?? -1;
         $spawnDelay = $spawnDelays[$entityType] ?? 0;

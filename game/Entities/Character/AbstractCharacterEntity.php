@@ -73,22 +73,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->latestPrevInput = $this->makeIdleInput();
     }
 
-    private function makeIdleInput(): PlayerInput
-    {
-        return new PlayerInput(
-            direction: 0,
-            targetX: 0,
-            targetY: -1,
-            jump: false,
-            fire: 0,
-            hook: false,
-            playerFlags: 0,
-            wantedWeapon: 0,
-            nextWeapon: 0,
-            prevWeapon: 0,
-        );
-    }
-
     /**
      * Apply a buffered input for the given prediction tick (CCharacter::OnPredictedInput).
      */
@@ -256,5 +240,21 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 attackTick: $this->attackTick,
             ),
         ];
+    }
+
+    protected function makeIdleInput(): PlayerInput
+    {
+        return new PlayerInput(
+            direction: 0,
+            targetX: 0,
+            targetY: -1,
+            jump: false,
+            fire: 0,
+            hook: false,
+            playerFlags: 0,
+            wantedWeapon: 0,
+            nextWeapon: 0,
+            prevWeapon: 0,
+        );
     }
 }

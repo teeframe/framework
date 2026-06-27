@@ -4,8 +4,6 @@ namespace TeeFrame\Network;
 
 use TeeFrame\Network\Huffman\Huffman;
 
-// TODO: Better type this
-
 class NetworkBase
 {
     // Packet Flags
