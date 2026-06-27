@@ -36,8 +36,8 @@ trait HasWeaponSwitching
         }
 
         // Next / Prev weapon selection
-        $next = $this->countInput($this->tee->prevInputNextWeapon, $this->tee->inputNextWeapon);
-        $prev = $this->countInput($this->tee->prevInputPrevWeapon, $this->tee->inputPrevWeapon);
+        $next = $this->countInput($this->latestPrevInput->nextWeapon, $this->latestInput->nextWeapon);
+        $prev = $this->countInput($this->latestPrevInput->prevWeapon, $this->latestInput->prevWeapon);
 
         if ($next < 128) {
             while ($next > 0) {
@@ -58,9 +58,8 @@ trait HasWeaponSwitching
         }
 
         // Direct weapon selection (1-indexed from client, convert to 0-indexed)
-        if ($this->tee->inputWantedWeapon > 0) {
-            $wantedWeapon = $this->tee->inputWantedWeapon - 1;
-            $this->tee->inputWantedWeapon = 0; // clear after processing
+        if ($this->latestInput->wantedWeapon > 0) {
+            $wantedWeapon = $this->latestInput->wantedWeapon - 1;
         }
 
         // Queue the switch if valid

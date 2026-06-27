@@ -89,10 +89,12 @@ test('direct weapon selection switches to hammer', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Direct select hammer (1-indexed: 1 = hammer)
-    $tee->inputWantedWeapon = 1;
+    // Feed 2 idle inputs to pass the m_NumInputs > 2 guard
+    feedInput($character, input());
+    feedInput($character, input());
 
-    $character->doTick();
+    // Direct select hammer (1-indexed: 1 = hammer)
+    feedInput($character, input(['wantedWeapon' => 1]));
 
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
     expect($character->lastWeapon)->toBe(GameConstants::WEAPON_GUN);
@@ -103,10 +105,11 @@ test('direct weapon selection to unowned weapon is ignored', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Try to select shotgun (3) which we don't have
-    $tee->inputWantedWeapon = 3;
+    feedInput($character, input());
+    feedInput($character, input());
 
-    $character->doTick();
+    // Try to select shotgun (3) which we don't have
+    feedInput($character, input(['wantedWeapon' => 3]));
 
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
     expect($character->queuedWeapon)->toBe(-1);
@@ -118,11 +121,11 @@ test('next weapon cycles to hammer from gun', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Press next weapon once
-    $tee->inputNextWeapon = 1;
-    $tee->prevInputNextWeapon = 0;
+    feedInput($character, input());
+    feedInput($character, input());
 
-    $character->doTick();
+    // Press next weapon once (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['nextWeapon' => 1]));
 
     // Gun(1) -> next owned: Hammer(0)
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
@@ -135,19 +138,16 @@ test('next weapon skips unowned weapons', function () {
     // Give shotgun so we can test skipping
     $character->giveWeapon(GameConstants::WEAPON_SHOTGUN, 10);
 
+    feedInput($character, input());
+    feedInput($character, input());
+
     // Switch to hammer first, then press next twice
     // Hammer(0) -> Gun(1) -> Shotgun(2)
-    $tee->inputWantedWeapon = 1; // hammer
-    $character->doTick();
+    feedInput($character, input(['wantedWeapon' => 1])); // hammer
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 
-    // Save prev state
-    $tee->prevInputNextWeapon = $tee->inputNextWeapon;
-
     // Press next twice (need cur=3 for 2 presses: 0→1 press, 1→2 release, 2→3 press)
-    $tee->inputNextWeapon = 3;
-
-    $character->doTick();
+    feedInput($character, input(['nextWeapon' => 3]));
 
     // Hammer(0) -> next owned: Gun(1) -> next owned: Shotgun(2)
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_SHOTGUN);
@@ -159,11 +159,11 @@ test('prev weapon cycles from gun to hammer', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Press prev weapon once
-    $tee->inputPrevWeapon = 1;
-    $tee->prevInputPrevWeapon = 0;
+    feedInput($character, input());
+    feedInput($character, input());
 
-    $character->doTick();
+    // Press prev weapon once (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['prevWeapon' => 1]));
 
     // Gun(1) -> prev owned: Hammer(0)
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
@@ -173,18 +173,15 @@ test('prev weapon wraps around from hammer to gun', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
+    feedInput($character, input());
+    feedInput($character, input());
+
     // Switch to hammer first
-    $tee->inputWantedWeapon = 1;
-    $character->doTick();
+    feedInput($character, input(['wantedWeapon' => 1]));
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 
-    // Save prev state
-    $tee->prevInputPrevWeapon = $tee->inputPrevWeapon;
-
-    // Press prev once
-    $tee->inputPrevWeapon = 1;
-
-    $character->doTick();
+    // Press prev once (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['prevWeapon' => 1]));
 
     // Hammer(0) -> prev owned: wraps to Gun(1)
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
@@ -242,19 +239,15 @@ test('weapon switch is blocked during reload', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // First tick: syncs prev inputs
-    $tee->inputFire = 0;
-    $character->doTick();
+    feedInput($character, input());
+    feedInput($character, input());
 
-    // Second tick: fire press (prev=0, cur=1 → 1 press)
-    $tee->inputFire = 1;
-    $character->doTick();
+    // Third tick: fire press (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['fire' => 1]));
     expect($character->reloadTimer)->toBeGreaterThan(0);
 
     // Try to switch during reload (no fire press this tick)
-    $tee->inputWantedWeapon = 1; // hammer
-
-    $character->doTick();
+    feedInput($character, input(['wantedWeapon' => 1])); // hammer
 
     // Should still be gun because reload blocks switch
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
@@ -266,28 +259,24 @@ test('queued weapon executes after reload ends', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // First tick: syncs prev inputs
-    $tee->inputFire = 0;
-    $character->doTick();
+    feedInput($character, input());
+    feedInput($character, input());
 
-    // Second tick: fire to trigger reload (prev=0, cur=1 → 1 press)
-    $tee->inputFire = 1;
-    $character->doTick();
+    // Third tick: fire to trigger reload (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['fire' => 1]));
 
     // Queue hammer during reload (no fire press this tick)
-    $tee->inputWantedWeapon = 1;
-    $character->doTick();
+    feedInput($character, input(['wantedWeapon' => 1]));
     expect($character->queuedWeapon)->toBe(GameConstants::WEAPON_HAMMER);
 
     // Tick until reload ends (no fire presses)
     while ($character->reloadTimer > 0) {
-        $character->doTick();
+        feedInput($character, input());
     }
 
     // Now fire again — doWeaponSwitch should execute before firing
     // Need a new fire press: prevInputFire was saved as 1, set to 2
-    $tee->inputFire = 2;
-    $character->doTick();
+    feedInput($character, input(['fire' => 2]));
 
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
     expect($character->queuedWeapon)->toBe(-1);
@@ -303,9 +292,11 @@ test('cannot switch away from ninja', function () {
     $character->weapons[GameConstants::WEAPON_NINJA] = new CharacterWeaponState(got: true, ammo: -1);
     $character->activeWeapon = GameConstants::WEAPON_NINJA;
 
+    feedInput($character, input());
+    feedInput($character, input());
+
     // Try to switch to hammer
-    $tee->inputWantedWeapon = 1;
-    $character->doTick();
+    feedInput($character, input(['wantedWeapon' => 1]));
 
     // Should stay on ninja
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_NINJA);
@@ -362,9 +353,11 @@ test('snap output reflects active weapon after switch', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
+    feedInput($character, input());
+    feedInput($character, input());
+
     // Switch to hammer
-    $tee->inputWantedWeapon = 1;
-    $character->doTick();
+    feedInput($character, input(['wantedWeapon' => 1]));
 
     $snaps = $character->doSnap($tee);
     expect($snaps)->toHaveCount(1);
@@ -421,13 +414,11 @@ test('no ammo does not set attackTick', function () {
     // Deplete gun ammo
     $character->weapons[GameConstants::WEAPON_GUN]->ammo = 0;
 
-    // First tick: syncs prev inputs (no fire detected)
-    $tee->inputFire = 0;
-    $character->doTick();
+    feedInput($character, input());
+    feedInput($character, input());
 
-    // Second tick: real fire press (prev=0, cur=1 → 1 press)
-    $tee->inputFire = 1;
-    $character->doTick();
+    // Third tick: real fire press (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['fire' => 1]));
 
     // attackTick should NOT be updated (no shot was fired — no ammo)
     expect($character->attackTick)->toBe(0);
@@ -442,12 +433,15 @@ test('first tick syncs prevInputFire to avoid spurious presses', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // Simulate client connecting with fire counter already at 4 (even = not pressing)
-    $tee->inputFire = 4;
+    // The m_NumInputs > 2 guard ignores weapon switch/fire for the first 2 inputs.
+    // Simulate client connecting with fire counter already at 4 (even = not pressing).
+    feedInput($character, input(['fire' => 4]));
+    feedInput($character, input(['fire' => 4]));
 
-    $character->doTick();
+    // Third tick: prev=4, cur=4 → 0 presses (no spurious fire from pre-existing counter)
+    feedInput($character, input(['fire' => 4]));
 
-    // Should NOT fire — prev was synced to cur on first tick
+    // Should NOT fire
     expect($character->reloadTimer)->toBe(0);
     expect($character->attackTick)->toBe(0);
 });
@@ -456,14 +450,16 @@ test('second tick detects real fire press after first-tick sync', function () {
     $tee = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
-    // First tick: client sends fire=4 (even, not pressing), prev synced to 4
-    $tee->inputFire = 4;
-    $character->doTick();
+    // Feed 2 inputs with fire=4 to establish baseline (m_NumInputs > 2 guard)
+    feedInput($character, input(['fire' => 4]));
+    feedInput($character, input(['fire' => 4]));
+
+    // Third tick: client sends fire=4 (even, not pressing), prev=4 → 0 presses
+    feedInput($character, input(['fire' => 4]));
     expect($character->reloadTimer)->toBe(0); // no shot
 
-    // Second tick: client sends fire=5 (odd, pressing — one press: 4→5)
-    $tee->inputFire = 5;
-    $character->doTick();
+    // Fourth tick: client sends fire=5 (odd, pressing — one press: 4→5)
+    feedInput($character, input(['fire' => 5]));
 
     // Should fire — one press detected, reloadTimer set
     expect($character->reloadTimer)->toBeGreaterThan(0);

@@ -4,6 +4,7 @@ namespace TeeFrame\Game\Tees;
 
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
@@ -11,6 +12,8 @@ use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
 abstract class AbstractTee implements SnapableObject
 {
     protected ?AbstractWorld $world = null;
+
+    public ?AbstractCharacterEntity $character = null;
 
     // Client Info
     public string $name;

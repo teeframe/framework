@@ -7,6 +7,7 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Entities\Character\Concerns\HasCharacterCore;
 use TeeFrame\Game\Entities\Character\Concerns\HasCharacterLifecycle;
@@ -55,13 +56,79 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public ?AbstractTee $tee = null;
 
-    protected bool $inputInitialized = false;
+    // Input state (mirrors CCharacter::m_Input / m_LatestInput / m_LatestPrevInput)
+    protected PlayerInput $input;
+    protected PlayerInput $latestInput;
+    protected PlayerInput $latestPrevInput;
+    protected int $numInputs = 0;
+    protected int $lastActionTick = 0;
 
     public function __construct(AbstractWorld $world, protected Vector2 $position)
     {
         parent::__construct(world: $world, position: $position);
 
         $this->initCore($position);
+
+        $this->input           = $this->makeIdleInput();
+        $this->latestInput     = $this->makeIdleInput();
+        $this->latestPrevInput = $this->makeIdleInput();
+    }
+
+    private function makeIdleInput(): PlayerInput
+    {
+        return new PlayerInput(
+            direction: 0,
+            targetX: 0,
+            targetY: -1,
+            jump: false,
+            fire: 0,
+            hook: false,
+            playerFlags: 0,
+            wantedWeapon: 0,
+            nextWeapon: 0,
+            prevWeapon: 0,
+        );
+    }
+
+    /**
+     * Apply a buffered input for the given prediction tick (CCharacter::OnPredictedInput).
+     */
+    public function onPredictedInput(PlayerInput $newInput): void
+    {
+        // Check for changes (mem_comp)
+        if ($this->input != $newInput) {
+            $this->lastActionTick = $this->world->getCurrentTick();
+        }
+
+        // Copy new input
+        $this->input = $newInput;
+        $this->numInputs++;
+
+        // It is not allowed to aim in the center
+        if ($this->input->targetX === 0 && $this->input->targetY === 0) {
+            $this->input = new PlayerInput(
+                direction: $newInput->direction,
+                targetX: 0,
+                targetY: -1,
+                jump: $newInput->jump,
+                fire: $newInput->fire,
+                hook: $newInput->hook,
+                playerFlags: $newInput->playerFlags,
+                wantedWeapon: $newInput->wantedWeapon,
+                nextWeapon: $newInput->nextWeapon,
+                prevWeapon: $newInput->prevWeapon,
+            );
+        }
+    }
+
+    /**
+     * Apply the buffered input for the current tick to latestInput (CCharacter::OnDirectInput subset).
+     * Called by AbstractWorld::doTick() before ticking entities.
+     */
+    public function applyInput(): void
+    {
+        $this->latestPrevInput = $this->latestInput;
+        $this->latestInput     = $this->input;
     }
 
     abstract protected function handleWeapons(bool $firePressed): void;
@@ -92,21 +159,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             );
         }
 
-        // Read input from the player's tee, or default to idle
-        $direction = 0;
-        $targetX   = 0;
-        $targetY   = 0;
-        $jump      = false;
-        $hook      = false;
-
-        if ($this->tee instanceof PlayerTee) {
-            $direction = $this->tee->inputDirection;
-            $targetX   = $this->tee->inputTargetX;
-            $targetY   = $this->tee->inputTargetY;
-            $jump      = $this->tee->inputJump;
-            $hook      = $this->tee->inputHook;
-
-            // Handle weapon switch from input
+        // Handle weapon switch from latest input (only after enough inputs received)
+        if ($this->tee instanceof PlayerTee && $this->numInputs > 2) {
             $this->handleWeaponSwitch();
         }
 
@@ -122,23 +176,22 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         }
 
         $tune = $this->world->getTuneController();
-        $this->tick($direction, $targetX, $targetY, $jump, $hook, $collision, $tune, $otherCharacters);
+        $this->tick(
+            $this->input->direction,
+            $this->input->targetX,
+            $this->input->targetY,
+            $this->input->jump,
+            $this->input->hook,
+            $collision,
+            $tune,
+            $otherCharacters,
+        );
         $this->move($collision, $tune);
 
-        // Handle shooting
+        // Handle shooting (only after enough inputs received)
         $firePressed = false;
-        if ($this->tee instanceof PlayerTee) {
-            // On the first tick, sync prev inputs to current to avoid
-            // spurious presses from the client's pre-existing counter state.
-            if (! $this->inputInitialized) {
-                $this->tee->prevInputFire         = $this->tee->inputFire;
-                $this->tee->prevInputWantedWeapon = $this->tee->inputWantedWeapon;
-                $this->tee->prevInputNextWeapon   = $this->tee->inputNextWeapon;
-                $this->tee->prevInputPrevWeapon   = $this->tee->inputPrevWeapon;
-                $this->inputInitialized = true;
-            }
-
-            $firePresses = $this->countInput($this->tee->prevInputFire, $this->tee->inputFire);
+        if ($this->tee instanceof PlayerTee && $this->numInputs > 2) {
+            $firePresses = $this->countInput($this->latestPrevInput->fire, $this->latestInput->fire);
             $firePressed = $firePresses > 0 && $firePresses < 128;
         }
 
@@ -146,14 +199,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         if ($this->reloadTimer > 0) {
             $this->reloadTimer--;
-        }
-
-        // Save previous input for next tick's CountInput
-        if ($this->tee instanceof PlayerTee) {
-            $this->tee->prevInputWantedWeapon = $this->tee->inputWantedWeapon;
-            $this->tee->prevInputNextWeapon   = $this->tee->inputNextWeapon;
-            $this->tee->prevInputPrevWeapon   = $this->tee->inputPrevWeapon;
-            $this->tee->prevInputFire         = $this->tee->inputFire;
         }
     }
 

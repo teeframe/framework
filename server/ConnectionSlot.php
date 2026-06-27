@@ -3,6 +3,7 @@
 namespace TeeFrame\Server;
 
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\InputTimingChunk;
@@ -125,27 +126,19 @@ class ConnectionSlot extends AbstractConnection
                     timeLeft: (int) (($chunk->predictionTick - $this->world()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000),
                 ));
 
-                // Feed input to the player's tee
-                $tee = $this->playerTee();
-
-                // On first input from client, sync prevInputFire to avoid
-                // spurious presses from the client's pre-existing m_Fire counter.
-                if ($tee->prevInputFire === 0 && $chunk->inputFire !== 0) {
-                    $tee->prevInputFire         = $chunk->inputFire;
-                    $tee->prevInputWantedWeapon = $chunk->inputWantedWeapon;
-                    $tee->prevInputNextWeapon   = $chunk->inputNextWeapon;
-                    $tee->prevInputPrevWeapon   = $chunk->inputPrevWeapon;
-                }
-
-                $tee->inputDirection = $chunk->inputDirection;
-                $tee->inputTargetX   = $chunk->inputTargetX;
-                $tee->inputTargetY   = $chunk->inputTargetY;
-                $tee->inputJump      = $chunk->inputJump;
-                $tee->inputFire      = $chunk->inputFire;
-                $tee->inputHook      = $chunk->inputHook;
-                $tee->inputWantedWeapon = $chunk->inputWantedWeapon;
-                $tee->inputNextWeapon   = $chunk->inputNextWeapon;
-                $tee->inputPrevWeapon   = $chunk->inputPrevWeapon;
+                // Buffer the input on the tee, keyed by prediction tick
+                $this->playerTee()->inputs[$chunk->predictionTick] = new PlayerInput(
+                    direction: $chunk->inputDirection,
+                    targetX: $chunk->inputTargetX,
+                    targetY: $chunk->inputTargetY,
+                    jump: $chunk->inputJump,
+                    fire: $chunk->inputFire,
+                    hook: $chunk->inputHook,
+                    playerFlags: $chunk->inputPlayerFlag,
+                    wantedWeapon: $chunk->inputWantedWeapon,
+                    nextWeapon: $chunk->inputNextWeapon,
+                    prevWeapon: $chunk->inputPrevWeapon,
+                );
             }
 
             // NOTE: NETMSG_PING chunk is only sent manually by the client

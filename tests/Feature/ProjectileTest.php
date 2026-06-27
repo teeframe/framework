@@ -38,12 +38,6 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
-    $tee->inputJump = false;
-    $tee->inputHook = false;
 
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
@@ -111,12 +105,6 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
-    $tee->inputJump = false;
-    $tee->inputHook = false;
 
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
@@ -161,12 +149,6 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
-    $tee->inputJump = false;
-    $tee->inputHook = false;
 
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
@@ -211,10 +193,6 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
     $spawnPos  = new Vector2($pos[0]['x'], $pos[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
@@ -260,10 +238,6 @@ test('projectile snap uses start position not current position', function () use
     $startPos = new Vector2(100, 200);
 
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, clone $startPos);
     $character->spawn(clone $startPos, $tee);

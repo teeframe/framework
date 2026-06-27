@@ -37,6 +37,8 @@
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\PlayerInput;
 use TeeFrame\Map\Map;
 
 /**
@@ -85,4 +87,36 @@ function createWorld(Map $map): AbstractWorld
 
         public function doTick(): void {}
     };
+}
+
+/**
+ * Build a PlayerInput with sensible defaults; override only what the test cares about.
+ *
+ * @param array<string, mixed> $overrides
+ */
+function input(array $overrides = []): PlayerInput
+{
+    return new PlayerInput(
+        direction: (int) ($overrides['direction'] ?? 0),
+        targetX: (int) ($overrides['targetX'] ?? 0),
+        targetY: (int) ($overrides['targetY'] ?? -1),
+        jump: (bool) ($overrides['jump'] ?? false),
+        fire: (int) ($overrides['fire'] ?? 0),
+        hook: (bool) ($overrides['hook'] ?? false),
+        playerFlags: (int) ($overrides['playerFlags'] ?? 0),
+        wantedWeapon: (int) ($overrides['wantedWeapon'] ?? 0),
+        nextWeapon: (int) ($overrides['nextWeapon'] ?? 0),
+        prevWeapon: (int) ($overrides['prevWeapon'] ?? 0),
+    );
+}
+
+/**
+ * Feed a PlayerInput to the character and advance one tick.
+ * Mirrors what AbstractWorld::doTick() does: onPredictedInput + applyInput + doTick.
+ */
+function feedInput(AbstractCharacterEntity $character, PlayerInput $input): void
+{
+    $character->onPredictedInput($input);
+    $character->applyInput();
+    $character->doTick();
 }

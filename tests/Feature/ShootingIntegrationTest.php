@@ -26,10 +26,6 @@ function setupCharacter(Map $map): array
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -132,9 +128,6 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
 
     // Create attacker tee and character
     $attackerTee = new PlayerTee;
-    $attackerTee->inputDirection = 1;
-    $attackerTee->inputTargetX = 100;
-    $attackerTee->inputTargetY = 0;
 
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
@@ -183,9 +176,6 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
 
     // Create attacker looking right
     $attackerTee = new PlayerTee;
-    $attackerTee->inputDirection = 1;
-    $attackerTee->inputTargetX = 100;
-    $attackerTee->inputTargetY = 0;
 
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
@@ -232,9 +222,6 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
 
     // Create attacker looking right
     $attackerTee = new PlayerTee;
-    $attackerTee->inputDirection = 1;
-    $attackerTee->inputTargetX = 100;
-    $attackerTee->inputTargetY = 0;
 
     $attacker = new PvpCharacterEntity($world, $spawnPos);
     $attacker->spawn($spawnPos, $attackerTee);
@@ -339,21 +326,17 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $tee = new PlayerTee;
-    $tee->inputFire = 0;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
-    // First tick: syncs prev inputs
-    $character->doTick();
+    // Feed 2 idle inputs to pass the m_NumInputs > 2 guard
+    feedInput($character, input(['direction' => 1, 'targetX' => 100, 'targetY' => 0]));
+    feedInput($character, input(['direction' => 1, 'targetX' => 100, 'targetY' => 0]));
 
-    // Second tick: fire press (prev=0, cur=1 → 1 press)
-    $tee->inputFire = 1;
-    $character->doTick();
+    // Third tick: fire press (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['direction' => 1, 'targetX' => 100, 'targetY' => 0, 'fire' => 1]));
 
     // attackTick should be set to the world tick (100), not 0
     expect($character->attackTick)->toBe(100);
@@ -399,10 +382,6 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputFire = 1;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -457,21 +436,17 @@ test('projectile snap velocity is normalized direction times 100', function () u
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $tee = new PlayerTee;
-    $tee->inputFire = 0;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
     $world->addEntity($character);
 
-    // First tick: syncs prev inputs
-    $character->doTick();
+    // Feed 2 idle inputs to pass the m_NumInputs > 2 guard
+    feedInput($character, input(['direction' => 1, 'targetX' => 100, 'targetY' => 0]));
+    feedInput($character, input(['direction' => 1, 'targetX' => 100, 'targetY' => 0]));
 
-    // Second tick: fire press (prev=0, cur=1 → 1 press)
-    $tee->inputFire = 1;
-    $character->doTick();
+    // Third tick: fire press (prev=0, cur=1 → 1 press)
+    feedInput($character, input(['direction' => 1, 'targetX' => 100, 'targetY' => 0, 'fire' => 1]));
 
     $entities = $world->getEntities();
     $projectile = $entities[1];

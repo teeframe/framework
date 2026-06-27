@@ -49,9 +49,6 @@ test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, 
     $spawnPos = new Vector2(50 * 32, 10 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -97,9 +94,6 @@ test('ninja move time is 10 ticks', function () use ($mapPath, $mapExists) {
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -134,9 +128,6 @@ test('ninja dash moves character forward by expected distance', function () use 
     $spawnPos = new Vector2(50 * 32, 10 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -183,9 +174,6 @@ test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -237,9 +225,6 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
     $spawnPos = new Vector2(50 * 32, 10 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -291,9 +276,6 @@ test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $map
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 1;
-    $tee->inputTargetX = 100;
-    $tee->inputTargetY = 0;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);

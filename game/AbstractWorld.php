@@ -301,7 +301,25 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function doTick(): void
     {
-        // TODO: apply new input
+        // apply new input
+        $currentTick = $this->getCurrentTick();
+        foreach ($this->tees as $tee) {
+            if (! $tee instanceof PlayerTee) {
+                continue;
+            }
+
+            $character = $tee->character;
+            if ($character === null) {
+                continue;
+            }
+
+            if (isset($tee->inputs[$currentTick])) {
+                $character->onPredictedInput($tee->inputs[$currentTick]);
+                unset($tee->inputs[$currentTick]);
+            }
+
+            $character->applyInput();
+        }
 
         // TODO: Implement GameServer()->OnTick()
 

@@ -21,6 +21,10 @@ trait HasCharacterLifecycle
         $this->tee        = $tee;
         $this->tick       = 0;
 
+        if ($tee !== null) {
+            $tee->character = $this;
+        }
+
         $this->initCore($pos);
         $this->direction = 1;
 
@@ -40,13 +44,16 @@ trait HasCharacterLifecycle
         $this->queuedWeapon = -1;
         $this->reloadTimer  = 0;
         $this->attackTick   = 0;
-        $this->inputInitialized = false;
     }
 
     public function die(int $killerTeeIndex = -1): void
     {
         $this->alive = false;
         $this->markToDestroy();
+
+        if ($this->tee !== null) {
+            $this->tee->character = null;
+        }
 
         // Player die sound
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);

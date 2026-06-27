@@ -35,12 +35,6 @@ test('character spawns and survives physics ticks at spawn position', function (
     $initialY = $spawnPos->y;
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 0;
-    $tee->inputTargetX   = 0;
-    $tee->inputTargetY   = 0;
-    $tee->inputJump      = false;
-    $tee->inputFire      = 0;
-    $tee->inputHook      = false;
 
     $world = createWorld($map);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
@@ -82,12 +76,6 @@ test('character with walk input survives physics ticks', function () use ($mapPa
     $initialX = $spawnPos->x;
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 1;  // walking right
-    $tee->inputTargetX   = 100;
-    $tee->inputTargetY   = 0;
-    $tee->inputJump      = false;
-    $tee->inputFire      = 0;
-    $tee->inputHook      = false;
 
     $world = createWorld($map);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
@@ -95,8 +83,9 @@ test('character with walk input survives physics ticks', function () use ($mapPa
 
     $tune = $world->getTuneController();
 
+    // walking right, aiming right
     for ($tick = 0; $tick < 100; $tick++) {
-        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->tick(1, 100, 0, false, false, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -128,12 +117,6 @@ test('character with hook input survives physics ticks', function () use ($mapPa
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 0;
-    $tee->inputTargetX   = 100;
-    $tee->inputTargetY   = 0;
-    $tee->inputJump      = false;
-    $tee->inputFire      = 0;
-    $tee->inputHook      = true;
 
     $world = createWorld($map);
     $character = new PvpCharacterEntity($world, $spawnPos);
@@ -141,8 +124,9 @@ test('character with hook input survives physics ticks', function () use ($mapPa
 
     $tune = $world->getTuneController();
 
+    // hook input, aiming right
     for ($tick = 0; $tick < 50; $tick++) {
-        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->tick(0, 100, 0, false, true, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -173,12 +157,6 @@ test('character with firing input survives physics ticks', function () use ($map
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 0;
-    $tee->inputTargetX   = 100;
-    $tee->inputTargetY   = -50;  // aiming up-right
-    $tee->inputJump      = false;
-    $tee->inputFire      = 1;
-    $tee->inputHook      = false;
 
     $world = createWorld($map);
     $character = new PvpCharacterEntity($world, $spawnPos);
@@ -186,8 +164,9 @@ test('character with firing input survives physics ticks', function () use ($map
 
     $tune = $world->getTuneController();
 
+    // aiming up-right, firing
     for ($tick = 0; $tick < 50; $tick++) {
-        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->tick(0, 100, -50, false, false, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -218,12 +197,6 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     $tee = new PlayerTee;
-    $tee->inputDirection = 0;
-    $tee->inputTargetX   = 100;
-    $tee->inputTargetY   = -100;
-    $tee->inputJump      = true;
-    $tee->inputFire      = 1;
-    $tee->inputHook      = true;
 
     $world = createWorld($map);
     $character = new PvpCharacterEntity($world, $spawnPos);
@@ -232,8 +205,9 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     // Run a few ticks to exercise hook state machine
     $tune = $world->getTuneController();
 
+    // aiming up-right, jumping, firing, hooking
     for ($tick = 0; $tick < 10; $tick++) {
-        $character->tick($tee->inputDirection, $tee->inputTargetX, $tee->inputTargetY, $tee->inputJump, $tee->inputHook, $collision, $tune, []);
+        $character->tick(0, 100, -100, true, true, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
