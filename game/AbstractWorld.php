@@ -263,57 +263,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
-    private function handleChatMessage(AbstractTee $tee, ClSayChunk $chunk): void
-    {
-        $message = trim($chunk->text);
-
-        if ($message === '') {
-            return;
-        }
-
-        // Spam protection: max ~16 characters per second (CPlayer::m_LastChat)
-        if ($tee instanceof PlayerTee) {
-            $currentTick = $this->getCurrentTick();
-
-            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (50 * ((15 + strlen($message)) / 16)) > $currentTick) {
-                return;
-            }
-
-            $tee->lastChatTick = $currentTick;
-        }
-
-        // Check for registered commands
-        foreach ($this->commands as $command) {
-            if (preg_match($command->getPattern(), $message, $matches)) {
-                $command->execute($this, $tee, $matches);
-                return;
-            }
-        }
-
-        // Send chat message
-        $chunk = new SvChatChunk(
-            team: $chunk->team ? 1 : 0,
-            clientId: $tee->teeIndex, // From
-            text: $message,
-        );
-
-        foreach ($this->tees as $tee) {
-            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
-        }
-    }
-
-    private function handleEmoticonMessage(AbstractTee $tee, ClEmoticonChunk $chunk): void
-    {
-        $chunk = new SvEmoticonChunk(
-            clientId: $tee->teeIndex,
-            emoticon: $chunk->emoticon,
-        );
-
-        foreach ($this->tees as $tee) {
-            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
-        }
-    }
-
     public function doTick(): void
     {
         // apply new input
@@ -374,28 +323,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 }
             }
         }
-    }
-
-    protected function tryRespawnTee(PlayerTee $tee): bool
-    {
-        $spawnPos = $this->getGameController()->canSpawn($this, 0);
-        if ($spawnPos === null) {
-            return false;
-        }
-
-        $tee->spawning = false;
-
-        $character = new PvpCharacterEntity($this, clone $spawnPos);
-        $character->spawn($spawnPos, $tee);
-        $this->addEntity($character);
-
-        // CreatePlayerSpawn event (visual spawn effect)
-        $this->addEvent(new ObjEventSpawnItem(
-            x: (int) round($spawnPos->x),
-            y: (int) round($spawnPos->y),
-        ));
-
-        return true;
     }
 
     /**
@@ -497,5 +424,78 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
 
         return $snaps;
+    }
+
+    protected function handleChatMessage(AbstractTee $tee, ClSayChunk $chunk): void
+    {
+        $message = trim($chunk->text);
+
+        if ($message === '') {
+            return;
+        }
+
+        // Spam protection: max ~16 characters per second (CPlayer::m_LastChat)
+        if ($tee instanceof PlayerTee) {
+            $currentTick = $this->getCurrentTick();
+
+            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (50 * ((15 + strlen($message)) / 16)) > $currentTick) {
+                return;
+            }
+
+            $tee->lastChatTick = $currentTick;
+        }
+
+        // Check for registered commands
+        foreach ($this->commands as $command) {
+            if (preg_match($command->getPattern(), $message, $matches)) {
+                $command->execute($this, $tee, $matches);
+                return;
+            }
+        }
+
+        // Send chat message
+        $chunk = new SvChatChunk(
+            team: $chunk->team ? 1 : 0,
+            clientId: $tee->teeIndex, // From
+            text: $message,
+        );
+
+        foreach ($this->tees as $tee) {
+            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
+        }
+    }
+
+    protected function handleEmoticonMessage(AbstractTee $tee, ClEmoticonChunk $chunk): void
+    {
+        $chunk = new SvEmoticonChunk(
+            clientId: $tee->teeIndex,
+            emoticon: $chunk->emoticon,
+        );
+
+        foreach ($this->tees as $tee) {
+            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
+        }
+    }
+
+    protected function tryRespawnTee(PlayerTee $tee): bool
+    {
+        $spawnPos = $this->getGameController()->canSpawn($this, 0);
+        if ($spawnPos === null) {
+            return false;
+        }
+
+        $tee->spawning = false;
+
+        $character = new PvpCharacterEntity($this, clone $spawnPos);
+        $character->spawn($spawnPos, $tee);
+        $this->addEntity($character);
+
+        // CreatePlayerSpawn event (visual spawn effect)
+        $this->addEvent(new ObjEventSpawnItem(
+            x: (int) round($spawnPos->x),
+            y: (int) round($spawnPos->y),
+        ));
+
+        return true;
     }
 }
