@@ -592,11 +592,13 @@ test('character death sets respawn on tee and notifies game controller', functio
 
         public function doTick(): void {}
 
-        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): void
+        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
         {
             $this->deathCalled    = true;
             $this->victim         = $victim;
             $this->killerTeeIndex = $killerTeeIndex;
+
+            return 0;
         }
     };
     $gcProp->setValue($world, $gc);

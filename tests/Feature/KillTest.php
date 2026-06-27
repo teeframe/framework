@@ -2,11 +2,13 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
+use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\RawPayload;
 
@@ -177,4 +179,63 @@ test('ClKill emits a death event at the character position', function () use ($m
         fn ($s) => $s->getItemId() === NetworkMessages::NETEVENTTYPE_DEATH,
     );
     expect($deathEvents)->not->toBeEmpty();
+});
+
+test('SvKillMsgChunk encodes and decodes correctly', function () {
+    $chunk = new SvKillMsgChunk(
+        killer: 2,
+        victim: 5,
+        weapon: GameConstants::WEAPON_GRENADE,
+        modeSpecial: 0,
+    );
+
+    $encoded = $chunk->encode();
+    $payload = array_slice($encoded, 4);
+
+    $decoded = SvKillMsgChunk::make(new RawPayload($payload));
+
+    expect($decoded->killer)->toBe(2);
+    expect($decoded->victim)->toBe(5);
+    expect($decoded->weapon)->toBe(GameConstants::WEAPON_GRENADE);
+    expect($decoded->modeSpecial)->toBe(0);
+});
+
+test('ClKill broadcasts SvKillMsgChunk to all tees', function () use ($mapPath, $mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    resetMockServer();
+
+    $map = new Map($mapPath);
+    $tickHandler = new TickHandler(100);
+    $world = createTickingWorldForKill($map, $tickHandler);
+
+    $tee1 = new PlayerTee;
+    $tee1->name = 'Killer';
+    $world->addTee($tee1);
+
+    $tee2 = new PlayerTee;
+    $tee2->name = 'Witness';
+    $world->addTee($tee2);
+
+    // Spawn the character
+    $world->doTick();
+
+    // Self-kill — should broadcast SvKillMsgChunk to every tee
+    $world->onMessage($tee1, new ClKillChunk);
+
+    $killMsgs = array_filter(
+        $GLOBALS['mockGameServer']->sentChunks,
+        fn ($c) => $c instanceof SvKillMsgChunk,
+    );
+
+    // One SvKillMsgChunk per tee (tee1 + tee2)
+    expect($killMsgs)->toHaveCount(2);
+
+    $msg = reset($killMsgs);
+    assert($msg instanceof SvKillMsgChunk);
+    expect($msg->killer)->toBe($tee1->teeIndex);
+    expect($msg->victim)->toBe($tee1->teeIndex);
+    expect($msg->weapon)->toBe(GameConstants::WEAPON_SELF);
 });

@@ -48,7 +48,10 @@ use TeeFrame\Map\Map;
 class TestGameController extends AbstractGameController
 {
     public function doTick(): void {}
-    public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): void {}
+    public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
+    {
+        return 0;
+    }
 }
 
 /**
@@ -57,6 +60,9 @@ class TestGameController extends AbstractGameController
 $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerInstance {
     /** @var int[] */
     public array $sentTeeIndexes = [];
+
+    /** @var array<int, \TeeFrame\Network\Chunks\AbstractChunk> */
+    public array $sentChunks = [];
 
     public function __construct()
     {
@@ -73,11 +79,13 @@ $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerIn
     public function sendToTee(AbstractWorld $world, int $teeIndex, \TeeFrame\Network\Chunks\AbstractChunk $chunk): void
     {
         $this->sentTeeIndexes[] = $teeIndex;
+        $this->sentChunks[]      = $chunk;
     }
 
     public function resetSentTees(): void
     {
         $this->sentTeeIndexes = [];
+        $this->sentChunks     = [];
     }
 };
 

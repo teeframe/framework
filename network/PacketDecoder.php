@@ -9,6 +9,7 @@ use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
+use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvReadyToEnterChunk;
 use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
@@ -129,6 +130,7 @@ class PacketDecoder
 
         return match ($message) {
             NetworkMessages::SV_CHAT             => SvChatChunk::class,
+            NetworkMessages::SV_KILLMSG          => SvKillMsgChunk::class,
             NetworkMessages::SV_MOTD             => SvMotdChunk::class,
             NetworkMessages::SV_TUNEPARAMS       => SvTuneParamsChunk::class,
             NetworkMessages::SV_READYTOENTER     => SvReadyToEnterChunk::class,

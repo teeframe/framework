@@ -40,7 +40,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     abstract public function doTick(): void;
 
-    abstract function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): void;
+    abstract function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int;
 
     public function collectSpawnPoints(GameLayer $gameLayer): void
     {

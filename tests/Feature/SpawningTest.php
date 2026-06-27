@@ -3,6 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -98,7 +99,7 @@ test('dead tee respawns after respawnTick elapses', function () use ($mapPath, $
     assert($originalCharacter instanceof PvpCharacterEntity);
 
     // Kill the character (self-kill → respawnTick = currentTick + 150 = 3s)
-    $originalCharacter->die(-1);
+    $originalCharacter->die(-1, GameConstants::WEAPON_SELF);
 
     expect($tee->character)->toBeNull();
     expect($tee->spawning)->toBeTrue();

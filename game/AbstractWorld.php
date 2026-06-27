@@ -502,9 +502,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             return;
         }
 
-        // Self-kill: pass -1 so die() applies the 3s respawn penalty
-        // (mirrors CCharacter::Die(ClientID, WEAPON_SELF) → 3s respawn)
-        $character->die(-1);
+        // Self-kill: pass WEAPON_SELF so die() applies the 3s respawn penalty
+        // and the kill message reports the correct weapon.
+        $character->die($tee->teeIndex, GameConstants::WEAPON_SELF);
     }
 
     protected function tryRespawnTee(PlayerTee $tee): bool

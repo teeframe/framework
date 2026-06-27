@@ -13,6 +13,11 @@ class GameConstants
     public const WEAPON_NINJA   = 5;
     public const NUM_WEAPONS    = 6;
 
+    // Special weapon identifiers for kills (Teeworlds 0.6)
+    public const WEAPON_GAME  = -3; // team switching etc
+    public const WEAPON_SELF  = -2; // console kill command
+    public const WEAPON_WORLD = -1; // death tiles etc
+
     // Hook state constants (Teeworlds 0.6)
     public const HOOK_RETRACTED     = -1;
     public const HOOK_IDLE          = 0;

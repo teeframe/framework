@@ -10,6 +10,7 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjEventDeathItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
+use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
 
 trait HasCharacterLifecycle
 {
@@ -47,7 +48,7 @@ trait HasCharacterLifecycle
         $this->attackTick   = 0;
     }
 
-    public function die(int $killerTeeIndex = -1): void
+    public function die(int $killerTeeIndex = -1, int $weapon = GameConstants::WEAPON_WORLD): void
     {
         $this->alive = false;
         $this->markToDestroy();
@@ -56,23 +57,35 @@ trait HasCharacterLifecycle
             $this->tee->character = null;
         }
 
+        // Notify game controller for scoring (returns mode-specific value)
+        $modeSpecial = $this->world->getGameController()->onCharacterDeath($this, $killerTeeIndex);
+
+        // Send the kill message to all clients (CNetMsg_Sv_KillMsg)
+        $victimTeeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
+        $killMsg = new SvKillMsgChunk(
+            killer: $killerTeeIndex,
+            victim: $victimTeeIndex,
+            weapon: $weapon,
+            modeSpecial: $modeSpecial,
+        );
+        foreach ($this->world->getTees() as $tee) {
+            $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, $killMsg);
+        }
+
         // Player die sound
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 
         // Death event (bursting tee death effect)
-        $teeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
         $this->world->addEvent(new ObjEventDeathItem(
             x: (int) round($this->position->x),
             y: (int) round($this->position->y),
-            clientId: $teeIndex,
+            clientId: $victimTeeIndex,
         ));
-
-        // Notify game controller for scoring
-        $this->world->getGameController()->onCharacterDeath($this, $killerTeeIndex);
 
         // Set respawn on the tee
         if ($this->tee instanceof PlayerTee) {
-            $respawnDelay           = $killerTeeIndex === -1 ? 150 : 25; // 3s for self-kill, 0.5s normal
+            // Self-kill (WEAPON_SELF) applies a 3s respawn penalty; otherwise 0.5s
+            $respawnDelay           = $weapon === GameConstants::WEAPON_SELF ? 150 : 25;
             $this->tee->respawnTick = $this->world->getCurrentTick() + $respawnDelay;
             $this->tee->dieTick     = $this->world->getCurrentTick();
             $this->tee->spawning    = true;
@@ -153,7 +166,7 @@ trait HasCharacterLifecycle
 
         if ($this->health <= 0) {
             $killerTeeIndex = $inflictor->tee !== null ? $inflictor->tee->teeIndex : -1;
-            $this->die($killerTeeIndex);
+            $this->die($killerTeeIndex, $inflictor->activeWeapon);
         }
     }
 
