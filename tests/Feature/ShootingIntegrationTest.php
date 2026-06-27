@@ -1,15 +1,20 @@
 <?php
 
-use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\AbstractGameController;
+use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
+use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Game\World\PickupSpawner;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\NetworkMessages;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 /**
@@ -17,10 +22,10 @@ $mapExists = file_exists($mapPath);
  */
 function setupCharacter(Map $map): array
 {
-    $world = createWorld($map);
+    $world     = createWorld($map);
     $collision = $map->getCollision();
     if ($collision === null) {
-        throw new \RuntimeException('No collision');
+        throw new RuntimeException('No collision');
     }
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
@@ -43,13 +48,13 @@ test('shootGun creates projectile that appears in world entities', function () u
         return;
     }
 
-    $map = new Map($mapPath);
+    $map                 = new Map($mapPath);
     [$character, $world] = setupCharacter($map);
 
     $beforeCount = count($world->getEntities());
     expect($beforeCount)->toBe(1);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
     $method->invoke($character);
@@ -57,7 +62,7 @@ test('shootGun creates projectile that appears in world entities', function () u
     $afterCount = count($world->getEntities());
     expect($afterCount)->toBe(2);
 
-    $entities = $world->getEntities();
+    $entities   = $world->getEntities();
     $projectile = $entities[1];
     expect($projectile)->toBeInstanceOf(PvpProjectileEntity::class);
 });
@@ -67,22 +72,22 @@ test('projectile snap item has correct type and velocity', function () use ($map
         return;
     }
 
-    $map = new Map($mapPath);
+    $map                 = new Map($mapPath);
     [$character, $world] = setupCharacter($map);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
     $method->invoke($character);
 
-    $entities = $world->getEntities();
+    $entities   = $world->getEntities();
     $projectile = $entities[1];
-    $tee = new PlayerTee;
-    $snaps = $projectile->doSnap($tee);
+    $tee        = new PlayerTee;
+    $snaps      = $projectile->doSnap($tee);
     expect($snaps)->toHaveCount(1);
 
     $snapItem = $snaps[0];
-    $ints = $snapItem->getInts();
+    $ints     = $snapItem->getInts();
     expect($ints)->toHaveCount(6);
     expect($snapItem->getItemId())->toBe(2);
 
@@ -100,10 +105,10 @@ test('hammer hit does not crash and returns reload timer', function () use ($map
         return;
     }
 
-    $map = new Map($mapPath);
+    $map                 = new Map($mapPath);
     [$character, $world] = setupCharacter($map);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootHammer');
     $method->setAccessible(true);
     $reloadTimer = $method->invoke($character);
@@ -117,8 +122,8 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
         return;
     }
 
-    $map = new Map($mapPath);
-    $world = createWorld($map);
+    $map       = new Map($mapPath);
+    $world     = createWorld($map);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -140,7 +145,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $targetPos = new Vector2($spawnPos->x + 20, $spawnPos->y); // 20 units in front
 
     $targetTee = new PlayerTee;
-    $target = new class($world, $targetPos) extends PvpCharacterEntity {};
+    $target    = new class($world, $targetPos) extends PvpCharacterEntity {};
     $target->spawn($targetPos, $targetTee);
     $world->addEntity($target);
 
@@ -148,7 +153,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     expect(count($world->getEntities()))->toBe(2);
 
     // Shoot hammer
-    $ref = new ReflectionClass($attacker);
+    $ref    = new ReflectionClass($attacker);
     $method = $ref->getMethod('shootHammer');
     $method->setAccessible(true);
     $reloadTimer = $method->invoke($attacker);
@@ -165,8 +170,8 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
         return;
     }
 
-    $map = new Map($mapPath);
-    $world = createWorld($map);
+    $map       = new Map($mapPath);
+    $world     = createWorld($map);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -191,12 +196,12 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $targetPos = new Vector2($spawnPos->x + 50, $spawnPos->y);
 
     $targetTee = new PlayerTee;
-    $target = new class($world, $targetPos) extends PvpCharacterEntity {};
+    $target    = new class($world, $targetPos) extends PvpCharacterEntity {};
     $target->spawn($targetPos, $targetTee);
     $world->addEntity($target);
 
     // Shoot hammer
-    $ref = new ReflectionClass($attacker);
+    $ref    = new ReflectionClass($attacker);
     $method = $ref->getMethod('shootHammer');
     $method->setAccessible(true);
     $reloadTimer = $method->invoke($attacker);
@@ -211,8 +216,8 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
         return;
     }
 
-    $map = new Map($mapPath);
-    $world = createWorld($map);
+    $map       = new Map($mapPath);
+    $world     = createWorld($map);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -234,12 +239,12 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $targetPos = new Vector2($spawnPos->x + 70, $spawnPos->y);
 
     $targetTee = new PlayerTee;
-    $target = new class($world, $targetPos) extends PvpCharacterEntity {};
+    $target    = new class($world, $targetPos) extends PvpCharacterEntity {};
     $target->spawn($targetPos, $targetTee);
     $world->addEntity($target);
 
     // Shoot hammer
-    $ref = new ReflectionClass($attacker);
+    $ref    = new ReflectionClass($attacker);
     $method = $ref->getMethod('shootHammer');
     $method->setAccessible(true);
     $reloadTimer = $method->invoke($attacker);
@@ -254,19 +259,19 @@ test('projectile getPos returns forward displacement', function () use ($mapPath
         return;
     }
 
-    $map = new Map($mapPath);
+    $map                 = new Map($mapPath);
     [$character, $world] = setupCharacter($map);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
     $method->invoke($character);
 
-    $entities = $world->getEntities();
+    $entities   = $world->getEntities();
     $projectile = $entities[1];
-    $startX = $projectile->getPosition()->x;
+    $startX     = $projectile->getPosition()->x;
 
-    $projRef = new ReflectionClass($projectile);
+    $projRef   = new ReflectionClass($projectile);
     $getPosRef = $projRef->getMethod('getPos');
     $getPosRef->setAccessible(true);
 
@@ -279,26 +284,26 @@ test('character tick is updated from world tick in doTick', function () use ($ma
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(42);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
     };
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
-    $tee = new PlayerTee;
+    $tee      = new PlayerTee;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -316,26 +321,26 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
     };
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
-    $tee = new PlayerTee;
+    $tee      = new PlayerTee;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -364,7 +369,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -375,14 +380,14 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     // World that properly ticks entities
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void
@@ -407,7 +412,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     $character->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
     $method->setAccessible(true);
     $method->invoke($character);
@@ -436,26 +441,26 @@ test('projectile snap velocity is normalized direction times 100', function () u
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
     };
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
-    $tee = new PlayerTee;
+    $tee      = new PlayerTee;
 
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
@@ -468,10 +473,10 @@ test('projectile snap velocity is normalized direction times 100', function () u
     // Third tick: fire press (prev=0, cur=1 → 1 press)
     feedInput($character, input(['direction' => 1, 'targetX' => 100, 'targetY' => 0, 'fire' => 1]));
 
-    $entities = $world->getEntities();
+    $entities   = $world->getEntities();
     $projectile = $entities[1];
-    $snaps = $projectile->doSnap($tee);
-    $ints = $snaps[0]->getInts();
+    $snaps      = $projectile->doSnap($tee);
+    $ints       = $snaps[0]->getInts();
 
     $velX = $ints[2];
     $velY = $ints[3];
@@ -493,19 +498,19 @@ test('character snap id matches tee index when pickups are present', function ()
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -514,12 +519,12 @@ test('character snap id matches tee index when pickups are present', function ()
     // Add pickups first (simulating PickupSpawner)
     $gameLayer = $map->getGameLayer();
     if ($gameLayer !== null) {
-        \TeeFrame\Game\World\PickupSpawner::spawn($world, $gameLayer);
+        PickupSpawner::spawn($world, $gameLayer);
     }
 
     // Now add a player character
     $spawnPos = new Vector2(50 * 32, 25 * 32);
-    $tee = new PlayerTee;
+    $tee      = new PlayerTee;
     $world->addTee($tee);
 
     $character = new PvpCharacterEntity($world, $spawnPos);
@@ -533,7 +538,7 @@ test('character snap id matches tee index when pickups are present', function ()
     $snaps = $world->doSnap($tee);
 
     // Find the character snap item
-    $charSnaps = array_filter($snaps, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_CHARACTER);
+    $charSnaps = array_filter($snaps, fn ($s) => $s->getItemId() === NetworkMessages::NETOBJTYPE_CHARACTER);
     expect($charSnaps)->not->toBeEmpty();
 
     $charSnap = array_values($charSnaps)[0];
@@ -548,7 +553,7 @@ test('character death sets respawn on tee and notifies game controller', functio
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
 
     $deathNotified = false;
@@ -559,14 +564,14 @@ test('character death sets respawn on tee and notifies game controller', functio
     {
         public int $deathNotifiedCount = 0;
 
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -574,21 +579,23 @@ test('character death sets respawn on tee and notifies game controller', functio
 
     // Override game controller to track onCharacterDeath calls
     $worldRef = new ReflectionClass($world);
-    $gcProp = $worldRef->getProperty('gameController');
+    $gcProp   = $worldRef->getProperty('gameController');
     $gcProp->setAccessible(true);
 
-    $gc = new class($tickHandler) extends \TeeFrame\Game\AbstractGameController
+    $gc = new class($tickHandler) extends AbstractGameController
     {
         public bool $deathCalled = false;
-        public ?\TeeFrame\Game\Entities\Character\AbstractCharacterEntity $victim = null;
+
+        public ?AbstractCharacterEntity $victim = null;
+
         public int $killerTeeIndex = -1;
 
         public function doTick(): void {}
 
-        public function onCharacterDeath(\TeeFrame\Game\Entities\Character\AbstractCharacterEntity $victim, int $killerTeeIndex): void
+        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): void
         {
-            $this->deathCalled = true;
-            $this->victim = $victim;
+            $this->deathCalled    = true;
+            $this->victim         = $victim;
             $this->killerTeeIndex = $killerTeeIndex;
         }
     };
@@ -631,19 +638,19 @@ test('tee index is reused on reconnect and snap id matches', function () use ($m
         return;
     }
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
     $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
+        public function getMotd(AbstractTee $requestingTee): string
         {
             return '';
         }
 
         protected function bootGameController(): void
         {
-            $this->gameController = new \TestGameController($this->tickHandler);
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -665,10 +672,10 @@ test('tee index is reused on reconnect and snap id matches', function () use ($m
 
     // Snap ID must match tee index
     $worldSnaps = $world->doSnap($tee1);
-    $charSnap = array_values(array_filter($worldSnaps, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_CHARACTER));
+    $charSnap   = array_values(array_filter($worldSnaps, fn ($s) => $s->getItemId() === NetworkMessages::NETOBJTYPE_CHARACTER));
     expect($charSnap[0]->getId())->toBe(0);
 
-    $playerInfo = array_values(array_filter($worldSnaps, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_PLAYERINFO));
+    $playerInfo = array_values(array_filter($worldSnaps, fn ($s) => $s->getItemId() === NetworkMessages::NETOBJTYPE_PLAYERINFO));
     expect($playerInfo[0]->getId())->toBe(0);
 
     // Disconnect: remove tee, index 0 released
@@ -688,9 +695,162 @@ test('tee index is reused on reconnect and snap id matches', function () use ($m
 
     // Snap ID must still match tee index after reconnect
     $worldSnaps2 = $world->doSnap($tee2);
-    $charSnap2 = array_values(array_filter($worldSnaps2, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_CHARACTER));
+    $charSnap2   = array_values(array_filter($worldSnaps2, fn ($s) => $s->getItemId() === NetworkMessages::NETOBJTYPE_CHARACTER));
     expect($charSnap2[0]->getId())->toBe(0);
 
-    $playerInfo2 = array_values(array_filter($worldSnaps2, fn ($s) => $s->getItemId() === \TeeFrame\Network\NetworkMessages::NETOBJTYPE_PLAYERINFO));
+    $playerInfo2 = array_values(array_filter($worldSnaps2, fn ($s) => $s->getItemId() === NetworkMessages::NETOBJTYPE_PLAYERINFO));
     expect($playerInfo2[0]->getId())->toBe(0);
+});
+
+/**
+ * Helper: create a character with a ticking world for auto-fire tests.
+ *
+ * @return array{AbstractCharacterEntity, AbstractWorld}
+ */
+function createCharacterForAutoFire(PlayerTee $tee, int $weapon): array
+{
+    $mapPath     = __DIR__.'/../dm1.map';
+    $map         = new Map($mapPath);
+    $tickHandler = new TickHandler(0);
+
+    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    {
+        public function getMotd(AbstractTee $requestingTee): string
+        {
+            return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new TestGameController($this->tickHandler);
+        }
+
+        public function doTick(): void {}
+    };
+
+    $spawnPos = new Vector2(50 * 32, 25 * 32);
+
+    $character = new PvpCharacterEntity($world, clone $spawnPos);
+    $character->spawn(clone $spawnPos, $tee);
+    $world->addEntity($character);
+
+    // Give the requested weapon with ammo
+    $character->giveWeapon($weapon, 10);
+    $character->setWeapon($weapon);
+
+    return [$character, $world];
+}
+
+test('grenade auto-fires while fire button is held', function () use ($mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $tee                 = new PlayerTee;
+    [$character, $world] = createCharacterForAutoFire($tee, GameConstants::WEAPON_GRENADE);
+
+    // Feed 2 idle inputs to pass the numInputs > 2 guard
+    feedInput($character, input());
+    feedInput($character, input());
+
+    // Press fire (fire=1) and keep holding it across multiple ticks.
+    // Grenade reload is 25 ticks, so we need to advance past it to see auto-fire.
+    feedInput($character, input(['fire' => 1]));
+
+    // First shot fired immediately
+    $projectiles = array_filter($world->getEntities(), fn ($e) => $e instanceof PvpProjectileEntity);
+    expect($projectiles)->toHaveCount(1);
+
+    // Advance past reload (25 ticks) while still holding fire
+    for ($i = 0; $i < 26; $i++) {
+        feedInput($character, input(['fire' => 1]));
+    }
+
+    // Auto-fire should have fired a second projectile
+    $projectiles = array_filter($world->getEntities(), fn ($e) => $e instanceof PvpProjectileEntity);
+    expect($projectiles)->toHaveCount(2);
+});
+
+test('shotgun auto-fires while fire button is held', function () use ($mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $tee                 = new PlayerTee;
+    [$character, $world] = createCharacterForAutoFire($tee, GameConstants::WEAPON_SHOTGUN);
+
+    feedInput($character, input());
+    feedInput($character, input());
+
+    // Press and hold fire
+    feedInput($character, input(['fire' => 1]));
+
+    // Shotgun fires 5 projectiles per shot
+    $projectiles = array_filter($world->getEntities(), fn ($e) => $e instanceof PvpProjectileEntity);
+    expect($projectiles)->toHaveCount(5);
+
+    // Advance past reload (25 ticks) while still holding fire
+    for ($i = 0; $i < 26; $i++) {
+        feedInput($character, input(['fire' => 1]));
+    }
+
+    // Auto-fire: second shot, 5 more projectiles
+    $projectiles = array_filter($world->getEntities(), fn ($e) => $e instanceof PvpProjectileEntity);
+    expect($projectiles)->toHaveCount(10);
+});
+
+test('rifle auto-fires while fire button is held', function () use ($mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $tee                 = new PlayerTee;
+    [$character, $world] = createCharacterForAutoFire($tee, GameConstants::WEAPON_RIFLE);
+
+    feedInput($character, input());
+    feedInput($character, input());
+
+    // Press and hold fire
+    feedInput($character, input(['fire' => 1]));
+
+    // Rifle fires a laser (not a projectile), so check entities count
+    $entitiesAfterFirst = count($world->getEntities());
+    expect($entitiesAfterFirst)->toBe(2); // character + laser
+
+    // Advance past reload (40 ticks) while still holding fire
+    for ($i = 0; $i < 41; $i++) {
+        feedInput($character, input(['fire' => 1]));
+    }
+
+    // Auto-fire: a second laser was created
+    $entitiesAfterSecond = count($world->getEntities());
+    expect($entitiesAfterSecond)->toBeGreaterThan($entitiesAfterFirst);
+});
+
+test('gun does not auto-fire while fire button is held', function () use ($mapExists) {
+    if (! $mapExists) {
+        return;
+    }
+
+    $tee                 = new PlayerTee;
+    [$character, $world] = createCharacterForAutoFire($tee, GameConstants::WEAPON_GUN);
+
+    feedInput($character, input());
+    feedInput($character, input());
+
+    // Press and hold fire
+    feedInput($character, input(['fire' => 1]));
+
+    // First shot fired
+    $projectiles = array_filter($world->getEntities(), fn ($e) => $e instanceof PvpProjectileEntity);
+    expect($projectiles)->toHaveCount(1);
+
+    // Advance past reload (6 ticks) while still holding fire (fire stays 1)
+    for ($i = 0; $i < 10; $i++) {
+        feedInput($character, input(['fire' => 1]));
+    }
+
+    // Gun is NOT full-auto: holding fire should not fire again
+    $projectiles = array_filter($world->getEntities(), fn ($e) => $e instanceof PvpProjectileEntity);
+    expect($projectiles)->toHaveCount(1);
 });

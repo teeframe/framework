@@ -269,7 +269,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 soundId: GameConstants::SOUND_WEAPON_NOAMMO,
             ));
 
-            $this->ammoRegenStart = -1;
+            $this->tickAmmoRegen();
 
             return;
         }

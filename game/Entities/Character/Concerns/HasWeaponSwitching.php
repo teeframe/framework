@@ -7,12 +7,45 @@ use TeeFrame\Game\Tees\PlayerTee;
 
 trait HasWeaponSwitching
 {
+    public function setWeapon(int $weapon): void
+    {
+        if ($weapon === $this->activeWeapon) {
+            return;
+        }
+
+        $this->lastWeapon   = $this->activeWeapon;
+        $this->queuedWeapon = -1;
+        $this->activeWeapon = $weapon;
+
+        $this->createSound(GameConstants::SOUND_WEAPON_SWITCH);
+
+        if ($this->activeWeapon < 0 || $this->activeWeapon >= GameConstants::NUM_WEAPONS) {
+            $this->activeWeapon = 0;
+        }
+    }
+
+    public function giveWeapon(int $weapon, int $ammo): bool
+    {
+        if ($weapon < 0 || $weapon >= GameConstants::NUM_WEAPONS) {
+            return false;
+        }
+
+        if ($this->weapons[$weapon]->ammo < 10 || ! $this->weapons[$weapon]->got) {
+            $this->weapons[$weapon]->got  = true;
+            $this->weapons[$weapon]->ammo = min(10, $ammo);
+
+            return true;
+        }
+
+        return false;
+    }
+
     protected function countInput(int $prev, int $cur): int
     {
         $prev &= self::INPUT_STATE_MASK;
         $cur  &= self::INPUT_STATE_MASK;
         $presses = 0;
-        $i = $prev;
+        $i       = $prev;
 
         while ($i !== $cur) {
             $i = ($i + 1) & self::INPUT_STATE_MASK;
@@ -64,8 +97,8 @@ trait HasWeaponSwitching
 
         // Queue the switch if valid
         if ($wantedWeapon >= 0 && $wantedWeapon < GameConstants::NUM_WEAPONS
-            && $wantedWeapon !== $this->activeWeapon
-            && $this->weapons[$wantedWeapon]->got) {
+                               && $wantedWeapon !== $this->activeWeapon
+                               && $this->weapons[$wantedWeapon]->got) {
             $this->queuedWeapon = $wantedWeapon;
         }
 
@@ -80,37 +113,5 @@ trait HasWeaponSwitching
         }
 
         $this->setWeapon($this->queuedWeapon);
-    }
-
-    protected function setWeapon(int $weapon): void
-    {
-        if ($weapon === $this->activeWeapon) {
-            return;
-        }
-
-        $this->lastWeapon   = $this->activeWeapon;
-        $this->queuedWeapon = -1;
-        $this->activeWeapon = $weapon;
-
-        $this->createSound(GameConstants::SOUND_WEAPON_SWITCH);
-
-        if ($this->activeWeapon < 0 || $this->activeWeapon >= GameConstants::NUM_WEAPONS) {
-            $this->activeWeapon = 0;
-        }
-    }
-
-    public function giveWeapon(int $weapon, int $ammo): bool
-    {
-        if ($weapon < 0 || $weapon >= GameConstants::NUM_WEAPONS) {
-            return false;
-        }
-
-        if ($this->weapons[$weapon]->ammo < 10 || ! $this->weapons[$weapon]->got) {
-            $this->weapons[$weapon]->got  = true;
-            $this->weapons[$weapon]->ammo = min(10, $ammo);
-            return true;
-        }
-
-        return false;
     }
 }

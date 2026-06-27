@@ -3,15 +3,15 @@
 namespace TeeFrame\Game\Entities\Character;
 
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\World\Vector2;
-use TeeFrame\Game\Tees\AbstractTee;
-use TeeFrame\Game\Tees\PlayerTee;
-use TeeFrame\Game\GameConstants;
-use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Entities\Character\Concerns\HasCharacterCore;
 use TeeFrame\Game\Entities\Character\Concerns\HasCharacterLifecycle;
 use TeeFrame\Game\Entities\Character\Concerns\HasWeaponSwitching;
+use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PlayerInput;
+use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 
 abstract class AbstractCharacterEntity extends AbstractEntity
@@ -20,8 +20,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     use HasCharacterLifecycle;
     use HasWeaponSwitching;
 
-    public const PHYS_SIZE = 28;
-
+    public const PHYS_SIZE        = 28;
     public const INPUT_STATE_MASK = 0x3F;
 
     // Game state
@@ -203,6 +202,19 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         if ($this->tee instanceof PlayerTee && $this->numInputs > 2) {
             $firePresses = $this->countInput($this->latestPrevInput->fire, $this->latestInput->fire);
             $firePressed = $firePresses > 0 && $firePresses < 128;
+
+            // Full-auto weapons (grenade, shotgun, rifle) keep firing while the
+            // fire button is held and there's ammo (mirrors CCharacter::FireWeapon
+            // in teeworlds 0.6).
+            if (! $firePressed
+                && ($this->activeWeapon    === GameConstants::WEAPON_GRENADE
+                    || $this->activeWeapon === GameConstants::WEAPON_SHOTGUN
+                    || $this->activeWeapon === GameConstants::WEAPON_RIFLE)
+                && ($this->latestInput->fire & 1)
+                && $this->weapons[$this->activeWeapon]->ammo
+            ) {
+                $firePressed = true;
+            }
         }
 
         $this->handleWeapons($firePressed);
