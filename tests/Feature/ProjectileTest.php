@@ -283,6 +283,11 @@ function createTestWorld(Map $map): AbstractWorld
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 }
@@ -458,6 +463,11 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 
@@ -545,6 +555,11 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 
@@ -622,6 +637,11 @@ test('projectile does not collide with owner character', function () use ($mapPa
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 
@@ -684,6 +704,11 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -753,6 +778,11 @@ test('damage indicators group when damage taken in quick succession', function (
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}

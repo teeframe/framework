@@ -37,9 +37,19 @@
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\PlayerInput;
 use TeeFrame\Map\Map;
+
+/**
+ * Concrete game controller for tests — no scoring, no win check.
+ */
+class TestGameController extends AbstractGameController
+{
+    public function doTick(): void {}
+    public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): void {}
+}
 
 /**
  * A mock server with sendToTee tracking.
@@ -83,6 +93,11 @@ function createWorld(Map $map): AbstractWorld
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}

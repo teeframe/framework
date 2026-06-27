@@ -4,7 +4,7 @@ namespace TeeFrame\Game;
 
 use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
 
-class EmptyTuneController
+class TuneController
 {
     public function __construct(
        public int $groundControlSpeed = 1000,

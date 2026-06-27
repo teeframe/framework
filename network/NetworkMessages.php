@@ -80,7 +80,7 @@ class NetworkMessages
      * Event Types
      */
     const NETEVENTTYPE_EXPLOSION = 14;
-
+    const NETEVENTTYPE_SPAWN     = 15;
     const NETEVENTTYPE_HAMMERHIT = 16;
     const NETEVENTTYPE_DEATH     = 17;
 

@@ -3,7 +3,7 @@
 namespace TeeFrame\Game\Entities\Character\Concerns;
 
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
-use TeeFrame\Game\EmptyTuneController;
+use TeeFrame\Game\TuneController;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
@@ -53,7 +53,7 @@ trait HasCharacterCore
         bool $inputJump,
         bool $inputHook,
         Collision $collision,
-        EmptyTuneController $tune,
+        TuneController $tune,
         array $otherCharacters,
     ): void {
         $physSize = 28.0;
@@ -200,7 +200,7 @@ trait HasCharacterCore
         }
     }
 
-    public function move(Collision $collision, EmptyTuneController $tune): void
+    public function move(Collision $collision, TuneController $tune): void
     {
         $speed = $this->vel->length();
 
@@ -220,7 +220,7 @@ trait HasCharacterCore
     /**
      * @param array<int, AbstractCharacterEntity> $otherCharacters
      */
-    protected function tickHookStateMachine(Collision $collision, EmptyTuneController $tune, array $otherCharacters): void
+    protected function tickHookStateMachine(Collision $collision, TuneController $tune, array $otherCharacters): void
     {
         if ($this->hookState === GameConstants::HOOK_IDLE) {
             $this->hookedPlayer = -1;

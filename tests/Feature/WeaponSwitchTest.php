@@ -51,6 +51,11 @@ function createCharacterWithWorld(PlayerTee $tee): AbstractCharacterEntity
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 

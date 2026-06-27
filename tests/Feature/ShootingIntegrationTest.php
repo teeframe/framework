@@ -289,6 +289,11 @@ test('character tick is updated from world tick in doTick', function () use ($ma
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 
@@ -319,6 +324,11 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -368,6 +378,11 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
         }
 
         public function doTick(): void
@@ -431,6 +446,11 @@ test('projectile snap velocity is normalized direction times 100', function () u
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 
@@ -481,6 +501,11 @@ test('character snap id matches tee index when pickups are present', function ()
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}
@@ -539,6 +564,11 @@ test('character death sets respawn on tee and notifies game controller', functio
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 
@@ -547,11 +577,13 @@ test('character death sets respawn on tee and notifies game controller', functio
     $gcProp = $worldRef->getProperty('gameController');
     $gcProp->setAccessible(true);
 
-    $gc = new class($tickHandler) extends \TeeFrame\Game\EmptyGameController
+    $gc = new class($tickHandler) extends \TeeFrame\Game\AbstractGameController
     {
         public bool $deathCalled = false;
         public ?\TeeFrame\Game\Entities\Character\AbstractCharacterEntity $victim = null;
         public int $killerTeeIndex = -1;
+
+        public function doTick(): void {}
 
         public function onCharacterDeath(\TeeFrame\Game\Entities\Character\AbstractCharacterEntity $victim, int $killerTeeIndex): void
         {
@@ -607,6 +639,11 @@ test('tee index is reused on reconnect and snap id matches', function () use ($m
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}

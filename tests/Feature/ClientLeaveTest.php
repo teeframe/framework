@@ -76,6 +76,11 @@ test('removeTee broadcasts leave message with reason', function () use ($mapPath
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 
@@ -137,6 +142,11 @@ test('removeTee leave message without reason has plain format', function () use 
         public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
         {
             return '';
+        }
+
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
         }
 
         public function doTick(): void {}

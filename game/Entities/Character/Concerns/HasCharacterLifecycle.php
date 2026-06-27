@@ -65,6 +65,7 @@ trait HasCharacterLifecycle
         if ($this->tee instanceof PlayerTee) {
             $respawnDelay = $killerTeeIndex === -1 ? 150 : 25; // 3s for self-kill, 0.5s normal
             $this->tee->respawnTick = $this->world->getCurrentTick() + $respawnDelay;
+            $this->tee->dieTick = $this->world->getCurrentTick();
             $this->tee->spawning = true;
         }
     }

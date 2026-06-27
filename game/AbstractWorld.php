@@ -6,6 +6,7 @@ use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\PingCommand;
 use TeeFrame\Game\Commands\WhisperCommand;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Map\Map;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
@@ -22,6 +23,7 @@ use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
+use TeeFrame\Network\SnapItems\ObjEventSpawnItem;
 use TeeFrame\Server\AbstractServerInstance;
 
 abstract class AbstractWorld implements SnapableObject, TickableObject
@@ -53,21 +55,32 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected SnapIdPool $snapIdPool;
 
-    protected EmptyGameController $gameController;
+    protected AbstractGameController $gameController;
 
-    protected EmptyVoteController $voteController;
+    protected VoteController $voteController;
 
-    protected EmptyTuneController $tuneController;
+    protected TuneController $tuneController;
 
-    public function __construct(public string $identifier, protected TickHandler $tickHandler, protected Map $map, protected AbstractServerInstance $server)
-    {
+    public function __construct(
+        public string $identifier,
+        protected TickHandler $tickHandler,
+        protected Map $map,
+        protected AbstractServerInstance $server
+    ) {
         $this->snapIdPool = new SnapIdPool;
 
         $this->bootCommands();
-        $this->bootGameController();
+
         $this->bootVoteController();
         $this->bootTuneController();
+
+        $this->bootGameController();
+        $this->collectSpawnPoints();
     }
+
+    abstract protected function bootGameController(): void;
+
+    abstract public function getMotd(AbstractTee $requestingTee): string;
 
     protected function bootCommands(): void
     {
@@ -80,22 +93,24 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->commands[] = $command;
     }
 
-    protected function bootGameController(): void
+    protected function collectSpawnPoints(): void
     {
-        $this->gameController = new EmptyGameController($this->tickHandler);
+        $gameLayer = $this->map->getGameLayer();
+
+        if ($gameLayer !== null) {
+            $this->gameController->collectSpawnPoints($gameLayer);
+        }
     }
 
     protected function bootVoteController(): void
     {
-        $this->voteController = new EmptyVoteController();
+        $this->voteController = new VoteController();
     }
 
     protected function bootTuneController(): void
     {
-        $this->tuneController = new EmptyTuneController();
+        $this->tuneController = new TuneController();
     }
-
-    abstract public function getMotd(AbstractTee $requestingTee): string;
 
     public function getCurrentTick(): int
     {
@@ -132,17 +147,17 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $this->server;
     }
 
-    public function getGameController(): EmptyGameController
+    public function getGameController(): AbstractGameController
     {
         return $this->gameController;
     }
 
-    public function getVoteController(): EmptyVoteController
+    public function getVoteController(): VoteController
     {
         return $this->voteController;
     }
 
-    public function getTuneController(): EmptyTuneController
+    public function getTuneController(): TuneController
     {
         return $this->tuneController;
     }
@@ -309,6 +324,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             }
 
             $character = $tee->character;
+
+            // Fire-to-respawn: a dead tee pressing fire requests a spawn
+            if ($character === null && isset($tee->inputs[$currentTick]) && ($tee->inputs[$currentTick]->fire & 1)) {
+                $tee->spawning = true;
+            }
+
             if ($character === null) {
                 continue;
             }
@@ -332,6 +353,49 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 $this->removeEntity($entity);
             }
         }
+
+        // Player tick: handle respawns (CPlayer::Tick)
+        foreach ($this->tees as $tee) {
+            if (! $tee instanceof PlayerTee) {
+                continue;
+            }
+
+            if ($tee->character === null) {
+                // Auto-respawn after 3s of being dead
+                // (CPlayer::Tick: !m_pCharacter && m_DieTick+TickSpeed*3 <= Tick)
+                if (! $tee->spawning && $tee->dieTick > 0 && $tee->dieTick + 3 * 50 <= $currentTick) {
+                    $tee->spawning = true;
+                }
+
+                // Try to respawn once the respawn tick has elapsed
+                // (CPlayer::Tick: m_Spawning && m_RespawnTick <= Tick)
+                if ($tee->spawning && $tee->respawnTick <= $currentTick) {
+                    $this->tryRespawnTee($tee);
+                }
+            }
+        }
+    }
+
+    protected function tryRespawnTee(PlayerTee $tee): bool
+    {
+        $spawnPos = $this->getGameController()->canSpawn($this, 0);
+        if ($spawnPos === null) {
+            return false;
+        }
+
+        $tee->spawning = false;
+
+        $character = new PvpCharacterEntity($this, clone $spawnPos);
+        $character->spawn($spawnPos, $tee);
+        $this->addEntity($character);
+
+        // CreatePlayerSpawn event (visual spawn effect)
+        $this->addEvent(new ObjEventSpawnItem(
+            x: (int) round($spawnPos->x),
+            y: (int) round($spawnPos->y),
+        ));
+
+        return true;
     }
 
     /**

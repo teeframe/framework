@@ -20,6 +20,11 @@ function createNinjaWorld(Map $map): AbstractWorld
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 }

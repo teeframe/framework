@@ -125,6 +125,11 @@ test('addTee enter message contains tee name', function () use ($mapPath, $mapEx
             return '';
         }
 
+        protected function bootGameController(): void
+        {
+            $this->gameController = new \TestGameController($this->tickHandler);
+        }
+
         public function doTick(): void {}
     };
 

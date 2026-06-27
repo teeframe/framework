@@ -12,6 +12,8 @@ class PlayerTee extends AbstractTee
 
     public int $respawnTick = 0;
 
+    public int $dieTick = 0;
+
     /**
      * Buffered client inputs keyed by prediction tick (m_aInputs).
      *

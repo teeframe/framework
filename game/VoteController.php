@@ -6,7 +6,7 @@ use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteClearOptionsChunk;
 
-class EmptyVoteController
+class VoteController
 {
     /**
      * @return AbstractChunk[]
