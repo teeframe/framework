@@ -64,6 +64,9 @@ $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerIn
     /** @var array<int, \TeeFrame\Network\Chunks\AbstractChunk> */
     public array $sentChunks = [];
 
+    /** @var array<int, string> kicked teeIndex => reason */
+    public array $kickedTees = [];
+
     public function __construct()
     {
         // bypass parent constructor
@@ -82,10 +85,16 @@ $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerIn
         $this->sentChunks[]      = $chunk;
     }
 
+    public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
+    {
+        $this->kickedTees[$teeIndex] = $reason;
+    }
+
     public function resetSentTees(): void
     {
         $this->sentTeeIndexes = [];
         $this->sentChunks     = [];
+        $this->kickedTees     = [];
     }
 };
 

@@ -5,9 +5,11 @@ namespace TeeFrame\Game\Tees;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
+use TeeFrame\Network\SnapItems\ObjSpectatorInfoItem;
 
 abstract class AbstractTee implements SnapableObject
 {
@@ -78,7 +80,7 @@ abstract class AbstractTee implements SnapableObject
 
     public function doSnap(AbstractTee $requestingTee): array
     {
-        return [
+        $snaps = [
             new ObjClientInfoItem(
                 name: $this->name,
                 clan: $this->clan,
@@ -91,15 +93,36 @@ abstract class AbstractTee implements SnapableObject
             new ObjPlayerInfoItem(
                 local: $this === $requestingTee,
                 clientId: $this->teeIndex,
-                team: 0,
+                team: $this->getSnapTeam(),
                 score: $this->getSnapScore(),
                 latency: $this->latency,
             ),
         ];
+
+        // Spectator info is only sent to the local spectator
+        if ($this === $requestingTee && $this->getSnapTeam() === GameConstants::TEAM_SPECTATORS) {
+            $snaps[] = new ObjSpectatorInfoItem(
+                spectatorId: $this->getSnapSpectatorId(),
+                x: (int) round($this->viewPosition->x),
+                y: (int) round($this->viewPosition->y),
+            );
+        }
+
+        return $snaps;
     }
 
     protected function getSnapScore(): int
     {
         return 0;
+    }
+
+    protected function getSnapTeam(): int
+    {
+        return GameConstants::TEAM_RED;
+    }
+
+    protected function getSnapSpectatorId(): int
+    {
+        return GameConstants::SPEC_FREEVIEW;
     }
 }

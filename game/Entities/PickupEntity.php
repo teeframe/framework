@@ -7,7 +7,6 @@ use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\World\Vector2;
-use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjPickupItem;
@@ -84,21 +83,21 @@ class PickupEntity extends AbstractEntity
         $respawnTime = -1;
 
         switch ($this->type) {
-            case NetworkMessages::POWERUP_HEALTH:
+            case GameConstants::POWERUP_HEALTH:
                 if ($character->increaseHealth(1)) {
                     $soundId = GameConstants::SOUND_PICKUP_HEALTH;
                     $respawnTime = $this->respawnTime;
                 }
                 break;
 
-            case NetworkMessages::POWERUP_ARMOR:
+            case GameConstants::POWERUP_ARMOR:
                 if ($character->increaseArmor(1)) {
                     $soundId = GameConstants::SOUND_PICKUP_ARMOR;
                     $respawnTime = $this->respawnTime;
                 }
                 break;
 
-            case NetworkMessages::POWERUP_WEAPON:
+            case GameConstants::POWERUP_WEAPON:
                 if ($this->subType >= 0 && $this->subType < GameConstants::NUM_WEAPONS) {
                     if ($character->giveWeapon($this->subType, 10)) {
                         $soundId = match ($this->subType) {
@@ -111,7 +110,7 @@ class PickupEntity extends AbstractEntity
                 }
                 break;
 
-            case NetworkMessages::POWERUP_NINJA:
+            case GameConstants::POWERUP_NINJA:
                 $character->giveNinja();
                 $soundId = GameConstants::SOUND_PICKUP_NINJA;
                 $respawnTime = $this->respawnTime;

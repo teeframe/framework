@@ -36,6 +36,9 @@ class WhisperCommand extends AbstractCommand
 
         $server = $world->getServer();
 
+        // Team Number:
+		// 0 = global; 1 = team; 2 = sending whisper; 3 = receiving whisper
+
         if ($targetTee === null) {
             $server->sendToTee($world, $tee->teeIndex, new SvChatChunk(
                 team: 0,

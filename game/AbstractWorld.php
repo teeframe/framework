@@ -13,14 +13,20 @@ use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Game\Vote\VoteController;
 use TeeFrame\Game\World\SnapIdPool;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
+use TeeFrame\Network\Chunks\Game\ClSetSpectatorModeChunk;
+use TeeFrame\Network\Chunks\Game\ClSetTeamChunk;
+use TeeFrame\Network\Chunks\Game\ClVoteChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
@@ -159,6 +165,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $this->voteController;
     }
 
+    /**
+     * @return AbstractCommand[]
+     */
+    public function getCommands(): array
+    {
+        return $this->commands;
+    }
+
     public function getTuneController(): TuneController
     {
         return $this->tuneController;
@@ -264,6 +278,16 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $this->handleEmoticonMessage($tee, $chunk);
         } elseif ($chunk instanceof ClKillChunk) {
             $this->handleKillMessage($tee, $chunk);
+        } elseif ($chunk instanceof ClSetTeamChunk) {
+            $this->handleSetTeamMessage($tee, $chunk);
+        } elseif ($chunk instanceof ClSetSpectatorModeChunk) {
+            $this->handleSetSpectatorModeMessage($tee, $chunk);
+        }
+
+        if ($chunk instanceof ClCallVoteChunk) {
+            $this->getVoteController()->callVote($this, $tee, $chunk->type, $chunk->value, $chunk->reason);
+        } elseif ($chunk instanceof ClVoteChunk) {
+            $this->getVoteController()->vote($this, $tee, $chunk->vote);
         }
     }
 
@@ -295,10 +319,13 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $character->applyInput();
         }
 
-        // TODO: Implement GameServer()->OnTick()
+        // Vote ticking (CGameContext::OnTick vote section)
+        $this->getVoteController()->tick($this);
 
+        // Game controller tick: handle win conditions...
         $this->getGameController()->doTick();
 
+        // Entity tick: handle pickups, collisions...
         foreach ($this->entities as $entity) {
             $entity->doTick();
 
@@ -313,6 +340,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 continue;
             }
 
+            // Spectators don't respawn
+            if ($tee->team === GameConstants::TEAM_SPECTATORS) {
+                continue;
+            }
+
             if ($tee->character === null) {
                 // Auto-respawn after 3s of being dead
                 // (CPlayer::Tick: !m_pCharacter && m_DieTick+TickSpeed*3 <= Tick)
@@ -324,6 +356,23 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 // (CPlayer::Tick: m_Spawning && m_RespawnTick <= Tick)
                 if ($tee->spawning && $tee->respawnTick <= $currentTick) {
                     $this->tryRespawnTee($tee);
+                }
+            }
+        }
+
+        // Player post-tick: update spectator view positions (CPlayer::PostTick)
+        foreach ($this->tees as $tee) {
+            if (! $tee instanceof PlayerTee) {
+                continue;
+            }
+
+            // Spectators following a player use that player's view position
+            if ($tee->team === GameConstants::TEAM_SPECTATORS && $tee->spectatorId !== GameConstants::SPEC_FREEVIEW) {
+                foreach ($this->tees as $targetTee) {
+                    if ($targetTee->teeIndex === $tee->spectatorId) {
+                        $tee->viewPosition = clone $targetTee->viewPosition;
+                        break;
+                    }
                 }
             }
         }
@@ -376,8 +425,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     {
         $snaps = [];
 
+        // Spectators see all events (no distance culling), mirroring the
+        // teeworlds 0.6 approach where free-view spectators need full visibility.
+        // TODO: Implement "Cl_ShowDistance" instead
+        $isSpectator = $requestingTee instanceof PlayerTee
+            && $requestingTee->team === GameConstants::TEAM_SPECTATORS;
+
         foreach ($this->pendingEvents as $i => $event) {
-            if ($requestingTee->viewPosition->distance(new Vector2($event->x, $event->y)) > 1500) {
+            if (! $isSpectator && $requestingTee->viewPosition->distance(new Vector2($event->x, $event->y)) > 1500) {
                 continue;
             }
 
@@ -396,12 +451,18 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     {
         $snaps = [];
 
+        // Spectators see all entities (no distance culling), mirroring the
+        // teeworlds 0.6 approach where free-view spectators need full visibility.
+        // TODO: Implement "Cl_ShowDistance" instead
+        $isSpectator = $requestingTee instanceof PlayerTee
+            && $requestingTee->team === GameConstants::TEAM_SPECTATORS;
+
         foreach ($this->entities as $entity) {
             if ($entity->isToDestroy()) {
                 continue;
             }
 
-            if ($requestingTee->viewPosition->distance($entity->getPosition()) > 1100) {
+            if (! $isSpectator && $requestingTee->viewPosition->distance($entity->getPosition()) > 1100) {
                 continue;
             }
 
@@ -505,6 +566,90 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         // Self-kill: pass WEAPON_SELF so die() applies the 3s respawn penalty
         // and the kill message reports the correct weapon.
         $character->die($tee->teeIndex, GameConstants::WEAPON_SELF);
+    }
+
+    protected function handleSetTeamMessage(AbstractTee $tee, ClSetTeamChunk $chunk): void
+    {
+        if (! $tee instanceof PlayerTee) {
+            return;
+        }
+
+        $currentTick = $this->getCurrentTick();
+
+        // Already on that team, or spam protection (3s between team changes)
+        if ($tee->team === $chunk->team || ($tee->lastSetTeam > 0 && $tee->lastSetTeam + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)) {
+            return;
+        }
+
+        // Team change cooldown (mirrors CPlayer::m_TeamChangeTick)
+        if ($tee->teamChangeTick > $currentTick) {
+            $tee->lastSetTeam = $currentTick;
+            $timeLeft = (int) (($tee->teamChangeTick - $currentTick) / NetworkParams::TICKS_PER_SECOND);
+            $mins = (int) ($timeLeft / 60);
+            $secs = $timeLeft % 60;
+            $this->server->sendToTee($this, $tee->teeIndex, new SvBroadcastChunk(
+                sprintf('Time to wait before changing team: %02d:%02d', $mins, $secs),
+            ));
+
+            return;
+        }
+
+        // Switch team
+        $tee->lastSetTeam = $currentTick;
+
+        // If entering or leaving spectators, update the vote count
+        if ($tee->team === GameConstants::TEAM_SPECTATORS || $chunk->team === GameConstants::TEAM_SPECTATORS) {
+            $this->voteController->onTeamChange($tee);
+        }
+
+        $tee->setTeam($chunk->team);
+        $tee->teamChangeTick = $currentTick;
+    }
+
+    protected function handleSetSpectatorModeMessage(AbstractTee $tee, ClSetSpectatorModeChunk $chunk): void
+    {
+        if (! $tee instanceof PlayerTee) {
+            return;
+        }
+
+        // Only spectators can change spectator mode
+        if ($tee->team !== GameConstants::TEAM_SPECTATORS) {
+            return;
+        }
+
+        // Already spectating that player, or trying to spectate yourself, or spam protection
+        $currentTick = $this->getCurrentTick();
+        if ($tee->spectatorId === $chunk->spectatorId
+            || $tee->teeIndex === $chunk->spectatorId
+            || ($tee->lastSetSpectatorMode > 0 && $tee->lastSetSpectatorMode + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)
+        ) {
+            return;
+        }
+
+        $tee->lastSetSpectatorMode = $currentTick;
+
+        if ($chunk->spectatorId !== GameConstants::SPEC_FREEVIEW) {
+            // Validate the target exists and is not a spectator
+            $target = null;
+            foreach ($this->tees as $t) {
+                if ($t->teeIndex === $chunk->spectatorId) {
+                    $target = $t;
+                    break;
+                }
+            }
+
+            if ($target === null || ($target instanceof PlayerTee && $target->team === GameConstants::TEAM_SPECTATORS)) {
+                $this->server->sendToTee($this, $tee->teeIndex, new SvChatChunk(
+                    team: 0,
+                    clientId: -1,
+                    text: 'Invalid spectator id used',
+                ));
+
+                return;
+            }
+        }
+
+        $tee->spectatorId = $chunk->spectatorId;
     }
 
     protected function tryRespawnTee(PlayerTee $tee): bool

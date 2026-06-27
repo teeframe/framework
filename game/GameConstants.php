@@ -18,6 +18,20 @@ class GameConstants
     public const WEAPON_SELF  = -2; // console kill command
     public const WEAPON_WORLD = -1; // death tiles etc
 
+    // Team constants (Teeworlds 0.6)
+    public const TEAM_SPECTATORS = -1;
+    public const TEAM_RED         = 0;
+    public const TEAM_BLUE        = 1;
+
+    // Spectator mode (Teeworlds 0.6)
+    public const SPEC_FREEVIEW = -1;
+
+    // Pickup types (Teeworlds 0.6)
+    public const POWERUP_HEALTH = 0;
+    public const POWERUP_ARMOR  = 1;
+    public const POWERUP_WEAPON = 2;
+    public const POWERUP_NINJA  = 3;
+
     // Hook state constants (Teeworlds 0.6)
     public const HOOK_RETRACTED     = -1;
     public const HOOK_IDLE          = 0;

@@ -3,10 +3,15 @@
 namespace TeeFrame\Network;
 
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
+use TeeFrame\Network\Chunks\Game\ClSetSpectatorModeChunk;
+use TeeFrame\Network\Chunks\Game\ClSetTeamChunk;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
+use TeeFrame\Network\Chunks\Game\ClVoteChunk;
+use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
@@ -14,6 +19,11 @@ use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvReadyToEnterChunk;
 use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteClearOptionsChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteOptionListAddChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteOptionRemoveChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteStatusChunk;
 use TeeFrame\Network\Chunks\System\ConReadyChunk;
 use TeeFrame\Network\Chunks\System\EnterGameChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
@@ -132,14 +142,24 @@ class PacketDecoder
             NetworkMessages::SV_CHAT             => SvChatChunk::class,
             NetworkMessages::SV_KILLMSG          => SvKillMsgChunk::class,
             NetworkMessages::SV_MOTD             => SvMotdChunk::class,
+            NetworkMessages::SV_BROADCAST        => SvBroadcastChunk::class,
             NetworkMessages::SV_TUNEPARAMS       => SvTuneParamsChunk::class,
             NetworkMessages::SV_READYTOENTER     => SvReadyToEnterChunk::class,
             NetworkMessages::SV_EMOTICON         => SvEmoticonChunk::class,
             NetworkMessages::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
+            NetworkMessages::SV_VOTEOPTIONLISTADD => SvVoteOptionListAddChunk::class,
+            NetworkMessages::SV_VOTEOPTIONADD    => SvVoteOptionAddChunk::class,
+            NetworkMessages::SV_VOTEOPTIONREMOVE => SvVoteOptionRemoveChunk::class,
+            NetworkMessages::SV_VOTESET          => SvVoteSetChunk::class,
+            NetworkMessages::SV_VOTESTATUS       => SvVoteStatusChunk::class,
             NetworkMessages::CL_SAY              => ClSayChunk::class,
+            NetworkMessages::CL_SET_TEAM         => ClSetTeamChunk::class,
+            NetworkMessages::CL_SET_SPECTATOR_MODE => ClSetSpectatorModeChunk::class,
             NetworkMessages::CL_START_INFO       => ClStartInfoChunk::class,
             NetworkMessages::CL_KILL             => ClKillChunk::class,
             NetworkMessages::CL_EMOTICON         => ClEmoticonChunk::class,
+            NetworkMessages::CL_VOTE             => ClVoteChunk::class,
+            NetworkMessages::CL_CALLVOTE         => ClCallVoteChunk::class,
             default                              => new UnsupportedChunk($message, $flags, false),
         };
     }

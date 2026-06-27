@@ -10,6 +10,7 @@ use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
+use TeeFrame\Server\Ban\BanList;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 abstract class AbstractServerInstance
@@ -26,9 +27,16 @@ abstract class AbstractServerInstance
 
     protected ConnectionHandler $connectionHandler;
 
-    public function __construct(protected TickHandler $tickHandler, protected string $password = '')
+    protected BanList $banList;
+
+    public function __construct(
+        protected TickHandler $tickHandler,
+        protected string $password = '',
+        protected int $kickBanDuration = 600
+    )
     {
         $this->connectionHandler = new ConnectionHandler(slotsLimit: 64);
+        $this->banList           = new BanList;
     }
 
     abstract protected function boot(): void;
@@ -127,6 +135,24 @@ abstract class AbstractServerInstance
         }
     }
 
+    public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
+    {
+        foreach ($this->connectionHandler->getConnections() as $connection) {
+            if ($connection->state !== ConnectionSlot::STATE_INGAME) {
+                continue;
+            }
+
+            if ($connection->world() === $world && $connection->playerTee()->teeIndex === $teeIndex) {
+                // Ban the address so they can't reconnect immediately
+                $this->banList->ban($connection->destinationAddress, $this->kickBanDuration, $reason);
+
+                $connection->closeConnection($reason);
+
+                return;
+            }
+        }
+    }
+
     /**
      * @param array{address: string, port: int} $clientInfo
      */
@@ -151,7 +177,23 @@ abstract class AbstractServerInstance
             return;
         }
 
-        // TODO: Implement ban system
+        // Ban system: reject connections from banned addresses
+        if ($this->banList->isBanned($clientInfo['address'])) {
+            $ban = $this->banList->getBan($clientInfo['address']);
+
+            if ($ban === null) {
+                return; // Impossible scenario, TODO: Refactor this to avoid this null check
+            }
+
+            $minutesLeft = (int) ceil(($ban->expiry - time()) / 60);
+            $socket->sendto(
+                $clientInfo['address'],
+                $clientInfo['port'],
+                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'You are banned for ' . $minutesLeft . ' more minute(s): ' . ($ban->reason ?? 'Kicked by vote')))->encodeToSend()
+            );
+
+            return;
+        }
 
         // New connection...
         $slotConnection = $this->connectionHandler->startNew($socket, $this->selectWorldForNewConnection());

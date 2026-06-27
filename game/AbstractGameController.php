@@ -42,6 +42,19 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     abstract function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int;
 
+    public function getTeamName(int $team): string
+    {
+        if ($this->isTeamMode) {
+            return match ($team) {
+                GameConstants::TEAM_RED  => 'red team',
+                GameConstants::TEAM_BLUE => 'blue team',
+                default                  => 'spectators',
+            };
+        }
+
+        return $team === GameConstants::TEAM_RED ? 'game' : 'spectators';
+    }
+
     public function collectSpawnPoints(GameLayer $gameLayer): void
     {
         foreach ($gameLayer->getEntityPositions() as $entity) {

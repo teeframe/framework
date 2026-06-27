@@ -13,11 +13,6 @@ class PingCommand extends AbstractCommand
         return 'ping';
     }
 
-    public function getPattern(): string
-    {
-        return '/^\/ping$/i';
-    }
-
     /**
      * @param  string[]  $matches
      */
