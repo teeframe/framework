@@ -3,6 +3,7 @@
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\CharacterWeaponState;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
@@ -74,12 +75,12 @@ test('character spawns with hammer and gun, gun active', function () use ($makeC
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
     expect($character->lastWeapon)->toBe(GameConstants::WEAPON_HAMMER);
     expect($character->queuedWeapon)->toBe(-1);
-    expect($character->aWeapons[GameConstants::WEAPON_HAMMER]['got'])->toBeTrue();
-    expect($character->aWeapons[GameConstants::WEAPON_GUN]['got'])->toBeTrue();
-    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['got'])->toBeFalse();
-    expect($character->aWeapons[GameConstants::WEAPON_GRENADE]['got'])->toBeFalse();
-    expect($character->aWeapons[GameConstants::WEAPON_RIFLE]['got'])->toBeFalse();
-    expect($character->aWeapons[GameConstants::WEAPON_NINJA]['got'])->toBeFalse();
+    expect($character->weapons[GameConstants::WEAPON_HAMMER]->got)->toBeTrue();
+    expect($character->weapons[GameConstants::WEAPON_GUN]->got)->toBeTrue();
+    expect($character->weapons[GameConstants::WEAPON_SHOTGUN]->got)->toBeFalse();
+    expect($character->weapons[GameConstants::WEAPON_GRENADE]->got)->toBeFalse();
+    expect($character->weapons[GameConstants::WEAPON_RIFLE]->got)->toBeFalse();
+    expect($character->weapons[GameConstants::WEAPON_NINJA]->got)->toBeFalse();
 });
 
 // --- Direct weapon selection ---
@@ -299,7 +300,7 @@ test('cannot switch away from ninja', function () {
     $character = createCharacterWithWorld($tee);
 
     // Give ninja
-    $character->aWeapons[GameConstants::WEAPON_NINJA] = ['got' => true, 'ammo' => -1];
+    $character->weapons[GameConstants::WEAPON_NINJA] = new CharacterWeaponState(got: true, ammo: -1);
     $character->activeWeapon = GameConstants::WEAPON_NINJA;
 
     // Try to switch to hammer
@@ -319,8 +320,8 @@ test('giveWeapon grants a new weapon', function () use ($makeChar) {
 
     $result = $character->giveWeapon(GameConstants::WEAPON_SHOTGUN, 10);
     expect($result)->toBeTrue();
-    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['got'])->toBeTrue();
-    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['ammo'])->toBe(10);
+    expect($character->weapons[GameConstants::WEAPON_SHOTGUN]->got)->toBeTrue();
+    expect($character->weapons[GameConstants::WEAPON_SHOTGUN]->ammo)->toBe(10);
 });
 
 test('giveWeapon caps ammo at 10', function () use ($makeChar) {
@@ -330,7 +331,7 @@ test('giveWeapon caps ammo at 10', function () use ($makeChar) {
 
     $result = $character->giveWeapon(GameConstants::WEAPON_SHOTGUN, 999);
     expect($result)->toBeTrue();
-    expect($character->aWeapons[GameConstants::WEAPON_SHOTGUN]['ammo'])->toBe(10);
+    expect($character->weapons[GameConstants::WEAPON_SHOTGUN]->ammo)->toBe(10);
 });
 
 test('giveWeapon returns false when already at max ammo', function () use ($makeChar) {
@@ -418,7 +419,7 @@ test('no ammo does not set attackTick', function () {
     $character = createCharacterWithWorld($tee);
 
     // Deplete gun ammo
-    $character->aWeapons[GameConstants::WEAPON_GUN]['ammo'] = 0;
+    $character->weapons[GameConstants::WEAPON_GUN]->ammo = 0;
 
     // First tick: syncs prev inputs (no fire detected)
     $tee->inputFire = 0;

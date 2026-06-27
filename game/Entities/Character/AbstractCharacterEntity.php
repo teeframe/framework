@@ -37,9 +37,9 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public int $reloadTimer = 0;
 
     /**
-     * @var array<int, array{got: bool, ammo: int}>
+     * @var array<int, CharacterWeaponState>
      */
-    public array $aWeapons = [];
+    public array $weapons = [];
 
     // Ninja state
     public int $ninjaActivationTick = 0;
@@ -183,7 +183,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 playerFlags: $this->playerFlags,
                 health: $this->health,
                 armor: $this->armor,
-                ammoCount: $this->aWeapons[$this->activeWeapon]['ammo'],
+                ammoCount: $this->weapons[$this->activeWeapon]->ammo,
                 weapon: $this->activeWeapon,
                 emote: $this->emote,
                 attackTick: $this->attackTick,

@@ -257,7 +257,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->doWeaponSwitch();
 
-        $weaponAmmo = $this->aWeapons[$this->activeWeapon]['ammo'];
+        $weaponAmmo = $this->weapons[$this->activeWeapon]->ammo;
         if ($weaponAmmo === 0) {
             $this->reloadTimer = (int) round(125 * 50 / 1000);
 
@@ -295,8 +295,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->attackTick = $this->tick;
 
-        if ($this->aWeapons[$this->activeWeapon]['ammo'] > 0) {
-            $this->aWeapons[$this->activeWeapon]['ammo']--;
+        if ($this->weapons[$this->activeWeapon]->ammo > 0) {
+            $this->weapons[$this->activeWeapon]->ammo--;
         }
 
         $this->ammoRegenStart = -1;
@@ -316,8 +316,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return;
         }
 
-        $weaponAmmo = $this->aWeapons[$this->activeWeapon]['ammo'];
-        $weaponGot  = $this->aWeapons[$this->activeWeapon]['got'];
+        $weaponAmmo = $this->weapons[$this->activeWeapon]->ammo;
+        $weaponGot  = $this->weapons[$this->activeWeapon]->got;
 
         if (! $weaponGot || $weaponAmmo < 0 || $weaponAmmo >= 10) {
             $this->ammoRegenStart = -1;
@@ -331,7 +331,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         // 500ms at 50 tick/s = 25 ticks
         if (($this->tick - $this->ammoRegenStart) >= 25) {
-            $this->aWeapons[$this->activeWeapon]['ammo'] = min(10, $weaponAmmo + 1);
+            $this->weapons[$this->activeWeapon]->ammo = min(10, $weaponAmmo + 1);
             $this->ammoRegenStart = -1;
         }
     }
@@ -389,7 +389,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         // Ninja duration: 15 seconds
         if (($currentTick - $this->ninjaActivationTick) > (int) (15 * 50)) {
             // Time's up, return to last weapon
-            $this->aWeapons[GameConstants::WEAPON_NINJA]['got'] = false;
+            $this->weapons[GameConstants::WEAPON_NINJA]->got = false;
             $this->activeWeapon = $this->lastWeapon;
 
             $this->setWeapon($this->activeWeapon);

@@ -3,6 +3,7 @@
 namespace TeeFrame\Game\Entities\Character\Concerns;
 
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\CharacterWeaponState;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -27,12 +28,12 @@ trait HasCharacterLifecycle
         $this->ninjaHitObjects    = [];
 
         // Initialize weapons: hammer + gun
-        $this->aWeapons = [];
+        $this->weapons = [];
         for ($i = 0; $i < GameConstants::NUM_WEAPONS; $i++) {
-            $this->aWeapons[$i] = ['got' => false, 'ammo' => 0];
+            $this->weapons[$i] = new CharacterWeaponState(got: false, ammo: 0);
         }
-        $this->aWeapons[GameConstants::WEAPON_HAMMER] = ['got' => true, 'ammo' => -1];
-        $this->aWeapons[GameConstants::WEAPON_GUN]    = ['got' => true, 'ammo' => 10];
+        $this->weapons[GameConstants::WEAPON_HAMMER] = new CharacterWeaponState(got: true, ammo: -1);
+        $this->weapons[GameConstants::WEAPON_GUN]    = new CharacterWeaponState(got: true, ammo: 10);
 
         $this->activeWeapon = GameConstants::WEAPON_GUN;
         $this->lastWeapon   = GameConstants::WEAPON_HAMMER;
@@ -86,8 +87,8 @@ trait HasCharacterLifecycle
         $this->ninjaNumObjectsHit = 0;
         $this->ninjaHitObjects = [];
 
-        $this->aWeapons[GameConstants::WEAPON_NINJA]['got']  = true;
-        $this->aWeapons[GameConstants::WEAPON_NINJA]['ammo'] = -1;
+        $this->weapons[GameConstants::WEAPON_NINJA]->got  = true;
+        $this->weapons[GameConstants::WEAPON_NINJA]->ammo = -1;
         if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
             $this->lastWeapon = $this->activeWeapon;
         }

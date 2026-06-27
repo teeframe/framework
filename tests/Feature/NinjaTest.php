@@ -194,7 +194,7 @@ test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
     $character->giveNinja();
 
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_NINJA);
-    expect($character->aWeapons[GameConstants::WEAPON_NINJA]['got'])->toBeTrue();
+    expect($character->weapons[GameConstants::WEAPON_NINJA]->got)->toBeTrue();
 
     $ref = new ReflectionClass($character);
     $handleMethod = $ref->getMethod('handleNinja');
@@ -210,14 +210,14 @@ test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
     }
 
     // Still ninja at tick 750 (750 - 0 = 750, not > 750)
-    expect($character->aWeapons[GameConstants::WEAPON_NINJA]['got'])->toBeTrue();
+    expect($character->weapons[GameConstants::WEAPON_NINJA]->got)->toBeTrue();
 
     // One more tick triggers expiry (751 - 0 = 751 > 750)
     advanceWorldTick($world);
     $handleMethod->invoke($character);
 
     // Ninja should be gone, weapon reverted to lastWeapon
-    expect($character->aWeapons[GameConstants::WEAPON_NINJA]['got'])->toBeFalse();
+    expect($character->weapons[GameConstants::WEAPON_NINJA]->got)->toBeFalse();
     expect($character->activeWeapon)->not()->toBe(GameConstants::WEAPON_NINJA);
 });
 

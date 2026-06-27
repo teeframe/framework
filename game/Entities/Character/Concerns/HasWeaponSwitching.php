@@ -42,7 +42,7 @@ trait HasWeaponSwitching
         if ($next < 128) {
             while ($next > 0) {
                 $wantedWeapon = ($wantedWeapon + 1) % GameConstants::NUM_WEAPONS;
-                if ($this->aWeapons[$wantedWeapon]['got']) {
+                if ($this->weapons[$wantedWeapon]->got) {
                     $next--;
                 }
             }
@@ -51,7 +51,7 @@ trait HasWeaponSwitching
         if ($prev < 128) {
             while ($prev > 0) {
                 $wantedWeapon = ($wantedWeapon - 1) < 0 ? GameConstants::NUM_WEAPONS - 1 : $wantedWeapon - 1;
-                if ($this->aWeapons[$wantedWeapon]['got']) {
+                if ($this->weapons[$wantedWeapon]->got) {
                     $prev--;
                 }
             }
@@ -66,7 +66,7 @@ trait HasWeaponSwitching
         // Queue the switch if valid
         if ($wantedWeapon >= 0 && $wantedWeapon < GameConstants::NUM_WEAPONS
             && $wantedWeapon !== $this->activeWeapon
-            && $this->aWeapons[$wantedWeapon]['got']) {
+            && $this->weapons[$wantedWeapon]->got) {
             $this->queuedWeapon = $wantedWeapon;
         }
 
@@ -76,7 +76,7 @@ trait HasWeaponSwitching
     protected function doWeaponSwitch(): void
     {
         // Can't switch while reloading, no weapon queued, or holding ninja
-        if ($this->reloadTimer !== 0 || $this->queuedWeapon === -1 || $this->aWeapons[GameConstants::WEAPON_NINJA]['got']) {
+        if ($this->reloadTimer !== 0 || $this->queuedWeapon === -1 || $this->weapons[GameConstants::WEAPON_NINJA]->got) {
             return;
         }
 
@@ -106,9 +106,9 @@ trait HasWeaponSwitching
             return false;
         }
 
-        if ($this->aWeapons[$weapon]['ammo'] < 10 || ! $this->aWeapons[$weapon]['got']) {
-            $this->aWeapons[$weapon]['got']  = true;
-            $this->aWeapons[$weapon]['ammo'] = min(10, $ammo);
+        if ($this->weapons[$weapon]->ammo < 10 || ! $this->weapons[$weapon]->got) {
+            $this->weapons[$weapon]->got  = true;
+            $this->weapons[$weapon]->ammo = min(10, $ammo);
             return true;
         }
 
