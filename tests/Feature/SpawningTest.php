@@ -260,6 +260,7 @@ test('world with custom game controller still collects spawn points', function (
     // the custom controller, canSpawn() would return null and the tee would
     // stay dead forever.
     expect($tee->spawning)->toBeFalse();
-    expect($tee->character)->not->toBeNull();
-    expect($tee->character->alive)->toBeTrue();
+    $character = $tee->character;
+    assert($character instanceof \TeeFrame\Game\Entities\Character\AbstractCharacterEntity);
+    expect($character->alive)->toBeTrue();
 });
