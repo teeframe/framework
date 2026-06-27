@@ -154,8 +154,12 @@ trait HasHandshakeHandler
 
     protected function handleClStartInfoChunk(ConnectionSlot $connection, ClStartInfoChunk $chunk): void
     {
+        $world = $connection->world();
+
+        $world->getServer()->setClientName($world, $connection->playerTee(), $chunk->name);
+
         $connection->playerTee()->setInfo(
-            name: $chunk->name,
+            name: $connection->playerTee()->name,
             clan: $chunk->clan,
             country: $chunk->country,
             skinName: $chunk->skinName,

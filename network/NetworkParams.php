@@ -18,6 +18,10 @@ class NetworkParams
     const MINIMUM_TICK     = 0;
     const MAXIMUM_TICK     = 0x6FFFFFFF;
 
+    // Client info limits
+    const MAX_NAME_LENGTH = 16;
+    const MAX_CLAN_LENGTH = 12;
+
     // Ack & Chunk
     const MAXIMUM_ACK_NUMBER        = 1024;
     const MAXIMUM_CHUNKS_PER_PACKET = 255;

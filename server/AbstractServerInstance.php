@@ -4,6 +4,7 @@ namespace TeeFrame\Server;
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
@@ -130,6 +131,52 @@ abstract class AbstractServerInstance
                 // And send chunk instantly, don't wait for the queue
                 $connection->chunks()->send();
 
+                return;
+            }
+        }
+    }
+
+    public function trySetClientName(AbstractWorld $world, AbstractTee $tee, string $name): bool
+    {
+        $trimmed = trim($name);
+
+        if ($trimmed === '') {
+            return false;
+        }
+
+        if ($tee->name !== '' && $tee->name === $trimmed) {
+            return true;
+        }
+
+        foreach ($world->getTees() as $existingTee) {
+            if ($existingTee === $tee) {
+                continue;
+            }
+
+            if ($existingTee->name === $trimmed) {
+                return false;
+            }
+        }
+
+        $tee->name = $trimmed;
+
+        return true;
+    }
+
+    public function setClientName(AbstractWorld $world, AbstractTee $tee, string $name): void
+    {
+        $cleanName = '';
+        for ($i = 0, $len = strlen($name); $i < $len; $i++) {
+            $cleanName .= $name[$i] < ' ' ? ' ' : $name[$i];
+        }
+
+        if ($this->trySetClientName($world, $tee, $cleanName)) {
+            return;
+        }
+
+        for ($i = 1;; $i++) {
+            $nameTry = "({$i}){$cleanName}";
+            if ($this->trySetClientName($world, $tee, $nameTry)) {
                 return;
             }
         }
