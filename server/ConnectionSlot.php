@@ -79,7 +79,7 @@ class ConnectionSlot extends AbstractConnection
     {
         $this->sendControlMessage(NetworkMessages::CONTROL_CLOSE, $reason);
 
-        $this->world()->removeTee($this->playerTee);
+        $this->world()->removeTee($this->playerTee, $reason);
 
         $this->reset();
         $this->state = static::STATE_CLOSED;
@@ -92,7 +92,7 @@ class ConnectionSlot extends AbstractConnection
         if ($message === NetworkMessages::CONTROL_CLOSE) {
             $this->consoleInfo('Closed reason='.$packet->getControlMessageExtra());
 
-            $this->world()->removeTee($this->playerTee);
+            $this->world()->removeTee($this->playerTee, $packet->getControlMessageExtra());
 
             $this->reset();
             $this->state = static::STATE_CLOSED;

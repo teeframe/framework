@@ -196,18 +196,45 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->tees[$index] = $tee;
 
-        // TODO: GameServer()->OnClientEnter(ClientID)
+        if ($tee instanceof PlayerTee) {
+            $tee->spawning = true;
+
+            $chunk = new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: "'{$tee->name}' entered and joined the game",
+            );
+
+            foreach ($this->tees as $existingTee) {
+                $this->server->sendToTee($this, $existingTee->teeIndex, $chunk);
+            }
+        }
     }
 
-    public function removeTee(AbstractTee $tee): void
+    public function removeTee(AbstractTee $tee, ?string $reason = null): void
     {
         foreach ($this->tees as $index => $existingTee) {
             if ($existingTee !== $tee) {
                 continue;
             }
 
-            $this->releasedTeeIndexes[] = $index;
+            if ($existingTee instanceof PlayerTee) {
+                $text = $reason !== null && $reason !== ''
+                    ? "'{$tee->name}' has left the game ({$reason})"
+                    : "'{$tee->name}' has left the game";
 
+                $chunk = new SvChatChunk(
+                    team: 0,
+                    clientId: -1,
+                    text: $text,
+                );
+
+                foreach ($this->tees as $existingTee) {
+                    $this->server->sendToTee($this, $existingTee->teeIndex, $chunk);
+                };
+            }
+
+            $this->releasedTeeIndexes[] = $index;
             unset($this->tees[$index]);
         }
     }

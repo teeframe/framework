@@ -34,7 +34,7 @@ test('SvEmoticonChunk encodes and decodes correctly', function () {
     expect($decoded->emoticon)->toBe(11);
 });
 
-test('sendEmoticon broadcasts to all tees', function () use ($mapPath, $mapExists) {
+test('emoticon broadcast calls sendToTee for each tee', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         return;
     }
@@ -57,7 +57,7 @@ test('sendEmoticon broadcasts to all tees', function () use ($mapPath, $mapExist
     $prop->setAccessible(true);
     $prop->setValue($world, [0 => $tee1, 1 => $tee2]);
 
-    $world->sendEmoticon(0, 7);
+    $world->onMessage($tee1, new ClEmoticonChunk(emoticon: 7));
 
     expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0, 1]);
 });

@@ -116,7 +116,11 @@ abstract class AbstractServerInstance
             }
 
             if ($connection->world() === $world && $connection->playerTee()->teeIndex === $teeIndex) {
+                // Insert chunk
                 $connection->chunks()->add($chunk);
+
+                // And send chunk instantly, don't wait for the queue
+                $connection->chunks()->send();
 
                 return;
             }

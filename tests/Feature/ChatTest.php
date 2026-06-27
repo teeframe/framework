@@ -61,7 +61,7 @@ test('SvChatChunk server message encodes and decodes correctly', function () {
     expect($decoded->text)->toBe('Server message');
 });
 
-test('sendChat calls sendToTee for each tee', function () use ($mapPath, $mapExists) {
+test('chat broadcast calls sendToTee for each tee', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         return;
     }
@@ -84,7 +84,7 @@ test('sendChat calls sendToTee for each tee', function () use ($mapPath, $mapExi
     $prop->setAccessible(true);
     $prop->setValue($world, [0 => $tee1, 1 => $tee2]);
 
-    $world->sendChat($tee1, false, 'hello');
+    $world->onMessage($tee1, new ClSayChunk(team: false, text: 'hello'));
 
     expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0, 1]);
 });
