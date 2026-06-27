@@ -48,8 +48,10 @@ class NetworkMessages
      * Game Messages
      */
     const SV_MOTD = 1;
+
     // const SV_BROADCAST  = 2;
-    const SV_CHAT        = 3;
+    const SV_CHAT = 3;
+
     // const SV_KILLMSG    = 4;
     // const SV_SOUNDGLOBAL= 5;
     const SV_TUNEPARAMS   = 6;
@@ -60,6 +62,7 @@ class NetworkMessages
     const SV_VOTECLEAROPTIONS = 11;
     const CL_SAY              = 17;
     const CL_START_INFO       = 20;
+    const CL_KILL             = 22;
     const CL_EMOTICON         = 23;
 
     /*
@@ -79,13 +82,12 @@ class NetworkMessages
     /*
      * Event Types
      */
-    const NETEVENTTYPE_EXPLOSION = 14;
-    const NETEVENTTYPE_SPAWN     = 15;
-    const NETEVENTTYPE_HAMMERHIT = 16;
-    const NETEVENTTYPE_DEATH     = 17;
-
+    const NETEVENTTYPE_EXPLOSION  = 14;
+    const NETEVENTTYPE_SPAWN      = 15;
+    const NETEVENTTYPE_HAMMERHIT  = 16;
+    const NETEVENTTYPE_DEATH      = 17;
     const NETEVENTTYPE_SOUNDWORLD = 19;
-    const NETEVENTTYPE_DAMAGEIND = 20;
+    const NETEVENTTYPE_DAMAGEIND  = 20;
 
     /*
      * Pickup Types

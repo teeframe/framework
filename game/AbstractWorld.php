@@ -2,25 +2,27 @@
 
 namespace TeeFrame\Game;
 
-use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\PingCommand;
-use TeeFrame\Game\Commands\WhisperCommand;
-use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
-use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
-use TeeFrame\Map\Map;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\World\Vector2;
-use TeeFrame\Game\World\SnapIdPool;
+use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\PingCommand;
+use TeeFrame\Game\Commands\WhisperCommand;
 use TeeFrame\Game\Entities\AbstractEntity;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Game\World\SnapIdPool;
+use TeeFrame\Game\World\Vector2;
+use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
+use TeeFrame\Network\Chunks\Game\ClKillChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjEventSpawnItem;
@@ -104,12 +106,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected function bootVoteController(): void
     {
-        $this->voteController = new VoteController();
+        $this->voteController = new VoteController;
     }
 
     protected function bootTuneController(): void
     {
-        $this->tuneController = new TuneController();
+        $this->tuneController = new TuneController;
     }
 
     public function getCurrentTick(): int
@@ -246,7 +248,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
                 foreach ($this->tees as $existingTee) {
                     $this->server->sendToTee($this, $existingTee->teeIndex, $chunk);
-                };
+                }
             }
 
             $this->releasedTeeIndexes[] = $index;
@@ -260,6 +262,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $this->handleChatMessage($tee, $chunk);
         } elseif ($chunk instanceof ClEmoticonChunk) {
             $this->handleEmoticonMessage($tee, $chunk);
+        } elseif ($chunk instanceof ClKillChunk) {
+            $this->handleKillMessage($tee, $chunk);
         }
     }
 
@@ -330,7 +334,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
      */
     public function doSnap(AbstractTee $requestingTee): array
     {
-        // TODO: DoSnapshot()
+        // TODO: create snapshot for demo recording
 
         $gameControllerSnap = array_map(
             fn (AbstractSnapItem $snap) => $snap->setId(0),
@@ -449,6 +453,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         foreach ($this->commands as $command) {
             if (preg_match($command->getPattern(), $message, $matches)) {
                 $command->execute($this, $tee, $matches);
+
                 return;
             }
         }
@@ -475,6 +480,31 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         foreach ($this->tees as $tee) {
             $this->server->sendToTee($this, $tee->teeIndex, $chunk);
         }
+    }
+
+    protected function handleKillMessage(AbstractTee $tee, ClKillChunk $chunk): void
+    {
+        if (! $tee instanceof PlayerTee) {
+            return;
+        }
+
+        $currentTick = $this->getCurrentTick();
+
+        // Kill cooldown: 3 seconds (CPlayer::m_LastKill + TickSpeed()*3)
+        if ($tee->lastKillTick > 0 && $tee->lastKillTick + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick) {
+            return;
+        }
+
+        $tee->lastKillTick = $currentTick;
+
+        $character = $tee->character;
+        if ($character === null) {
+            return;
+        }
+
+        // Self-kill: pass -1 so die() applies the 3s respawn penalty
+        // (mirrors CCharacter::Die(ClientID, WEAPON_SELF) → 3s respawn)
+        $character->die(-1);
     }
 
     protected function tryRespawnTee(PlayerTee $tee): bool

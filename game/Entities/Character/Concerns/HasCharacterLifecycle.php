@@ -8,18 +8,19 @@ use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\SnapItems\ObjEventDeathItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
 trait HasCharacterLifecycle
 {
     public function spawn(Vector2 $pos, ?AbstractTee $tee = null): void
     {
-        $this->health     = 10;
-        $this->armor      = 0;
-        $this->alive      = true;
-        $this->toDestroy  = false;
-        $this->tee        = $tee;
-        $this->tick       = 0;
+        $this->health    = 10;
+        $this->armor     = 0;
+        $this->alive     = true;
+        $this->toDestroy = false;
+        $this->tee       = $tee;
+        $this->tick      = 0;
 
         if ($tee !== null) {
             $tee->character = $this;
@@ -58,15 +59,23 @@ trait HasCharacterLifecycle
         // Player die sound
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 
+        // Death event (bursting tee death effect)
+        $teeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
+        $this->world->addEvent(new ObjEventDeathItem(
+            x: (int) round($this->position->x),
+            y: (int) round($this->position->y),
+            clientId: $teeIndex,
+        ));
+
         // Notify game controller for scoring
         $this->world->getGameController()->onCharacterDeath($this, $killerTeeIndex);
 
         // Set respawn on the tee
         if ($this->tee instanceof PlayerTee) {
-            $respawnDelay = $killerTeeIndex === -1 ? 150 : 25; // 3s for self-kill, 0.5s normal
+            $respawnDelay           = $killerTeeIndex === -1 ? 150 : 25; // 3s for self-kill, 0.5s normal
             $this->tee->respawnTick = $this->world->getCurrentTick() + $respawnDelay;
-            $this->tee->dieTick = $this->world->getCurrentTick();
-            $this->tee->spawning = true;
+            $this->tee->dieTick     = $this->world->getCurrentTick();
+            $this->tee->spawning    = true;
         }
     }
 
@@ -76,6 +85,7 @@ trait HasCharacterLifecycle
             return false;
         }
         $this->health = min(10, $this->health + $amount);
+
         return true;
     }
 
@@ -85,15 +95,16 @@ trait HasCharacterLifecycle
             return false;
         }
         $this->armor = min(10, $this->armor + $amount);
+
         return true;
     }
 
     public function giveNinja(): void
     {
-        $this->ninjaActivationTick = $this->world->getCurrentTick();
+        $this->ninjaActivationTick  = $this->world->getCurrentTick();
         $this->ninjaCurrentMoveTime = 0;
-        $this->ninjaNumObjectsHit = 0;
-        $this->ninjaHitObjects = [];
+        $this->ninjaNumObjectsHit   = 0;
+        $this->ninjaHitObjects      = [];
 
         $this->weapons[GameConstants::WEAPON_NINJA]->got  = true;
         $this->weapons[GameConstants::WEAPON_NINJA]->ammo = -1;
@@ -143,14 +154,6 @@ trait HasCharacterLifecycle
         if ($this->health <= 0) {
             $killerTeeIndex = $inflictor->tee !== null ? $inflictor->tee->teeIndex : -1;
             $this->die($killerTeeIndex);
-
-            // Add death event
-            $teeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
-            $this->world->addEvent(new \TeeFrame\Network\SnapItems\ObjEventDeathItem(
-                x: (int) round($this->position->x),
-                y: (int) round($this->position->y),
-                clientId: $teeIndex,
-            ));
         }
     }
 

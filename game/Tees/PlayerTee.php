@@ -24,6 +24,9 @@ class PlayerTee extends AbstractTee
     // Spam protection (CPlayer::m_LastChat)
     public int $lastChatTick = 0;
 
+    // Kill cooldown (CPlayer::m_LastKill)
+    public int $lastKillTick = 0;
+
     protected function getSnapScore(): int
     {
         return $this->score;

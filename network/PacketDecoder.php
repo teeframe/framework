@@ -4,6 +4,7 @@ namespace TeeFrame\Network;
 
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
+use TeeFrame\Network\Chunks\Game\ClKillChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
@@ -66,7 +67,7 @@ class PacketDecoder
     }
 
     /**
-     * @param int[] $payload
+     * @param  int[]  $payload
      * @return AbstractChunk[]
      */
     public static function decodeChunksFromPayload(array $payload): array
@@ -135,6 +136,7 @@ class PacketDecoder
             NetworkMessages::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
             NetworkMessages::CL_SAY              => ClSayChunk::class,
             NetworkMessages::CL_START_INFO       => ClStartInfoChunk::class,
+            NetworkMessages::CL_KILL             => ClKillChunk::class,
             NetworkMessages::CL_EMOTICON         => ClEmoticonChunk::class,
             default                              => new UnsupportedChunk($message, $flags, false),
         };
