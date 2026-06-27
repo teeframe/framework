@@ -1,6 +1,7 @@
 <?php
 
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
@@ -258,7 +259,7 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
     $tune = $world->getTuneController();
 
     // Set hook state to flying toward the right
-    $character->hookState = 4; // HOOK_FLYING
+    $character->hookState = GameConstants::HOOK_FLYING;
     $character->hookDir = new Vector2(1, 0);
     $character->hookPos = clone $character->getPosition();
 

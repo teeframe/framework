@@ -4,6 +4,7 @@ namespace TeeFrame\Game\Entities\Character\Concerns;
 
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\EmptyTuneController;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
 
@@ -20,7 +21,7 @@ trait HasCharacterCore
     public Vector2 $hookPos;
     public Vector2 $hookDir;
     public int $hookTick = 0;
-    public int $hookState = 0;
+    public int $hookState = GameConstants::HOOK_IDLE;
     public int $hookedPlayer = -1;
     public int $jumped = 0;
     public int $direction = 0;
@@ -34,7 +35,7 @@ trait HasCharacterCore
         $this->hookPos  = new Vector2(0, 0);
         $this->hookDir  = new Vector2(0, 0);
         $this->hookTick       = 0;
-        $this->hookState      = 0;
+        $this->hookState      = GameConstants::HOOK_IDLE;
         $this->hookedPlayer   = -1;
         $this->jumped         = 0;
         $this->direction      = 0;
@@ -105,7 +106,7 @@ trait HasCharacterCore
 
         // Handle hook
         if ($inputHook) {
-            if ($this->hookState === 0) {
+            if ($this->hookState === GameConstants::HOOK_IDLE) {
                 $dirX = (float) $inputTargetX;
                 $dirY = (float) $inputTargetY;
                 $len = sqrt($dirX * $dirX + $dirY * $dirY);
@@ -114,7 +115,7 @@ trait HasCharacterCore
                     $dirX /= $len;
                     $dirY /= $len;
 
-                    $this->hookState = 4;
+                    $this->hookState = GameConstants::HOOK_FLYING;
                     $this->hookDir = new Vector2($dirX, $dirY);
                     $this->hookPos = new Vector2(
                         $this->position->x + $dirX * $physSize * 1.5,
@@ -127,7 +128,7 @@ trait HasCharacterCore
             }
         } else {
             $this->hookedPlayer = -1;
-            $this->hookState = 0;
+            $this->hookState = GameConstants::HOOK_IDLE;
             $this->hookPos = $this->position;
         }
 
@@ -221,23 +222,23 @@ trait HasCharacterCore
      */
     protected function tickHookStateMachine(Collision $collision, EmptyTuneController $tune, array $otherCharacters): void
     {
-        if ($this->hookState === 0) {
+        if ($this->hookState === GameConstants::HOOK_IDLE) {
             $this->hookedPlayer = -1;
-            $this->hookState = 0;
+            $this->hookState = GameConstants::HOOK_IDLE;
             $this->hookPos = $this->position;
-        } elseif ($this->hookState >= 1 && $this->hookState < 3) {
+        } elseif ($this->hookState >= GameConstants::HOOK_RETRACT_START && $this->hookState < GameConstants::HOOK_RETRACT_END) {
             $this->hookState++;
-        } elseif ($this->hookState === 3) {
-            $this->hookState = -1;
+        } elseif ($this->hookState === GameConstants::HOOK_RETRACT_END) {
+            $this->hookState = GameConstants::HOOK_RETRACTED;
             $this->triggeredEvents |= 0x40;
-        } elseif ($this->hookState === 4) {
+        } elseif ($this->hookState === GameConstants::HOOK_FLYING) {
             $newHookPos = new Vector2(
                 $this->hookPos->x + $this->hookDir->x * ($tune->hookFireSpeed / 100.0),
                 $this->hookPos->y + $this->hookDir->y * ($tune->hookFireSpeed / 100.0),
             );
 
             if ($this->position->distance($newHookPos) > ($tune->hookLength / 100.0)) {
-                $this->hookState = 1;
+                $this->hookState = GameConstants::HOOK_RETRACT_START;
                 $diff = $newHookPos->diff($this->position);
                 $normalized = $diff->normalize();
                 $newHookPos = new Vector2(
@@ -273,27 +274,27 @@ trait HasCharacterCore
                         if ($lineDist < $closestDist) {
                             $closestDist = $lineDist;
                             $this->triggeredEvents |= 0x08; // COREEVENT_HOOK_ATTACH_PLAYER
-                            $this->hookState = 5; // HOOK_GRABBED
+                            $this->hookState = GameConstants::HOOK_GRABBED;
                             $this->hookedPlayer = $teeIdx;
                         }
                     }
                 }
             }
 
-            if ($this->hookState === 4) {
+            if ($this->hookState === GameConstants::HOOK_FLYING) {
                 if ($goingToHitGround) {
                     $this->triggeredEvents |= 0x10;
-                    $this->hookState = 5;
+                    $this->hookState = GameConstants::HOOK_GRABBED;
                 } elseif ($goingToRetract) {
                     $this->triggeredEvents |= 0x20;
-                    $this->hookState = 1;
+                    $this->hookState = GameConstants::HOOK_RETRACT_START;
                 }
             }
 
             $this->hookPos = $newHookPos;
         }
 
-        if ($this->hookState === 5) {
+        if ($this->hookState === GameConstants::HOOK_GRABBED) {
             // Follow hooked player's position
             if ($this->hookedPlayer >= 0) {
                 if (isset($otherCharacters[$this->hookedPlayer])) {
@@ -301,7 +302,7 @@ trait HasCharacterCore
                 } else {
                     // Hooked player left — release hook
                     $this->hookedPlayer = -1;
-                    $this->hookState = -1;
+                    $this->hookState = GameConstants::HOOK_RETRACTED;
                     $this->hookPos = $this->position;
                 }
             }
@@ -331,7 +332,7 @@ trait HasCharacterCore
             $this->hookTick++;
             if ($this->hookedPlayer >= 0 && $this->hookTick > 50 + 10) {
                 $this->hookedPlayer = -1;
-                $this->hookState = -1;
+                $this->hookState = GameConstants::HOOK_RETRACTED;
                 $this->hookPos = $this->position;
             }
         }

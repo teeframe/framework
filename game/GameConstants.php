@@ -13,6 +13,14 @@ class GameConstants
     public const WEAPON_NINJA   = 5;
     public const NUM_WEAPONS    = 6;
 
+    // Hook state constants (Teeworlds 0.6)
+    public const HOOK_RETRACTED   = -1;
+    public const HOOK_IDLE        = 0;
+    public const HOOK_RETRACT_START = 1;
+    public const HOOK_RETRACT_END  = 3;
+    public const HOOK_FLYING      = 4;
+    public const HOOK_GRABBED     = 5;
+
     // Sound constants (Teeworlds 0.6)
     public const SOUND_GUN_FIRE = 0;
     public const SOUND_SHOTGUN_FIRE = 1;
