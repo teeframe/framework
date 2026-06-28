@@ -338,10 +338,38 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
     }
 
+    public function tickPaused(): void
+    {
+        parent::tickPaused();
+
+        ++$this->damageTakenTick;
+
+        if ($this->ammoRegenStart > -1) {
+            ++$this->ammoRegenStart;
+        }
+    }
+
     public function takeDamage(Vector2 $force, int $damage, AbstractCharacterEntity $inflictor): void
     {
+        // Apply knockback first (mirrors CCharacter::TakeDamage: m_Core.m_Vel += Force)
+        $this->vel->x += $force->x;
+        $this->vel->y += $force->y;
+
+        // Friendly fire check (gamecontroller.cpp L698): in teamplay, same-team
+        // hits deal no damage. Self-damage is allowed (handled below).
+        $victimTeeIndex = $this->tee !== null ? $this->tee->teeIndex : -1;
+        $killerTeeIndex = $inflictor->tee !== null ? $inflictor->tee->teeIndex : -1;
+        if ($this->world->getGameController()->isFriendlyFire($victimTeeIndex, $killerTeeIndex)) {
+            return;
+        }
+
+        // Self-damage is halved (mirrors CCharacter::TakeDamage: Dmg = max(1, Dmg/2))
+        if ($victimTeeIndex === $killerTeeIndex && $damage > 0) {
+            $damage = max(1, (int) ($damage / 2));
+        }
+
         if (! $this->alive || $damage <= 0) {
-            parent::takeDamage($force, $damage, $inflictor);
+            parent::takeDamage(new Vector2(0, 0), $damage, $inflictor);
 
             return;
         }
@@ -363,7 +391,15 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->damageTakenTick = $currentTick;
 
-        parent::takeDamage($force, $damage, $inflictor);
+        // Knockback already applied above; pass zero force to the parent.
+        parent::takeDamage(new Vector2(0, 0), $damage, $inflictor);
+
+        // Hit sound: sent only to the attacker (mirrors CCharacter::TakeDamage
+        // ctf.cpp L746-756: CreateSound(attacker->m_ViewPos, SOUND_HIT, Mask)).
+        // Self-damage and world damage don't emit the hit sound.
+        if ($killerTeeIndex >= 0 && $killerTeeIndex !== $victimTeeIndex) {
+            $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $killerTeeIndex);
+        }
     }
 
     protected function createDamageInd(float $angleMod, int $amount): void

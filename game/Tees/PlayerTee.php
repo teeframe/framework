@@ -11,6 +11,15 @@ class PlayerTee extends AbstractTee
 {
     public int $score = 0;
 
+    // Tick when the current score run started
+    public int $scoreStartTick = 0;
+
+    // Set when auto-balanced to a new team
+    public bool $forceBalanced = false;
+
+    // Last tick with meaningful input activity
+    public int $lastActionTick = 0;
+
     public bool $spawning = false;
 
     public int $respawnTick = 0;
@@ -75,6 +84,7 @@ class PlayerTee extends AbstractTee
         if ($world !== null) {
             // we got to wait 0.5 secs before respawning
             $this->respawnTick = $world->getCurrentTick() + (int) (NetworkParams::TICKS_PER_SECOND / 2);
+            $this->lastActionTick = $world->getCurrentTick();
 
             // Broadcast "'<name>' joined the <team>" (mirrors CPlayer::SetTeam)
             $teamName = $world->getGameController()->getTeamName($team);
@@ -87,6 +97,9 @@ class PlayerTee extends AbstractTee
             foreach ($world->getTees() as $tee) {
                 $world->getServer()->sendToTee($world, $tee->teeIndex, $chat);
             }
+
+            // Re-check team balance after a team change (IGameController::CheckTeamBalance)
+            $world->getGameController()->checkTeamBalance();
         }
     }
 }

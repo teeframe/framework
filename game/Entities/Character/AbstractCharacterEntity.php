@@ -208,6 +208,15 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         }
     }
 
+    public function tickPaused(): void
+    {
+        ++$this->attackTick;
+        ++$this->ninjaActivationTick;
+        if ($this->lastActionTick !== 0) {
+            ++$this->lastActionTick;
+        }
+    }
+
     public function doSnap(AbstractTee $requestingTee): array
     {
         if (! $this->alive) {

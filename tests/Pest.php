@@ -47,7 +47,6 @@ use TeeFrame\Map\Map;
  */
 class TestGameController extends AbstractGameController
 {
-    public function doTick(): void {}
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
     {
         return 0;
@@ -63,6 +62,9 @@ $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerIn
 
     /** @var array<int, \TeeFrame\Network\Chunks\AbstractChunk> */
     public array $sentChunks = [];
+
+    /** @var array<int, array{teeIndex: int, chunk: \TeeFrame\Network\Chunks\AbstractChunk}> */
+    public array $sentPairs = [];
 
     /** @var array<int, string> kicked teeIndex => reason */
     public array $kickedTees = [];
@@ -83,6 +85,7 @@ $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerIn
     {
         $this->sentTeeIndexes[] = $teeIndex;
         $this->sentChunks[]      = $chunk;
+        $this->sentPairs[]       = ['teeIndex' => $teeIndex, 'chunk' => $chunk];
     }
 
     public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
@@ -94,6 +97,7 @@ $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerIn
     {
         $this->sentTeeIndexes = [];
         $this->sentChunks     = [];
+        $this->sentPairs     = [];
         $this->kickedTees     = [];
     }
 };
@@ -101,6 +105,24 @@ $GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerIn
 function resetMockServer(): void
 {
     $GLOBALS['mockGameServer']->resetSentTees();
+}
+
+/**
+ * Find all SvSoundGlobal chunks sent to a specific tee index.
+ * @return int[] list of sound IDs
+ */
+function soundsSentToTee(int $teeIndex): array
+{
+    $sounds = [];
+    foreach ($GLOBALS['mockGameServer']->sentPairs as $pair) {
+        if ($pair['teeIndex'] !== $teeIndex) {
+            continue;
+        }
+        if ($pair['chunk'] instanceof \TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk) {
+            $sounds[] = $pair['chunk']->soundId;
+        }
+    }
+    return $sounds;
 }
 
 function createWorld(Map $map): AbstractWorld

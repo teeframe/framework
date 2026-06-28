@@ -43,6 +43,22 @@ class PickupEntity extends AbstractEntity
         return self::PICKUP_PHYS_SIZE;
     }
 
+    public function reset(): void
+    {
+        if ($this->spawnDelay > 0) {
+            $this->spawnTick = $this->world->getCurrentTick() + $this->spawnDelay;
+        } else {
+            $this->spawnTick = -1;
+        }
+    }
+
+    public function tickPaused(): void
+    {
+        if ($this->spawnTick !== -1) {
+            ++$this->spawnTick;
+        }
+    }
+
     public function doTick(): void
     {
         $currentTick = $this->world->getCurrentTick();

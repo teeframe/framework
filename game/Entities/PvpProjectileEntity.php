@@ -9,10 +9,6 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
-/**
- * PvP projectile — contains the collision-based physics.
- * Used by PvP game modes (DM, TDM, CTF).
- */
 class PvpProjectileEntity extends AbstractProjectileEntity
 {
     public function __construct(

@@ -53,7 +53,7 @@ class NetworkMessages
     const SV_CHAT = 3;
 
     const SV_KILLMSG    = 4;
-    // const SV_SOUNDGLOBAL= 5;
+    const SV_SOUNDGLOBAL = 5;
     const SV_TUNEPARAMS   = 6;
     const SV_READYTOENTER = 8;
 

@@ -44,6 +44,11 @@ class GameConstants
     public const GAMEFLAG_TEAMS  = 1 << 0;
     public const GAMEFLAG_FLAGS  = 1 << 1;
 
+    // Flag carrier states reported in ObjGameData (Teeworlds 0.6)
+    public const FLAG_MISSING = -3; // flag entity does not exist
+    public const FLAG_ATSTAND = -2; // flag is at its stand
+    public const FLAG_TAKEN  = -1; // flag is dropped on the ground
+
     // Game state flags (Teeworlds 0.6)
     public const GAMESTATEFLAG_GAMEOVER     = 1 << 0;
     public const GAMESTATEFLAG_SUDDENDEATH  = 1 << 1;
@@ -91,5 +96,13 @@ class GameConstants
     public const SOUND_WEAPON_SPAWN = 29;
     public const SOUND_WEAPON_NOAMMO = 30;
     public const SOUND_HIT = 31;
-
+    public const SOUND_CHAT_SERVER = 32;
+    public const SOUND_CHAT_CLIENT = 33;
+    public const SOUND_CHAT_HIGHLIGHT = 34;
+    public const SOUND_CTF_DROP = 35;
+    public const SOUND_CTF_RETURN = 36;
+    public const SOUND_CTF_GRAB_PL = 37;
+    public const SOUND_CTF_GRAB_EN = 38;
+    public const SOUND_CTF_CAPTURE = 39;
+    public const SOUND_MENU = 40;
 }

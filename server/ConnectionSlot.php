@@ -139,6 +139,15 @@ class ConnectionSlot extends AbstractConnection
                     nextWeapon: $chunk->inputNextWeapon,
                     prevWeapon: $chunk->inputPrevWeapon,
                 );
+
+                // Track activity for the inactive-kick check (CPlayer::OnDirectInput)
+                if ($chunk->inputDirection !== 0
+                    || $chunk->inputJump
+                    || ($chunk->inputFire & 1)
+                    || $chunk->inputHook
+                ) {
+                    $this->playerTee()->lastActionTick = $this->world()->getCurrentTick();
+                }
             }
 
             // NOTE: NETMSG_PING chunk is only sent manually by the client

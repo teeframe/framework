@@ -8,9 +8,6 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\SnapItems\ObjLaserItem;
 
-/**
- * PvP laser — contains bouncing and character-hit logic.
- */
 class PvpLaserEntity extends AbstractLaserEntity
 {
     protected int $bounces = 0;
@@ -49,6 +46,11 @@ class PvpLaserEntity extends AbstractLaserEntity
         if ($currentTick > $this->evalTick + (int) round(50 * $this->bounceDelay / 1000)) {
             $this->doBounce();
         }
+    }
+
+    public function tickPaused(): void
+    {
+        ++$this->evalTick;
     }
 
     protected function doBounce(): void

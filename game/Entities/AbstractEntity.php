@@ -34,6 +34,11 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
 
     abstract public function doTick(): void;
 
+    public function tickPaused(): void
+    {
+        // no-op by default
+    }
+
     public function isToDestroy(): bool
     {
         return $this->toDestroy;
