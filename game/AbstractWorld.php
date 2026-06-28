@@ -244,30 +244,28 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function removeTee(AbstractTee $tee, ?string $reason = null): void
     {
-        foreach ($this->tees as $index => $existingTee) {
-            if ($existingTee !== $tee) {
-                continue;
-            }
-
-            if ($existingTee instanceof PlayerTee) {
-                $text = $reason !== null && $reason !== ''
-                    ? "'{$tee->name}' has left the game ({$reason})"
-                    : "'{$tee->name}' has left the game";
-
-                $chunk = new SvChatChunk(
-                    team: 0,
-                    clientId: -1,
-                    text: $text,
-                );
-
-                foreach ($this->tees as $existingTee) {
-                    $this->server->sendToTee($this, $existingTee->teeIndex, $chunk);
-                }
-            }
-
-            $this->releasedTeeIndexes[] = $index;
-            unset($this->tees[$index]);
+        if ($tee->character !== null && $tee->character->alive) {
+            $tee->character->die();
         }
+
+        if ($tee instanceof PlayerTee) {
+            $text = $reason !== null && $reason !== ''
+                ? "'{$tee->name}' has left the game ({$reason})"
+                : "'{$tee->name}' has left the game";
+
+            $chunk = new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: $text,
+            );
+
+            foreach ($this->tees as $tee) {
+                $this->server->sendToTee($this, $tee->teeIndex, $chunk);
+            }
+        }
+
+        $this->releasedTeeIndexes[] = $tee->teeIndex;
+        unset($this->tees[$tee->teeIndex]);
     }
 
     public function onMessage(AbstractTee $tee, AbstractChunk $chunk): void
