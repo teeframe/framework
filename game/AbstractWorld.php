@@ -16,6 +16,7 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\Vote\VoteController;
 use TeeFrame\Game\World\SnapIdPool;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Game\World\TuneController;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;

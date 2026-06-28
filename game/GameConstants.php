@@ -40,6 +40,15 @@ class GameConstants
     public const HOOK_FLYING        = 4;
     public const HOOK_GRABBED       = 5;
 
+    // Game flags (Teeworlds 0.6)
+    public const GAMEFLAG_TEAMS  = 1 << 0;
+    public const GAMEFLAG_FLAGS  = 1 << 1;
+
+    // Game state flags (Teeworlds 0.6)
+    public const GAMESTATEFLAG_GAMEOVER     = 1 << 0;
+    public const GAMESTATEFLAG_SUDDENDEATH  = 1 << 1;
+    public const GAMESTATEFLAG_PAUSED       = 1 << 2;
+
     // Core event bit flags (Teeworlds 0.6)
     public const COREEVENT_GROUND_JUMP        = 0x01;
     public const COREEVENT_AIR_JUMP           = 0x02;

@@ -1,6 +1,6 @@
 <?php
 
-namespace TeeFrame\Game;
+namespace TeeFrame\Game\World;
 
 use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
 

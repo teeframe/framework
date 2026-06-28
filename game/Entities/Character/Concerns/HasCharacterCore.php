@@ -3,7 +3,7 @@
 namespace TeeFrame\Game\Entities\Character\Concerns;
 
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
-use TeeFrame\Game\TuneController;
+use TeeFrame\Game\World\TuneController;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
