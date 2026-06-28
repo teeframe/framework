@@ -134,11 +134,45 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
     {
-        if (! $this->isCaptureTheFlag) {
-            return 0;
+        $hadFlag = $this->dropFlagsOnDeath($victim, $killerTeeIndex); // If not capture the flag, it will return 0
+
+        if ($killerTeeIndex < 0) {
+            return $hadFlag;
         }
 
-        return $this->dropFlagsOnDeath($victim, $killerTeeIndex);
+        // Find the killer's tee
+        $killerTee = null;
+        $world = $this->getWorld();
+        if ($world !== null) {
+            foreach ($world->getTees() as $tee) {
+                if ($tee->teeIndex === $killerTeeIndex) {
+                    $killerTee = $tee;
+                    break;
+                }
+            }
+        }
+
+        if ($killerTee === null) {
+            return $hadFlag;
+        }
+
+        $victimTee = $victim->tee;
+
+        // Suicide check
+        if ($killerTeeIndex === ($victimTee !== null ? $victimTee->teeIndex : -1)) {
+            if ($killerTee instanceof PlayerTee) {
+                $killerTee->score--;
+            }
+
+            return $hadFlag;
+        }
+
+        // Normal kill
+        if ($killerTee instanceof PlayerTee) {
+            $killerTee->score++;
+        }
+
+        return $hadFlag;
     }
 
     public function doWincheck(): void
