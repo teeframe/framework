@@ -20,18 +20,8 @@ $mapExists = file_exists($mapPath);
 
 function createVoteWorld(Map $map, TickHandler $tickHandler): AbstractWorld
 {
-    return new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    return new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void
         {
             // Only run the vote tick, not the full world tick

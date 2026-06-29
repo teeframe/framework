@@ -10,7 +10,6 @@ use TeeFrame\Game\Commands\PingCommand;
 use TeeFrame\Game\Commands\WhisperCommand;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
-use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\FlagEntity;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -102,6 +101,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     abstract protected function bootGameController(): void;
 
     abstract public function getMotd(AbstractTee $requestingTee): string;
+
+    abstract protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity;
 
     protected function bootCommands(): void
     {
@@ -771,7 +772,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $tee->spawning = false;
 
-        $character = new PvpCharacterEntity($this, clone $spawnPos);
+        $character = $this->getNewCharacterEntity(clone $spawnPos);
         $character->spawn($spawnPos, $tee);
         $this->addEntity($character);
 

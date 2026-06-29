@@ -13,18 +13,8 @@ $mapExists = file_exists($mapPath);
 
 function createNinjaWorld(Map $map): AbstractWorld
 {
-    return new class('test', new TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    return new class(new TickHandler, $map) extends TestWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 }

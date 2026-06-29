@@ -278,18 +278,8 @@ test('projectile snap uses start position not current position', function () use
 
 function createTestWorld(Map $map): AbstractWorld
 {
-    return new class('test', new TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    return new class(new TickHandler, $map) extends TestWorld
     {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 }
@@ -458,18 +448,8 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 
@@ -549,18 +529,8 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 
@@ -631,18 +601,8 @@ test('projectile does not collide with owner character', function () use ($mapPa
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 
@@ -700,18 +660,8 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 
@@ -774,18 +724,8 @@ test('damage indicators group when damage taken in quick succession', function (
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 
@@ -845,18 +785,8 @@ test('killing blow still emits damage indicators', function () use ($mapPath, $m
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(0);
 
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 

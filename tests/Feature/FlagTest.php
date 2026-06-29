@@ -42,23 +42,7 @@ function makeCtfGameController(TickHandler $tickHandler, array $opts = []): Abst
 
 function createCtfWorld(Map $map, TickHandler $tickHandler, AbstractGameController $controller): AbstractWorld
 {
-    return new class($tickHandler, $map, $controller) extends AbstractWorld {
-        public function __construct(TickHandler $tickHandler, Map $map, AbstractGameController $controller)
-        {
-            $this->gameController = $controller;
-            parent::__construct('test', $tickHandler, $map, $GLOBALS['mockGameServer']);
-        }
-
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            // Controller already set in __construct
-        }
-    };
+    return new TestWorldWithController($tickHandler, $map, $controller);
 }
 
 function setCtfTick(TickHandler $tickHandler, int $tick): void

@@ -70,17 +70,7 @@ test('removeTee broadcasts leave message with reason', function () use ($mapPath
         }
     };
 
-    $world = new class('test', new TickHandler, $map, $server) extends \TeeFrame\Game\AbstractWorld {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-
+    $world = new class(new TickHandler, $map, $server) extends TestWorld {
         public function doTick(): void {}
     };
 
@@ -138,17 +128,7 @@ test('removeTee leave message without reason has plain format', function () use 
         }
     };
 
-    $world = new class('test', new TickHandler, $map, $server) extends \TeeFrame\Game\AbstractWorld {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-
+    $world = new class(new TickHandler, $map, $server) extends TestWorld {
         public function doTick(): void {}
     };
 

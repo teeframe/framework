@@ -35,27 +35,8 @@ function createCharacterWithWorld(PlayerTee $tee): AbstractCharacterEntity
     $collision = $map->getCollision();
 
     // Create a minimal mock world
-    $world = new class('test', new \TeeFrame\Core\TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class(new \TeeFrame\Core\TickHandler, $map) extends TestWorld
     {
-        public function __construct(
-            string $identifier,
-            \TeeFrame\Core\TickHandler $tickHandler,
-            Map $map,
-            \TeeFrame\Server\AbstractServerInstance $server,
-        ) {
-            parent::__construct($identifier, $tickHandler, $map, $server);
-        }
-
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 

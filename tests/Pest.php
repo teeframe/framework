@@ -39,8 +39,12 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\PlayerInput;
+use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
+use TeeFrame\Server\AbstractServerInstance;
 
 /**
  * Concrete game controller for tests — no scoring, no win check.
@@ -50,6 +54,66 @@ class TestGameController extends AbstractGameController
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
     {
         return 0;
+    }
+}
+
+/**
+ * Shared test world: uses TestGameController, empty motd, ticks normally.
+ */
+class TestWorld extends AbstractWorld
+{
+    public function __construct(
+        TickHandler $tickHandler,
+        Map $map,
+        ?AbstractServerInstance $server = null,
+    ) {
+        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer']);
+    }
+
+    public function getMotd(AbstractTee $requestingTee): string
+    {
+        return '';
+    }
+
+    protected function bootGameController(): void
+    {
+        $this->gameController = new TestGameController($this->tickHandler);
+    }
+
+    protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity
+    {
+        return new PvpCharacterEntity($this, $position);
+    }
+}
+
+/**
+ * Test world with a custom game controller injected via constructor.
+ */
+class TestWorldWithController extends AbstractWorld
+{
+    public function __construct(
+        TickHandler $tickHandler,
+        Map $map,
+        AbstractGameController $controller,
+        ?AbstractServerInstance $server = null,
+    ) {
+        $this->gameController = $controller;
+        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer']);
+    }
+
+    public function getMotd(AbstractTee $requestingTee): string
+    {
+        return '';
+    }
+
+    protected function bootGameController(): void
+    {
+        // Controller already set in __construct
+    }
+
+    protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity
+    {
+        return new PvpCharacterEntity($this, $position);
     }
 }
 
@@ -127,18 +191,8 @@ function soundsSentToTee(int $teeIndex): array
 
 function createWorld(Map $map): AbstractWorld
 {
-    return new class('test', new TickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    return new class(new TickHandler, $map) extends TestWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 }

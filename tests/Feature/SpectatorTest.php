@@ -17,18 +17,8 @@ $mapExists = file_exists($mapPath);
 
 function createSpectatorWorld(Map $map, TickHandler $tickHandler): AbstractWorld
 {
-    return new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    return new class($tickHandler, $map) extends TestWorld
     {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-
         public function doTick(): void {}
     };
 }
@@ -329,18 +319,7 @@ test('spectator view position follows spectated player', function () use ($mapPa
 
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
-    {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-    };
+    $world = new class($tickHandler, $map) extends TestWorld {};
 
     $player = new PlayerTee;
     $player->name = 'Player';
@@ -377,18 +356,7 @@ test('spectator in free view does not follow any player', function () use ($mapP
 
     $map = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
-    {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-    };
+    $world = new class($tickHandler, $map) extends TestWorld {};
 
     $player = new PlayerTee;
     $player->name = 'Player';

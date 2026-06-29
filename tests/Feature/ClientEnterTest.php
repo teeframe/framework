@@ -119,17 +119,7 @@ test('addTee enter message contains tee name', function () use ($mapPath, $mapEx
     };
 
     // Build a world wired to the custom server
-    $world = new class('test', new TickHandler, $map, $customServer) extends \TeeFrame\Game\AbstractWorld {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-
+    $world = new class(new TickHandler, $map, $customServer) extends TestWorld {
         public function doTick(): void {}
     };
 

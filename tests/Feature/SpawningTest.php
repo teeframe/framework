@@ -17,18 +17,7 @@ $mapExists = file_exists($mapPath);
  */
 function createTickingWorld(Map $map, TickHandler $tickHandler): AbstractWorld
 {
-    return new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
-    {
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new \TestGameController($this->tickHandler);
-        }
-    };
+    return new TestWorld($tickHandler, $map);
 }
 
 function setTick(TickHandler $tickHandler, int $tick): void
@@ -235,14 +224,9 @@ test('world with custom game controller still collects spawn points', function (
     // A world that overrides bootGameController() to install a custom controller,
     // exactly like the skeleton's Dm1World does. collectSpawnPoints() must still
     // run against the installed controller.
-    $world = new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
+    $world = new class($tickHandler, $map) extends TestWorld
     {
         public \TeeFrame\Game\AbstractGameController $customController;
-
-        public function getMotd(\TeeFrame\Game\Tees\AbstractTee $requestingTee): string
-        {
-            return '';
-        }
 
         protected function bootGameController(): void
         {

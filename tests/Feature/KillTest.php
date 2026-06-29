@@ -17,18 +17,7 @@ $mapExists = file_exists($mapPath);
 
 function createTickingWorldForKill(Map $map, TickHandler $tickHandler): AbstractWorld
 {
-    return new class('test', $tickHandler, $map, $GLOBALS['mockGameServer']) extends AbstractWorld
-    {
-        public function getMotd(AbstractTee $requestingTee): string
-        {
-            return '';
-        }
-
-        protected function bootGameController(): void
-        {
-            $this->gameController = new TestGameController($this->tickHandler);
-        }
-    };
+    return new TestWorld($tickHandler, $map);
 }
 
 function setTickForKill(TickHandler $tickHandler, int $tick): void
