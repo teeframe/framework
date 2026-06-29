@@ -6,9 +6,8 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
-use TeeFrame\Map\MapLayers\GameLayer;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('character spawns and survives physics ticks at spawn position', function () use ($mapPath, $mapExists) {
@@ -16,7 +15,7 @@ test('character spawns and survives physics ticks at spawn position', function (
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -37,7 +36,7 @@ test('character spawns and survives physics ticks at spawn position', function (
 
     $tee = new PlayerTee;
 
-    $world = createWorld($map);
+    $world     = createWorld($map);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
@@ -57,7 +56,7 @@ test('character with walk input survives physics ticks', function () use ($mapPa
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -78,7 +77,7 @@ test('character with walk input survives physics ticks', function () use ($mapPa
 
     $tee = new PlayerTee;
 
-    $world = createWorld($map);
+    $world     = createWorld($map);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
@@ -99,7 +98,7 @@ test('character with hook input survives physics ticks', function () use ($mapPa
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -119,7 +118,7 @@ test('character with hook input survives physics ticks', function () use ($mapPa
 
     $tee = new PlayerTee;
 
-    $world = createWorld($map);
+    $world     = createWorld($map);
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
 
@@ -139,7 +138,7 @@ test('character with firing input survives physics ticks', function () use ($map
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -159,7 +158,7 @@ test('character with firing input survives physics ticks', function () use ($map
 
     $tee = new PlayerTee;
 
-    $world = createWorld($map);
+    $world     = createWorld($map);
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
 
@@ -179,7 +178,7 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -199,7 +198,7 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
 
     $tee = new PlayerTee;
 
-    $world = createWorld($map);
+    $world     = createWorld($map);
     $character = new PvpCharacterEntity($world, $spawnPos);
     $character->spawn($spawnPos, $tee);
 
@@ -233,7 +232,7 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -251,8 +250,8 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
-    $tee = new PlayerTee;
-    $world = createWorld($map);
+    $tee       = new PlayerTee;
+    $world     = createWorld($map);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
 
@@ -260,8 +259,8 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
 
     // Set hook state to flying toward the right
     $character->hookState = GameConstants::HOOK_FLYING;
-    $character->hookDir = new Vector2(1, 0);
-    $character->hookPos = clone $character->getPosition();
+    $character->hookDir   = new Vector2(1, 0);
+    $character->hookPos   = clone $character->getPosition();
 
     // Compute full extension point (where hook would go without collision)
     $fullExtension = new Vector2(
@@ -278,9 +277,8 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
     }
 
     // Run the hook state machine
-    $ref = new ReflectionClass(PvpCharacterEntity::class);
+    $ref    = new ReflectionClass(PvpCharacterEntity::class);
     $method = $ref->getMethod('tickHookStateMachine');
-    $method->setAccessible(true);
     $method->invoke($character, $collision, $tune, []);
 
     // hookPos must be at the collision point, not past it (at the full extension)
@@ -293,7 +291,7 @@ test('players push each other apart when overlapping', function () use ($mapPath
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -315,13 +313,13 @@ test('players push each other apart when overlapping', function () use ($mapPath
     $world = createWorld($map);
 
     // Player 1 at spawn
-    $tee1 = new PlayerTee;
+    $tee1  = new PlayerTee;
     $char1 = new PvpCharacterEntity($world, clone $spawnPos);
     $char1->spawn(clone $spawnPos, $tee1);
     $world->addEntity($char1);
 
     // Player 2 at same position (overlapping)
-    $tee2 = new PlayerTee;
+    $tee2  = new PlayerTee;
     $char2 = new PvpCharacterEntity($world, clone $spawnPos);
     $char2->spawn(clone $spawnPos, $tee2);
     $world->addEntity($char2);

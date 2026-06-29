@@ -1,15 +1,17 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
-use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\NetworkMessages;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 /**
@@ -22,9 +24,8 @@ function createTickingWorld(Map $map, TickHandler $tickHandler): AbstractWorld
 
 function setTick(TickHandler $tickHandler, int $tick): void
 {
-    $ref = new ReflectionClass($tickHandler);
+    $ref  = new ReflectionClass($tickHandler);
     $prop = $ref->getProperty('currentTick');
-    $prop->setAccessible(true);
     $prop->setValue($tickHandler, $tick);
 }
 
@@ -35,11 +36,11 @@ test('tee respawns after respawnTick elapses via doTick', function () use ($mapP
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createTickingWorld($map, $tickHandler);
+    $world       = createTickingWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Respawner';
     $world->addTee($tee);
 
@@ -59,8 +60,8 @@ test('tee respawns after respawnTick elapses via doTick', function () use ($mapP
     // (0,0) (the character hasn't ticked yet to update it), so move it close
     // enough for the event-snap distance filter to include the spawn event.
     $tee->viewPosition = $character->getPosition();
-    $events = $world->doSnap($tee);
-    $spawnEvents = array_filter(
+    $events            = $world->doSnap($tee);
+    $spawnEvents       = array_filter(
         $events,
         fn ($s) => $s->getItemId() === NetworkMessages::NETEVENTTYPE_SPAWN,
     );
@@ -74,11 +75,11 @@ test('dead tee respawns after respawnTick elapses', function () use ($mapPath, $
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createTickingWorld($map, $tickHandler);
+    $world       = createTickingWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'AutoRespawner';
     $world->addTee($tee);
 
@@ -117,11 +118,11 @@ test('dead tee respawns on fire press after respawnTick', function () use ($mapP
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createTickingWorld($map, $tickHandler);
+    $world       = createTickingWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'FireRespawner';
     $world->addTee($tee);
 
@@ -138,7 +139,7 @@ test('dead tee respawns on fire press after respawnTick', function () use ($mapP
     // but fire-to-respawn should set spawning=true. The actual respawn still
     // waits for respawnTick (CPlayer::Tick checks m_RespawnTick <= Tick).
     setTick($tickHandler, 101);
-    $tee->inputs[101] = new \TeeFrame\Game\PlayerInput(
+    $tee->inputs[101] = new PlayerInput(
         direction: 0, targetX: 0, targetY: -1, jump: false,
         fire: 1, hook: false, playerFlags: 0,
         wantedWeapon: 0, nextWeapon: 0, prevWeapon: 0,
@@ -164,11 +165,11 @@ test('dead tee auto-respawns at respawnTick without fire press', function () use
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createTickingWorld($map, $tickHandler);
+    $world       = createTickingWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'IdleRespawner';
     $world->addTee($tee);
 
@@ -195,11 +196,11 @@ test('tryRespawnTee clears spawning flag on success', function () use ($mapPath,
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createTickingWorld($map, $tickHandler);
+    $world       = createTickingWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'ClearFlag';
     $world->addTee($tee);
 
@@ -218,7 +219,7 @@ test('world with custom game controller still collects spawn points', function (
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
 
     // A world that overrides bootGameController() to install a custom controller,
@@ -226,16 +227,16 @@ test('world with custom game controller still collects spawn points', function (
     // run against the installed controller.
     $world = new class($tickHandler, $map) extends TestWorld
     {
-        public \TeeFrame\Game\AbstractGameController $customController;
+        public AbstractGameController $customController;
 
         protected function bootGameController(): void
         {
-            $this->customController = new \TestGameController($this->tickHandler);
-            $this->gameController = $this->customController;
+            $this->customController = new TestGameController($this->tickHandler);
+            $this->gameController   = $this->customController;
         }
     };
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'CustomController';
     $world->addTee($tee);
 
@@ -246,6 +247,6 @@ test('world with custom game controller still collects spawn points', function (
     // stay dead forever.
     expect($tee->spawning)->toBeFalse();
     $character = $tee->character;
-    assert($character instanceof \TeeFrame\Game\Entities\Character\AbstractCharacterEntity);
+    assert($character instanceof AbstractCharacterEntity);
     expect($character->alive)->toBeTrue();
 });

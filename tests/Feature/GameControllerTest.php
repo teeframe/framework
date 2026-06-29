@@ -7,36 +7,28 @@ use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
-use TeeFrame\Network\SnapItems\ObjGameDataItem;
-use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\SnapItems\ObjGameDataItem;
+use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 /**
  * A controller that runs the shared tick() + doWincheck() logic,
  * so we can exercise warmup, game-over, balancing and inactive kick.
  *
- * @param array<string, mixed> $opts
+ * @param  array<string, mixed>  $opts
  */
 function makeGameController(TickHandler $tickHandler, array $opts = []): AbstractGameController
 {
-    return new class(
-        $tickHandler,
-        $opts['isTeamMode'] ?? false,
-        $opts['isCaptureTheFlag'] ?? false,
-        $opts['scoreLimit'] ?? 0,
-        $opts['timeLimit'] ?? 0,
-        $opts['teamBalanceTime'] ?? 0,
-        $opts['inactiveKickTime'] ?? 0,
-        $opts['inactiveKick'] ?? 0,
-        $opts['spectatorSlots'] ?? 0,
-    ) extends AbstractGameController {
+    return new class($tickHandler, $opts['isTeamMode'] ?? false, $opts['isCaptureTheFlag'] ?? false, $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0) extends AbstractGameController
+    {
         public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
         {
             return 0;
@@ -57,9 +49,8 @@ function createWorldWithController(Map $map, TickHandler $tickHandler, AbstractG
 
 function setGameTick(TickHandler $tickHandler, int $tick): void
 {
-    $ref = new ReflectionClass($tickHandler);
+    $ref  = new ReflectionClass($tickHandler);
     $prop = $ref->getProperty('currentTick');
-    $prop->setAccessible(true);
     $prop->setValue($tickHandler, $tick);
 }
 
@@ -70,10 +61,10 @@ test('warmup counts down and starts round when it reaches zero', function () use
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 20]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 20]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     $controller->doWarmup(3); // 3 seconds = 150 ticks
     expect($controller->isGameOver())->toBeFalse();
@@ -96,9 +87,9 @@ test('doWarmup with negative seconds clears warmup', function () use ($mapPath, 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler);
+    $controller  = makeGameController($tickHandler);
     createWorldWithController($map, $tickHandler, $controller);
 
     $controller->doWarmup(5);
@@ -122,12 +113,12 @@ test('round ends when a tee reaches the score limit', function () use ($mapPath,
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 3]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 3]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Winner';
     $world->addTee($tee);
 
@@ -145,12 +136,12 @@ test('round does not end during warmup even if score limit reached', function ()
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 3]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 3]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'WarmupKiller';
     $world->addTee($tee);
 
@@ -169,12 +160,12 @@ test('game over pauses the world', function () use ($mapPath, $mapExists) {
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Scorer';
     $world->addTee($tee);
 
@@ -192,12 +183,12 @@ test('round restarts after the 10 second game-over pause', function () use ($map
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'RestartTee';
     $world->addTee($tee);
 
@@ -223,19 +214,19 @@ test('sudden death triggers when scores are tied at the limit', function () use 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $red = new PlayerTee;
-    $red->name = 'Red';
+    $red        = new PlayerTee;
+    $red->name  = 'Red';
     $red->score = 2;
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
 
-    $blue = new PlayerTee;
-    $blue->name = 'Blue';
+    $blue        = new PlayerTee;
+    $blue->name  = 'Blue';
     $blue->score = 2;
     $world->addTee($blue);
     $blue->team = GameConstants::TEAM_BLUE;
@@ -253,19 +244,19 @@ test('team mode round ends when one team exceeds the other at score limit', func
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $red = new PlayerTee;
-    $red->name = 'Red';
+    $red        = new PlayerTee;
+    $red->name  = 'Red';
     $red->score = 3;
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
 
-    $blue = new PlayerTee;
-    $blue->name = 'Blue';
+    $blue        = new PlayerTee;
+    $blue->name  = 'Blue';
     $blue->score = 1;
     $world->addTee($blue);
     $blue->team = GameConstants::TEAM_BLUE;
@@ -288,17 +279,17 @@ test('doSnap reflects game over and paused state flags', function () use ($mapPa
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'SnapTee';
     $world->addTee($tee);
 
     // Normal state — no flags
-    $snaps = $controller->doSnap($tee);
+    $snaps    = $controller->doSnap($tee);
     $gameInfo = $snaps[0];
     assert($gameInfo instanceof ObjGameInfoItem);
     expect($gameInfo->gameStateFlags)->toBe(0);
@@ -307,7 +298,7 @@ test('doSnap reflects game over and paused state flags', function () use ($mapPa
     $tee->score = 1;
     $world->doTick();
 
-    $snaps = $controller->doSnap($tee);
+    $snaps    = $controller->doSnap($tee);
     $gameInfo = $snaps[0];
     assert($gameInfo instanceof ObjGameInfoItem);
     expect($gameInfo->gameStateFlags & GameConstants::GAMESTATEFLAG_GAMEOVER)->not()->toBe(0);
@@ -322,24 +313,24 @@ test('doSnap includes team scores in team mode', function () use ($mapPath, $map
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 10]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 10]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $red = new PlayerTee;
-    $red->name = 'Red';
+    $red        = new PlayerTee;
+    $red->name  = 'Red';
     $red->score = 5;
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
 
-    $blue = new PlayerTee;
-    $blue->name = 'Blue';
+    $blue        = new PlayerTee;
+    $blue->name  = 'Blue';
     $blue->score = 3;
     $world->addTee($blue);
     $blue->team = GameConstants::TEAM_BLUE;
 
-    $snaps = $controller->doSnap($red);
+    $snaps    = $controller->doSnap($red);
     $gameData = $snaps[1];
     assert($gameData instanceof ObjGameDataItem);
     expect($gameData->getItemId())->toBe(NetworkMessages::NETOBJTYPE_GAMEDATA);
@@ -354,16 +345,16 @@ test('doSnap emits GAMEFLAG_TEAMS in team mode', function () use ($mapPath, $map
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'FlagCheck';
     $world->addTee($tee);
 
-    $snaps = $controller->doSnap($tee);
+    $snaps    = $controller->doSnap($tee);
     $gameInfo = $snaps[0];
     assert($gameInfo instanceof ObjGameInfoItem);
     expect($gameInfo->gameFlags & GameConstants::GAMEFLAG_TEAMS)->not()->toBe(0);
@@ -382,19 +373,19 @@ test('checkTeamBalance marks teams as unbalanced when diff is 2 or more', functi
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     for ($i = 0; $i < 3; $i++) {
-        $tee = new PlayerTee;
+        $tee       = new PlayerTee;
         $tee->name = "Red{$i}";
         $world->addTee($tee);
         $tee->team = GameConstants::TEAM_RED;
     }
 
-    $blue = new PlayerTee;
+    $blue       = new PlayerTee;
     $blue->name = 'Blue0';
     $world->addTee($blue);
     $blue->team = GameConstants::TEAM_BLUE;
@@ -409,17 +400,17 @@ test('checkTeamBalance returns true when teams are even', function () use ($mapP
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $red = new PlayerTee;
+    $red       = new PlayerTee;
     $red->name = 'Red';
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
 
-    $blue = new PlayerTee;
+    $blue       = new PlayerTee;
     $blue->name = 'Blue';
     $world->addTee($blue);
     $blue->team = GameConstants::TEAM_BLUE;
@@ -434,17 +425,29 @@ test('team balancing moves a player from the larger team after the balance time 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
     // 1 minute balance time
     $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $world      = createWorldWithController($map, $tickHandler, $controller);
 
     // 3 reds, 1 blue → diff of 2
-    $red1 = new PlayerTee; $red1->name = 'R1'; $world->addTee($red1); $red1->team = GameConstants::TEAM_RED;
-    $red2 = new PlayerTee; $red2->name = 'R2'; $world->addTee($red2); $red2->team = GameConstants::TEAM_RED;
-    $red3 = new PlayerTee; $red3->name = 'R3'; $world->addTee($red3); $red3->team = GameConstants::TEAM_RED;
-    $blue = new PlayerTee; $blue->name = 'B1'; $world->addTee($blue); $blue->team = GameConstants::TEAM_BLUE;
+    $red1       = new PlayerTee;
+    $red1->name = 'R1';
+    $world->addTee($red1);
+    $red1->team = GameConstants::TEAM_RED;
+    $red2       = new PlayerTee;
+    $red2->name = 'R2';
+    $world->addTee($red2);
+    $red2->team = GameConstants::TEAM_RED;
+    $red3       = new PlayerTee;
+    $red3->name = 'R3';
+    $world->addTee($red3);
+    $red3->team = GameConstants::TEAM_RED;
+    $blue       = new PlayerTee;
+    $blue->name = 'B1';
+    $world->addTee($blue);
+    $blue->team = GameConstants::TEAM_BLUE;
 
     // Trigger the unbalanced detection
     expect($controller->checkTeamBalance())->toBeFalse();
@@ -454,13 +457,18 @@ test('team balancing moves a player from the larger team after the balance time 
     $world->doTick();
 
     // One red should have been moved to blue → 2 reds, 2 blues
-    $reds = 0; $blues = 0;
+    $reds  = 0;
+    $blues = 0;
     foreach ($world->getTees() as $tee) {
         if (! $tee instanceof PlayerTee) {
             continue;
         }
-        if ($tee->team === GameConstants::TEAM_RED) { $reds++; }
-        if ($tee->team === GameConstants::TEAM_BLUE) { $blues++; }
+        if ($tee->team === GameConstants::TEAM_RED) {
+            $reds++;
+        }
+        if ($tee->team === GameConstants::TEAM_BLUE) {
+            $blues++;
+        }
     }
 
     expect($reds)->toBe(2);
@@ -474,13 +482,19 @@ test('team balancing is disabled when teamBalanceTime is zero', function () use 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 0]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 0]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $red1 = new PlayerTee; $red1->name = 'R1'; $world->addTee($red1); $red1->team = GameConstants::TEAM_RED;
-    $red2 = new PlayerTee; $red2->name = 'R2'; $world->addTee($red2); $red2->team = GameConstants::TEAM_RED;
+    $red1       = new PlayerTee;
+    $red1->name = 'R1';
+    $world->addTee($red1);
+    $red1->team = GameConstants::TEAM_RED;
+    $red2       = new PlayerTee;
+    $red2->name = 'R2';
+    $world->addTee($red2);
+    $red2->team = GameConstants::TEAM_RED;
 
     // checkTeamBalance returns true (disabled) even though teams are uneven
     expect($controller->checkTeamBalance())->toBeTrue();
@@ -499,16 +513,16 @@ test('inactive kick moves player to spectators after the timeout', function () u
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, [
+    $controller  = makeGameController($tickHandler, [
         'inactiveKickTime' => 1, // 1 minute
-        'inactiveKick' => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
     ]);
     $world = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
-    $tee->name = 'Idle';
+    $tee                 = new PlayerTee;
+    $tee->name           = 'Idle';
     $tee->lastActionTick = 100;
     $world->addTee($tee);
     $tee->team = GameConstants::TEAM_RED;
@@ -527,16 +541,16 @@ test('inactive kick is disabled when inactiveKickTime is zero', function () use 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, [
+    $controller  = makeGameController($tickHandler, [
         'inactiveKickTime' => 0,
-        'inactiveKick' => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
     ]);
     $world = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
-    $tee->name = 'StillHere';
+    $tee                 = new PlayerTee;
+    $tee->name           = 'StillHere';
     $tee->lastActionTick = 100;
     $world->addTee($tee);
     $tee->team = GameConstants::TEAM_RED;
@@ -554,16 +568,16 @@ test('inactive kick does not affect spectators', function () use ($mapPath, $map
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, [
+    $controller  = makeGameController($tickHandler, [
         'inactiveKickTime' => 1,
-        'inactiveKick' => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
     ]);
     $world = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
-    $tee->name = 'Spec';
+    $tee                 = new PlayerTee;
+    $tee->name           = 'Spec';
     $tee->lastActionTick = 100;
     $world->addTee($tee);
     $tee->team = GameConstants::TEAM_SPECTATORS;
@@ -581,16 +595,16 @@ test('inactive kick in kick mode kicks the player', function () use ($mapPath, $
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, [
+    $controller  = makeGameController($tickHandler, [
         'inactiveKickTime' => 1,
-        'inactiveKick' => AbstractGameController::INACTIVE_KICK_KICK,
+        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_KICK,
     ]);
     $world = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
-    $tee->name = 'ToKick';
+    $tee                 = new PlayerTee;
+    $tee->name           = 'ToKick';
     $tee->lastActionTick = 100;
     $world->addTee($tee);
     $tee->team = GameConstants::TEAM_RED;
@@ -609,16 +623,16 @@ test('active player is not kicked for inactivity', function () use ($mapPath, $m
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, [
+    $controller  = makeGameController($tickHandler, [
         'inactiveKickTime' => 1,
-        'inactiveKick' => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
     ]);
     $world = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
-    $tee->name = 'Active';
+    $tee                 = new PlayerTee;
+    $tee->name           = 'Active';
     $tee->lastActionTick = 100;
     $world->addTee($tee);
     $tee->team = GameConstants::TEAM_RED;
@@ -644,12 +658,12 @@ test('paused world does not apply input to characters', function () use ($mapPat
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Walker';
     $world->addTee($tee);
 
@@ -667,7 +681,7 @@ test('paused world does not apply input to characters', function () use ($mapPat
     $posBefore = clone $character->getPosition();
 
     // Feed a movement input while paused
-    $tee->inputs[102] = new \TeeFrame\Game\PlayerInput(
+    $tee->inputs[102] = new PlayerInput(
         direction: 1, targetX: 100, targetY: 0, jump: false,
         fire: 0, hook: false, playerFlags: 0,
         wantedWeapon: 0, nextWeapon: 0, prevWeapon: 0,
@@ -689,12 +703,12 @@ test('paused world does not tick entities (no gravity)', function () use ($mapPa
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Faller';
     $world->addTee($tee);
 
@@ -736,13 +750,17 @@ test('isFriendlyFire returns false in non-team mode', function () use ($mapPath,
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee1 = new PlayerTee; $tee1->name = 'A'; $world->addTee($tee1);
-    $tee2 = new PlayerTee; $tee2->name = 'B'; $world->addTee($tee2);
+    $tee1       = new PlayerTee;
+    $tee1->name = 'A';
+    $world->addTee($tee1);
+    $tee2       = new PlayerTee;
+    $tee2->name = 'B';
+    $world->addTee($tee2);
 
     expect($controller->isFriendlyFire($tee1->teeIndex, $tee2->teeIndex))->toBeFalse();
 });
@@ -754,13 +772,19 @@ test('isFriendlyFire returns true for same-team players in team mode', function 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $red1 = new PlayerTee; $red1->name = 'R1'; $world->addTee($red1); $red1->team = GameConstants::TEAM_RED;
-    $red2 = new PlayerTee; $red2->name = 'R2'; $world->addTee($red2); $red2->team = GameConstants::TEAM_RED;
+    $red1       = new PlayerTee;
+    $red1->name = 'R1';
+    $world->addTee($red1);
+    $red1->team = GameConstants::TEAM_RED;
+    $red2       = new PlayerTee;
+    $red2->name = 'R2';
+    $world->addTee($red2);
+    $red2->team = GameConstants::TEAM_RED;
 
     expect($controller->isFriendlyFire($red1->teeIndex, $red2->teeIndex))->toBeTrue();
 });
@@ -772,13 +796,19 @@ test('isFriendlyFire returns false for different teams in team mode', function (
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $red = new PlayerTee; $red->name = 'R'; $world->addTee($red); $red->team = GameConstants::TEAM_RED;
-    $blue = new PlayerTee; $blue->name = 'B'; $world->addTee($blue); $blue->team = GameConstants::TEAM_BLUE;
+    $red       = new PlayerTee;
+    $red->name = 'R';
+    $world->addTee($red);
+    $red->team  = GameConstants::TEAM_RED;
+    $blue       = new PlayerTee;
+    $blue->name = 'B';
+    $world->addTee($blue);
+    $blue->team = GameConstants::TEAM_BLUE;
 
     expect($controller->isFriendlyFire($red->teeIndex, $blue->teeIndex))->toBeFalse();
 });
@@ -790,12 +820,15 @@ test('isFriendlyFire returns false for self-damage', function () use ($mapPath, 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee; $tee->name = 'Self'; $world->addTee($tee); $tee->team = GameConstants::TEAM_RED;
+    $tee       = new PlayerTee;
+    $tee->name = 'Self';
+    $world->addTee($tee);
+    $tee->team = GameConstants::TEAM_RED;
 
     expect($controller->isFriendlyFire($tee->teeIndex, $tee->teeIndex))->toBeFalse();
 });
@@ -807,24 +840,26 @@ test('same-team takeDamage deals no damage in team mode', function () use ($mapP
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
-    $attackerTee = new PlayerTee; $attackerTee->name = 'Att';
+    $attackerTee       = new PlayerTee;
+    $attackerTee->name = 'Att';
     $world->addTee($attackerTee);
     $attackerTee->team = GameConstants::TEAM_RED;
-    $attacker = new PvpCharacterEntity($world, clone $spawnPos);
+    $attacker          = new PvpCharacterEntity($world, clone $spawnPos);
     $attacker->spawn(clone $spawnPos, $attackerTee);
     $world->addEntity($attacker);
 
-    $victimTee = new PlayerTee; $victimTee->name = 'Vic';
+    $victimTee       = new PlayerTee;
+    $victimTee->name = 'Vic';
     $world->addTee($victimTee);
     $victimTee->team = GameConstants::TEAM_RED;
-    $victim = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $victim          = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
     $victim->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $victimTee);
     $world->addEntity($victim);
 
@@ -843,24 +878,26 @@ test('different-team takeDamage deals damage in team mode', function () use ($ma
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
-    $attackerTee = new PlayerTee; $attackerTee->name = 'Att';
+    $attackerTee       = new PlayerTee;
+    $attackerTee->name = 'Att';
     $world->addTee($attackerTee);
     $attackerTee->team = GameConstants::TEAM_RED;
-    $attacker = new PvpCharacterEntity($world, clone $spawnPos);
+    $attacker          = new PvpCharacterEntity($world, clone $spawnPos);
     $attacker->spawn(clone $spawnPos, $attackerTee);
     $world->addEntity($attacker);
 
-    $victimTee = new PlayerTee; $victimTee->name = 'Vic';
+    $victimTee       = new PlayerTee;
+    $victimTee->name = 'Vic';
     $world->addTee($victimTee);
     $victimTee->team = GameConstants::TEAM_BLUE;
-    $victim = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
+    $victim          = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
     $victim->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $victimTee);
     $world->addEntity($victim);
 
@@ -878,19 +915,23 @@ test('non-team mode takeDamage always deals damage', function () use ($mapPath, 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
-    $attackerTee = new PlayerTee; $attackerTee->name = 'Att'; $world->addTee($attackerTee);
+    $attackerTee       = new PlayerTee;
+    $attackerTee->name = 'Att';
+    $world->addTee($attackerTee);
     $attacker = new PvpCharacterEntity($world, clone $spawnPos);
     $attacker->spawn(clone $spawnPos, $attackerTee);
     $world->addEntity($attacker);
 
-    $victimTee = new PlayerTee; $victimTee->name = 'Vic'; $world->addTee($victimTee);
+    $victimTee       = new PlayerTee;
+    $victimTee->name = 'Vic';
+    $world->addTee($victimTee);
     $victim = new PvpCharacterEntity($world, new Vector2($spawnPos->x + 50, $spawnPos->y));
     $victim->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $victimTee);
     $world->addEntity($victim);
@@ -908,14 +949,16 @@ test('self-damage is halved', function () use ($mapPath, $mapExists) {
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
-    $tee = new PlayerTee; $tee->name = 'Self'; $world->addTee($tee);
+    $tee       = new PlayerTee;
+    $tee->name = 'Self';
+    $world->addTee($tee);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
     $world->addEntity($character);
@@ -940,11 +983,12 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
 
     // A controller that records the team argument passed to canSpawn
-    $controller = new class($tickHandler, true) extends AbstractGameController {
+    $controller = new class($tickHandler, true) extends AbstractGameController
+    {
         public int $lastSpawnTeam = -99;
 
         public function doTick(): void
@@ -960,12 +1004,13 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
         public function canSpawn(AbstractWorld $world, int $team): ?Vector2
         {
             $this->lastSpawnTeam = $team;
+
             return parent::canSpawn($world, $team);
         }
     };
     $world = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'BlueSpawn';
     $world->addTee($tee);
     $tee->team = GameConstants::TEAM_BLUE;
@@ -989,12 +1034,12 @@ test('first player in team mode joins red team automatically', function () use (
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'First';
     $world->addTee($tee);
 
@@ -1008,17 +1053,17 @@ test('second player in team mode joins blue team automatically', function () use
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $first = new PlayerTee;
+    $first       = new PlayerTee;
     $first->name = 'First';
     $world->addTee($first);
     expect($first->team)->toBe(GameConstants::TEAM_RED);
 
-    $second = new PlayerTee;
+    $second       = new PlayerTee;
     $second->name = 'Second';
     $world->addTee($second);
     expect($second->team)->toBe(GameConstants::TEAM_BLUE);
@@ -1031,18 +1076,24 @@ test('third player in team mode joins the team with fewer players', function () 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $first = new PlayerTee; $first->name = 'First'; $world->addTee($first);
-    $second = new PlayerTee; $second->name = 'Second'; $world->addTee($second);
+    $first       = new PlayerTee;
+    $first->name = 'First';
+    $world->addTee($first);
+    $second       = new PlayerTee;
+    $second->name = 'Second';
+    $world->addTee($second);
 
     expect($first->team)->toBe(GameConstants::TEAM_RED);
     expect($second->team)->toBe(GameConstants::TEAM_BLUE);
 
-    $third = new PlayerTee; $third->name = 'Third'; $world->addTee($third);
+    $third       = new PlayerTee;
+    $third->name = 'Third';
+    $world->addTee($third);
     expect($third->team)->toBe(GameConstants::TEAM_RED);
 });
 
@@ -1053,13 +1104,17 @@ test('non-team mode always assigns red team', function () use ($mapPath, $mapExi
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $first = new PlayerTee; $first->name = 'First'; $world->addTee($first);
-    $second = new PlayerTee; $second->name = 'Second'; $world->addTee($second);
+    $first       = new PlayerTee;
+    $first->name = 'First';
+    $world->addTee($first);
+    $second       = new PlayerTee;
+    $second->name = 'Second';
+    $world->addTee($second);
 
     expect($first->team)->toBe(GameConstants::TEAM_RED);
     expect($second->team)->toBe(GameConstants::TEAM_RED);
@@ -1078,12 +1133,12 @@ test('round restart destroys existing characters and respawns everyone', functio
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Restart';
     $world->addTee($tee);
 
@@ -1135,20 +1190,20 @@ test('pickups survive round restart and reset their spawn tick', function () use
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     // Add a health pickup and an armor pickup to the world
-    $healthPos = new Vector2(50 * 32, 25 * 32);
-    $armorPos = new Vector2(51 * 32, 25 * 32);
+    $healthPos    = new Vector2(50 * 32, 25 * 32);
+    $armorPos     = new Vector2(51 * 32, 25 * 32);
     $healthPickup = new PickupEntity($world, $healthPos, GameConstants::POWERUP_HEALTH, respawnTime: 100, spawnDelay: 0);
-    $armorPickup = new PickupEntity($world, $armorPos, GameConstants::POWERUP_ARMOR, respawnTime: 100, spawnDelay: 0);
+    $armorPickup  = new PickupEntity($world, $armorPos, GameConstants::POWERUP_ARMOR, respawnTime: 100, spawnDelay: 0);
     $world->addEntity($healthPickup);
     $world->addEntity($armorPickup);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Restart';
     $world->addTee($tee);
 
@@ -1181,17 +1236,17 @@ test('pickups with spawn delay re-enter spawn delay after round restart', functi
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
 
     // Add a pickup with a spawn delay of 50 ticks
-    $pos = new Vector2(50 * 32, 25 * 32);
+    $pos    = new Vector2(50 * 32, 25 * 32);
     $pickup = new PickupEntity($world, $pos, GameConstants::POWERUP_HEALTH, respawnTime: 100, spawnDelay: 50);
     $world->addEntity($pickup);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Restart';
     $world->addTee($tee);
 

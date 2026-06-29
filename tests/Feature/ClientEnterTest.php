@@ -1,11 +1,14 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\PlayerTee;
-use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Server\AbstractServerInstance;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('addTee marks PlayerTee as spawning', function () use ($mapPath, $mapExists) {
@@ -15,10 +18,10 @@ test('addTee marks PlayerTee as spawning', function () use ($mapPath, $mapExists
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'NewPlayer';
 
     $world->addTee($tee);
@@ -34,19 +37,18 @@ test('addTee broadcasts enter chat message to all tees', function () use ($mapPa
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $existing = new PlayerTee;
-    $existing->name = 'Existing';
+    $existing           = new PlayerTee;
+    $existing->name     = 'Existing';
     $existing->teeIndex = 0;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $existing]);
 
-    $newTee = new PlayerTee;
+    $newTee       = new PlayerTee;
     $newTee->name = 'NewPlayer';
 
     $world->addTee($newTee);
@@ -62,18 +64,15 @@ test('addTee enter message uses server clientId -1', function () use ($mapPath, 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Joiner';
 
     // Capture the chunk sent via sendToTee by overriding the mock server's method
-    $sentChunk = null;
+    $sentChunk  = null;
     $mockServer = $GLOBALS['mockGameServer'];
-    $ref = new ReflectionClass($mockServer);
-    $method = $ref->getMethod('sendToTee');
-    $method->setAccessible(false);
 
     $world->addTee($tee);
 
@@ -88,17 +87,18 @@ test('addTee enter message contains tee name', function () use ($mapPath, $mapEx
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     // Use a custom mock server to capture the chunk content
-    /** @var \TeeFrame\Network\Chunks\AbstractChunk[] $capturedChunks */
+    /** @var AbstractChunk[] $capturedChunks */
     $capturedChunks = [];
-    $customServer = new class($capturedChunks) extends \TeeFrame\Server\AbstractServerInstance {
+    $customServer   = new class($capturedChunks) extends AbstractServerInstance
+    {
         /** @var int[] */
         public array $sentTeeIndexes = [];
 
-        /** @param \TeeFrame\Network\Chunks\AbstractChunk[] $captured */
+        /** @param AbstractChunk[] $captured */
         public function __construct(public array &$captured)
         {
             // bypass parent constructor
@@ -106,24 +106,25 @@ test('addTee enter message contains tee name', function () use ($mapPath, $mapEx
 
         protected function boot(): void {}
 
-        protected function selectWorldForNewConnection(): \TeeFrame\Game\AbstractWorld
+        protected function selectWorldForNewConnection(): AbstractWorld
         {
-            throw new \RuntimeException('not implemented');
+            throw new RuntimeException('not implemented');
         }
 
-        public function sendToTee(\TeeFrame\Game\AbstractWorld $world, int $teeIndex, \TeeFrame\Network\Chunks\AbstractChunk $chunk): void
+        public function sendToTee(AbstractWorld $world, int $teeIndex, AbstractChunk $chunk): void
         {
             $this->sentTeeIndexes[] = $teeIndex;
-            $this->captured[] = $chunk;
+            $this->captured[]       = $chunk;
         }
     };
 
     // Build a world wired to the custom server
-    $world = new class(new TickHandler, $map, $customServer) extends TestWorld {
+    $world = new class(new TickHandler, $map, $customServer) extends TestWorld
+    {
         public function doTick(): void {}
     };
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'FancyName';
 
     $world->addTee($tee);

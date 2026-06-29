@@ -1,14 +1,13 @@
 <?php
 
-use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\Commands\WhisperCommand;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\RawPayload;
-use TeeFrame\Map\Map;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('ClSayChunk encodes and decodes correctly', function () {
@@ -68,20 +67,19 @@ test('chat broadcast calls sendToTee for each tee', function () use ($mapPath, $
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $tee1 = new PlayerTee;
-    $tee1->name = 'Player1';
+    $tee1           = new PlayerTee;
+    $tee1->name     = 'Player1';
     $tee1->teeIndex = 0;
 
-    $tee2 = new PlayerTee;
-    $tee2->name = 'Player2';
+    $tee2           = new PlayerTee;
+    $tee2->name     = 'Player2';
     $tee2->teeIndex = 1;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $tee1, 1 => $tee2]);
 
     $world->onMessage($tee1, new ClSayChunk(team: false, text: 'hello'));
@@ -96,20 +94,19 @@ test('onMessage handles ClSayChunk by broadcasting', function () use ($mapPath, 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $tee1 = new PlayerTee;
-    $tee1->name = 'Player1';
+    $tee1           = new PlayerTee;
+    $tee1->name     = 'Player1';
     $tee1->teeIndex = 0;
 
-    $tee2 = new PlayerTee;
-    $tee2->name = 'Player2';
+    $tee2           = new PlayerTee;
+    $tee2->name     = 'Player2';
     $tee2->teeIndex = 1;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $tee1, 1 => $tee2]);
 
     $world->onMessage($tee1, new ClSayChunk(team: false, text: 'hello everyone'));
@@ -124,20 +121,19 @@ test('onMessage handles whisper command via ClSayChunk', function () use ($mapPa
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $from = new PlayerTee;
-    $from->name = 'Sender';
+    $from           = new PlayerTee;
+    $from->name     = 'Sender';
     $from->teeIndex = 0;
 
-    $target = new PlayerTee;
-    $target->name = 'TargetPlayer';
+    $target           = new PlayerTee;
+    $target->name     = 'TargetPlayer';
     $target->teeIndex = 1;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [$from, $target]);
 
     $world->onMessage($from, new ClSayChunk(team: false, text: '/w targetplayer secret'));
@@ -152,23 +148,22 @@ test('WhisperCommand finds target by name case-insensitively', function () use (
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $from = new PlayerTee;
-    $from->name = 'Sender';
+    $from           = new PlayerTee;
+    $from->name     = 'Sender';
     $from->teeIndex = 0;
 
-    $target = new PlayerTee;
-    $target->name = 'TargetPlayer';
+    $target           = new PlayerTee;
+    $target->name     = 'TargetPlayer';
     $target->teeIndex = 1;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [$from, $target]);
 
-    $command = new \TeeFrame\Game\Commands\WhisperCommand;
+    $command = new WhisperCommand;
     $command->execute($world, $from, ['', '', 'targetplayer', 'secret']);
 
     expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([1, 0]);
@@ -181,19 +176,18 @@ test('WhisperCommand notifies sender when target not found', function () use ($m
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $from = new PlayerTee;
-    $from->name = 'Sender';
+    $from           = new PlayerTee;
+    $from->name     = 'Sender';
     $from->teeIndex = 0;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [$from]);
 
-    $command = new \TeeFrame\Game\Commands\WhisperCommand;
+    $command = new WhisperCommand;
     $command->execute($world, $from, ['', '', 'NonExistent', 'secret']);
 
     expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0]);

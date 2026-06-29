@@ -5,11 +5,9 @@ namespace TeeFrame\Network;
 class RawPayload
 {
     /**
-     * @param int[] $payload
+     * @param  int[]  $payload
      */
-    public function __construct(protected array $payload = [])
-    {
-    }
+    public function __construct(protected array $payload = []) {}
 
     /**
      * @return int[]
@@ -44,7 +42,7 @@ class RawPayload
     }
 
     /**
-     * @param int[] $value
+     * @param  int[]  $value
      */
     public function addBytes(array $value): static
     {
@@ -86,7 +84,7 @@ class RawPayload
                 break;
             }
 
-            $string .= chr($char);
+            $string .= chr($char & 0xFF); // & 0xFF for strict typing
         }
 
         return $string;

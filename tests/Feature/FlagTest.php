@@ -3,7 +3,6 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\FlagEntity;
 use TeeFrame\Game\GameConstants;
@@ -16,28 +15,19 @@ use TeeFrame\Network\SnapItems\ObjFlagItem;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 
-$ctfMapPath = __DIR__ . '/../ctf1.map';
+$ctfMapPath   = __DIR__.'/../ctf1.map';
 $ctfMapExists = file_exists($ctfMapPath);
 
 /**
  * Build a CTF-enabled game controller for tests.
-     *
- * @param array<string, mixed> $opts
+ *
+ * @param  array<string, mixed>  $opts
  */
 function makeCtfGameController(TickHandler $tickHandler, array $opts = []): AbstractGameController
 {
-    return new class(
-        $tickHandler,
-        true, // isTeamMode
+    return new class($tickHandler, true, // isTeamMode
         true, // isCaptureTheFlag
-        $opts['scoreLimit'] ?? 0,
-        $opts['timeLimit'] ?? 0,
-        $opts['teamBalanceTime'] ?? 0,
-        $opts['inactiveKickTime'] ?? 0,
-        $opts['inactiveKick'] ?? 0,
-        $opts['spectatorSlots'] ?? 0,
-    ) extends AbstractGameController {
-    };
+        $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0, ) extends AbstractGameController {};
 }
 
 function createCtfWorld(Map $map, TickHandler $tickHandler, AbstractGameController $controller): AbstractWorld
@@ -47,9 +37,8 @@ function createCtfWorld(Map $map, TickHandler $tickHandler, AbstractGameControll
 
 function setCtfTick(TickHandler $tickHandler, int $tick): void
 {
-    $ref = new ReflectionClass($tickHandler);
+    $ref  = new ReflectionClass($tickHandler);
     $prop = $ref->getProperty('currentTick');
-    $prop->setAccessible(true);
     $prop->setValue($tickHandler, $tick);
 }
 
@@ -66,12 +55,12 @@ test('CTF controller creates flags from flag stand entities', function () use ($
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
+    $redFlag  = $controller->getFlag(GameConstants::TEAM_RED);
     $blueFlag = $controller->getFlag(GameConstants::TEAM_BLUE);
 
     expect($redFlag)->not()->toBeNull();
@@ -91,10 +80,10 @@ test('CTF flags are added to the world entity list', function () use ($ctfMapPat
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $flags = array_filter($world->getEntities(), fn ($e) => $e instanceof FlagEntity);
     expect(count($flags))->toBe(2);
@@ -107,11 +96,10 @@ test('non-CTF controller does not create flags from flag stands', function () us
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = new class($tickHandler, true, false) extends AbstractGameController {
-    };
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = new class($tickHandler, true, false) extends AbstractGameController {};
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     expect($controller->getFlag(GameConstants::TEAM_RED))->toBeNull();
     expect($controller->getFlag(GameConstants::TEAM_BLUE))->toBeNull();
@@ -130,16 +118,16 @@ test('CTF doSnap emits GAMEFLAG_TEAMS and GAMEFLAG_FLAGS', function () use ($ctf
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Snap';
     $world->addTee($tee);
 
-    $snaps = $controller->doSnap($tee);
+    $snaps    = $controller->doSnap($tee);
     $gameInfo = $snaps[0];
     assert($gameInfo instanceof ObjGameInfoItem);
     expect($gameInfo->gameFlags & GameConstants::GAMEFLAG_TEAMS)->not()->toBe(0);
@@ -153,16 +141,16 @@ test('CTF doSnap emits ObjGameData with FLAG_ATSTAND when flags are at stand', f
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Snap';
     $world->addTee($tee);
 
-    $snaps = $controller->doSnap($tee);
+    $snaps    = $controller->doSnap($tee);
     $gameData = $snaps[1];
     assert($gameData instanceof ObjGameDataItem);
     expect($gameData->flagCarrierRedIndex)->toBe(GameConstants::FLAG_ATSTAND);
@@ -176,18 +164,18 @@ test('CTF doSnap emits ObjFlagItem for each flag', function () use ($ctfMapPath,
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Snap';
     $world->addTee($tee);
     // Spectators see all entities (no distance culling)
     $tee->team = GameConstants::TEAM_SPECTATORS;
 
-    $snaps = $world->doSnap($tee);
+    $snaps     = $world->doSnap($tee);
     $flagSnaps = array_filter($snaps, fn ($s) => $s instanceof ObjFlagItem);
     expect(count($flagSnaps))->toBe(2);
 });
@@ -205,22 +193,22 @@ test('enemy player can grab a flag from the stand', function () use ($ctfMapPath
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
     // Blue player at the red flag stand
-    $blueTee = new PlayerTee;
+    $blueTee       = new PlayerTee;
     $blueTee->name = 'BlueGrabber';
     $world->addTee($blueTee);
     $blueTee->team = GameConstants::TEAM_BLUE;
 
     $redFlagPos = $redFlag->getPosition();
-    $character = new PvpCharacterEntity($world, clone $redFlagPos);
+    $character  = new PvpCharacterEntity($world, clone $redFlagPos);
     $character->spawn(clone $redFlagPos, $blueTee);
     $world->addEntity($character);
 
@@ -239,21 +227,21 @@ test('same-team player cannot grab their own flag from the stand', function () u
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $redTee = new PlayerTee;
+    $redTee       = new PlayerTee;
     $redTee->name = 'RedDefender';
     $world->addTee($redTee);
     $redTee->team = GameConstants::TEAM_RED;
 
     $redFlagPos = $redFlag->getPosition();
-    $character = new PvpCharacterEntity($world, clone $redFlagPos);
+    $character  = new PvpCharacterEntity($world, clone $redFlagPos);
     $character->spawn(clone $redFlagPos, $redTee);
     $world->addEntity($character);
 
@@ -276,10 +264,10 @@ test('same-team player can return a dropped flag', function () use ($ctfMapPath,
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
@@ -289,13 +277,13 @@ test('same-team player can return a dropped flag', function () use ($ctfMapPath,
     $redFlag->setPosition(new Vector2($redFlag->standPos->x + 100, $redFlag->standPos->y));
     $redFlag->dropTick = 100;
 
-    $redTee = new PlayerTee;
+    $redTee       = new PlayerTee;
     $redTee->name = 'RedReturner';
     $world->addTee($redTee);
     $redTee->team = GameConstants::TEAM_RED;
 
     $redFlagPos = $redFlag->getPosition();
-    $character = new PvpCharacterEntity($world, clone $redFlagPos);
+    $character  = new PvpCharacterEntity($world, clone $redFlagPos);
     $character->spawn(clone $redFlagPos, $redTee);
     $world->addEntity($character);
 
@@ -319,29 +307,29 @@ test('carrying the enemy flag to your own stand captures it', function () use ($
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
+    $redFlag  = $controller->getFlag(GameConstants::TEAM_RED);
     $blueFlag = $controller->getFlag(GameConstants::TEAM_BLUE);
     assert($redFlag !== null);
     assert($blueFlag !== null);
 
     // Blue player carrying the red flag, at the blue stand
-    $blueTee = new PlayerTee;
+    $blueTee       = new PlayerTee;
     $blueTee->name = 'BlueCapper';
     $world->addTee($blueTee);
     $blueTee->team = GameConstants::TEAM_BLUE;
 
     $blueFlagPos = $blueFlag->getPosition();
-    $character = new PvpCharacterEntity($world, clone $blueFlagPos);
+    $character   = new PvpCharacterEntity($world, clone $blueFlagPos);
     $character->spawn(clone $blueFlagPos, $blueTee);
     $world->addEntity($character);
 
     // Simulate the blue player carrying the red flag
-    $redFlag->atStand = false;
+    $redFlag->atStand           = false;
     $redFlag->carryingCharacter = $character;
     $redFlag->setPosition(clone $blueFlag->getPosition());
 
@@ -363,12 +351,12 @@ test('capture does not happen when own flag is not at stand', function () use ($
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
+    $redFlag  = $controller->getFlag(GameConstants::TEAM_RED);
     $blueFlag = $controller->getFlag(GameConstants::TEAM_BLUE);
     assert($redFlag !== null);
     assert($blueFlag !== null);
@@ -378,7 +366,7 @@ test('capture does not happen when own flag is not at stand', function () use ($
     // Move the blue flag away so the blue player doesn't return it
     $blueFlag->setPosition(new Vector2(999, 999));
 
-    $blueTee = new PlayerTee;
+    $blueTee       = new PlayerTee;
     $blueTee->name = 'BlueCapper';
     $world->addTee($blueTee);
     $blueTee->team = GameConstants::TEAM_BLUE;
@@ -388,7 +376,7 @@ test('capture does not happen when own flag is not at stand', function () use ($
     $world->addEntity($character);
 
     // Blue player carrying the red flag, at the blue stand position
-    $redFlag->atStand = false;
+    $redFlag->atStand           = false;
     $redFlag->carryingCharacter = $character;
     $redFlag->setPosition(clone $blueFlag->standPos);
 
@@ -412,15 +400,15 @@ test('flag is dropped when the carrier dies', function () use ($ctfMapPath, $ctf
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $blueTee = new PlayerTee;
+    $blueTee       = new PlayerTee;
     $blueTee->name = 'BlueCarrier';
     $world->addTee($blueTee);
     $blueTee->team = GameConstants::TEAM_BLUE;
@@ -430,7 +418,7 @@ test('flag is dropped when the carrier dies', function () use ($ctfMapPath, $ctf
     $world->addEntity($character);
 
     // Blue player carrying the red flag
-    $redFlag->atStand = false;
+    $redFlag->atStand           = false;
     $redFlag->carryingCharacter = $character;
 
     // Kill the carrier
@@ -454,10 +442,10 @@ test('dropped flag auto-returns after 30 seconds', function () use ($ctfMapPath,
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
@@ -483,15 +471,15 @@ test('dropped flag does not auto-return before 30 seconds', function () use ($ct
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $dropPos = new Vector2($redFlag->standPos->x + 100, $redFlag->standPos->y);
+    $dropPos          = new Vector2($redFlag->standPos->x + 100, $redFlag->standPos->y);
     $redFlag->atStand = false;
     $redFlag->setPosition(clone $dropPos);
     $redFlag->dropTick = 100;
@@ -516,10 +504,10 @@ test('flags survive round restart and return to their stands', function () use (
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler, ['scoreLimit' => 100]);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 100]);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
@@ -528,7 +516,7 @@ test('flags survive round restart and return to their stands', function () use (
     $redFlag->atStand = false;
     $redFlag->setPosition(new Vector2(999, 999));
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Restart';
     $world->addTee($tee);
 
@@ -566,15 +554,15 @@ test('player carrying a flag cannot be moved by team balancer', function () use 
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $blueTee = new PlayerTee;
+    $blueTee       = new PlayerTee;
     $blueTee->name = 'Carrier';
     $world->addTee($blueTee);
     $blueTee->team = GameConstants::TEAM_BLUE;
@@ -604,13 +592,13 @@ test('CTF round ends when a team reaches the score limit', function () use ($ctf
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $red = new PlayerTee;
-    $red->name = 'Red';
+    $red        = new PlayerTee;
+    $red->name  = 'Red';
     $red->score = 1000;
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
@@ -627,19 +615,19 @@ test('CTF sudden death triggers when scores are tied at the limit', function () 
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $red = new PlayerTee;
-    $red->name = 'Red';
+    $red        = new PlayerTee;
+    $red->name  = 'Red';
     $red->score = 1000;
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
 
-    $blue = new PlayerTee;
-    $blue->name = 'Blue';
+    $blue        = new PlayerTee;
+    $blue->name  = 'Blue';
     $blue->score = 1000;
     $world->addTee($blue);
     $blue->team = GameConstants::TEAM_BLUE;
@@ -662,15 +650,15 @@ test('CTF doSnap reports the carrier tee index when a flag is carried', function
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $blueTee = new PlayerTee;
+    $blueTee       = new PlayerTee;
     $blueTee->name = 'Carrier';
     $world->addTee($blueTee);
     $blueTee->team = GameConstants::TEAM_BLUE;
@@ -680,10 +668,10 @@ test('CTF doSnap reports the carrier tee index when a flag is carried', function
     $world->addEntity($character);
 
     // Blue player carrying the red flag
-    $redFlag->atStand = false;
+    $redFlag->atStand           = false;
     $redFlag->carryingCharacter = $character;
 
-    $snaps = $controller->doSnap($blueTee);
+    $snaps    = $controller->doSnap($blueTee);
     $gameData = $snaps[1];
     assert($gameData instanceof ObjGameDataItem);
     expect($gameData->flagCarrierRedIndex)->toBe($blueTee->teeIndex);
@@ -697,23 +685,23 @@ test('CTF doSnap reports FLAG_TAKEN when a flag is dropped', function () use ($c
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
     // Simulate a dropped flag
-    $redFlag->atStand = false;
+    $redFlag->atStand           = false;
     $redFlag->carryingCharacter = null;
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Snap';
     $world->addTee($tee);
 
-    $snaps = $controller->doSnap($tee);
+    $snaps    = $controller->doSnap($tee);
     $gameData = $snaps[1];
     assert($gameData instanceof ObjGameDataItem);
     expect($gameData->flagCarrierRedIndex)->toBe(GameConstants::FLAG_TAKEN);
@@ -732,21 +720,27 @@ test('CTF flag grab sends grab sounds to the correct teams', function () use ($c
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
     // Red player (defending team) and blue player (attacking team)
-    $redTee = new PlayerTee; $redTee->name = 'Red'; $world->addTee($redTee); $redTee->team = GameConstants::TEAM_RED;
-    $blueTee = new PlayerTee; $blueTee->name = 'Blue'; $world->addTee($blueTee); $blueTee->team = GameConstants::TEAM_BLUE;
+    $redTee       = new PlayerTee;
+    $redTee->name = 'Red';
+    $world->addTee($redTee);
+    $redTee->team  = GameConstants::TEAM_RED;
+    $blueTee       = new PlayerTee;
+    $blueTee->name = 'Blue';
+    $world->addTee($blueTee);
+    $blueTee->team = GameConstants::TEAM_BLUE;
 
     // Blue player at the red flag stand → grabs the red flag
     $redFlagPos = $redFlag->getPosition();
-    $character = new PvpCharacterEntity($world, clone $redFlagPos);
+    $character  = new PvpCharacterEntity($world, clone $redFlagPos);
     $character->spawn(clone $redFlagPos, $blueTee);
     $world->addEntity($character);
 
@@ -768,26 +762,32 @@ test('CTF flag capture sends SOUND_CTF_CAPTURE to all tees', function () use ($c
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
+    $redFlag  = $controller->getFlag(GameConstants::TEAM_RED);
     $blueFlag = $controller->getFlag(GameConstants::TEAM_BLUE);
     assert($redFlag !== null);
     assert($blueFlag !== null);
 
-    $redTee = new PlayerTee; $redTee->name = 'Red'; $world->addTee($redTee); $redTee->team = GameConstants::TEAM_RED;
-    $blueTee = new PlayerTee; $blueTee->name = 'Blue'; $world->addTee($blueTee); $blueTee->team = GameConstants::TEAM_BLUE;
+    $redTee       = new PlayerTee;
+    $redTee->name = 'Red';
+    $world->addTee($redTee);
+    $redTee->team  = GameConstants::TEAM_RED;
+    $blueTee       = new PlayerTee;
+    $blueTee->name = 'Blue';
+    $world->addTee($blueTee);
+    $blueTee->team = GameConstants::TEAM_BLUE;
 
     // Blue player carrying the red flag, at the blue stand
     $blueFlagPos = $blueFlag->getPosition();
-    $character = new PvpCharacterEntity($world, clone $blueFlagPos);
+    $character   = new PvpCharacterEntity($world, clone $blueFlagPos);
     $character->spawn(clone $blueFlagPos, $blueTee);
     $world->addEntity($character);
 
-    $redFlag->atStand = false;
+    $redFlag->atStand           = false;
     $redFlag->carryingCharacter = $character;
     $redFlag->setPosition(clone $blueFlagPos);
 
@@ -805,16 +805,22 @@ test('CTF flag return sends SOUND_CTF_RETURN to all tees', function () use ($ctf
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $redTee = new PlayerTee; $redTee->name = 'Red'; $world->addTee($redTee); $redTee->team = GameConstants::TEAM_RED;
-    $blueTee = new PlayerTee; $blueTee->name = 'Blue'; $world->addTee($blueTee); $blueTee->team = GameConstants::TEAM_BLUE;
+    $redTee       = new PlayerTee;
+    $redTee->name = 'Red';
+    $world->addTee($redTee);
+    $redTee->team  = GameConstants::TEAM_RED;
+    $blueTee       = new PlayerTee;
+    $blueTee->name = 'Blue';
+    $world->addTee($blueTee);
+    $blueTee->team = GameConstants::TEAM_BLUE;
 
     // Simulate a dropped red flag
     $redFlag->atStand = false;
@@ -823,7 +829,7 @@ test('CTF flag return sends SOUND_CTF_RETURN to all tees', function () use ($ctf
 
     // Red player at the dropped flag position → returns it
     $redFlagPos = $redFlag->getPosition();
-    $character = new PvpCharacterEntity($world, clone $redFlagPos);
+    $character  = new PvpCharacterEntity($world, clone $redFlagPos);
     $character->spawn(clone $redFlagPos, $redTee);
     $world->addEntity($character);
 
@@ -840,23 +846,29 @@ test('CTF flag drop on death sends SOUND_CTF_DROP to all tees', function () use 
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $redTee = new PlayerTee; $redTee->name = 'Red'; $world->addTee($redTee); $redTee->team = GameConstants::TEAM_RED;
-    $blueTee = new PlayerTee; $blueTee->name = 'Blue'; $world->addTee($blueTee); $blueTee->team = GameConstants::TEAM_BLUE;
+    $redTee       = new PlayerTee;
+    $redTee->name = 'Red';
+    $world->addTee($redTee);
+    $redTee->team  = GameConstants::TEAM_RED;
+    $blueTee       = new PlayerTee;
+    $blueTee->name = 'Blue';
+    $world->addTee($blueTee);
+    $blueTee->team = GameConstants::TEAM_BLUE;
 
     $character = new PvpCharacterEntity($world, new Vector2(500, 500));
     $character->spawn(new Vector2(500, 500), $blueTee);
     $world->addEntity($character);
 
     // Blue player carrying the red flag
-    $redFlag->atStand = false;
+    $redFlag->atStand           = false;
     $redFlag->carryingCharacter = $character;
 
     // Kill the carrier
@@ -873,15 +885,18 @@ test('CTF flag auto-return after 30 seconds sends SOUND_CTF_RETURN', function ()
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
 
-    $redTee = new PlayerTee; $redTee->name = 'Red'; $world->addTee($redTee); $redTee->team = GameConstants::TEAM_RED;
+    $redTee       = new PlayerTee;
+    $redTee->name = 'Red';
+    $world->addTee($redTee);
+    $redTee->team = GameConstants::TEAM_RED;
 
     $redFlag->atStand = false;
     $redFlag->setPosition(new Vector2($redFlag->standPos->x + 100, $redFlag->standPos->y));
@@ -907,13 +922,19 @@ test('takeDamage sends SOUND_HIT to the attacker only', function () use ($ctfMap
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $redTee = new PlayerTee; $redTee->name = 'Att'; $world->addTee($redTee); $redTee->team = GameConstants::TEAM_RED;
-    $blueTee = new PlayerTee; $blueTee->name = 'Vic'; $world->addTee($blueTee); $blueTee->team = GameConstants::TEAM_BLUE;
+    $redTee       = new PlayerTee;
+    $redTee->name = 'Att';
+    $world->addTee($redTee);
+    $redTee->team  = GameConstants::TEAM_RED;
+    $blueTee       = new PlayerTee;
+    $blueTee->name = 'Vic';
+    $world->addTee($blueTee);
+    $blueTee->team = GameConstants::TEAM_BLUE;
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $attacker = new PvpCharacterEntity($world, clone $spawnPos);
@@ -939,14 +960,17 @@ test('takeDamage does not send SOUND_HIT on self-damage', function () use ($ctfM
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $tee = new PlayerTee; $tee->name = 'Self'; $world->addTee($tee); $tee->team = GameConstants::TEAM_RED;
+    $tee       = new PlayerTee;
+    $tee->name = 'Self';
+    $world->addTee($tee);
+    $tee->team = GameConstants::TEAM_RED;
 
-    $spawnPos = new Vector2(50 * 32, 25 * 32);
+    $spawnPos  = new Vector2(50 * 32, 25 * 32);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
     $world->addEntity($character);
@@ -964,13 +988,19 @@ test('takeDamage does not send SOUND_HIT on friendly fire (blocked)', function (
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $red1 = new PlayerTee; $red1->name = 'R1'; $world->addTee($red1); $red1->team = GameConstants::TEAM_RED;
-    $red2 = new PlayerTee; $red2->name = 'R2'; $world->addTee($red2); $red2->team = GameConstants::TEAM_RED;
+    $red1       = new PlayerTee;
+    $red1->name = 'R1';
+    $world->addTee($red1);
+    $red1->team = GameConstants::TEAM_RED;
+    $red2       = new PlayerTee;
+    $red2->name = 'R2';
+    $world->addTee($red2);
+    $red2->team = GameConstants::TEAM_RED;
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
     $attacker = new PvpCharacterEntity($world, clone $spawnPos);
@@ -1000,10 +1030,10 @@ test('red tee spawns at a red spawn point on the CTF map', function () use ($ctf
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     // Collect all red spawn positions from the map
     $gameLayer = $map->getGameLayer();
@@ -1016,7 +1046,7 @@ test('red tee spawns at a red spawn point on the CTF map', function () use ($ctf
     }
     expect(count($redSpawnPositions))->toBeGreaterThan(0);
 
-    $redTee = new PlayerTee;
+    $redTee       = new PlayerTee;
     $redTee->name = 'RedSpawn';
     $world->addTee($redTee);
     $redTee->team = GameConstants::TEAM_RED;
@@ -1031,7 +1061,7 @@ test('red tee spawns at a red spawn point on the CTF map', function () use ($ctf
     // The character should be at one of the red spawn positions
     $atRedSpawn = false;
     foreach ($redSpawnPositions as $redSpawn) {
-        if ((int) round($spawnPos->x) === (int) round($redSpawn->x)
+        if ((int) round($spawnPos->x)    === (int) round($redSpawn->x)
             && (int) round($spawnPos->y) === (int) round($redSpawn->y)) {
             $atRedSpawn = true;
             break;
@@ -1047,10 +1077,10 @@ test('blue tee spawns at a blue spawn point on the CTF map', function () use ($c
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     // Collect all blue spawn positions from the map
     $gameLayer = $map->getGameLayer();
@@ -1063,7 +1093,7 @@ test('blue tee spawns at a blue spawn point on the CTF map', function () use ($c
     }
     expect(count($blueSpawnPositions))->toBeGreaterThan(0);
 
-    $blueTee = new PlayerTee;
+    $blueTee       = new PlayerTee;
     $blueTee->name = 'BlueSpawn';
     $world->addTee($blueTee);
     $blueTee->team = GameConstants::TEAM_BLUE;
@@ -1078,7 +1108,7 @@ test('blue tee spawns at a blue spawn point on the CTF map', function () use ($c
     // The character should be at one of the blue spawn positions
     $atBlueSpawn = false;
     foreach ($blueSpawnPositions as $blueSpawn) {
-        if ((int) round($spawnPos->x) === (int) round($blueSpawn->x)
+        if ((int) round($spawnPos->x)    === (int) round($blueSpawn->x)
             && (int) round($spawnPos->y) === (int) round($blueSpawn->y)) {
             $atBlueSpawn = true;
             break;
@@ -1094,10 +1124,10 @@ test('red tee does not spawn at a blue spawn point on the CTF map', function () 
 
     resetMockServer();
 
-    $map = new Map($ctfMapPath);
+    $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller = makeCtfGameController($tickHandler);
-    $world = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller);
 
     // Collect all blue spawn positions from the map
     $gameLayer = $map->getGameLayer();
@@ -1109,7 +1139,7 @@ test('red tee does not spawn at a blue spawn point on the CTF map', function () 
         }
     }
 
-    $redTee = new PlayerTee;
+    $redTee       = new PlayerTee;
     $redTee->name = 'RedSpawn';
     $world->addTee($redTee);
     $redTee->team = GameConstants::TEAM_RED;
@@ -1123,7 +1153,7 @@ test('red tee does not spawn at a blue spawn point on the CTF map', function () 
     // The character should NOT be at any blue spawn position
     $atBlueSpawn = false;
     foreach ($blueSpawnPositions as $blueSpawn) {
-        if ((int) round($spawnPos->x) === (int) round($blueSpawn->x)
+        if ((int) round($spawnPos->x)    === (int) round($blueSpawn->x)
             && (int) round($spawnPos->y) === (int) round($blueSpawn->y)) {
             $atBlueSpawn = true;
             break;

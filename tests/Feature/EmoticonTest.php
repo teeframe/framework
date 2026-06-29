@@ -1,14 +1,12 @@
 <?php
 
-use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\RawPayload;
-use TeeFrame\Map\Map;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('ClEmoticonChunk encodes and decodes correctly', function () {
@@ -41,20 +39,19 @@ test('emoticon broadcast calls sendToTee for each tee', function () use ($mapPat
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $tee1 = new PlayerTee;
-    $tee1->name = 'Player1';
+    $tee1           = new PlayerTee;
+    $tee1->name     = 'Player1';
     $tee1->teeIndex = 0;
 
-    $tee2 = new PlayerTee;
-    $tee2->name = 'Player2';
+    $tee2           = new PlayerTee;
+    $tee2->name     = 'Player2';
     $tee2->teeIndex = 1;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $tee1, 1 => $tee2]);
 
     $world->onMessage($tee1, new ClEmoticonChunk(emoticon: 7));
@@ -69,20 +66,19 @@ test('onMessage handles ClEmoticonChunk by broadcasting', function () use ($mapP
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $tee1 = new PlayerTee;
-    $tee1->name = 'Player1';
+    $tee1           = new PlayerTee;
+    $tee1->name     = 'Player1';
     $tee1->teeIndex = 0;
 
-    $tee2 = new PlayerTee;
-    $tee2->name = 'Player2';
+    $tee2           = new PlayerTee;
+    $tee2->name     = 'Player2';
     $tee2->teeIndex = 1;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $tee1, 1 => $tee2]);
 
     $world->onMessage($tee1, new ClEmoticonChunk(emoticon: 2));

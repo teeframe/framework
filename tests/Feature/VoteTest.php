@@ -4,9 +4,10 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\ChangeMapCommand;
+use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
-use TeeFrame\Game\Vote\VoteEnforce;
-use TeeFrame\Game\Vote\VoteOption;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClVoteChunk;
@@ -15,7 +16,7 @@ use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteStatusChunk;
 use TeeFrame\Network\RawPayload;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 function createVoteWorld(Map $map, TickHandler $tickHandler): AbstractWorld
@@ -32,9 +33,8 @@ function createVoteWorld(Map $map, TickHandler $tickHandler): AbstractWorld
 
 function setVoteTick(TickHandler $tickHandler, int $tick): void
 {
-    $ref = new ReflectionClass($tickHandler);
+    $ref  = new ReflectionClass($tickHandler);
     $prop = $ref->getProperty('currentTick');
-    $prop->setAccessible(true);
     $prop->setValue($tickHandler, $tick);
 }
 
@@ -106,15 +106,15 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Voter';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Observer';
     $world->addTee($tee2);
 
@@ -149,19 +149,19 @@ test('vote passes when majority votes yes', function () use ($mapPath, $mapExist
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Voter2';
     $world->addTee($tee2);
 
-    $tee3 = new PlayerTee;
+    $tee3       = new PlayerTee;
     $tee3->name = 'Voter3';
     $world->addTee($tee3);
 
@@ -180,7 +180,7 @@ test('vote passes when majority votes yes', function () use ($mapPath, $mapExist
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
     // Should have sent "Vote passed" chat
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $passed = array_filter($chats, fn ($c) => $c->text === 'Vote passed');
     expect($passed)->not->toBeEmpty();
 });
@@ -192,19 +192,19 @@ test('vote fails when majority votes no', function () use ($mapPath, $mapExists)
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Voter2';
     $world->addTee($tee2);
 
-    $tee3 = new PlayerTee;
+    $tee3       = new PlayerTee;
     $tee3->name = 'Voter3';
     $world->addTee($tee3);
 
@@ -221,7 +221,7 @@ test('vote fails when majority votes no', function () use ($mapPath, $mapExists)
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $failed = array_filter($chats, fn ($c) => $c->text === 'Vote failed');
     expect($failed)->not->toBeEmpty();
 });
@@ -233,15 +233,15 @@ test('vote fails on timeout', function () use ($mapPath, $mapExists) {
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Voter2';
     $world->addTee($tee2);
 
@@ -256,7 +256,7 @@ test('vote fails on timeout', function () use ($mapPath, $mapExists) {
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $failed = array_filter($chats, fn ($c) => $c->text === 'Vote failed');
     expect($failed)->not->toBeEmpty();
 });
@@ -268,11 +268,11 @@ test('cannot call a vote while another is running', function () use ($mapPath, $
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
@@ -299,15 +299,15 @@ test('player cannot vote twice', function () use ($mapPath, $mapExists) {
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Voter2';
     $world->addTee($tee2);
 
@@ -333,11 +333,11 @@ test('vote option lookup is case insensitive', function () use ($mapPath, $mapEx
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
@@ -358,11 +358,11 @@ test('calling a non-existent option is rejected', function () use ($mapPath, $ma
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
@@ -370,7 +370,7 @@ test('calling a non-existent option is rejected', function () use ($mapPath, $ma
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats    = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $rejected = array_filter($chats, fn ($c) => str_contains($c->text, "isn't an option"));
     expect($rejected)->not->toBeEmpty();
 });
@@ -382,15 +382,15 @@ test('vote status is broadcast after a vote', function () use ($mapPath, $mapExi
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Voter2';
     $world->addTee($tee2);
 
@@ -422,19 +422,19 @@ test('kick vote kicks the target when it passes', function () use ($mapPath, $ma
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Victim';
     $world->addTee($tee2);
 
-    $tee3 = new PlayerTee;
+    $tee3       = new PlayerTee;
     $tee3->name = 'Voter3';
     $world->addTee($tee3);
 
@@ -458,11 +458,11 @@ test('cannot kick yourself', function () use ($mapPath, $mapExists) {
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
@@ -470,7 +470,7 @@ test('cannot kick yourself', function () use ($mapPath, $mapExists) {
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats   = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $blocked = array_filter($chats, fn ($c) => str_contains($c->text, "can't kick yourself"));
     expect($blocked)->not->toBeEmpty();
 });
@@ -482,32 +482,32 @@ test('spectate vote kills the target character when it passes', function () use 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Target';
     $world->addTee($tee2);
 
-    $tee3 = new PlayerTee;
+    $tee3       = new PlayerTee;
     $tee3->name = 'Voter3';
     $world->addTee($tee3);
 
     // Spawn the target's character so we can verify it gets killed
     $world->doTick();
     // doTick in createVoteWorld only runs vote tick, so spawn manually
-    $spawnPos = new \TeeFrame\Game\World\Vector2(100, 100);
-    $character = new \TeeFrame\Game\Entities\Character\PvpCharacterEntity($world, clone $spawnPos);
+    $spawnPos  = new Vector2(100, 100);
+    $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee2);
     $world->addEntity($character);
     expect($tee2->character)->not->toBeNull();
     $character = $tee2->character;
-    assert($character instanceof \TeeFrame\Game\Entities\Character\PvpCharacterEntity);
+    assert($character instanceof PvpCharacterEntity);
     expect($character->alive)->toBeTrue();
 
     // Start a spectate vote against tee2
@@ -519,7 +519,7 @@ test('spectate vote kills the target character when it passes', function () use 
     $world->doTick();
 
     // The target should now be a spectator with no character
-    expect($tee2->team)->toBe(\TeeFrame\Game\GameConstants::TEAM_SPECTATORS);
+    expect($tee2->team)->toBe(GameConstants::TEAM_SPECTATORS);
     expect($tee2->character)->toBeNull();
 });
 
@@ -539,18 +539,18 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createVoteWorld($map, $tickHandler);
+    $world       = createVoteWorld($map, $tickHandler);
 
     // Register the ChangeMapCommand as a vote command
     $world->registerCommand(new ChangeMapCommand('dm1'));
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Voter2';
     $world->addTee($tee2);
 
@@ -570,7 +570,7 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
     // Vote should have passed and the command executed
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $passed = array_filter($chats, fn ($c) => $c->text === 'Vote passed');
     expect($passed)->not->toBeEmpty();
 });

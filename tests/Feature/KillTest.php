@@ -2,9 +2,8 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
-use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
@@ -24,7 +23,6 @@ function setTickForKill(TickHandler $tickHandler, int $tick): void
 {
     $ref  = new ReflectionClass($tickHandler);
     $prop = $ref->getProperty('currentTick');
-    $prop->setAccessible(true);
     $prop->setValue($tickHandler, $tick);
 }
 
@@ -196,15 +194,15 @@ test('ClKill broadcasts SvKillMsgChunk to all tees', function () use ($mapPath, 
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createTickingWorldForKill($map, $tickHandler);
+    $world       = createTickingWorldForKill($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Killer';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Witness';
     $world->addTee($tee2);
 

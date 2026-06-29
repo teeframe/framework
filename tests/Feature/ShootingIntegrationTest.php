@@ -7,7 +7,6 @@ use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
-use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\PickupSpawner;
 use TeeFrame\Game\World\Vector2;
@@ -56,7 +55,6 @@ test('shootGun creates projectile that appears in world entities', function () u
 
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     $afterCount = count($world->getEntities());
@@ -77,7 +75,6 @@ test('projectile snap item has correct type and velocity', function () use ($map
 
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     $entities   = $world->getEntities();
@@ -108,9 +105,8 @@ test('hammer hit does not crash and returns reload timer', function () use ($map
     $map                 = new Map($mapPath);
     [$character, $world] = setupCharacter($map);
 
-    $ref    = new ReflectionClass($character);
-    $method = $ref->getMethod('shootHammer');
-    $method->setAccessible(true);
+    $ref         = new ReflectionClass($character);
+    $method      = $ref->getMethod('shootHammer');
     $reloadTimer = $method->invoke($character);
 
     // No targets nearby, so reloadTimer should be 6 (no hits)
@@ -153,9 +149,8 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     expect(count($world->getEntities()))->toBe(2);
 
     // Shoot hammer
-    $ref    = new ReflectionClass($attacker);
-    $method = $ref->getMethod('shootHammer');
-    $method->setAccessible(true);
+    $ref         = new ReflectionClass($attacker);
+    $method      = $ref->getMethod('shootHammer');
     $reloadTimer = $method->invoke($attacker);
 
     // Should return 16 (hit cooldown) since target is within range and no wall between
@@ -201,9 +196,8 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $world->addEntity($target);
 
     // Shoot hammer
-    $ref    = new ReflectionClass($attacker);
-    $method = $ref->getMethod('shootHammer');
-    $method->setAccessible(true);
+    $ref         = new ReflectionClass($attacker);
+    $method      = $ref->getMethod('shootHammer');
     $reloadTimer = $method->invoke($attacker);
 
     // Should hit (return 16 = hit cooldown)
@@ -244,9 +238,8 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $world->addEntity($target);
 
     // Shoot hammer
-    $ref    = new ReflectionClass($attacker);
-    $method = $ref->getMethod('shootHammer');
-    $method->setAccessible(true);
+    $ref         = new ReflectionClass($attacker);
+    $method      = $ref->getMethod('shootHammer');
     $reloadTimer = $method->invoke($attacker);
 
     // Should NOT hit (return 6 = no-hit cooldown)
@@ -264,7 +257,6 @@ test('projectile getPos returns forward displacement', function () use ($mapPath
 
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     $entities   = $world->getEntities();
@@ -273,7 +265,6 @@ test('projectile getPos returns forward displacement', function () use ($mapPath
 
     $projRef   = new ReflectionClass($projectile);
     $getPosRef = $projRef->getMethod('getPos');
-    $getPosRef->setAccessible(true);
 
     $curPos = $getPosRef->invoke($projectile, 0.04);
     expect($curPos->x)->toBeGreaterThan($startX + 1);
@@ -384,7 +375,6 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
 
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     $proj = $world->getEntities()[1];
@@ -520,7 +510,6 @@ test('character death sets respawn on tee and notifies game controller', functio
     // Override game controller to track onCharacterDeath calls
     $worldRef = new ReflectionClass($world);
     $gcProp   = $worldRef->getProperty('gameController');
-    $gcProp->setAccessible(true);
 
     $gc = new class($tickHandler) extends AbstractGameController
     {

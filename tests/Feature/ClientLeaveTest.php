@@ -1,11 +1,14 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\PlayerTee;
-use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Server\AbstractServerInstance;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('removeTee broadcasts leave message without reason', function () use ($mapPath, $mapExists) {
@@ -15,20 +18,19 @@ test('removeTee broadcasts leave message without reason', function () use ($mapP
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $leaving = new PlayerTee;
-    $leaving->name = 'Leaver';
+    $leaving           = new PlayerTee;
+    $leaving->name     = 'Leaver';
     $leaving->teeIndex = 0;
 
-    $staying = new PlayerTee;
-    $staying->name = 'Stayer';
+    $staying           = new PlayerTee;
+    $staying->name     = 'Stayer';
     $staying->teeIndex = 1;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $leaving, 1 => $staying]);
 
     $world->removeTee($leaving);
@@ -44,11 +46,12 @@ test('removeTee broadcasts leave message with reason', function () use ($mapPath
 
     $map = new Map($mapPath);
 
-    $server = new class extends \TeeFrame\Server\AbstractServerInstance {
+    $server = new class extends AbstractServerInstance
+    {
         /** @var int[] */
         public array $sentTeeIndexes = [];
 
-        /** @var \TeeFrame\Network\Chunks\AbstractChunk[] */
+        /** @var AbstractChunk[] */
         public array $captured = [];
 
         public function __construct()
@@ -58,29 +61,29 @@ test('removeTee broadcasts leave message with reason', function () use ($mapPath
 
         protected function boot(): void {}
 
-        protected function selectWorldForNewConnection(): \TeeFrame\Game\AbstractWorld
+        protected function selectWorldForNewConnection(): AbstractWorld
         {
-            throw new \RuntimeException('not implemented');
+            throw new RuntimeException('not implemented');
         }
 
-        public function sendToTee(\TeeFrame\Game\AbstractWorld $world, int $teeIndex, \TeeFrame\Network\Chunks\AbstractChunk $chunk): void
+        public function sendToTee(AbstractWorld $world, int $teeIndex, AbstractChunk $chunk): void
         {
             $this->sentTeeIndexes[] = $teeIndex;
-            $this->captured[] = $chunk;
+            $this->captured[]       = $chunk;
         }
     };
 
-    $world = new class(new TickHandler, $map, $server) extends TestWorld {
+    $world = new class(new TickHandler, $map, $server) extends TestWorld
+    {
         public function doTick(): void {}
     };
 
-    $leaving = new PlayerTee;
-    $leaving->name = 'Leaver';
+    $leaving           = new PlayerTee;
+    $leaving->name     = 'Leaver';
     $leaving->teeIndex = 0;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $leaving]);
 
     $world->removeTee($leaving, 'timeout');
@@ -102,11 +105,12 @@ test('removeTee leave message without reason has plain format', function () use 
 
     $map = new Map($mapPath);
 
-    $server = new class extends \TeeFrame\Server\AbstractServerInstance {
+    $server = new class extends AbstractServerInstance
+    {
         /** @var int[] */
         public array $sentTeeIndexes = [];
 
-        /** @var \TeeFrame\Network\Chunks\AbstractChunk[] */
+        /** @var AbstractChunk[] */
         public array $captured = [];
 
         public function __construct()
@@ -116,29 +120,29 @@ test('removeTee leave message without reason has plain format', function () use 
 
         protected function boot(): void {}
 
-        protected function selectWorldForNewConnection(): \TeeFrame\Game\AbstractWorld
+        protected function selectWorldForNewConnection(): AbstractWorld
         {
-            throw new \RuntimeException('not implemented');
+            throw new RuntimeException('not implemented');
         }
 
-        public function sendToTee(\TeeFrame\Game\AbstractWorld $world, int $teeIndex, \TeeFrame\Network\Chunks\AbstractChunk $chunk): void
+        public function sendToTee(AbstractWorld $world, int $teeIndex, AbstractChunk $chunk): void
         {
             $this->sentTeeIndexes[] = $teeIndex;
-            $this->captured[] = $chunk;
+            $this->captured[]       = $chunk;
         }
     };
 
-    $world = new class(new TickHandler, $map, $server) extends TestWorld {
+    $world = new class(new TickHandler, $map, $server) extends TestWorld
+    {
         public function doTick(): void {}
     };
 
-    $leaving = new PlayerTee;
-    $leaving->name = 'QuietLeaver';
+    $leaving           = new PlayerTee;
+    $leaving->name     = 'QuietLeaver';
     $leaving->teeIndex = 0;
 
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tees');
-    $prop->setAccessible(true);
     $prop->setValue($world, [0 => $leaving]);
 
     $world->removeTee($leaving);
@@ -159,14 +163,14 @@ test('removeTee frees the tee index', function () use ($mapPath, $mapExists) {
 
     resetMockServer();
 
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'First';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Second';
     $world->addTee($tee2);
 
@@ -175,7 +179,7 @@ test('removeTee frees the tee index', function () use ($mapPath, $mapExists) {
 
     $world->removeTee($tee1);
 
-    $tee3 = new PlayerTee;
+    $tee3       = new PlayerTee;
     $tee3->name = 'Third';
     $world->addTee($tee3);
 

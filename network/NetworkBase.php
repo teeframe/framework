@@ -62,7 +62,7 @@ class NetworkBase
      */
     public static function packBuffer(array $buffer): string
     {
-        return implode('', array_map('chr', $buffer));
+        return implode('', array_map(static fn (int $b): string => chr($b & 0xFF), $buffer)); // & 0xFF for strict typing
     }
 
     /**

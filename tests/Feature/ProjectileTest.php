@@ -5,7 +5,6 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
-use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -53,7 +52,6 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     // Shoot through the character so tuning is applied from the controller
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     $proj = $world->getEntities()[1]; // [0] is the character
@@ -77,7 +75,6 @@ function getProjectilePos(PvpProjectileEntity $proj, float $time): Vector2
 {
     $ref    = new ReflectionClass($proj);
     $method = $ref->getMethod('getPos');
-    $method->setAccessible(true);
 
     return $method->invoke($proj, $time);
 }
@@ -120,7 +117,6 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     // Use reflection to call private method
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
 
     // Should not throw
     $method->invoke($character);
@@ -157,7 +153,6 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
 
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
 
     // Simulate 20 rapid shots (way more than the reload timer allows)
     $tune = $world->getTuneController();
@@ -207,7 +202,6 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
 
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     $proj = $world->getEntities()[1];
@@ -252,7 +246,6 @@ test('projectile snap uses start position not current position', function () use
 
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     $proj = $world->getEntities()[1];
@@ -312,9 +305,8 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
     $proj->doTick();
 
     // Check that an explosion event was added
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('pendingEvents');
-    $prop->setAccessible(true);
+    $ref    = new ReflectionClass($world);
+    $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
 
     $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
@@ -431,9 +423,8 @@ test('non-grenade projectile does not create explosion event', function () use (
 
     $proj->doTick();
 
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('pendingEvents');
-    $prop->setAccessible(true);
+    $ref    = new ReflectionClass($world);
+    $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
 
     $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
@@ -512,9 +503,8 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     expect($targetChar->health)->toBeLessThan(10);
 
     // Explosion event should have been created
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('pendingEvents');
-    $prop->setAccessible(true);
+    $ref    = new ReflectionClass($world);
+    $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
 
     $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
@@ -698,9 +688,8 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     $target->takeDamage(new Vector2(0, 0), 3, $attacker);
 
     // Check damage indicator events were created (one per point of damage)
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('pendingEvents');
-    $prop->setAccessible(true);
+    $ref    = new ReflectionClass($world);
+    $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
 
     $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
@@ -765,9 +754,8 @@ test('damage indicators group when damage taken in quick succession', function (
     $target->takeDamage(new Vector2(0, 0), 2, $attacker);
 
     // Total damage indicator events: 3 + 2 = 5
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('pendingEvents');
-    $prop->setAccessible(true);
+    $ref    = new ReflectionClass($world);
+    $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
 
     $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
@@ -831,9 +819,8 @@ test('killing blow still emits damage indicators', function () use ($mapPath, $m
     expect($target->alive)->toBeFalse();
 
     // The killing blow must still emit its 3 damage indicators.
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('pendingEvents');
-    $prop->setAccessible(true);
+    $ref    = new ReflectionClass($world);
+    $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
 
     $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));

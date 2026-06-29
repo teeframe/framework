@@ -1,14 +1,14 @@
 <?php
 
-use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 function createNinjaWorld(Map $map): AbstractWorld
@@ -21,9 +21,8 @@ function createNinjaWorld(Map $map): AbstractWorld
 
 function advanceWorldTick(AbstractWorld $world): void
 {
-    $ref = new ReflectionClass($world);
+    $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tickHandler');
-    $prop->setAccessible(true);
     $prop->getValue($world)->next();
 }
 
@@ -32,7 +31,7 @@ test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, 
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -52,13 +51,11 @@ test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, 
     $character->giveNinja();
     $character->angle = 0; // facing right
 
-    $ref = new ReflectionClass($character);
+    $ref         = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');
-    $shootMethod->setAccessible(true);
     $shootMethod->invoke($character);
 
     $handleMethod = $ref->getMethod('handleNinja');
-    $handleMethod->setAccessible(true);
 
     $startX = $character->getPosition()->x;
 
@@ -78,7 +75,7 @@ test('ninja move time is 10 ticks', function () use ($mapPath, $mapExists) {
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -97,9 +94,8 @@ test('ninja move time is 10 ticks', function () use ($mapPath, $mapExists) {
     $character->giveNinja();
     $character->angle = 0;
 
-    $ref = new ReflectionClass($character);
+    $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootNinja');
-    $method->setAccessible(true);
     $method->invoke($character);
 
     // ninjaCurrentMoveTime should be 10 (200ms at 50 tick/s), not 25
@@ -111,7 +107,7 @@ test('ninja dash moves character forward by expected distance', function () use 
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -131,16 +127,14 @@ test('ninja dash moves character forward by expected distance', function () use 
     $character->giveNinja();
     $character->angle = 0; // facing right
 
-    $ref = new ReflectionClass($character);
+    $ref         = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');
-    $shootMethod->setAccessible(true);
     $shootMethod->invoke($character);
 
     $startX = $character->getPosition()->x;
 
     // Run 3 ticks of dash
     $handleMethod = $ref->getMethod('handleNinja');
-    $handleMethod->setAccessible(true);
 
     for ($i = 0; $i < 3; $i++) {
         advanceWorldTick($world);
@@ -158,7 +152,7 @@ test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -179,9 +173,8 @@ test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_NINJA);
     expect($character->weapons[GameConstants::WEAPON_NINJA]->got)->toBeTrue();
 
-    $ref = new ReflectionClass($character);
+    $ref          = new ReflectionClass($character);
     $handleMethod = $ref->getMethod('handleNinja');
-    $handleMethod->setAccessible(true);
 
     // Advance ticks to just before expiry.
     // The condition is: (currentTick - activationTick) > 750
@@ -209,7 +202,7 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -228,13 +221,11 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
     $character->giveNinja();
     $character->angle = 0;
 
-    $ref = new ReflectionClass($character);
+    $ref         = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');
-    $shootMethod->setAccessible(true);
     $shootMethod->invoke($character);
 
     $handleMethod = $ref->getMethod('handleNinja');
-    $handleMethod->setAccessible(true);
 
     // Run 10 ticks of dash
     for ($i = 0; $i < 10; $i++) {
@@ -260,7 +251,7 @@ test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $map
         return;
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
         return;
@@ -279,9 +270,8 @@ test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $map
     $character->giveNinja();
     $character->angle = 0;
 
-    $ref = new ReflectionClass($character);
+    $ref         = new ReflectionClass($character);
     $shootMethod = $ref->getMethod('shootNinja');
-    $shootMethod->setAccessible(true);
 
     // First shot sets reload timer
     $reloadTimer = $shootMethod->invoke($character);
