@@ -13,16 +13,15 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
-use TeeFrame\Network\SnapItems\AbstractSnapItem;
 
 abstract class AbstractGameController implements SnapableObject, TickableObject
 {
-    public const SPAWN_HUMAN = 0;
-    public const SPAWN_RED   = 1;
-    public const SPAWN_BLUE  = 2;
-
+    public const SPAWN_HUMAN                = 0;
+    public const SPAWN_RED                  = 1;
+    public const SPAWN_BLUE                 = 2;
     public const INACTIVE_KICK_TO_SPECTATOR = 0;
     public const INACTIVE_KICK_SPEC_OR_KICK = 1;
     public const INACTIVE_KICK_KICK         = 2;
@@ -37,14 +36,20 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     ];
 
     protected int $roundStartTick = 0;
-    protected int $gameOverTick   = -1;
-    protected int $suddenDeath    = 0;
-    protected int $warmup         = 0;
-    protected int $unpauseTimer   = 0;
-    protected int $roundCount     = 0;
 
-    protected int  $unbalancedTick  = -1;
-    protected bool $forceBalanced   = false;
+    protected int $gameOverTick = -1;
+
+    protected int $suddenDeath = 0;
+
+    protected int $warmup = 0;
+
+    protected int $unpauseTimer = 0;
+
+    protected int $roundCount = 0;
+
+    protected int $unbalancedTick = -1;
+
+    protected bool $forceBalanced = false;
 
     /**
      * @var array<int, FlagEntity|null>
@@ -57,12 +62,12 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         protected TickHandler $tickHandler,
         protected bool $isTeamMode = false,
         protected bool $isCaptureTheFlag = false,
-        protected int $scoreLimit       = 0,
-        protected int $timeLimit        = 0,
-        protected int $teamBalanceTime   = 0,
-        protected int $inactiveKickTime  = 0,
-        protected int $inactiveKick      = self::INACTIVE_KICK_TO_SPECTATOR,
-        protected int $spectatorSlots    = 0,
+        protected int $scoreLimit = 0,
+        protected int $timeLimit = 0,
+        protected int $teamBalanceTime = 0,
+        protected int $inactiveKickTime = 0,
+        protected int $inactiveKick = self::INACTIVE_KICK_TO_SPECTATOR,
+        protected int $spectatorSlots = 0,
     ) {
         $this->roundStartTick = $tickHandler->get();
     }
@@ -85,7 +90,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     public function doTick(): void
     {
-        $world = $this->world;
+        $world  = $this->world;
         $paused = $world !== null && $world->isPaused();
 
         if (! $paused && $this->warmup > 0) {
@@ -102,7 +107,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 $this->roundCount++;
             }
         } elseif ($paused && $this->unpauseTimer > 0) {
-            --$this->unpauseTimer;
+            $this->unpauseTimer--;
             if ($this->unpauseTimer === 0) {
                 $world->setPaused(false);
             }
@@ -113,7 +118,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
 
         if ($this->isTeamMode && $this->teamBalanceTime > 0 && $this->unbalancedTick !== -1
-            && $this->tickHandler->get() > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
+                              && $this->tickHandler->get()                > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
         ) {
             $this->balanceTeams();
             $this->unbalancedTick = -1;
@@ -142,7 +147,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
         // Find the killer's tee
         $killerTee = null;
-        $world = $this->getWorld();
+        $world     = $this->getWorld();
         if ($world !== null) {
             foreach ($world->getTees() as $tee) {
                 if ($tee->teeIndex === $killerTeeIndex) {
@@ -182,7 +187,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             return;
         }
 
-        $elapsed = $this->tickHandler->get() - $this->roundStartTick;
+        $elapsed          = $this->tickHandler->get() - $this->roundStartTick;
         $timeLimitReached = $this->timeLimit > 0 && $elapsed >= $this->timeLimit * NetworkParams::TICKS_PER_SECOND * 60;
 
         if ($this->isTeamMode) {
@@ -197,12 +202,12 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             }
 
             $scoreLimitReached = $this->scoreLimit > 0
-                && ($teamScore[GameConstants::TEAM_RED] >= $this->scoreLimit
+                && ($teamScore[GameConstants::TEAM_RED]     >= $this->scoreLimit
                     || $teamScore[GameConstants::TEAM_BLUE] >= $this->scoreLimit);
 
             if ($scoreLimitReached || $timeLimitReached) {
                 if ($this->suddenDeath) {
-                    $red  = $this->isCaptureTheFlag
+                    $red = $this->isCaptureTheFlag
                         ? (int) ($teamScore[GameConstants::TEAM_RED] / 100)
                         : $teamScore[GameConstants::TEAM_RED];
                     $blue = $this->isCaptureTheFlag
@@ -218,14 +223,14 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 }
             }
         } else {
-            $topScore = 0;
+            $topScore      = 0;
             $topScoreCount = 0;
             foreach ($world->getTees() as $tee) {
                 if (! $tee instanceof PlayerTee) {
                     continue;
                 }
                 if ($tee->score > $topScore) {
-                    $topScore = $tee->score;
+                    $topScore      = $tee->score;
                     $topScoreCount = 1;
                 } elseif ($tee->score === $topScore) {
                     $topScoreCount++;
@@ -298,9 +303,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         $this->suddenDeath  = 0;
     }
 
-    public function cycleMap(): void
-    {
-    }
+    public function cycleMap(): void {}
 
     public function isGameOver(): bool
     {
@@ -316,8 +319,10 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     {
         if ($this->forceBalanced) {
             $this->forceBalanced = false;
+
             return true;
         }
+
         return false;
     }
 
@@ -464,10 +469,12 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             if ($this->unbalancedTick === -1) {
                 $this->unbalancedTick = $this->tickHandler->get();
             }
+
             return false;
         }
 
         $this->unbalancedTick = -1;
+
         return true;
     }
 
@@ -478,7 +485,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             return;
         }
 
-        $aT = [0, 0];
+        $aT      = [0, 0];
         $aTScore = [0.0, 0.0];
         $aPScore = [];
 
@@ -487,7 +494,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 continue;
             }
             $aT[$tee->team]++;
-            $elapsed = $this->tickHandler->get() - $tee->scoreStartTick;
+            $elapsed                 = $this->tickHandler->get() - $tee->scoreStartTick;
             $aPScore[$tee->teeIndex] = $elapsed > 0
                 ? $tee->score * NetworkParams::TICKS_PER_SECOND * 60.0 / $elapsed
                 : 0.0;
@@ -498,12 +505,12 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             return;
         }
 
-        $M = $aT[0] > $aT[1] ? 0 : 1;
+        $M          = $aT[0] > $aT[1] ? 0 : 1;
         $numBalance = (int) (abs($aT[0] - $aT[1]) / 2);
 
         do {
             $candidate = null;
-            $bestDiff = $aTScore[$M];
+            $bestDiff  = $aTScore[$M];
 
             foreach ($world->getTees() as $tee) {
                 if (! $tee instanceof PlayerTee || $tee->team !== $M) {
@@ -516,7 +523,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 $diff = abs(($aTScore[$M ^ 1] + $aPScore[$tee->teeIndex]) - ($aTScore[$M] - $aPScore[$tee->teeIndex]));
                 if ($candidate === null || $diff < $bestDiff) {
                     $candidate = $tee;
-                    $bestDiff = $diff;
+                    $bestDiff  = $diff;
                 }
             }
 
@@ -527,7 +534,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             $lastAction = $candidate->lastActionTick;
             $candidate->setTeam($M ^ 1);
             $candidate->lastActionTick = $lastAction;
-            $candidate->forceBalanced = true;
+            $candidate->forceBalanced  = true;
         } while (--$numBalance > 0);
 
         $this->forceBalanced = true;
@@ -540,7 +547,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             return;
         }
 
-        $threshold = $this->inactiveKickTime * NetworkParams::TICKS_PER_SECOND * 60;
+        $threshold   = $this->inactiveKickTime * NetworkParams::TICKS_PER_SECOND * 60;
         $currentTick = $this->tickHandler->get();
 
         foreach ($world->getTees() as $tee) {
@@ -625,9 +632,9 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
 
         if ($this->isTeamMode) {
-            $ownTeam     = 1 + ($team & 1);
-            $enemyTeam   = 1 + (($team + 1) & 1);
-            $spawnOrder  = [$ownTeam, self::SPAWN_HUMAN, $enemyTeam];
+            $ownTeam    = 1 + ($team & 1);
+            $enemyTeam  = 1 + (($team + 1) & 1);
+            $spawnOrder = [$ownTeam, self::SPAWN_HUMAN, $enemyTeam];
         } else {
             $spawnOrder = [self::SPAWN_HUMAN, self::SPAWN_RED, self::SPAWN_BLUE];
         }
@@ -705,7 +712,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     {
         $snaps = [];
 
-        $world = $this->world;
+        $world  = $this->world;
         $paused = $world !== null && $world->isPaused();
 
         $gameStateFlags = 0;
@@ -737,7 +744,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         );
 
         if ($this->isTeamMode) {
-            $teamScoreRed = 0;
+            $teamScoreRed  = 0;
             $teamScoreBlue = 0;
             if ($world !== null) {
                 foreach ($world->getTees() as $tee) {
@@ -817,8 +824,8 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 continue;
             }
 
-            $pos = new Vector2($entity['x'], $entity['y']);
-            $flag = new FlagEntity($this->world, $pos, $team);
+            $pos                = new Vector2($entity['x'], $entity['y']);
+            $flag               = new FlagEntity($this->world, $pos, $team);
             $this->flags[$team] = $flag;
             $this->world->addEntity($flag);
         }
@@ -831,7 +838,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             return;
         }
 
-        $collision = $world->getMap()->getCollision();
+        $collision   = $world->getMap()->getCollision();
         $currentTick = $this->tickHandler->get();
 
         for ($fi = 0; $fi < 2; $fi++) {
@@ -841,9 +848,12 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             }
 
             $flagPos = $flag->getPosition();
-            if ($collision !== null && ($collision->getCollisionAt($flagPos->x, $flagPos->y) & Collision::COLFLAG_DEATH)) {
+            if ($flag->gameLayerClipped($flagPos)
+                || ($collision !== null && ($collision->getCollisionAt($flagPos->x, $flagPos->y) & Collision::COLFLAG_DEATH))
+            ) {
                 $world->createSoundGlobal(GameConstants::SOUND_CTF_RETURN);
                 $flag->reset();
+
                 continue;
             }
 
@@ -860,7 +870,8 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         $carrier = $flag->carryingCharacter;
         if ($carrier === null || ! $carrier->alive) {
             $flag->carryingCharacter = null;
-            $flag->dropTick = $currentTick;
+            $flag->dropTick          = $currentTick;
+
             return;
         }
 
@@ -881,8 +892,8 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     protected function onFlagCapture(FlagEntity $flag, int $fi): void
     {
-        $world = $this->world;
-        $carrier = $flag->carryingCharacter;
+        $world      = $this->world;
+        $carrier    = $flag->carryingCharacter;
         $carrierTee = $carrier !== null ? $carrier->tee : null;
 
         if ($carrierTee instanceof PlayerTee) {
@@ -962,7 +973,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     protected function onFlagGrab(FlagEntity $flag, int $fi, AbstractCharacterEntity $carrier, int $currentTick): void
     {
-        $world = $this->world;
+        $world      = $this->world;
         $carrierTee = $carrier->tee;
 
         if ($flag->atStand) {
@@ -972,7 +983,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             $flag->grabTick = $currentTick;
         }
 
-        $flag->atStand = false;
+        $flag->atStand           = false;
         $flag->carryingCharacter = $carrier;
 
         if ($carrierTee instanceof PlayerTee) {
@@ -1013,14 +1024,14 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 $world = $this->world;
                 $world?->createSoundGlobal(GameConstants::SOUND_CTF_DROP);
 
-                $flag->dropTick = $this->tickHandler->get();
+                $flag->dropTick          = $this->tickHandler->get();
                 $flag->carryingCharacter = null;
-                $flag->vel = new Vector2(0, 0);
+                $flag->vel               = new Vector2(0, 0);
 
                 $killerTee = $this->findTeeByIndex($killerTeeIndex);
                 $victimTee = $victim->tee;
                 if ($killerTee instanceof PlayerTee && $victimTee instanceof PlayerTee
-                    && $killerTee->team !== $victimTee->team) {
+                                                    && $killerTee->team !== $victimTee->team) {
                     $killerTee->score++;
                 }
 

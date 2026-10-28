@@ -27,18 +27,18 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         $tickSpeed   = 50.0;
 
         $pt = ($currentTick - $this->startTick - 1) / $tickSpeed;
-        $ct = ($currentTick - $this->startTick) / $tickSpeed;
+        $ct = ($currentTick - $this->startTick)     / $tickSpeed;
 
         $prevPos = $this->getPos($pt);
         $curPos  = $this->getPos($ct);
 
         // Check map collision
-        $collision = $this->world->getMap()->getCollision();
+        $collision  = $this->world->getMap()->getCollision();
         $mapCollide = false;
         if ($collision !== null) {
             [$hit, $colPos] = $collision->intersectLine($prevPos, $curPos);
             if ($hit) {
-                $curPos = $colPos;
+                $curPos     = $colPos;
                 $mapCollide = true;
             }
         }
@@ -51,7 +51,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
 
         $this->lifeSpan--;
 
-        if ($targetChar !== null || $mapCollide || $this->lifeSpan < 0) {
+        if ($targetChar !== null || $mapCollide || $this->lifeSpan < 0 || $this->gameLayerClipped($curPos)) {
             $this->position->x = $curPos->x;
             $this->position->y = $curPos->y;
 
@@ -101,7 +101,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             }
 
             $intersectPos = $entity->getPosition()->closestPointOnLine($pos0, $pos1);
-            $len = $entity->getPosition()->distance($intersectPos);
+            $len          = $entity->getPosition()->distance($intersectPos);
 
             if ($len < AbstractCharacterEntity::PHYS_SIZE * 0.5 + $this->getHitBoxRadius()) {
                 $lineDist = $pos0->distance($intersectPos);

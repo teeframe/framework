@@ -16,9 +16,7 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
 
     protected bool $toDestroy = false;
 
-    public function __construct(protected AbstractWorld $world, protected Vector2 $position)
-    {
-    }
+    public function __construct(protected AbstractWorld $world, protected Vector2 $position) {}
 
     public function getPosition(): Vector2
     {
@@ -37,6 +35,20 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
     public function tickPaused(): void
     {
         // no-op by default
+    }
+
+    public function gameLayerClipped(Vector2 $position): bool
+    {
+        $collision = $this->world->getMap()->getCollision();
+        if ($collision === null) {
+            return false;
+        }
+
+        $tileX = (int) ((int) round($position->x) / 32);
+        $tileY = (int) ((int) round($position->y) / 32);
+
+        return $tileX                  < -200 || $tileX > $collision->getWidth()  + 200
+                             || $tileY < -200 || $tileY > $collision->getHeight() + 200;
     }
 
     public function isToDestroy(): bool

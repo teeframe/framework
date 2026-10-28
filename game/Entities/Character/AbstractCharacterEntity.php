@@ -12,6 +12,7 @@ use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Map\Collision;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 
 abstract class AbstractCharacterEntity extends AbstractEntity
@@ -25,15 +26,25 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     // Game state
     public int $health = 10;
+
     public int $armor = 0;
+
     public int $activeWeapon = GameConstants::WEAPON_GUN;
+
     public int $lastWeapon = GameConstants::WEAPON_HAMMER;
+
     public int $queuedWeapon = -1;
+
     public bool $alive = false;
+
     public int $tick = 0;
+
     public int $attackTick = 0;
+
     public int $emote = 0;
+
     public int $playerFlags = 0;
+
     public int $reloadTimer = 0;
 
     /**
@@ -43,9 +54,13 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     // Ninja state
     public int $ninjaActivationTick = 0;
+
     public Vector2 $ninjaActivationDir;
+
     public int $ninjaCurrentMoveTime = 0;
+
     public float $ninjaOldVelAmount = 0.0;
+
     public int $ninjaNumObjectsHit = 0;
 
     /**
@@ -57,9 +72,13 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     // Input state (mirrors CCharacter::m_Input / m_LatestInput / m_LatestPrevInput)
     protected PlayerInput $input;
+
     protected PlayerInput $latestInput;
+
     protected PlayerInput $latestPrevInput;
+
     protected int $numInputs = 0;
+
     protected int $lastActionTick = 0;
 
     public function __construct(AbstractWorld $world, protected Vector2 $position)
@@ -169,6 +188,18 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $tune,
             $otherCharacters,
         );
+        $radius = self::PHYS_SIZE / 3;
+        if (($collision->getCollisionAt($this->position->x + $radius, $this->position->y - $radius) & Collision::COLFLAG_DEATH)
+            || ($collision->getCollisionAt($this->position->x + $radius, $this->position->y + $radius) & Collision::COLFLAG_DEATH)
+            || ($collision->getCollisionAt($this->position->x - $radius, $this->position->y - $radius) & Collision::COLFLAG_DEATH)
+            || ($collision->getCollisionAt($this->position->x - $radius, $this->position->y + $radius) & Collision::COLFLAG_DEATH)
+            || $this->gameLayerClipped($this->position)
+        ) {
+            $this->die($this->tee !== null ? $this->tee->teeIndex : -1, GameConstants::WEAPON_WORLD);
+
+            return;
+        }
+
         $this->move($collision, $tune);
 
         // Emit sounds for triggered core events (CCharacter::TickDefered).
@@ -210,10 +241,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public function tickPaused(): void
     {
-        ++$this->attackTick;
-        ++$this->ninjaActivationTick;
+        $this->attackTick++;
+        $this->ninjaActivationTick++;
         if ($this->lastActionTick !== 0) {
-            ++$this->lastActionTick;
+            $this->lastActionTick++;
         }
     }
 

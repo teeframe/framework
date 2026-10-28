@@ -123,7 +123,7 @@ trait HasHandshakeHandler
             return true;
         }
 
-        if ($offset + $chunkSize > $mapSize) {
+        if ($offset + $chunkSize >= $mapSize) {
             $chunkSize = $mapSize - $offset;
             $last      = 1;
         }
@@ -167,7 +167,7 @@ trait HasHandshakeHandler
             colorBody: $chunk->colorBody,
             colorFeet: $chunk->colorFeet
         );
-        
+
         $voteChunks = $connection->world()->getVoteController()->getInitialVoteChunks($connection->playerTee());
         foreach ($voteChunks as $voteChunk) {
             $connection->chunks()->add($voteChunk);
