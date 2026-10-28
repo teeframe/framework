@@ -2,9 +2,7 @@
 
 namespace TeeFrame\Map;
 
-use TeeFrame\Map\MapItems\AbstractMapItem;
 use TeeFrame\Map\MapItems\GroupItem;
-use TeeFrame\Map\MapItems\InfoItem;
 use TeeFrame\Map\MapItems\LayerItem;
 use TeeFrame\Map\MapLayers\GameLayer;
 
@@ -49,6 +47,10 @@ class Map
     {
         $this->reader = new MapReader($mapPath);
         $this->reader->read();
+        $this->groups    = [];
+        $this->layers    = [];
+        $this->gameLayer = null;
+        $this->collision = null;
 
         $this->size = filesize($mapPath) ?: 0;
         $rawContent = file_get_contents($mapPath);
@@ -58,7 +60,7 @@ class Map
             // Convert to signed 32-bit for Teeworlds protocol compatibility.
             // PHP's crc32() returns unsigned on 64-bit, but Teeworlds
             // packInt expects signed 32-bit integers.
-            $this->crc = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
+            $this->crc     = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
             $this->rawData = array_values(unpack('C*', $rawContent) ?: []);
         }
 
@@ -84,6 +86,21 @@ class Map
             $this->layers[] = LayerItem::make($raw['id'], $raw['size'], $raw['data']);
         }
 
+        $usedLayers = [];
+        foreach ($this->groups as $group) {
+            if ($group->startLayer < 0 || $group->numLayers < 0
+                                       || $group->startLayer + $group->numLayers > count($this->layers)
+            ) {
+                throw new \RuntimeException('Invalid group layer range');
+            }
+            for ($i = $group->startLayer; $i < $group->startLayer + $group->numLayers; $i++) {
+                if (isset($usedLayers[$i])) {
+                    throw new \RuntimeException('Overlapping group layer ranges');
+                }
+                $usedLayers[$i] = true;
+            }
+        }
+
         $this->initGameLayer();
         $this->initCollision();
     }
@@ -107,7 +124,10 @@ class Map
                     $layer->type === LayerItem::LAYERTYPE_TILES
                     && ($layer->tileFlags & LayerItem::TILESLAYERFLAG_GAME)
                 ) {
-                    $rawData = $this->reader->getDataBlock($layer->data) ?? '';
+                    $rawData = $this->reader->getDataBlock($layer->data);
+                    if ($rawData === null) {
+                        throw new \RuntimeException('Game layer references a missing data block');
+                    }
 
                     $this->gameLayer = new GameLayer(
                         $layer->width,

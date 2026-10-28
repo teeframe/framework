@@ -37,7 +37,7 @@ class GroupItem extends AbstractMapItem
         $numLayers  = $reader->readInt();
 
         $useClipping = false;
-        $clipX = $clipY = $clipW = $clipH = 0;
+        $clipX       = $clipY = $clipW = $clipH = 0;
 
         if ($version >= 2) {
             $useClipping = $reader->readInt() !== 0;
@@ -58,22 +58,19 @@ class GroupItem extends AbstractMapItem
     public static function readI32String(MapBufferReader $reader, int $length): string
     {
         $bytes = '';
-        for ($i = 0; $i < $length; $i++) {
-            $bytes .= pack('V', $reader->readInt());
+        foreach ($reader->readInts($length) as $integer) {
+            foreach ([24, 16, 8, 0] as $shift) {
+                $bytes .= chr(((($integer >> $shift) & 0xFF) - 128) & 0xFF);
+            }
         }
 
-        // Remove trailing null byte
-        $nullPos = strpos($bytes, "\0");
-        if ($nullPos !== false) {
-            $bytes = substr($bytes, 0, $nullPos);
+        if ($bytes === '') {
+            return '';
         }
 
-        // Un-apply the +128 encoding
-        $result = '';
-        for ($i = 0; $i < strlen($bytes); $i++) {
-            $result .= chr((ord($bytes[$i]) - 128) & 0xFF);
-        }
+        // StrToInts reserves the final byte as an unencoded null terminator.
+        $bytes[strlen($bytes) - 1] = "\0";
 
-        return $result;
+        return explode("\0", $bytes, 2)[0];
     }
 }

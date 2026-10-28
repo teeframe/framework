@@ -8,10 +8,10 @@ class InfoItem extends AbstractMapItem
 {
     public function __construct(
         public int $itemVersion,
-        public string $author,
-        public string $version,
-        public string $credits,
-        public string $license,
+        public int $author,
+        public int $version,
+        public int $credits,
+        public int $license,
     ) {
         parent::__construct();
     }
@@ -22,10 +22,10 @@ class InfoItem extends AbstractMapItem
 
         return new static(
             $reader->readInt(),
-            $reader->readString(),
-            $reader->readString(),
-            $reader->readString(),
-            $reader->readString()
+            $reader->readInt(),
+            $reader->readInt(),
+            $reader->readInt(),
+            $reader->readInt()
         );
     }
 }

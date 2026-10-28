@@ -26,10 +26,12 @@ class EnvelopeItem extends AbstractMapItem
         $startPoint = $reader->readInt();
         $numPoints  = $reader->readInt();
 
-        // Name: 8 i32s
-        $name = GroupItem::readI32String($reader, 8);
+        // Older version 1 envelopes can omit the name field.
+        $name = $version === 1 && $reader->remaining() === 0
+            ? ''
+            : GroupItem::readI32String($reader, 8);
 
-        $synchronized = false;
+        $synchronized = true;
         if ($version >= 2) {
             $synchronized = $reader->readInt() !== 0;
         }

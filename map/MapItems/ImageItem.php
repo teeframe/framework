@@ -13,7 +13,7 @@ class ImageItem extends AbstractMapItem
         public bool $external,
         public int $imageName,
         public int $imageData,
-        public int $format = 0,
+        public int $format = 1,
     ) {
         parent::__construct();
     }
@@ -22,13 +22,13 @@ class ImageItem extends AbstractMapItem
     {
         $reader = new MapBufferReader($data);
 
-        $version    = $reader->readInt();
-        $width      = $reader->readInt();
-        $height     = $reader->readInt();
-        $external   = $reader->readInt() !== 0;
-        $imageName  = $reader->readInt();
-        $imageData  = $reader->readInt();
-        $format     = 0;
+        $version   = $reader->readInt();
+        $width     = $reader->readInt();
+        $height    = $reader->readInt();
+        $external  = $reader->readInt() !== 0;
+        $imageName = $reader->readInt();
+        $imageData = $reader->readInt();
+        $format    = 1;
 
         // Version 2 includes format (0=RGB, 1=RGBA)
         if ($version >= 2) {
