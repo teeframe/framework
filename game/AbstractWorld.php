@@ -108,8 +108,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected function bootMap(): void
     {
         if (($gameLayer = $this->getMap()->getGameLayer()) !== null) {
-            $this->getGameController()->collectSpawnPoints($gameLayer);
-            $this->getGameController()->collectFlagPoints($gameLayer);
+            $this->getGameController()->bootMap($gameLayer);
         }
     }
 

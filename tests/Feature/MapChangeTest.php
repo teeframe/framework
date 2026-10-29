@@ -1,13 +1,13 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\ChangeMapCommand;
 use TeeFrame\Game\Commands\ReloadCommand;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\PickupSpawner;
 use TeeFrame\Map\Map;
@@ -17,7 +17,7 @@ use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
 
-function createMapChangeWorld(TickHandler $tickHandler, ?Map $map = null): TestWorldWithController
+function createMapChangeWorld(TickHandler $tickHandler, ?Map $map = null): TestPvpWorldWithController
 {
     $server = new class($tickHandler, name: 'Map change test') extends AbstractServerInstance
     {
@@ -28,9 +28,9 @@ function createMapChangeWorld(TickHandler $tickHandler, ?Map $map = null): TestW
             throw new RuntimeException('Not used by this test');
         }
     };
-    $controller = new class($tickHandler, isTeamMode: true, isCaptureTheFlag: true, scoreLimit: 300, timeLimit: 10, spectatorSlots: 2) extends AbstractGameController {};
+    $controller = new PvpGameController($tickHandler, isTeamMode: true, isCaptureTheFlag: true, scoreLimit: 300, timeLimit: 10, spectatorSlots: 2);
 
-    return new class($tickHandler, $map ?? new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12) extends TestWorldWithController
+    return new class($tickHandler, $map ?? new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12) extends TestPvpWorldWithController
     {
         protected function bootMap(): void
         {
@@ -95,7 +95,7 @@ test('map reload replaces entities spawns flags and round state while preserving
     expect($reflection->getProperty('pendingEvents')->getValue($world))->toBeEmpty();
     expect($reflection->getProperty('excludedEventTeeIndexes')->getValue($world))->toBeEmpty();
 
-    $expectedController = new class($tickHandler) extends AbstractGameController {};
+    $expectedController = new PvpGameController($tickHandler);
     $gameLayer          = $world->getMap()->getGameLayer();
     assert($gameLayer !== null);
     $expectedController->collectSpawnPoints($gameLayer);

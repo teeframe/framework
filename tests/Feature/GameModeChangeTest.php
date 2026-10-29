@@ -1,17 +1,17 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\ChangeGameModeCommand;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
 
-function createGameModeChangeWorld(): TestWorldWithController
+function createGameModeChangeWorld(): TestPvpWorldWithController
 {
     $clock  = new TickHandler(1000);
     $server = new class($clock, name: 'Gamemode change test') extends AbstractServerInstance
@@ -23,9 +23,9 @@ function createGameModeChangeWorld(): TestWorldWithController
             throw new RuntimeException('Not used by this test');
         }
     };
-    $controller = new class($clock, scoreLimit: 10, timeLimit: 15, spectatorSlots: 2) extends AbstractGameController {};
+    $controller = new class($clock, scoreLimit: 10, timeLimit: 15, spectatorSlots: 2) extends PvpGameController {};
 
-    return new TestWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12);
+    return new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12);
 }
 
 test('gamemode commands are vote-only and identify their target mode consistently', function () {

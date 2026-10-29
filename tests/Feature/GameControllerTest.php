@@ -8,6 +8,7 @@ use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PlayerInput;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -26,9 +27,9 @@ $mapExists = file_exists($mapPath);
  *
  * @param  array<string, mixed>  $opts
  */
-function makeGameController(TickHandler $tickHandler, array $opts = []): AbstractGameController
+function makeGameController(TickHandler $tickHandler, array $opts = []): PvpGameController
 {
-    return new class($tickHandler, $opts['isTeamMode'] ?? false, $opts['isCaptureTheFlag'] ?? false, $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0) extends AbstractGameController
+    return new class($tickHandler, $opts['isTeamMode'] ?? false, $opts['isCaptureTheFlag'] ?? false, $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0) extends PvpGameController
     {
         public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
         {
@@ -1066,7 +1067,7 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
     $tickHandler = new TickHandler(100);
 
     // A controller that records the team argument passed to canSpawn
-    $controller = new class($tickHandler, true) extends AbstractGameController
+    $controller = new class($tickHandler, true) extends PvpGameController
     {
         public int $lastSpawnTeam = -99;
 

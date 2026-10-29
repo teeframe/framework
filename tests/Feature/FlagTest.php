@@ -6,6 +6,7 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\FlagEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -23,11 +24,11 @@ $ctfMapExists = file_exists($ctfMapPath);
  *
  * @param  array<string, mixed>  $opts
  */
-function makeCtfGameController(TickHandler $tickHandler, array $opts = []): AbstractGameController
+function makeCtfGameController(TickHandler $tickHandler, array $opts = []): PvpGameController
 {
     return new class($tickHandler, true, // isTeamMode
         true, // isCaptureTheFlag
-        $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0, ) extends AbstractGameController {};
+        $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0, ) extends PvpGameController {};
 }
 
 function createCtfWorld(Map $map, TickHandler $tickHandler, AbstractGameController $controller): AbstractWorld
@@ -98,7 +99,7 @@ test('non-CTF controller does not create flags from flag stands', function () us
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = new class($tickHandler, true, false) extends AbstractGameController {};
+    $controller  = new class($tickHandler, true, false) extends PvpGameController {};
     $world       = createCtfWorld($map, $tickHandler, $controller);
 
     expect($controller->getFlag(GameConstants::TEAM_RED))->toBeNull();

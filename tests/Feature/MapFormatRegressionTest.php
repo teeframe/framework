@@ -1,10 +1,10 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -316,7 +316,7 @@ test('flags return when they leave the game layer clipping margin', function () 
     $tiles[16]  = chr(195);
     $map        = mapRegressionLoad(mapRegressionGameFile($tiles));
     $ticks      = new TickHandler;
-    $controller = new class($ticks, true, true) extends AbstractGameController {};
+    $controller = new class($ticks, true, true) extends PvpGameController {};
     $world      = new TestWorldWithController($ticks, $map, $controller);
     $flag       = $controller->getFlag(GameConstants::TEAM_RED);
     assert($flag !== null);

@@ -1,7 +1,6 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
@@ -511,7 +510,7 @@ test('character death sets respawn on tee and notifies game controller', functio
     $worldRef = new ReflectionClass($world);
     $gcProp   = $worldRef->getProperty('gameController');
 
-    $gc = new class($tickHandler) extends AbstractGameController
+    $gc = new class($tickHandler) extends TestGameController
     {
         public bool $deathCalled = false;
 

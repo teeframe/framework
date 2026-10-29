@@ -41,6 +41,7 @@ use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\PlayerInput;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -49,7 +50,7 @@ use TeeFrame\Server\AbstractServerInstance;
 /**
  * Concrete game controller for tests — no scoring, no win check.
  */
-class TestGameController extends AbstractGameController
+class TestGameController extends PvpGameController
 {
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
     {
@@ -115,6 +116,17 @@ class TestWorldWithController extends AbstractWorld
     protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity
     {
         return new PvpCharacterEntity($this, $position);
+    }
+}
+
+class TestPvpWorldWithController extends TestWorldWithController
+{
+    public function getGameController(): PvpGameController
+    {
+        $controller = parent::getGameController();
+        assert($controller instanceof PvpGameController);
+
+        return $controller;
     }
 }
 

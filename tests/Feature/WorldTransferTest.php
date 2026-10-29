@@ -1,13 +1,13 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\ChangeGameModeCommand;
 use TeeFrame\Game\Commands\ChangeMapCommand;
 use TeeFrame\Game\Commands\ReloadCommand;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
@@ -105,18 +105,18 @@ class WorldTransferTestCommand extends AbstractCommand
 
 class WorldTransferTestServer extends AbstractServerInstance
 {
-    public TestWorldWithController $dm;
-    public TestWorldWithController $ctf;
+    public TestPvpWorldWithController $dm;
+    public TestPvpWorldWithController $ctf;
     public WorldTransferTestSocket $socket;
 
     public function __construct(int $dmSlots = 64, int $ctfSlots = 64)
     {
         parent::__construct(new TickHandler(1000), name: 'Multiworld test');
         $this->socket = new WorldTransferTestSocket;
-        $dmController = new class($this->tickHandler) extends AbstractGameController {};
-        $ctfController = new class($this->tickHandler, isTeamMode: true, isCaptureTheFlag: true) extends AbstractGameController {};
-        $this->dm = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../dm1.map'), $dmController, $this, $dmSlots);
-        $this->ctf = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../ctf1.map'), $ctfController, $this, $ctfSlots);
+        $dmController = new PvpGameController($this->tickHandler);
+        $ctfController = new PvpGameController($this->tickHandler, isTeamMode: true, isCaptureTheFlag: true);
+        $this->dm = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../dm1.map'), $dmController, $this, $dmSlots);
+        $this->ctf = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../ctf1.map'), $ctfController, $this, $ctfSlots);
         $this->worlds = [$this->dm, $this->ctf];
         foreach ($this->worlds as $world) {
             $world->registerCommand(new WorldTransferTestCommand($this->dm));
