@@ -202,14 +202,21 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         $this->move($collision, $tune);
 
-        // Emit sounds for triggered core events (CCharacter::TickDefered).
-        // The client predicts SOUND_PLAYER_JUMP, SOUND_HOOK_ATTACH_GROUND and
-        // SOUND_HOOK_NOATTACH locally for the local player, so the server must
-        // not emit them to avoid duplication. SOUND_HOOK_ATTACH_PLAYER is not
-        // predicted by the client, so the server emits it.
+        // The local client predicts ground-jump and ground/no-hook sounds, but
+        // other clients need server events (CCharacter::TickDefered in 0.6).
         $events = $this->triggeredEvents;
+        $excludedTeeIndex = $this->tee?->teeIndex;
+        if ($events & GameConstants::COREEVENT_GROUND_JUMP) {
+            $this->createSound(GameConstants::SOUND_PLAYER_JUMP, $excludedTeeIndex);
+        }
         if ($events & GameConstants::COREEVENT_HOOK_ATTACH_PLAYER) {
             $this->createSound(GameConstants::SOUND_HOOK_ATTACH_PLAYER);
+        }
+        if ($events & GameConstants::COREEVENT_HOOK_ATTACH_GROUND) {
+            $this->createSound(GameConstants::SOUND_HOOK_ATTACH_GROUND, $excludedTeeIndex);
+        }
+        if ($events & GameConstants::COREEVENT_HOOK_HIT_NOHOOK) {
+            $this->createSound(GameConstants::SOUND_HOOK_NOATTACH, $excludedTeeIndex);
         }
 
         // Handle shooting (only after enough inputs received)

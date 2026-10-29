@@ -55,6 +55,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected array $pendingEvents = [];
 
     /**
+     * @var array<int, int> Event index => excluded tee index (client-predicted events).
+     */
+    protected array $excludedEventTeeIndexes = [];
+
+    /**
      * @var AbstractTee[]
      */
     protected array $tees = [];
@@ -262,14 +267,19 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->server->sendToTee($this, $teeIndex, new SvSoundGlobalChunk(soundId: $soundId));
     }
 
-    public function addEvent(AbstractPositionedSnapItem $event): void
+    public function addEvent(AbstractPositionedSnapItem $event, ?int $excludedTeeIndex = null): void
     {
         $this->pendingEvents[] = $event;
+
+        if ($excludedTeeIndex !== null) {
+            $this->excludedEventTeeIndexes[count($this->pendingEvents) - 1] = $excludedTeeIndex;
+        }
     }
 
     public function clearEvents(): void
     {
         $this->pendingEvents = [];
+        $this->excludedEventTeeIndexes = [];
     }
 
     public function addEntity(AbstractEntity $entity): void
@@ -540,6 +550,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             && $requestingTee->team === GameConstants::TEAM_SPECTATORS;
 
         foreach ($this->pendingEvents as $i => $event) {
+            if (($this->excludedEventTeeIndexes[$i] ?? null) === $requestingTee->teeIndex) {
+                continue;
+            }
+
             if (! $isSpectator && $requestingTee->viewPosition->distance(new Vector2($event->x, $event->y)) > 1500) {
                 continue;
             }

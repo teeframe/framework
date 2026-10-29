@@ -172,12 +172,12 @@ trait HasCharacterLifecycle
         }
     }
 
-    protected function createSound(int $soundId): void
+    protected function createSound(int $soundId, ?int $excludedTeeIndex = null): void
     {
         $this->world->addEvent(new ObjEventSoundWorldItem(
             x: (int) round($this->position->x),
             y: (int) round($this->position->y),
             soundId: $soundId,
-        ));
+        ), excludedTeeIndex: $excludedTeeIndex);
     }
 }
