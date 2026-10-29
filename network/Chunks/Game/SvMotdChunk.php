@@ -11,7 +11,7 @@ class SvMotdChunk extends AbstractChunk
 {
     public function __construct(public string $text)
     {
-        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::MAP_CHANGE);
+        parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::SV_MOTD);
     }
 
     public static function make(RawPayload $payload): static

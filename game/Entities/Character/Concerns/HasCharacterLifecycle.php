@@ -25,6 +25,8 @@ trait HasCharacterLifecycle
 
         if ($tee !== null) {
             $tee->character = $this;
+            // The first snapshot can precede the character's first tick.
+            $tee->viewPosition = clone $pos;
         }
 
         $this->initCore($pos);

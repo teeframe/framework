@@ -10,6 +10,7 @@ use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\SnapItems\ObjCharacterItem;
 
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
@@ -56,16 +57,36 @@ test('tee respawns after respawnTick elapses via doTick', function () use ($mapP
     assert($character instanceof PvpCharacterEntity);
     expect($character->alive)->toBeTrue();
 
-    // A spawn event should have been emitted. The tee's viewPosition is still
-    // (0,0) (the character hasn't ticked yet to update it), so move it close
-    // enough for the event-snap distance filter to include the spawn event.
-    $tee->viewPosition = $character->getPosition();
-    $events            = $world->doSnap($tee);
-    $spawnEvents       = array_filter(
+    expect($tee->viewPosition->distance($character->getPosition()))->toBe(0.0);
+    expect($tee->viewPosition)->not->toBe($character->getPosition());
+
+    $events      = $world->doSnap($tee);
+    $spawnEvents = array_filter(
         $events,
         fn ($s) => $s->getItemId() === NetworkMessages::NETEVENTTYPE_SPAWN,
     );
     expect($spawnEvents)->not->toBeEmpty();
+});
+
+test('first two snapshots include the local character so the scoreboard does not dismiss MOTD on join', function () use ($mapPath) {
+    resetMockServer();
+
+    $tickHandler = new TickHandler(100);
+    $world       = createTickingWorld(new Map($mapPath), $tickHandler);
+    $tee         = new PlayerTee;
+    $world->addTee($tee);
+
+    for ($i = 0; $i < 2; $i++) {
+        $world->doTick();
+
+        $characters = array_filter(
+            $world->doSnap($tee),
+            fn ($snap) => $snap instanceof ObjCharacterItem,
+        );
+        expect($characters)->toHaveCount(1);
+
+        $tickHandler->next();
+    }
 });
 
 test('dead tee respawns after respawnTick elapses', function () use ($mapPath, $mapExists) {
