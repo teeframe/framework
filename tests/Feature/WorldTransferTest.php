@@ -4,14 +4,22 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\ChangeGameModeCommand;
+use TeeFrame\Game\Commands\ChangeMapCommand;
+use TeeFrame\Game\Commands\ReloadCommand;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
+use TeeFrame\Network\Chunks\Game\ClVoteChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
 use TeeFrame\Network\Chunks\Game\SvReadyToEnterChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
 use TeeFrame\Network\Chunks\System\ConReadyChunk;
 use TeeFrame\Network\Chunks\System\EnterGameChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
@@ -29,6 +37,7 @@ use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
+use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
@@ -598,4 +607,423 @@ test('leaving CTF drops carried flags and resets spectators following the depart
     expect($flag->carryingCharacter)->toBeNull();
     expect($flag->atStand)->toBeFalse();
     expect($spectator->spectatorId)->toBe(GameConstants::SPEC_FREEVIEW);
+});
+
+test('a passed map vote reloads only its world and restarts map loading without resetting transport', function (string $mapName) {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->enter($slot);
+    $other = $server->connect(8301);
+    $server->enter($other);
+    $server->changeWorld($other->playerTee(), $server->ctf);
+    $server->enter($other);
+    $server->advance();
+    $oldTee = $slot->playerTee();
+    $character = $oldTee->character;
+    $oldTee->inputs[2000] = input(['direction' => 1]);
+    $oldTee->score = 15;
+    $slot->snaps()->setLastAckedTick(1000);
+    $otherTee = $other->playerTee();
+    $otherCharacter = $otherTee->character;
+    $otherTee->inputs[2000] = input(['direction' => -1]);
+    $otherTee->score = 20;
+    $otherMap = $server->ctf->getMap();
+    $otherFlags = $server->ctf->getGameController()->getFlags();
+    $command = new ChangeMapCommand($mapName, 'A different arena');
+    $server->dm->registerCommand($command);
+    $server->dm->getVoteController()->addVoteOption($command->getDescription(), $command->getCommand());
+    $server->send($slot, new ClCallVoteChunk('option', $command->getDescription(), '', 0));
+    expect($server->dm->getVoteController()->isVoteRunning())->toBeTrue();
+    $sequence = $slot->sequence;
+    $ack = $slot->ack;
+    $server->socket->packets = [];
+    $server->advance();
+
+    expect($slot->world())->toBe($server->dm);
+    expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);
+    expect($slot->sequence)->toBeGreaterThan($sequence);
+    expect($slot->ack)->toBe($ack);
+    expect($slot->destinationPort)->toBe(8300);
+    expect($server->connectionCount())->toBe(2);
+    expect($server->dm->getMap()->getName())->toBe($mapName);
+    expect($server->dm->getGameController()->getGameType())->toBe('DM');
+    expect($server->dm->getTees())->toBeEmpty();
+    expect($server->dm->getVoteController()->isVoteRunning())->toBeFalse();
+    expect($character?->alive)->toBeFalse();
+    expect($oldTee->character)->toBeNull();
+    expect($slot->playerTee())->not()->toBe($oldTee);
+    expect($slot->playerTee()->name)->toBe('Traveler');
+    expect($slot->playerTee()->clan)->toBe('Clan');
+    expect($slot->playerTee()->skinName)->toBe('bluekitty');
+    expect($slot->playerTee()->inputs)->toBeEmpty();
+    expect($slot->playerTee()->score)->toBe(0);
+    $snapReflection = new ReflectionClass($slot->snaps());
+    expect($snapReflection->getProperty('sentList')->getValue($slot->snaps()))->toBeEmpty();
+    expect($snapReflection->getProperty('deltaSnap')->getValue($slot->snaps()))->toBeNull();
+    expect($snapReflection->getProperty('lastAckedTick')->getValue($slot->snaps()))->toBe(-1);
+
+    expect($other->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($other->playerTee())->toBe($otherTee);
+    expect($otherTee->character)->toBe($otherCharacter);
+    expect($otherCharacter?->alive)->toBeTrue();
+    expect($otherTee->score)->toBe(20);
+    expect($otherTee->inputs)->toHaveKey(2000);
+    expect($server->ctf->getMap())->toBe($otherMap);
+    expect($server->ctf->getGameController()->getFlags())->toBe($otherFlags);
+    expect($server->ctf->getTees())->toBe([$otherTee]);
+
+    $chunks = $server->socket->chunks();
+    $changes = array_values(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
+    expect($changes)->toHaveCount(1);
+    expect([$changes[0]->mapName, $changes[0]->crc, $changes[0]->size])->toBe($server->dm->getMapInfo());
+    expect(array_filter($chunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk))->toBeEmpty();
+    $chats = array_values(array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk));
+    expect(array_map(fn ($chunk) => $chunk->text, $chats))->toBe([
+        'Changing map to '.$mapName.' (A different arena)',
+        'Vote passed',
+    ]);
+    $voteEnds = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
+    $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
+    expect($voteEnds[0])->toBeLessThan($mapChanges[0]);
+
+    $map = $server->dm->getMap();
+    $lastChunk = intdiv($map->getSize() - 1, 896);
+    $server->socket->packets = [];
+    $server->send($slot, new RequestMapDataChunk(0));
+    $server->send($slot, new RequestMapDataChunk($lastChunk));
+    $downloads = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapDataChunk));
+    expect($downloads)->toHaveCount(2);
+    expect($downloads[0]->crc)->toBe($map->getCrc());
+    expect($downloads[0]->data)->toBe(array_slice($map->getRawData(), 0, 896));
+    expect($downloads[1]->last)->toBe(1);
+    expect($downloads[1]->data)->toBe(array_slice($map->getRawData(), $lastChunk * 896));
+
+    $server->send($slot, worldTransferInput(2000), new EnterGameChunk);
+    expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);
+    expect($slot->playerTee()->inputs)->toBeEmpty();
+    $server->enter($slot);
+    $server->socket->packets = [];
+    $server->advance();
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($slot->playerTee()->character?->alive)->toBeTrue();
+    expect($slot->playerTee()->teeIndex)->toBe(0);
+    $snapshots = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof SnapSingleChunk));
+    expect($snapshots[0]->deltaTick)->toBe($snapshots[0]->currentTick + 1);
+    $server->advance();
+    $server->send($slot, worldTransferInput(2001, $server->dm->getCurrentTick() - 1));
+    expect(worldTransferInfoFields($server->socket, 8300)[3])->toBe($mapName);
+})->with(['ctf1', 'dm1']);
+
+test('map reload restarts authenticated loading phases but does not bypass the initial INFO validation', function (int $state) {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    if ($state >= ConnectionSlot::STATE_LOADING) {
+        $server->send($slot, new InfoChunk('0.6 626fce9a778df4d4'));
+    }
+    if ($state === ConnectionSlot::STATE_READY) {
+        $server->send($slot, new ReadyChunk);
+    }
+    expect($slot->state)->toBe($state);
+    $ack = $slot->ack;
+    $server->socket->packets = [];
+    $server->dm->changeMap('ctf1');
+    $server->advance();
+
+    $changes = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk));
+    expect($slot->ack)->toBe($ack);
+    if ($state === ConnectionSlot::STATE_CONNECTING) {
+        expect($slot->state)->toBe(ConnectionSlot::STATE_CONNECTING);
+        expect($changes)->toBeEmpty();
+        $server->send($slot, new InfoChunk('wrong version'));
+        expect($slot->state)->toBe(ConnectionSlot::STATE_CLOSED);
+    } else {
+        expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);
+        expect($changes)->toHaveCount(1);
+        expect($changes[0]->mapName)->toBe('ctf1');
+        $server->enter($slot);
+        expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    }
+})->with([ConnectionSlot::STATE_CONNECTING, ConnectionSlot::STATE_LOADING, ConnectionSlot::STATE_READY]);
+
+test('a client awaiting INFO receives the new map only after successful authentication', function () {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->dm->changeMap('ctf1');
+    $server->advance();
+    $server->socket->packets = [];
+    $server->send($slot, new InfoChunk('0.6 626fce9a778df4d4'));
+
+    expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);
+    $changes = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk));
+    expect($changes)->toHaveCount(1);
+    expect($changes[0]->mapName)->toBe('ctf1');
+});
+
+test('a failed map vote reports the load failure and leaves players on the current map', function () {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->enter($slot);
+    $server->advance();
+    $tee = $slot->playerTee();
+    $character = $tee->character;
+    $map = $server->dm->getMap();
+    $command = new ChangeMapCommand('missing-map');
+    $server->dm->registerCommand($command);
+    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), '', 0));
+    $server->socket->packets = [];
+    $server->advance();
+
+    expect($server->dm->getMap())->toBe($map);
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($slot->playerTee())->toBe($tee);
+    expect($tee->character)->toBe($character);
+    expect($character?->alive)->toBeTrue();
+    expect($server->dm->getVoteController()->isVoteRunning())->toBeFalse();
+    expect(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk))->toBeEmpty();
+    $chats = array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof SvChatChunk);
+    expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Unable to change map to missing-map');
+});
+
+test('chat cannot execute a vote-only map command', function () {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->enter($slot);
+    $map = $server->dm->getMap();
+    $server->dm->registerCommand(new ChangeMapCommand('ctf1'));
+    $server->socket->packets = [];
+    $server->send($slot, new ClSayChunk(false, '/change_map ctf1'));
+    $server->advance();
+
+    expect($server->dm->getMap())->toBe($map);
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk))->toBeEmpty();
+});
+
+test('gamemode votes reset only their world and players rejoin with the new teams flags and server info', function () {
+    $server = new WorldTransferTestServer(dmSlots: 8, ctfSlots: 12);
+    $first = $server->connect();
+    $server->enter($first);
+    $second = $server->connect(8301);
+    $server->enter($second);
+    $other = $server->connect(8302);
+    $server->enter($other);
+    $server->changeWorld($other->playerTee(), $server->ctf);
+    $server->enter($other);
+    $server->advance();
+    $otherTee = $other->playerTee();
+    $otherCharacter = $otherTee->character;
+    $otherController = $server->ctf->getGameController();
+    $otherFlags = $otherController->getFlags();
+
+    foreach (['ctf', 'tdm', 'dm'] as $mode) {
+        $command = new ChangeGameModeCommand($mode, reason: 'Try another mode', mapName: $mode === 'ctf' ? 'ctf1' : null);
+        $server->dm->registerCommand($command);
+        $server->dm->getVoteController()->addVoteOption($command->getDescription(), $command->getCommand());
+        $oldTee = $first->playerTee();
+        $oldCharacter = $oldTee->character;
+        $oldTee->score = 15;
+        $oldTee->inputs[2000] = input(['direction' => 1]);
+        $oldController = $server->dm->getGameController();
+        $server->send($first, new ClCallVoteChunk('option', $command->getDescription(), '', 0));
+        $server->send($second, new ClVoteChunk(1));
+        $sequence = $first->sequence;
+        $ack = $first->ack;
+        $server->socket->packets = [];
+        $server->advance();
+
+        $controller = $server->dm->getGameController();
+        expect($controller)->not()->toBe($oldController);
+        expect($controller->getGameType())->toBe(strtoupper($mode));
+        expect($server->dm->getMap()->getName())->toBe('ctf1');
+        expect($server->dm->getTees())->toBeEmpty();
+        expect($server->dm->getVoteController()->isVoteRunning())->toBeFalse();
+        expect($server->dm->getSlotsLimit())->toBe(8);
+        expect($oldCharacter?->alive)->toBeFalse();
+        foreach ([$first, $second] as $slot) {
+            expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);
+            expect($slot->world())->toBe($server->dm);
+            expect($slot->playerTee()->inputs)->toBeEmpty();
+            expect($slot->playerTee()->score)->toBe(0);
+            $reflection = new ReflectionClass($slot->snaps());
+            expect($reflection->getProperty('sentList')->getValue($slot->snaps()))->toBeEmpty();
+            expect($reflection->getProperty('lastAckedTick')->getValue($slot->snaps()))->toBe(-1);
+        }
+        expect($first->sequence)->toBeGreaterThan($sequence);
+        expect($first->ack)->toBe($ack);
+        expect($first->playerTee()->name)->toBe($oldTee->name);
+        expect($first->playerTee()->skinName)->toBe($oldTee->skinName);
+        expect($server->connectionCount())->toBe(3);
+        expect($other->state)->toBe(ConnectionSlot::STATE_INGAME);
+        expect($other->playerTee())->toBe($otherTee);
+        expect($otherTee->character)->toBe($otherCharacter);
+        expect($otherCharacter?->alive)->toBeTrue();
+        expect($server->ctf->getGameController())->toBe($otherController);
+        expect($otherController->getFlags())->toBe($otherFlags);
+        $chunks = $server->socket->chunks();
+        expect(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk))->toHaveCount(2);
+        expect(array_filter($chunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk))->toBeEmpty();
+        $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+        expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Changing gamemode to '.strtoupper($mode).' (Try another mode)', 'Vote passed');
+        $voteEnds = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
+        $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
+        assert($voteEnds !== [] && $mapChanges !== []);
+        expect(max($voteEnds))->toBeLessThan(min($mapChanges));
+
+        $server->enter($first);
+        $server->enter($second);
+        $server->advance(2);
+        expect($first->playerTee()->character?->alive)->toBeTrue();
+        expect($second->playerTee()->character?->alive)->toBeTrue();
+        expect($first->playerTee()->team)->toBe(GameConstants::TEAM_RED);
+        expect($second->playerTee()->team)->toBe($mode === 'dm' ? GameConstants::TEAM_RED : GameConstants::TEAM_BLUE);
+        if ($mode === 'ctf') {
+            expect($controller->getFlag(GameConstants::TEAM_RED))->not()->toBeNull();
+            expect($controller->getFlag(GameConstants::TEAM_BLUE))->not()->toBeNull();
+        } else {
+            expect($controller->getFlags())->toBe([null, null]);
+        }
+        $info = $controller->doSnap($first->playerTee())[0];
+        assert($info instanceof ObjGameInfoItem);
+        $expectedFlags = match ($mode) {
+            'ctf' => GameConstants::GAMEFLAG_TEAMS | GameConstants::GAMEFLAG_FLAGS,
+            'tdm' => GameConstants::GAMEFLAG_TEAMS,
+            default => 0,
+        };
+        expect($info->gameFlags)->toBe($expectedFlags);
+        $server->send($first, worldTransferInput(2001, $server->dm->getCurrentTick() - 1));
+        $fields = worldTransferInfoFields($server->socket, 8300);
+        expect($fields[3])->toBe('ctf1');
+        expect($fields[6])->toBe(strtoupper($mode));
+        expect($fields[11])->toBe('8');
+    }
+});
+
+test('failed gamemode votes keep the active match and report the failure', function (string $mode, ?string $mapName) {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->enter($slot);
+    $server->advance();
+    $tee = $slot->playerTee();
+    $character = $tee->character;
+    $map = $server->dm->getMap();
+    $controller = $server->dm->getGameController();
+    $command = new ChangeGameModeCommand($mode, mapName: $mapName);
+    $server->dm->registerCommand($command);
+    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), '', 0));
+    $server->socket->packets = [];
+    $server->advance();
+
+    expect($server->dm->getGameController())->toBe($controller);
+    expect($server->dm->getMap())->toBe($map);
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($slot->playerTee())->toBe($tee);
+    expect($tee->character)->toBe($character);
+    expect($character?->alive)->toBeTrue();
+    expect($server->dm->getVoteController()->isVoteRunning())->toBeFalse();
+    $chunks = $server->socket->chunks();
+    expect(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk))->toBeEmpty();
+    $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+    expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Unable to change gamemode to '.strtoupper($mode));
+})->with([
+    'unsupported mode' => ['unknown', null],
+    'missing map' => ['ctf', 'missing-map'],
+]);
+
+test('chat cannot execute a vote-only gamemode command', function () {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->enter($slot);
+    $controller = $server->dm->getGameController();
+    $server->dm->registerCommand(new ChangeGameModeCommand('ctf', mapName: 'ctf1'));
+    $server->socket->packets = [];
+    $server->send($slot, new ClSayChunk(false, '/change_gamemode ctf'));
+    $server->advance();
+
+    expect($server->dm->getGameController())->toBe($controller);
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk))->toBeEmpty();
+});
+
+test('a plain world reload restarts its clients without resetting transport or other worlds', function () {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->enter($slot);
+    $other = $server->connect(8301);
+    $server->enter($other);
+    $server->changeWorld($other->playerTee(), $server->ctf);
+    $server->enter($other);
+    $server->advance();
+    $tee = $slot->playerTee();
+    $otherTee = $other->playerTee();
+    $otherMap = $server->ctf->getMap();
+    $sequence = $slot->sequence;
+    $ack = $slot->ack;
+    $server->socket->packets = [];
+
+    $server->dm->reload();
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    $server->advance();
+
+    expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);
+    expect($slot->sequence)->toBeGreaterThan($sequence);
+    expect($slot->ack)->toBe($ack);
+    expect($slot->playerTee())->not()->toBe($tee);
+    expect($other->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($other->playerTee())->toBe($otherTee);
+    expect($server->ctf->getMap())->toBe($otherMap);
+    $changes = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk));
+    expect($changes)->toHaveCount(1);
+    expect([$changes[0]->mapName, $changes[0]->crc, $changes[0]->size])->toBe($server->dm->getMapInfo());
+
+    $server->enter($slot);
+    $server->advance();
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($slot->playerTee()->character?->alive)->toBeTrue();
+});
+
+test('reload votes finish before reloading and cannot be executed through chat', function () {
+    $server = new WorldTransferTestServer;
+    $slot = $server->connect();
+    $server->enter($slot);
+    $server->advance();
+    $map = $server->dm->getMap();
+    $tee = $slot->playerTee();
+    $command = new ReloadCommand;
+    $server->dm->registerCommand($command);
+    $votes = $server->dm->getVoteController();
+    $votes->addVoteOption($command->getDescription(), $command->getCommand());
+    $server->send($slot, new ClSayChunk(false, '/reload'));
+    $server->advance();
+    expect($server->dm->getMap())->toBe($map);
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+
+    $server->send($slot, new ClCallVoteChunk('option', 'Reload', '', 0));
+    expect($votes->isVoteRunning())->toBeTrue();
+    expect($server->dm->getMap())->toBe($map);
+    $sequence = $slot->sequence;
+    $ack = $slot->ack;
+    $server->socket->packets = [];
+    $server->advance();
+
+    expect($votes->isVoteRunning())->toBeFalse();
+    expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);
+    expect($slot->sequence)->toBeGreaterThan($sequence);
+    expect($slot->ack)->toBe($ack);
+    expect($slot->playerTee())->not()->toBe($tee);
+    expect($server->dm->getMap())->not()->toBe($map);
+    expect($server->dm->getMapInfo())->toBe([$map->getName(), $map->getCrc(), $map->getSize()]);
+    $chunks = $server->socket->chunks();
+    $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+    expect(array_values(array_map(fn ($chunk) => $chunk->text, $chats)))->toBe(['Reloading world', 'Vote passed']);
+    $voteEnds = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
+    $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
+    expect($voteEnds)->toHaveCount(1);
+    expect($mapChanges)->toHaveCount(1);
+    expect($voteEnds[0])->toBeLessThan($mapChanges[0]);
+
+    $server->enter($slot);
+    $server->advance();
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($slot->playerTee()->character?->alive)->toBeTrue();
+    expect($votes->getVoteChunks($slot->playerTee()))->toHaveCount(1);
 });

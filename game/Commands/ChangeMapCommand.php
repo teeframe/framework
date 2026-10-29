@@ -5,12 +5,8 @@ namespace TeeFrame\Game\Commands;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Server\Console;
 
-/**
- * Vote-only command to change the map.
- *
- * Can be called via the vote menu but not via chat directly.
- */
 class ChangeMapCommand extends AbstractCommand
 {
     public function __construct(
@@ -39,11 +35,23 @@ class ChangeMapCommand extends AbstractCommand
      */
     public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
     {
-        // TODO: Implement actual map change (MapChangeChunk broadcast + reload)
-        $world->getServer()->sendToTee($world, $tee->teeIndex, new SvChatChunk(
-            team: 0,
-            clientId: -1,
-            text: 'Map change to ' . $this->mapName . ' requested',
-        ));
+        try {
+            $world->reload(mapName: $this->mapName);
+            $text = 'Changing map to '.$this->mapName;
+            if ($this->reason !== '') {
+                $text .= ' ('.$this->reason.')';
+            }
+        } catch (\RuntimeException $exception) {
+            Console::warn('World='.$world->identifier.' Map change failed: '.$exception->getMessage());
+            $text = 'Unable to change map to '.$this->mapName;
+        }
+
+        foreach ($world->getTees() as $recipient) {
+            $world->getServer()->sendToTee($world, $recipient->teeIndex, new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: $text,
+            ));
+        }
     }
 }

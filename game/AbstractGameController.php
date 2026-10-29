@@ -87,6 +87,16 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         return $this->isCaptureTheFlag ? 'CTF' : ($this->isTeamMode ? 'TDM' : 'DM');
     }
 
+    public function setGameMode(string $gameMode): void
+    {
+        [$this->isTeamMode, $this->isCaptureTheFlag] = match (strtoupper($gameMode)) {
+            'DM' => [false, false],
+            'TDM' => [true, false],
+            'CTF' => [true, true],
+            default => throw new \RuntimeException('Unsupported gamemode: '.$gameMode),
+        };
+    }
+
     public function getSpectatorSlots(): int
     {
         return $this->spectatorSlots;
@@ -297,6 +307,25 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             $world->setPaused(false);
         }
         $this->forceBalanced = false;
+    }
+
+    public function resetMap(): void
+    {
+        $this->spawnPoints = [
+            self::SPAWN_HUMAN => [],
+            self::SPAWN_RED   => [],
+            self::SPAWN_BLUE  => [],
+        ];
+
+        $this->flags          = [null, null];
+        $this->roundStartTick = $this->tickHandler->get();
+        $this->gameOverTick   = -1;
+        $this->suddenDeath    = 0;
+        $this->warmup         = 0;
+        $this->unpauseTimer   = 0;
+        $this->roundCount     = 0;
+        $this->unbalancedTick = -1;
+        $this->forceBalanced  = false;
     }
 
     public function endRound(): void

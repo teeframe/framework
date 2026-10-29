@@ -168,6 +168,19 @@ abstract class AbstractServerInstance
         return false;
     }
 
+    public function reloadWorld(AbstractWorld $world): void
+    {
+        foreach ($this->connectionHandler->getConnections() as $connection) {
+            // CONNECTING clients must still pass version/password validation.
+            if ($connection->world() === $world
+                && $connection->state >= ConnectionSlot::STATE_LOADING
+                && $connection->state <= ConnectionSlot::STATE_INGAME
+            ) {
+                $connection->changeWorld($world);
+            }
+        }
+    }
+
     public function trySetClientName(AbstractWorld $world, AbstractTee $tee, string $name): bool
     {
         $trimmed = trim($name);

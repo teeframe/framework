@@ -26,6 +26,8 @@ class Map
 
     protected string $name = '';
 
+    protected string $path = '';
+
     protected int $crc = 0;
 
     protected int $size = 0;
@@ -67,6 +69,7 @@ class Map
         $this->name = basename($mapPath, '.map');
 
         $this->parseItems();
+        $this->path = realpath($mapPath) ?: $mapPath;
     }
 
     protected function parseItems(): void
@@ -181,6 +184,11 @@ class Map
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function getPath(): string
+    {
+        return $this->path;
     }
 
     public function getCrc(): int

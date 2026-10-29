@@ -80,6 +80,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected bool $paused = false;
     protected bool $resetRequested = false;
 
+    protected ?Map $pendingMap = null;
+
+    protected ?AbstractGameController $pendingGameController = null;
+
     public function __construct(
         public string $identifier,
         protected TickHandler $tickHandler,
@@ -98,6 +102,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->getGameController()->setWorld($this);
 
+        $this->bootMap();
+    }
+
+    protected function bootMap(): void
+    {
         if (($gameLayer = $this->getMap()->getGameLayer()) !== null) {
             $this->getGameController()->collectSpawnPoints($gameLayer);
             $this->getGameController()->collectFlagPoints($gameLayer);
@@ -120,7 +129,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     {
         $this->commands[] = $command;
     }
-
 
     protected function bootVoteController(): void
     {
@@ -152,6 +160,87 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getMap(): Map
     {
         return $this->map;
+    }
+
+    public function changeMap(string $mapName): void
+    {
+        $this->reload(mapName: $mapName);
+    }
+
+    public function changeGameMode(string $gameMode, ?string $mapName = null): void
+    {
+        $this->reload(mapName: $mapName, gameMode: $gameMode);
+    }
+
+    /** Queue a validated world reload, applied after vote processing. */
+    public function reload(?string $mapName = null, ?string $gameMode = null): void
+    {
+        $map        = $this->pendingMap ?? $this->map;
+        $controller = $this->pendingGameController;
+
+        // Prepare changes separately so a failure leaves the active/queued state intact.
+        if ($gameMode !== null) {
+            $controller = clone ($controller ?? $this->gameController);
+            $controller->setGameMode($gameMode);
+        }
+
+        if ($mapName !== null && ($mapName === '' || $mapName === '.' || $mapName === '..' || strpbrk($mapName, "/\\\0") !== false)) {
+            throw new \RuntimeException('Invalid map name');
+        }
+
+        // A mode-only change can reuse the map; a bare reload re-reads its file.
+        if ($mapName !== null || $gameMode === null) {
+            if ($map->getPath() === '') {
+                throw new \RuntimeException('Current map has no source path');
+            }
+
+            $path = $mapName === null ? $map->getPath() : dirname($map->getPath()).'/'.$mapName.'.map';
+            $map  = new Map($path);
+            if ($map->getGameLayer() === null) {
+                throw new \RuntimeException('Map has no game layer');
+            }
+        }
+
+        $this->pendingMap            = $map;
+        $this->pendingGameController = $controller;
+    }
+
+    protected function performReload(Map $map): void
+    {
+        if ($this->voteController->isVoteRunning()) {
+            $this->voteController->endVote($this);
+        }
+
+        foreach ($this->entities as $entity) {
+            $entity->markToDestroy();
+        }
+
+        foreach ($this->tees as $tee) {
+            if ($tee->character !== null) {
+                $tee->character->alive = false;
+                $tee->character        = null;
+            }
+        }
+
+        // This is a map reset, not a disconnect: avoid death/leave notifications.
+        $this->tees               = [];
+        $this->releasedTeeIndexes = [];
+        $this->entities           = [];
+        $this->clearEvents();
+        $this->snapIdPool     = new SnapIdPool;
+        $this->paused         = false;
+        $this->resetRequested = false;
+        $this->map            = $map;
+
+        if ($this->pendingGameController !== null) {
+            $this->gameController        = $this->pendingGameController;
+            $this->pendingGameController = null;
+            $this->gameController->setWorld($this);
+        }
+
+        $this->gameController->resetMap();
+        $this->bootMap();
+        $this->server->reloadWorld($this);
     }
 
     /**
@@ -445,6 +534,15 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         // Vote ticking (CGameContext::OnTick vote section)
         $this->getVoteController()->tick($this);
 
+        // Finish the vote before applying a queued map/mode change or plain reload.
+        if ($this->pendingMap !== null) {
+            $map              = $this->pendingMap;
+            $this->pendingMap = null;
+            $this->performReload($map);
+
+            return;
+        }
+
         // Game controller tick
         $this->getGameController()->doTick();
 
@@ -654,6 +752,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         // Check for registered commands
         foreach ($this->commands as $command) {
+            if (! ($command->getType() & AbstractCommand::TYPE_CHAT)) {
+                continue;
+            }
+
             if (preg_match($command->getPattern(), $message, $matches)) {
                 $command->execute($this, $tee, $matches);
 
