@@ -263,7 +263,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         return [
             new ObjCharacterItem(
-                tick: $this->tick,
+                tick: $this->world->isPaused() ? 0 : $this->tick, // Tick zero disables client dead reckoning while the world is paused (from 0.6 source).
                 x: (int) round($this->position->x),
                 y: (int) round($this->position->y),
                 velX: (int) round($this->vel->x * 256.0),

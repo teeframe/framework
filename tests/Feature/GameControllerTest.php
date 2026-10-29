@@ -13,6 +13,7 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 
@@ -695,6 +696,84 @@ test('paused world does not apply input to characters', function () use ($mapPat
     expect($posAfter->x)->toBe($posBefore->x);
     expect($posAfter->y)->toBe($posBefore->y);
 });
+
+test('paused character snapshots disable dead reckoning until play resumes', function (bool $endMatch) use ($mapPath) {
+    resetMockServer();
+
+    $map         = new Map($mapPath);
+    $tickHandler = new TickHandler(100);
+    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
+    $world       = createWorldWithController($map, $tickHandler, $controller);
+
+    $tee = new PlayerTee;
+    $world->addTee($tee);
+    $world->doTick();
+
+    $tee->inputs[101] = input(['direction' => 1]);
+    setGameTick($tickHandler, 101);
+    $world->doTick();
+
+    $character = $tee->character;
+    assert($character instanceof PvpCharacterEntity);
+    $movingCore = array_slice($character->doSnap($tee)[0]->getInts(), 0, 15);
+    expect($movingCore[0])->toBe(101);
+    expect($movingCore[3])->not()->toBe(0);
+
+    $observer = new PlayerTee;
+    $world->addTee($observer);
+    $observer->team = GameConstants::TEAM_SPECTATORS;
+
+    if ($endMatch) {
+        $tee->score = 1;
+    } else {
+        $world->setPaused(true);
+    }
+
+    // Check the first paused snapshot and subsequent snapshots over six seconds.
+    for ($tick = 102; $tick <= 402; $tick += NetworkParams::TICKS_PER_SECOND) {
+        setGameTick($tickHandler, $tick);
+        $world->doTick();
+        expect($world->isPaused())->toBeTrue();
+
+        foreach ([$tee, $observer] as $requester) {
+            $snaps = $world->doSnap($requester);
+            $gameInfo = array_find($snaps, fn ($item) => $item instanceof ObjGameInfoItem);
+            $characterSnap = array_find($snaps, fn ($item) => $item instanceof ObjCharacterItem);
+            assert($gameInfo instanceof ObjGameInfoItem);
+            assert($characterSnap instanceof ObjCharacterItem);
+
+            expect($gameInfo->gameStateFlags)->toBe(
+                GameConstants::GAMESTATEFLAG_PAUSED | ($endMatch ? GameConstants::GAMESTATEFLAG_GAMEOVER : 0),
+            );
+            // Tick zero disables client evolution without changing position or velocity.
+            expect(array_slice($characterSnap->getInts(), 0, 15))->toBe([
+                0, ...array_slice($movingCore, 1),
+            ]);
+        }
+    }
+
+    expect($character->tick)->toBe(101);
+
+    if ($endMatch) {
+        $controller->startRound();
+        $world->doTick();
+        setGameTick($tickHandler, $tee->respawnTick);
+        $world->doTick();
+    } else {
+        $world->setPaused(false);
+    }
+
+    $tickHandler->next();
+    $world->doTick();
+
+    $character = $tee->character;
+    assert($character instanceof PvpCharacterEntity);
+    expect($world->isPaused())->toBeFalse();
+    expect($character->doSnap($tee)[0]->getInts()[0])->toBe($tickHandler->get());
+})->with([
+    'manual pause' => [false],
+    'match finished' => [true],
+]);
 
 test('paused world does not tick entities (no gravity)', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
