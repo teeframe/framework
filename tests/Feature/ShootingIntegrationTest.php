@@ -484,7 +484,7 @@ test('character snap id matches tee index when pickups are present', function ()
     $charSnap = array_values($charSnaps)[0];
 
     // The character snap ID must match the tee's index (client ID),
-    // otherwise the DDNet client won't recognize it as the local player.
+    // otherwise the client won't recognize it as the local player.
     expect($charSnap->getId())->toBe($tee->teeIndex);
 });
 

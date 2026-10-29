@@ -15,7 +15,7 @@ class ConnectionHandler
      */
     protected array $slots = [];
 
-    public function __construct(protected int $slotsLimit, protected TickHandler $tickHandler)
+    public function __construct(protected TickHandler $tickHandler)
     {
     }
 
@@ -23,7 +23,7 @@ class ConnectionHandler
     {
         $this->clearConnections();
 
-        if (count($this->slots) >= $this->slotsLimit) {
+        if ($this->isWorldFull($world)) {
             return false;
         }
 
@@ -48,10 +48,16 @@ class ConnectionHandler
         return false;
     }
 
-    public function getSlotsLimit(): int
+    public function isWorldFull(AbstractWorld $world): bool
     {
-        return $this->slotsLimit;
+        $connections = array_filter(
+            $this->slots,
+            fn (ConnectionSlot $slot): bool => $slot->world() === $world && $slot->state !== ConnectionSlot::STATE_CLOSED,
+        );
+
+        return count($connections) >= $world->getSlotsLimit();
     }
+
 
     /**
      * @return ConnectionSlot[]

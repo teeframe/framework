@@ -20,7 +20,7 @@ class ControlMessage extends AbstractPacket
             $payload = [...$payload, ...NetworkBase::unpackBuffer($extra), 0];
         }
 
-        parent::__construct(flags: $flags, ack: $ack, payload: [$message, ...$payload]);
+        parent::__construct(flags: $flags, ack: $ack, payload: $payload);
     }
 
     public function getControlMessage(): int

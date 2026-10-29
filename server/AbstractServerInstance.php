@@ -35,12 +35,11 @@ abstract class AbstractServerInstance
     public function __construct(
         protected TickHandler $tickHandler,
         protected string $name,
-        protected int $slotsLimit,
         protected string $password = '',
         protected int $kickBanDuration = 600,
     )
     {
-        $this->connectionHandler = new ConnectionHandler(slotsLimit: $slotsLimit, tickHandler: $tickHandler);
+        $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
         $this->banList           = new BanList;
     }
 
@@ -142,6 +141,33 @@ abstract class AbstractServerInstance
         }
     }
 
+    public function changeWorld(AbstractTee $tee, AbstractWorld $world): bool
+    {
+        if (! in_array($world, $this->worlds, true)) {
+            return false;
+        }
+
+        foreach ($this->connectionHandler->getConnections() as $connection) {
+            if ($connection->state !== ConnectionSlot::STATE_INGAME || $connection->playerTee() !== $tee) {
+                continue;
+            }
+
+            if ($connection->world() === $world) {
+                return true;
+            }
+
+            if ($this->connectionHandler->isWorldFull($world)) {
+                return false;
+            }
+
+            $connection->changeWorld($world);
+
+            return true;
+        }
+
+        return false;
+    }
+
     public function trySetClientName(AbstractWorld $world, AbstractTee $tee, string $name): bool
     {
         $trimmed = trim($name);
@@ -150,9 +176,6 @@ abstract class AbstractServerInstance
             return false;
         }
 
-        if ($tee->name !== '' && $tee->name === $trimmed) {
-            return true;
-        }
 
         foreach ($world->getTees() as $existingTee) {
             if ($existingTee === $tee) {
@@ -257,10 +280,14 @@ abstract class AbstractServerInstance
         // New connection...
         $slotConnection = $this->connectionHandler->startNew($socket, $this->selectWorldForNewConnection());
         if (! $slotConnection) {
+            $reason = count($this->worlds) > 1
+                ? 'The entry-level world is full'
+                : 'The server is full';
+
             $socket->sendto(
                 $clientInfo['address'],
                 $clientInfo['port'],
-                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'The server is full'))->encodeToSend()
+                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, $reason))->encodeToSend()
             );
 
             return;
@@ -277,71 +304,136 @@ abstract class AbstractServerInstance
         $data = $packet->getData();
         $header = NetworkMessages::SERVERBROWSE_GETINFO;
         $extraToken = $packet->getExtraToken();
+
         if ($extraToken === null || strlen($data) !== strlen($header) + 1 || ! str_starts_with($data, $header)) {
             return;
         }
 
         $connection = $this->connectionHandler->tryToMatch($clientInfo);
-        $world = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
-            ? $connection->world()
-            : $this->selectWorldForNewConnection();
-        $controller = $world->getGameController();
+        $worlds = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
+            ? [$connection->world()]
+            : $this->worlds;
+
+        if ($worlds === []) {
+            return;
+        }
 
         $token = ord($data[strlen($header)]) | ($extraToken << 8);
-        $maxClients = $this->connectionHandler->getSlotsLimit();
-        $connections = array_values(array_filter(
-            $this->connectionHandler->getConnections(),
-            fn (ConnectionSlot $slot): bool => $slot->world() === $world
-                && $slot->state >= ConnectionSlot::STATE_CONNECTING
-                && $slot->state <= ConnectionSlot::STATE_INGAME,
-        ));
 
-        $numPlayers = count(array_filter(
-            $connections,
-            fn (ConnectionSlot $slot): bool => $slot->playerTee()->team !== GameConstants::TEAM_SPECTATORS,
-        ));
+        foreach ($this->buildServerInfoPackets($worlds, $token) as $reply) {
+            $socket->sendto($clientInfo['address'], $clientInfo['port'], $reply->encodeToSend());
+        }
+
+        // The client queries server info through a separate contact socket, so
+        // the query does not match its gameplay connection. The aggregate reply
+        // can overwrite its in-game Server tab with MW and the total capacity.
+        // Queue a world-specific update on the gameplay socket to restore it,
+        // deferred until a newer snapshot ACK to avoid a same-poll overwrite.
+        //
+        // The query contains no player/world identifier. The IP only filters
+        // which connections to refresh; it never selects a world. Players
+        // sharing an IP therefore all get a refresh, each for their own world.
+        if (! $connection || $connection->state === ConnectionSlot::STATE_CLOSED) {
+            foreach ($this->connectionHandler->getConnections() as $slot) {
+                if ($slot->destinationAddress === $clientInfo['address'] && $slot->state !== ConnectionSlot::STATE_CLOSED) {
+                    $slot->queueWorldInfoUpdate();
+                }
+            }
+        }
+    }
+
+    public function sendWorldInfo(ConnectionSlot $connection): void
+    {
+        if ($connection->state !== ConnectionSlot::STATE_INGAME) {
+            return;
+        }
+
+        foreach ($this->buildServerInfoPackets([$connection->world()], -1) as $packet) {
+            $connection->sendPacket($packet);
+        }
+    }
+
+    /**
+     * @param  non-empty-array<AbstractWorld>  $worlds
+     * @return list<ConnectionlessPacket>
+     */
+    protected function buildServerInfoPackets(array $worlds, int $token): array
+    {
+        $maxClients = 0;
+        $maxPlayers = 0;
+
+        foreach ($worlds as $world) {
+            $slotsLimit = $world->getSlotsLimit();
+
+            $maxClients += $slotsLimit;
+            $maxPlayers += $slotsLimit - $world->getGameController()->getSpectatorSlots();
+        }
+
+        $connections = [];
+        $numPlayers  = 0;
+
+        foreach ($this->connectionHandler->getConnections() as $slot) {
+            if (! in_array($slot->world(), $worlds, true)
+                || $slot->state < ConnectionSlot::STATE_CONNECTING
+                || $slot->state > ConnectionSlot::STATE_INGAME
+            ) {
+                continue;
+            }
+
+            $connections[] = $slot;
+
+            if ($slot->playerTee()->team !== GameConstants::TEAM_SPECTATORS) {
+                $numPlayers++;
+            }
+        }
+
+        $world      = reset($worlds);
+        $multiWorld = count($worlds) > 1;
+        $packets    = [];
+        $packetNo   = 0;
 
         // All numbers in server-info replies are decimal strings, not packed integers.
-        $fields = [
+        $payload = NetworkMessages::SERVERBROWSE_INFO_EXTENDED.$this->encodeServerInfoFields([
             $token,
             '0.6 TeeFrame',
             substr($this->name, 0, 256),
-            substr($world->getMap()->getName(), 0, 32),
-            $world->getMap()->getCrc(),
-            $world->getMap()->getSize(),
-            substr($controller->getGameType(), 0, 16),
+            $multiWorld ? 'MultiWorld' : substr($world->getMap()->getName(), 0, 32),
+            $multiWorld ? 0 : $world->getMap()->getCrc(),
+            $multiWorld ? 0 : $world->getMap()->getSize(),
+            $multiWorld ? 'MW' : substr($world->getGameController()->getGameType(), 0, 16),
             (int) ($this->password !== ''),
             $numPlayers,
-            max($numPlayers, $maxClients - $controller->getSpectatorSlots()),
+            max($numPlayers, $maxPlayers),
             count($connections),
             $maxClients,
             '', // Reserved server info.
-        ];
+        ]);
 
-        $payload = NetworkMessages::SERVERBROWSE_INFO_EXTENDED.$this->encodeServerInfoFields($fields);
-        $packetNo = 0;
         foreach ($connections as $slot) {
-            $tee = $slot->playerTee();
+            $tee    = $slot->playerTee();
             $inGame = $slot->state === ConnectionSlot::STATE_INGAME;
-            $clientFields = [
+
+            $clientPayload = $this->encodeServerInfoFields([
                 $inGame ? substr($tee->name, 0, NetworkParams::MAX_NAME_LENGTH) : '(connecting)',
                 $inGame ? substr($tee->clan, 0, NetworkParams::MAX_CLAN_LENGTH) : '',
                 $tee->country,
                 $tee->score,
                 (int) ($tee->team !== GameConstants::TEAM_SPECTATORS),
                 '', // Reserved client info.
-            ];
-            $clientPayload = $this->encodeServerInfoFields($clientFields);
+            ]);
 
             if (strlen($payload) + strlen($clientPayload) + NetworkParams::PACKET_HEADER_SIZE_CONNECTION_LESS > NetworkParams::MAXIMUM_PACKET_SIZE) {
-                $socket->sendto($clientInfo['address'], $clientInfo['port'], (new ConnectionlessPacket($payload))->encodeToSend());
-                $payload = NetworkMessages::SERVERBROWSE_INFO_EXTENDED_MORE
+                $packets[] = new ConnectionlessPacket($payload);
+                $payload   = NetworkMessages::SERVERBROWSE_INFO_EXTENDED_MORE
                     .$this->encodeServerInfoFields([$token, ++$packetNo, '']);
             }
+
             $payload .= $clientPayload;
         }
 
-        $socket->sendto($clientInfo['address'], $clientInfo['port'], (new ConnectionlessPacket($payload))->encodeToSend());
+        $packets[] = new ConnectionlessPacket($payload);
+
+        return $packets;
     }
 
     /** @param array<string|int> $fields */

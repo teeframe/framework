@@ -451,7 +451,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             }
         }
 
-        return $numPlayers < 64 - $this->spectatorSlots;
+        return $numPlayers < $world->getSlotsLimit() - $this->spectatorSlots;
     }
 
     public function checkTeamBalance(): bool

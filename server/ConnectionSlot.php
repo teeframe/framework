@@ -8,6 +8,7 @@ use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\InputTimingChunk;
+use TeeFrame\Network\Chunks\System\MapChangeChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\Connection\AbstractConnection;
 use TeeFrame\Network\NetworkMessages;
@@ -30,9 +31,11 @@ class ConnectionSlot extends AbstractConnection
 
     protected PlayerTee $playerTee;
 
+    public int $state;
+
     protected int $lastInputTick;
 
-    public int $state;
+    protected ?int $worldInfoUpdateTick;
 
     public function __construct(
         protected AbstractSocket $socket,
@@ -46,9 +49,11 @@ class ConnectionSlot extends AbstractConnection
     {
         parent::reset();
 
-        $this->playerTee     = new PlayerTee;
-        $this->lastInputTick = -1;
-        $this->state         = static::STATE_WAITING_INIT;
+        $this->playerTee = new PlayerTee;
+        $this->state     = static::STATE_WAITING_INIT;
+
+        $this->lastInputTick       = -1;
+        $this->worldInfoUpdateTick = null;
     }
 
     public function playerTee(): PlayerTee
@@ -59,6 +64,43 @@ class ConnectionSlot extends AbstractConnection
     public function world(): AbstractWorld
     {
         return $this->world;
+    }
+
+    public function changeWorld(AbstractWorld $world): void
+    {
+        $previousTee = $this->playerTee;
+        $this->world->removeTee($previousTee);
+
+        $this->world = $world;
+        $this->playerTee = new PlayerTee;
+        $this->playerTee->setInfo(
+            $previousTee->name,
+            $previousTee->clan,
+            $previousTee->country,
+            $previousTee->skinName,
+            $previousTee->useCustomColor,
+            $previousTee->colorBody,
+            $previousTee->colorFeet,
+        );
+
+        $this->playerTee->latency = $previousTee->latency;
+        $this->playerTee->lastChatTick = $previousTee->lastChatTick;
+
+        $this->state = static::STATE_LOADING;
+        $this->snaps()->reset();
+
+        $this->lastInputTick = -1;
+        $this->worldInfoUpdateTick = null;
+
+        // Keep the transport sequence/ACK state: only the map handshake restarts.
+        $this->chunks()->add(new MapChangeChunk(...$world->getMapInfo()))->send();
+    }
+
+    public function queueWorldInfoUpdate(): void
+    {
+        // The client polls gameplay before its contact socket. Wait for a snapshot
+        // sent after the browser reply, so the world info arrives on a later poll.
+        $this->worldInfoUpdateTick = $this->tickHandler->get() + 1;
     }
 
     public function feedConnection(AbstractPacket $packet): bool
@@ -77,7 +119,7 @@ class ConnectionSlot extends AbstractConnection
             return $this->handleControlMessagePacket($packet);
         }
         if ($packet instanceof DefaultPacket) {
-            return $this->handleDefaultPacket($packet);
+            return $this->state === static::STATE_INGAME ? $this->handleDefaultPacket($packet) : true;
         }
 
         return false;
@@ -120,6 +162,10 @@ class ConnectionSlot extends AbstractConnection
             if (! $chunk->isSystem()) {
                 $this->world()->onMessage($this->playerTee(), $chunk);
 
+                if ($this->state !== static::STATE_INGAME) {
+                    break;
+                }
+
                 continue;
             }
 
@@ -127,6 +173,11 @@ class ConnectionSlot extends AbstractConnection
                 $this->snaps()->setLastAckedTick($chunk->ackGameTick);
 
                 $this->playerTee()->latency = $this->snaps()->getLatency();
+
+                if ($this->worldInfoUpdateTick !== null && $chunk->ackGameTick >= $this->worldInfoUpdateTick) {
+                    $this->worldInfoUpdateTick = null;
+                    $this->world()->getServer()->sendWorldInfo($this);
+                }
 
                 if ($chunk->predictionTick > $this->lastInputTick) {
                     $this->chunks()->add(new InputTimingChunk(

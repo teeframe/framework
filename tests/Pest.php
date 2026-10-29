@@ -67,7 +67,7 @@ class TestWorld extends AbstractWorld
         Map $map,
         ?AbstractServerInstance $server = null,
     ) {
-        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer']);
+        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer'], slotsLimit: 64);
     }
 
     public function getMotd(AbstractTee $requestingTee): string
@@ -96,9 +96,10 @@ class TestWorldWithController extends AbstractWorld
         Map $map,
         AbstractGameController $controller,
         ?AbstractServerInstance $server = null,
+        int $slotsLimit = 64,
     ) {
         $this->gameController = $controller;
-        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer']);
+        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer'], $slotsLimit);
     }
 
     public function getMotd(AbstractTee $requestingTee): string

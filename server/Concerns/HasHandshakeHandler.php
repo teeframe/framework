@@ -31,13 +31,13 @@ trait HasHandshakeHandler
 
     public function handleConnectionHandshake(ConnectionSlot $connection, AbstractPacket $packet, string $password): bool
     {
-        if (! ($packet instanceof DefaultPacket)) {
+        if (! $connection->feedConnection($packet) || ! ($packet instanceof DefaultPacket)) {
             return false;
         }
 
         foreach ($packet->getChunks() as $chunk) {
             // Step 1
-            if ($chunk instanceof InfoChunk) {
+            if ($chunk instanceof InfoChunk && $connection->state === ConnectionSlot::STATE_CONNECTING) {
                 $connection->consoleInfo('player sent info');
 
                 if (! $this->handleInfoChunk($connection, $chunk, $password)) {
@@ -46,7 +46,7 @@ trait HasHandshakeHandler
             }
 
             // Step 2.1
-            if ($chunk instanceof RequestMapDataChunk) {
+            if ($chunk instanceof RequestMapDataChunk && $connection->state === ConnectionSlot::STATE_LOADING) {
                 $connection->consoleInfo('player requested map data');
 
                 if (! $this->handleRequestMapDataChunk($connection, $chunk)) {
@@ -55,21 +55,21 @@ trait HasHandshakeHandler
             }
 
             // Step 2.2
-            if ($chunk instanceof ReadyChunk) {
+            if ($chunk instanceof ReadyChunk && $connection->state === ConnectionSlot::STATE_LOADING) {
                 $connection->consoleInfo('player is ready');
 
                 $this->handleReadyChunk($connection, $chunk);
             }
 
             // Step 3
-            if ($chunk instanceof ClStartInfoChunk) {
+            if ($chunk instanceof ClStartInfoChunk && $connection->state === ConnectionSlot::STATE_READY) {
                 $connection->consoleInfo('player sent start info');
 
                 $this->handleClStartInfoChunk($connection, $chunk);
             }
 
             // Step 4
-            if ($chunk instanceof EnterGameChunk) {
+            if ($chunk instanceof EnterGameChunk && $connection->state === ConnectionSlot::STATE_READY) {
                 $connection->consoleInfo('player has entered the game');
 
                 $this->handleEnterGameChunk($connection, $chunk);
@@ -96,6 +96,8 @@ trait HasHandshakeHandler
 
             return false;
         }
+
+        $connection->state = ConnectionSlot::STATE_LOADING;
 
         [$mapName, $mapCrc, $mapSize] = $connection->world()->getMapInfo();
 
@@ -185,5 +187,6 @@ trait HasHandshakeHandler
         $connection->state = ConnectionSlot::STATE_INGAME;
 
         $connection->world()->addTee($connection->playerTee());
+        $connection->queueWorldInfoUpdate();
     }
 }

@@ -84,7 +84,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         public string $identifier,
         protected TickHandler $tickHandler,
         protected Map $map,
-        protected AbstractServerInstance $server
+        protected AbstractServerInstance $server,
+        protected int $slotsLimit,
     ) {
         $this->snapIdPool = new SnapIdPool;
 
@@ -159,6 +160,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getTees(): array
     {
         return $this->tees;
+    }
+
+    public function getSlotsLimit(): int
+    {
+        return $this->slotsLimit;
     }
 
     public function getServer(): AbstractServerInstance
@@ -370,8 +376,19 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 }
             }
 
+            $this->voteController->abortVoteOnDisconnect($index);
+            $this->voteController->cancelVoteOnCreatorLeave($index);
+
+            foreach ($this->tees as $otherTee) {
+                if ($otherTee instanceof PlayerTee && $otherTee->spectatorId === $index) {
+                    $otherTee->spectatorId = GameConstants::SPEC_FREEVIEW;
+                }
+            }
+
             $this->releasedTeeIndexes[] = $index;
             unset($this->tees[$index]);
+
+            $this->getGameController()->checkTeamBalance();
         }
     }
 

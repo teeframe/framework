@@ -34,15 +34,15 @@ class ServerInfoTestServer extends AbstractServerInstance
 {
     public int $worldSelections = 0;
 
-    public function __construct(string $name = 'Test server', string $password = '', int $slotsLimit = 64)
+    public function __construct(string $name = 'Test server', string $password = '')
     {
-        parent::__construct(new TickHandler, name: $name, slotsLimit: $slotsLimit, password: $password);
+        parent::__construct(new TickHandler, name: $name, password: $password);
     }
 
-    public function addWorld(string $map = 'dm1', bool $teams = false, bool $ctf = false, int $spectatorSlots = 0): AbstractWorld
+    public function addWorld(string $map = 'dm1', bool $teams = false, bool $ctf = false, int $spectatorSlots = 0, int $slotsLimit = 64): AbstractWorld
     {
         $controller = new TestGameController($this->tickHandler, isTeamMode: $teams, isCaptureTheFlag: $ctf, spectatorSlots: $spectatorSlots);
-        $world = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this);
+        $world = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this, $slotsLimit);
         $this->worlds[] = $world;
 
         return $world;
@@ -194,15 +194,17 @@ test('server info selects the connected clients world without leaking another wo
     $socket->sent = [];
     $server->receive(serverInfoRequest(), $socket, 8400);
     $fields = serverInfoFields($socket);
-    expect($fields[3])->toBe('dm1');
-    expect($fields[6])->toBe('DM');
+    expect($fields[3])->toBe('MultiWorld');
+    expect($fields[6])->toBe('MW');
+    expect($fields[10])->toBe('2');
     expect($fields[13])->toBe('First world');
+    expect($fields[19])->toBe($state === ConnectionSlot::STATE_INGAME ? 'Second world' : '(connecting)');
     expect($server->connectionCount())->toBe(2);
 })->with([ConnectionSlot::STATE_LOADING, ConnectionSlot::STATE_INGAME]);
 
 test('server info reports team mode and reserved spectator capacity', function () {
-    $server = new ServerInfoTestServer(slotsLimit: 8);
-    $server->addWorld(teams: true, spectatorSlots: 2);
+    $server = new ServerInfoTestServer;
+    $server->addWorld(teams: true, spectatorSlots: 2, slotsLimit: 8);
     $socket = new ServerInfoTestSocket;
 
     $server->receive(serverInfoRequest(), $socket);
@@ -298,8 +300,8 @@ test('extended server info sends every client without a sixteen-player cap', fun
 })->with([17, 64]);
 
 test('extended server info reports all active players and the configured capacity', function (int $capacity) {
-    $server = new ServerInfoTestServer(slotsLimit: $capacity);
-    $world = $server->addWorld();
+    $server = new ServerInfoTestServer;
+    $world = $server->addWorld(slotsLimit: $capacity);
     $socket = new ServerInfoTestSocket;
     for ($i = 0; $i < $capacity; $i++) {
         $slot = $server->addClient($world, $socket, 8300 + $i);
@@ -335,6 +337,133 @@ test('extended server info retains world isolation', function () {
     expect($fields[13])->toBe('Second world');
     expect($fields)->not()->toContain('First world');
     expect($server->worldSelections)->toBe(0);
+});
+
+test('browser info merges worlds and sums their player and client capacities', function () {
+    $server = new ServerInfoTestServer;
+    $dm = $server->addWorld(slotsLimit: 32, spectatorSlots: 2);
+    $ctf = $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 64, spectatorSlots: 4);
+    $socket = new ServerInfoTestSocket;
+    $server->addClient($dm, $socket, 8300)->playerTee()->name = 'DM player';
+    $server->addClient($ctf, $socket, 8301)->playerTee()->name = 'CTF player';
+    $spectator = $server->addClient($ctf, $socket, 8302)->playerTee();
+    $spectator->name = 'CTF spectator';
+    $spectator->team = GameConstants::TEAM_SPECTATORS;
+    $server->addClient($dm, $socket, 8303, ConnectionSlot::STATE_LOADING);
+    $server->addClient($ctf, $socket, 8304, ConnectionSlot::STATE_CLOSED);
+    $socket->sent = [];
+
+    $server->receive(serverInfoRequest(), $socket, 9000);
+
+    $fields = serverInfoFields($socket);
+    expect(array_slice($fields, 3, 10))->toBe(['MultiWorld', '0', '0', 'MW', '0', '3', '90', '4', '96', '']);
+    expect(array_column(array_chunk(array_slice($fields, 13), 6), 0))->toBe([
+        'DM player', 'CTF player', 'CTF spectator', '(connecting)',
+    ]);
+    expect($server->worldSelections)->toBe(0);
+    expect($server->connectionCount())->toBe(5);
+
+    $socket->sent = [];
+    $server->receive(serverInfoRequest(), $socket, 8301);
+    $fields = serverInfoFields($socket);
+    expect($fields[3])->toBe('ctf1');
+    expect($fields[6])->toBe('CTF');
+    expect(array_slice($fields, 8, 4))->toBe(['1', '60', '2', '64']);
+    expect($fields)->not()->toContain('DM player', '(connecting)');
+});
+
+test('connected queries use each worlds gamemode and slot limit including after switching worlds', function () {
+    $server = new ServerInfoTestServer;
+    $dm = $server->addWorld(slotsLimit: 32, spectatorSlots: 2);
+    $ctf = $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 48, spectatorSlots: 4);
+    $socket = new ServerInfoTestSocket;
+    $client = $server->addClient($dm, $socket, 8300);
+    $client->playerTee()->name = 'Traveler';
+    $server->addClient($ctf, $socket, 8301)->playerTee()->name = 'CTF player';
+    $socket->sent = [];
+
+    $server->receive(serverInfoRequest(), $socket, 8300);
+
+    $fields = serverInfoFields($socket);
+    expect(array_slice($fields, 3, 4))->toBe([
+        'dm1', (string) $dm->getMap()->getCrc(), (string) $dm->getMap()->getSize(), 'DM',
+    ]);
+    expect(array_slice($fields, 8, 4))->toBe(['1', '30', '1', '32']);
+    expect($fields)->not()->toContain('MultiWorld', 'MW', 'CTF player');
+
+    expect($server->changeWorld($client->playerTee(), $ctf))->toBeTrue();
+    expect($client->state)->toBe(ConnectionSlot::STATE_LOADING);
+    $socket->sent = [];
+    $server->receive(serverInfoRequest(), $socket, 8300);
+
+    $fields = serverInfoFields($socket);
+    expect(array_slice($fields, 3, 4))->toBe([
+        'ctf1', (string) $ctf->getMap()->getCrc(), (string) $ctf->getMap()->getSize(), 'CTF',
+    ]);
+    expect(array_slice($fields, 8, 4))->toBe(['2', '44', '2', '48']);
+    expect($fields)->not()->toContain('MultiWorld', 'MW');
+
+    $client->state = ConnectionSlot::STATE_INGAME;
+    $ctf->addTee($client->playerTee());
+    $socket->sent = [];
+    $server->receive(serverInfoRequest(), $socket, 8300);
+    $fields = serverInfoFields($socket);
+    expect($fields[3])->toBe('ctf1');
+    expect($fields[6])->toBe('CTF');
+    expect(array_slice($fields, 8, 4))->toBe(['2', '44', '2', '48']);
+    expect($fields)->toContain('Traveler', 'CTF player');
+});
+
+test('browser capacity is derived only from the configured world limits', function () {
+    $server = new ServerInfoTestServer;
+    $server->addWorld(slotsLimit: 32);
+    $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 64);
+    $socket = new ServerInfoTestSocket;
+
+    $server->receive(serverInfoRequest(), $socket);
+
+    expect(array_slice(serverInfoFields($socket), 8, 4))->toBe(['0', '96', '0', '96']);
+
+    $server->addWorld(slotsLimit: 16, spectatorSlots: 2);
+    $socket->sent = [];
+    $server->receive(serverInfoRequest(), $socket);
+
+    expect(array_slice(serverInfoFields($socket), 8, 4))->toBe(['0', '110', '0', '112']);
+});
+
+test('browser info sends all 128 clients across worlds with complete continuation records', function () {
+    $server = new ServerInfoTestServer;
+    $worlds = [$server->addWorld(), $server->addWorld('ctf1', teams: true, ctf: true)];
+    $socket = new ServerInfoTestSocket;
+    $expectedNames = [];
+    for ($i = 0; $i < 128; $i++) {
+        $slot = $server->addClient($worlds[intdiv($i, 64)], $socket, 8300 + $i);
+        $slot->playerTee()->name = sprintf('Player%010d', $i);
+        $slot->playerTee()->clan = str_repeat('C', 12);
+        $expectedNames[] = $slot->playerTee()->name;
+    }
+    $socket->sent = [];
+
+    $server->receive(serverInfoRequest(42, 0x1234), $socket, 9000);
+
+    expect(count($socket->sent))->toBeGreaterThan(1);
+    $names = [];
+    foreach ($socket->sent as $packetNo => $packet) {
+        expect(strlen($packet['data']))->toBeLessThanOrEqual(1400);
+        $fields = explode("\0", substr($packet['data'], 14, -1));
+        expect($fields[0])->toBe('1193002');
+        if ($packetNo === 0) {
+            expect(array_slice($fields, 8, 4))->toBe(['128', '128', '128', '128']);
+            $clients = array_slice($fields, 13);
+        } else {
+            expect(substr($packet['data'], 0, 14))->toBe(str_repeat("\xFF", 10).'iex+');
+            expect($fields[1])->toBe((string) $packetNo);
+            $clients = array_slice($fields, 3);
+        }
+        expect(count($clients) % 6)->toBe(0);
+        array_push($names, ...array_column(array_chunk($clients, 6), 0));
+    }
+    expect($names)->toBe($expectedNames);
 });
 
 test('server info limits strings and prevents embedded nulls from adding fields', function () {

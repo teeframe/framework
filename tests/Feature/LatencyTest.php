@@ -169,6 +169,7 @@ test('reset clears both the reported latency and an unfinished minimum window', 
     $connection->feedConnection(new DefaultPacket([latencyTestInput(100, 101)], ack: 0));
 
     $connection->reset();
+    $connection->state = ConnectionSlot::STATE_INGAME;
     $ticks->now += 1_000_000_000;
     $snaps->sendItems(101, []);
     $ticks->now += 125_000_000;
@@ -188,6 +189,7 @@ test('connection timing uses the injected server clock rather than the assigned 
     $worldTicks->now += 10_000_000_000;
     $world = new TestWorld($worldTicks, new Map(__DIR__.'/../dm1.map'));
     $connection = new LatencyTestConnection($world, $serverTicks);
+    $connection->state = ConnectionSlot::STATE_INGAME;
 
     $serverTicks->now += 7_000_000;
     $input = latencyTestInput(-1, 101);
@@ -246,7 +248,7 @@ test('advancing the tick preserves its deadline rather than pretending no time h
 
 test('the server records each tick start before processing worlds and snapshots', function () {
     $ticks = new LatencyTestTickHandler(100);
-    $server = new class($ticks, name: 'Latency test', slotsLimit: 64) extends AbstractServerInstance
+    $server = new class($ticks, name: 'Latency test') extends AbstractServerInstance
     {
         protected function boot(): void {}
 
@@ -287,6 +289,7 @@ test('duplicate or older prediction ticks do not enqueue repeated timing correct
     }, $timings))->toBe([101, 102]);
 
     $connection->reset();
+    $connection->state = ConnectionSlot::STATE_INGAME;
     $connection->feedConnection(new DefaultPacket([latencyTestInput(-1, 101)], ack: 0));
     $connection->chunks()->send();
     $packet = $connection->sentPackets[1];
