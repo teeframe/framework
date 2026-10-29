@@ -8,7 +8,7 @@ use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Server\AbstractServerInstance;
-use TeeFrame\Server\ConnectionHandler;
+
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -36,8 +36,7 @@ class ServerInfoTestServer extends AbstractServerInstance
 
     public function __construct(string $name = 'Test server', string $password = '', int $slotsLimit = 64)
     {
-        parent::__construct(new TickHandler, password: $password, name: $name);
-        $this->connectionHandler = new ConnectionHandler($slotsLimit, $this->tickHandler);
+        parent::__construct(new TickHandler, name: $name, slotsLimit: $slotsLimit, password: $password);
     }
 
     public function addWorld(string $map = 'dm1', bool $teams = false, bool $ctf = false, int $spectatorSlots = 0): AbstractWorld

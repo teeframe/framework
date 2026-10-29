@@ -246,7 +246,7 @@ test('advancing the tick preserves its deadline rather than pretending no time h
 
 test('the server records each tick start before processing worlds and snapshots', function () {
     $ticks = new LatencyTestTickHandler(100);
-    $server = new class($ticks) extends AbstractServerInstance
+    $server = new class($ticks, name: 'Latency test', slotsLimit: 64) extends AbstractServerInstance
     {
         protected function boot(): void {}
 
