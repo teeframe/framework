@@ -48,6 +48,11 @@ class ConnectionHandler
         return false;
     }
 
+    public function getSlotsLimit(): int
+    {
+        return $this->slotsLimit;
+    }
+
     /**
      * @return ConnectionSlot[]
      */

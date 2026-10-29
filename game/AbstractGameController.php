@@ -82,6 +82,16 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         return $this->world;
     }
 
+    public function getGameType(): string
+    {
+        return $this->isCaptureTheFlag ? 'CTF' : ($this->isTeamMode ? 'TDM' : 'DM');
+    }
+
+    public function getSpectatorSlots(): int
+    {
+        return $this->spectatorSlots;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Tick lifecycle

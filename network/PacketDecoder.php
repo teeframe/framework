@@ -36,6 +36,7 @@ use TeeFrame\Network\Chunks\System\SnapSingleChunk;
 use TeeFrame\Network\Chunks\System\SnapSliceChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\Packets\AbstractPacket;
+use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
 
@@ -57,7 +58,18 @@ class PacketDecoder
 
         // Connection-less Message
         if ($flags & NetworkBase::PACKET_FLAG_TYPE_CONNECTION_LESS) {
-            return false;
+            if (strlen($rawBuffer) < NetworkParams::PACKET_HEADER_SIZE_CONNECTION_LESS) {
+                return false;
+            }
+
+            $extraToken = str_starts_with($rawBuffer, 'xe')
+                ? (ord($rawBuffer[2]) << 8) | ord($rawBuffer[3])
+                : null;
+
+            return new ConnectionlessPacket(
+                substr($rawBuffer, NetworkParams::PACKET_HEADER_SIZE_CONNECTION_LESS),
+                extraToken: $extraToken,
+            );
         }
 
         // Control Message

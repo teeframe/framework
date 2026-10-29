@@ -5,6 +5,13 @@ namespace TeeFrame\Network;
 class NetworkMessages
 {
     /*
+     * Connectionless Messages
+     */
+    const SERVERBROWSE_GETINFO            = "\xFF\xFF\xFF\xFFgie3";
+    const SERVERBROWSE_INFO_EXTENDED      = "\xFF\xFF\xFF\xFFiext";
+    const SERVERBROWSE_INFO_EXTENDED_MORE = "\xFF\xFF\xFF\xFFiex+";
+
+    /*
      * Control Messages
      */
     const CONTROL_KEEP_ALIVE     = 0;
