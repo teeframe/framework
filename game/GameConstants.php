@@ -4,6 +4,9 @@ namespace TeeFrame\Game;
 
 class GameConstants
 {
+    // Input button counter mask (Teeworlds 0.6)
+    public const INPUT_STATE_MASK = 0x3F;
+
     // Weapon constants (Teeworlds 0.6)
     public const WEAPON_HAMMER  = 0;
     public const WEAPON_GUN     = 1;
@@ -31,6 +34,35 @@ class GameConstants
     public const POWERUP_ARMOR  = 1;
     public const POWERUP_WEAPON = 2;
     public const POWERUP_NINJA  = 3;
+    public const NUM_POWERUPS   = 4;
+
+    // Character facial expressions (Teeworlds 0.6)
+    public const EMOTE_NORMAL   = 0;
+    public const EMOTE_PAIN     = 1;
+    public const EMOTE_HAPPY    = 2;
+    public const EMOTE_SURPRISE = 3;
+    public const EMOTE_ANGRY    = 4;
+    public const EMOTE_BLINK    = 5;
+    public const NUM_EMOTES     = 6;
+
+    // Emoticons displayed above a tee (Teeworlds 0.6)
+    public const EMOTICON_OOP         = 0;
+    public const EMOTICON_EXCLAMATION = 1;
+    public const EMOTICON_HEARTS      = 2;
+    public const EMOTICON_DROP        = 3;
+    public const EMOTICON_DOTDOT      = 4;
+    public const EMOTICON_MUSIC       = 5;
+    public const EMOTICON_SORRY       = 6;
+    public const EMOTICON_GHOST       = 7;
+    public const EMOTICON_SUSHI       = 8;
+    public const EMOTICON_SPLATTEE    = 9;
+    public const EMOTICON_DEVILTEE    = 10;
+    public const EMOTICON_ZOMG        = 11;
+    public const EMOTICON_ZZZ         = 12;
+    public const EMOTICON_WTF         = 13;
+    public const EMOTICON_EYES        = 14;
+    public const EMOTICON_QUESTION    = 15;
+    public const NUM_EMOTICONS        = 16;
 
     // Hook state constants (Teeworlds 0.6)
     public const HOOK_RETRACTED     = -1;
@@ -39,6 +71,12 @@ class GameConstants
     public const HOOK_RETRACT_END   = 3;
     public const HOOK_FLYING        = 4;
     public const HOOK_GRABBED       = 5;
+
+    // Player input / character flags (Teeworlds 0.6)
+    public const PLAYERFLAG_PLAYING    = 1 << 0;
+    public const PLAYERFLAG_IN_MENU    = 1 << 1;
+    public const PLAYERFLAG_CHATTING   = 1 << 2;
+    public const PLAYERFLAG_SCOREBOARD = 1 << 3;
 
     // Game flags (Teeworlds 0.6)
     public const GAMEFLAG_TEAMS  = 1 << 0;
@@ -105,4 +143,5 @@ class GameConstants
     public const SOUND_CTF_GRAB_EN = 38;
     public const SOUND_CTF_CAPTURE = 39;
     public const SOUND_MENU = 40;
+    public const NUM_SOUNDS = 41;
 }

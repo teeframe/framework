@@ -22,7 +22,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     use HasWeaponSwitching;
 
     public const PHYS_SIZE        = 28;
-    public const INPUT_STATE_MASK = 0x3F;
+    public const INPUT_STATE_MASK = GameConstants::INPUT_STATE_MASK;
 
     // Game state
     public int $health = 10;
@@ -41,7 +41,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public int $attackTick = 0;
 
-    public int $emote = 0;
+    public int $emote = GameConstants::EMOTE_NORMAL;
 
     public int $playerFlags = 0;
 
