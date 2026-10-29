@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Server;
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -14,7 +15,7 @@ class ConnectionHandler
      */
     protected array $slots = [];
 
-    public function __construct(protected int $slotsLimit)
+    public function __construct(protected int $slotsLimit, protected TickHandler $tickHandler)
     {
     }
 
@@ -26,7 +27,7 @@ class ConnectionHandler
             return false;
         }
 
-        $this->slots[] = $slot = new ConnectionSlot($socket, $world);
+        $this->slots[] = $slot = new ConnectionSlot($socket, $world, $this->tickHandler);
 
         return $slot;
     }

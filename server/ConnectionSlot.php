@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Server;
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -10,7 +11,7 @@ use TeeFrame\Network\Chunks\System\InputTimingChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\Connection\AbstractConnection;
 use TeeFrame\Network\NetworkMessages;
-use TeeFrame\Network\NetworkParams;
+
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
@@ -29,19 +30,25 @@ class ConnectionSlot extends AbstractConnection
 
     protected PlayerTee $playerTee;
 
+    protected int $lastInputTick;
+
     public int $state;
 
-    public function __construct(protected AbstractSocket $socket, protected AbstractWorld $world)
-    {
-        parent::__construct();
+    public function __construct(
+        protected AbstractSocket $socket,
+        protected AbstractWorld $world,
+        TickHandler $tickHandler,
+    ) {
+        parent::__construct($tickHandler);
     }
 
     public function reset(): void
     {
         parent::reset();
 
-        $this->playerTee = new PlayerTee;
-        $this->state     = static::STATE_WAITING_INIT;
+        $this->playerTee     = new PlayerTee;
+        $this->lastInputTick = -1;
+        $this->state         = static::STATE_WAITING_INIT;
     }
 
     public function playerTee(): PlayerTee
@@ -121,10 +128,14 @@ class ConnectionSlot extends AbstractConnection
 
                 $this->playerTee()->latency = $this->snaps()->getLatency();
 
-                $this->chunks()->add(new InputTimingChunk(
-                    intendedTick: $chunk->predictionTick,
-                    timeLeft: (int) (($chunk->predictionTick - $this->world()->getCurrentTick()) / NetworkParams::TICKS_PER_SECOND * 1000),
-                ));
+                if ($chunk->predictionTick > $this->lastInputTick) {
+                    $this->chunks()->add(new InputTimingChunk(
+                        intendedTick: $chunk->predictionTick,
+                        timeLeft: $this->tickHandler->getTimeUntilTick($chunk->predictionTick),
+                    ));
+                }
+
+                $this->lastInputTick = $chunk->predictionTick;
 
                 // Buffer the input on the tee, keyed by prediction tick
                 $this->playerTee()->inputs[$chunk->predictionTick] = new PlayerInput(
@@ -146,7 +157,7 @@ class ConnectionSlot extends AbstractConnection
                     || ($chunk->inputFire & 1)
                     || $chunk->inputHook
                 ) {
-                    $this->playerTee()->lastActionTick = $this->world()->getCurrentTick();
+                    $this->playerTee()->lastActionTick = $this->tickHandler->get();
                 }
             }
 

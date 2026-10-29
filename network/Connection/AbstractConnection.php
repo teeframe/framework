@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Network\Connection;
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkParams;
@@ -31,10 +32,10 @@ abstract class AbstractConnection
 
     protected SnapHandler $snapHandler;
 
-    public function __construct()
+    public function __construct(protected TickHandler $tickHandler)
     {
         $this->chunkHandler = new ChunkHandler($this);
-        $this->snapHandler  = new SnapHandler($this);
+        $this->snapHandler  = new SnapHandler($this, $tickHandler);
 
         $this->reset();
     }

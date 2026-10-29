@@ -36,7 +36,7 @@ abstract class AbstractServerInstance
         protected int $kickBanDuration = 600
     )
     {
-        $this->connectionHandler = new ConnectionHandler(slotsLimit: 64);
+        $this->connectionHandler = new ConnectionHandler(slotsLimit: 64, tickHandler: $this->tickHandler);
         $this->banList           = new BanList;
     }
 
@@ -84,6 +84,8 @@ abstract class AbstractServerInstance
 
     protected function doTick(): void
     {
+        $this->tickHandler->startTick();
+
         foreach ($this->worlds as $world) {
             $world->doTick();
         }

@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Network\Connection;
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\System\SnapEmptyChunk;
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
 use TeeFrame\Network\Chunks\System\SnapSliceChunk;
@@ -22,6 +23,10 @@ class SnapHandler
 
     protected int $latency;
 
+    protected int $minimumLatency;
+
+    protected float $latencyWindowStart;
+
     protected ?ConnectionSnap $deltaSnap;
 
     /**
@@ -30,17 +35,20 @@ class SnapHandler
     protected array $sentList = [];
 
     public function __construct(
-        protected AbstractConnection $connection
+        protected AbstractConnection $connection,
+        protected TickHandler $tickHandler,
     ) {
         $this->reset();
     }
 
     public function reset(): void
     {
-        $this->state         = self::STATE_INIT;
-        $this->lastAckedTick = -1;
-        $this->latency       = 0;
-        $this->deltaSnap     = null;
+        $this->state              = self::STATE_INIT;
+        $this->lastAckedTick      = -1;
+        $this->latency            = 0;
+        $this->minimumLatency     = 1000;
+        $this->latencyWindowStart = $this->tickHandler->getTime() / 1_000_000_000;
+        $this->deltaSnap          = null;
 
         $this->flushSentList();
     }
@@ -50,6 +58,7 @@ class SnapHandler
         $this->sentList = [];
     }
 
+    /** The minimum observed RTT published once per second. */
     public function getLatency(): int
     {
         return $this->latency;
@@ -63,12 +72,21 @@ class SnapHandler
             $this->state = self::STATE_FULL;
         }
 
-        // Select new delta snap and compute latency from wall-clock send time.
+        // Select new delta snap and compute latency using monotonic send/ACK times.
         // Ported from Teeworlds 0.6: (time_get() - TagTime) * 1000 / time_freq()
         foreach ($this->sentList as $snap) {
             if ($snap->getTick() === $this->lastAckedTick) {
                 $this->deltaSnap = $snap;
-                $this->latency   = (int) round((microtime(true) - $snap->getSendTime()) * 1000);
+                $now = $this->tickHandler->getTime() / 1_000_000_000;
+                $sample = (int) (($now - $snap->getSendTime()) * 1000);
+                $this->minimumLatency = min($this->minimumLatency, $sample);
+
+                // Publish the one-second minimum here, alongside the RTT measurement.
+                if ($now - $this->latencyWindowStart >= 1.0) {
+                    $this->latency = $this->minimumLatency;
+                    $this->minimumLatency = 1000;
+                    $this->latencyWindowStart = $now;
+                }
             }
         }
 
@@ -125,7 +143,7 @@ class SnapHandler
             }
         }
 
-        $this->sentList[] = new ConnectionSnap($currentTick, $indexedItems, microtime(true));
+        $this->sentList[] = new ConnectionSnap($currentTick, $indexedItems, $this->tickHandler->getTime() / 1_000_000_000);
     }
 
     /**

@@ -1,5 +1,6 @@
 <?php
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\Connection\AbstractConnection;
@@ -141,7 +142,7 @@ test('can encode a full packet with multiple snap items', function () {
 });
 
 test('can encode a full packet with multiple snap items through snap handler', function () {
-    $connectionClass = new class extends AbstractConnection
+    $connectionClass = new class(new TickHandler) extends AbstractConnection
     {
         protected function handlePacketSending(AbstractPacket $packet): bool
         {

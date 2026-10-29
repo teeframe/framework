@@ -336,7 +336,7 @@ test('map downloads mark only the final data chunk as last', function (int $mapS
     {
         public function __construct() {}
     };
-    $connection = new class($socket, createWorld($map)) extends ConnectionSlot
+    $connection = new class($socket, createWorld($map), new TickHandler) extends ConnectionSlot
     {
         /** @var AbstractPacket[] */
         public array $sentPackets = [];
