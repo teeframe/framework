@@ -251,9 +251,11 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         // Ninja handling runs every tick (duration, dash, hits)
         $this->handleNinja();
 
-        if (! $firePressed || $this->reloadTimer > 0) {
-            $this->tickAmmoRegen();
+        // A dry-fire cooldown must not starve regeneration when every ready tick
+        // has a new fire press. Successful shots still reset the timer below.
+        $this->tickAmmoRegen();
 
+        if (! $firePressed || $this->reloadTimer > 0) {
             return;
         }
 
@@ -268,8 +270,6 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 y: (int) round($this->position->y),
                 soundId: GameConstants::SOUND_WEAPON_NOAMMO,
             ));
-
-            $this->tickAmmoRegen();
 
             return;
         }
