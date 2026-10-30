@@ -139,8 +139,11 @@ class PvpLaserEntity extends AbstractLaserEntity
                 $closestEntity->getPosition()->x,
                 $closestEntity->getPosition()->y,
             );
-            $this->energy = -1;
-            $closestEntity->takeDamage(new Vector2(0, 0), $this->damage, $closestEntity);
+            $this->energy   = -1;
+            $ownerCharacter = $this->world->findCharacter($this->owner);
+            if ($ownerCharacter !== null) {
+                $closestEntity->takeDamage(new Vector2(0, 0), $this->damage, $ownerCharacter);
+            }
 
             return true;
         }
