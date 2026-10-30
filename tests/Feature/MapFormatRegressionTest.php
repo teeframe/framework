@@ -135,6 +135,33 @@ test('failed map reads throw without warnings and restore the previous error han
     }
 });
 
+test('failed reader reloads preserve the last validated content and parsed sections', function () {
+    $path = tempnam(sys_get_temp_dir(), 'teeframe-map-');
+    assert(is_string($path));
+    $content = mapRegressionGameFile(str_repeat("\0", 36));
+    try {
+        file_put_contents($path, $content);
+        $reader = new MapReader($path);
+        $reader->read();
+        $items      = $reader->getItems();
+        $itemTypes  = $reader->getItemTypes();
+        $dataBlocks = $reader->getDataBlocks();
+
+        // Fail after reading the tables and items, while decoding a data block.
+        $invalid                       = $content;
+        $invalid[strlen($invalid) - 1] = chr((ord($invalid[strlen($invalid) - 1]) ^ 0xFF) & 0xFF);
+        file_put_contents($path, $invalid);
+
+        expect(fn () => $reader->read())->toThrow(RuntimeException::class);
+        expect($reader->getRawContent())->toBe($content);
+        expect($reader->getItems())->toBe($items);
+        expect($reader->getItemTypes())->toBe($itemTypes);
+        expect($reader->getDataBlocks())->toBe($dataBlocks);
+    } finally {
+        unlink($path);
+    }
+});
+
 test('map integers retain signed 32 bit values', function () {
     $reader = new MapBufferReader(mapRegressionInts([0, 2147483647, -1, -2147483648, -256]));
     expect($reader->readInts(5))->toBe([0, 2147483647, -1, -2147483648, -256]);

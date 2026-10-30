@@ -54,17 +54,13 @@ class Map
         $this->gameLayer = null;
         $this->collision = null;
 
-        $this->size = filesize($mapPath) ?: 0;
-        $rawContent = file_get_contents($mapPath);
+        $rawContent = $this->reader->getRawContent();
+        $crc        = crc32($rawContent);
 
-        if ($rawContent !== false) {
-            $crc = crc32($rawContent);
-            // Convert to signed 32-bit for Teeworlds protocol compatibility.
-            // PHP's crc32() returns unsigned on 64-bit, but Teeworlds
-            // packInt expects signed 32-bit integers.
-            $this->crc     = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
-            $this->rawData = array_values(unpack('C*', $rawContent) ?: []);
-        }
+        // Teeworlds packs the CRC as a signed 32-bit integer.
+        $this->crc     = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
+        $this->size    = strlen($rawContent);
+        $this->rawData = array_values(unpack('C*', $rawContent) ?: []);
 
         $this->name = basename($mapPath, '.map');
 

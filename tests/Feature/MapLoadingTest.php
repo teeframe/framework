@@ -5,6 +5,50 @@ use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\NetworkBase;
 
+class SingleReadMapStream
+{
+    /** @var resource|null */
+    public $context;
+
+    public static string $content = '';
+    public static int $opens      = 0;
+
+    protected string $buffer = '';
+    protected int $offset    = 0;
+
+    public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
+    {
+        $this->buffer = self::$opens++ === 0 ? self::$content : 'file changed after parsing';
+
+        return true;
+    }
+
+    public function stream_read(int $count): string
+    {
+        $bytes = substr($this->buffer, $this->offset, $count);
+        $this->offset += strlen($bytes);
+
+        return $bytes;
+    }
+
+    public function stream_eof(): bool
+    {
+        return $this->offset >= strlen($this->buffer);
+    }
+
+    /** @return array{size: int} */
+    public function stream_stat(): array
+    {
+        return ['size' => strlen($this->buffer)];
+    }
+
+    /** @return array{size: int} */
+    public function url_stat(string $path, int $flags): array
+    {
+        return ['size' => 1];
+    }
+}
+
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
@@ -26,6 +70,35 @@ test('loads dm1 map and computes correct crc', function () use ($mapPath, $mapEx
 
     // Map size should match the file size
     expect($map->getSize())->toBe(filesize($mapPath));
+});
+
+test('map parsing crc size and download data use a single file read', function () use ($mapPath) {
+    $content = file_get_contents($mapPath);
+    if ($content === false) {
+        throw new RuntimeException('Required map fixture is missing');
+    }
+    if (! stream_wrapper_register('teeframe-map-read', SingleReadMapStream::class)) {
+        throw new RuntimeException('Cannot register map read test stream');
+    }
+
+    SingleReadMapStream::$content = $content;
+    SingleReadMapStream::$opens   = 0;
+    try {
+        $map = new Map('teeframe-map-read://dm1.map');
+        $crc = crc32($content);
+        $crc = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
+
+        expect(SingleReadMapStream::$opens)->toBe(1);
+        expect($map->getSize())->toBe(strlen($content));
+        expect($map->getCrc())->toBe($crc);
+        expect($map->getRawData())->toBe(array_values(unpack('C*', $content) ?: []));
+        expect($map->getGameLayer()?->width)->toBe(60);
+        expect($map->getGameLayer()?->height)->toBe(50);
+    } finally {
+        stream_wrapper_unregister('teeframe-map-read');
+        SingleReadMapStream::$content = '';
+        SingleReadMapStream::$opens   = 0;
+    }
 });
 
 test('dm1 map has a game layer with correct dimensions', function () use ($mapPath, $mapExists) {

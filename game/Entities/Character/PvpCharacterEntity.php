@@ -2,16 +2,18 @@
 
 namespace TeeFrame\Game\Entities\Character;
 
+use TeeFrame\Game\Entities\Character\Concerns\HasNinjaCombat;
 use TeeFrame\Game\Entities\PvpLaserEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
 use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
-use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
 class PvpCharacterEntity extends AbstractCharacterEntity
 {
+    use HasNinjaCombat;
+
     public int $damageTaken     = 0;
     public int $damageTakenTick = 0;
     public int $ammoRegenStart  = -1;
@@ -20,21 +22,12 @@ class PvpCharacterEntity extends AbstractCharacterEntity
     {
         $collision = $this->world->getMap()->getCollision();
 
-        $angle        = $this->angle / 256.0;
-        $direction    = new Vector2(cos($angle), sin($angle));
-        $projStartPos = new Vector2(
-            $this->position->x + $direction->x * self::PHYS_SIZE * 0.75,
-            $this->position->y + $direction->y * self::PHYS_SIZE * 0.75,
-        );
+        $projStartPos = $this->getProjectileStartPosition($this->getAimDirection());
 
         $hits      = 0;
         $hitRadius = self::PHYS_SIZE * 1.5; // m_ProximityRadius + m_ProximityRadius*0.5 = 28 + 14 = 42
 
-        $this->world->addEvent(new ObjEventSoundWorldItem(
-            x: (int) round($this->position->x),
-            y: (int) round($this->position->y),
-            soundId: GameConstants::SOUND_HAMMER_FIRE,
-        ));
+        $this->createSound(GameConstants::SOUND_HAMMER_FIRE);
 
         foreach ($this->world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity) {
@@ -94,19 +87,13 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle = $this->angle / 256.0;
-        $dir   = new Vector2(cos($angle), sin($angle));
-
-        $offset = self::PHYS_SIZE * 0.75;
+        $dir = $this->getAimDirection();
 
         $tune = $this->world->getTuneController();
 
         $proj = new PvpProjectileEntity(
             world: $this->world,
-            position: new Vector2(
-                $this->position->x + $dir->x * $offset,
-                $this->position->y + $dir->y * $offset,
-            ),
+            position: $this->getProjectileStartPosition($dir),
             direction: $dir,
             type: GameConstants::WEAPON_GUN,
             owner: $this->tee->teeIndex,
@@ -119,11 +106,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->world->addEntity($proj);
 
-        $this->world->addEvent(new ObjEventSoundWorldItem(
-            x: (int) round($this->position->x),
-            y: (int) round($this->position->y),
-            soundId: GameConstants::SOUND_GUN_FIRE,
-        ));
+        $this->createSound(GameConstants::SOUND_GUN_FIRE);
 
         return 6;
     }
@@ -134,13 +117,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle        = $this->angle / 256.0;
-        $dir          = new Vector2(cos($angle), sin($angle));
-        $offset       = self::PHYS_SIZE * 0.75;
-        $projStartPos = new Vector2(
-            $this->position->x + $dir->x * $offset,
-            $this->position->y + $dir->y * $offset,
-        );
+        $dir          = $this->getAimDirection();
+        $projStartPos = $this->getProjectileStartPosition($dir);
 
         $shotSpread = 2;
         $spreading  = [-0.185, -0.070, 0, 0.070, 0.185];
@@ -168,11 +146,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             $this->world->addEntity($proj);
         }
 
-        $this->world->addEvent(new ObjEventSoundWorldItem(
-            x: (int) round($this->position->x),
-            y: (int) round($this->position->y),
-            soundId: GameConstants::SOUND_SHOTGUN_FIRE,
-        ));
+        $this->createSound(GameConstants::SOUND_SHOTGUN_FIRE);
 
         return 25; // 500ms at 50 tick/s
     }
@@ -183,17 +157,12 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle  = $this->angle / 256.0;
-        $dir    = new Vector2(cos($angle), sin($angle));
-        $offset = self::PHYS_SIZE * 0.75;
+        $dir = $this->getAimDirection();
 
         $tune = $this->world->getTuneController();
 
         $proj = new PvpProjectileEntity($this->world,
-            position: new Vector2(
-                $this->position->x + $dir->x * $offset,
-                $this->position->y + $dir->y * $offset,
-            ),
+            position: $this->getProjectileStartPosition($dir),
             direction: $dir,
             type: GameConstants::WEAPON_GRENADE,
             owner: $this->tee->teeIndex,
@@ -206,11 +175,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->world->addEntity($proj);
 
-        $this->world->addEvent(new ObjEventSoundWorldItem(
-            x: (int) round($this->position->x),
-            y: (int) round($this->position->y),
-            soundId: GameConstants::SOUND_GRENADE_FIRE,
-        ));
+        $this->createSound(GameConstants::SOUND_GRENADE_FIRE);
 
         return 25; // 500ms at 50 tick/s
     }
@@ -221,9 +186,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $angle = $this->angle / 256.0;
-        $dir   = new Vector2(cos($angle), sin($angle));
-
+        $dir  = $this->getAimDirection();
         $tune = $this->world->getTuneController();
 
         $laser = new PvpLaserEntity($this->world,
@@ -235,11 +198,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->world->addEntity($laser);
 
-        $this->world->addEvent(new ObjEventSoundWorldItem(
-            x: (int) round($this->position->x),
-            y: (int) round($this->position->y),
-            soundId: GameConstants::SOUND_RIFLE_FIRE,
-        ));
+        $this->createSound(GameConstants::SOUND_RIFLE_FIRE);
 
         return 40; // 800ms at 50 tick/s
     }
@@ -263,11 +222,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         if ($weaponAmmo === 0) {
             $this->reloadTimer = (int) round(125 * 50 / 1000);
 
-            $this->world->addEvent(new ObjEventSoundWorldItem(
-                x: (int) round($this->position->x),
-                y: (int) round($this->position->y),
-                soundId: GameConstants::SOUND_WEAPON_NOAMMO,
-            ));
+            $this->createSound(GameConstants::SOUND_WEAPON_NOAMMO);
 
             return;
         }
@@ -417,114 +372,15 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
     }
 
-    protected function handleNinja(): void
-    {
-        if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
-            return;
-        }
-
-        $world = $this->world;
-
-        $currentTick = $world->getCurrentTick();
-
-        // Ninja duration: 15 seconds
-        if (($currentTick - $this->ninjaActivationTick) > (int) (15 * 50)) {
-            // Time's up, return to last weapon
-            $this->weapons[GameConstants::WEAPON_NINJA]->got = false;
-            $this->activeWeapon                              = $this->lastWeapon;
-
-            $this->setWeapon($this->activeWeapon);
-
-            return;
-        }
-
-        // Force ninja weapon
-        $this->setWeapon(GameConstants::WEAPON_NINJA);
-
-        $this->ninjaCurrentMoveTime--;
-
-        if ($this->ninjaCurrentMoveTime === 0) {
-            // Reset velocity
-            $this->vel->x = $this->ninjaActivationDir->x * $this->ninjaOldVelAmount;
-            $this->vel->y = $this->ninjaActivationDir->y * $this->ninjaOldVelAmount;
-        }
-
-        if ($this->ninjaCurrentMoveTime > 0) {
-            // Set velocity
-            $this->vel->x = $this->ninjaActivationDir->x * 50;
-            $this->vel->y = $this->ninjaActivationDir->y * 50;
-
-            $oldPos = clone $this->position;
-
-            $collision = $world->getMap()->getCollision();
-            if ($collision !== null) {
-                $physSize = self::PHYS_SIZE;
-                $collision->moveBox($this->position, $this->vel, new Vector2($physSize, $physSize), 0.0);
-            }
-
-            // Reset velocity so the client doesn't predict stuff
-            $this->vel->x = 0.0;
-            $this->vel->y = 0.0;
-
-            // Check if we hit anything along the way
-            $dir    = $this->position->diff($oldPos);
-            $radius = self::PHYS_SIZE * 2.0;
-            $center = new Vector2($oldPos->x + $dir->x * 0.5, $oldPos->y + $dir->y * 0.5);
-
-            foreach ($world->getEntities() as $entity) {
-                if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
-                    continue;
-                }
-
-                // Make sure we haven't hit this object before
-                $alreadyHit = false;
-                foreach ($this->ninjaHitObjects as $hitObj) {
-                    if ($hitObj === $entity) {
-                        $alreadyHit = true;
-                        break;
-                    }
-                }
-                if ($alreadyHit) {
-                    continue;
-                }
-
-                // Check so we are sufficiently close
-                if ($entity->getPosition()->distance($this->position) > self::PHYS_SIZE * 2.0) {
-                    continue;
-                }
-
-                // Hit a player
-                $world->addEvent(new ObjEventSoundWorldItem(
-                    x: (int) round($entity->getPosition()->x),
-                    y: (int) round($entity->getPosition()->y),
-                    soundId: GameConstants::SOUND_NINJA_HIT,
-                ));
-
-                if ($this->ninjaNumObjectsHit < 10) {
-                    $this->ninjaHitObjects[$this->ninjaNumObjectsHit++] = $entity;
-                }
-
-                $entity->takeDamage(new Vector2(0, -10.0), 9, $this);
-            }
-        }
-    }
-
-    protected function shootNinja(): int
+    protected function getAimDirection(): Vector2
     {
         $angle = $this->angle / 256.0;
 
-        $this->ninjaActivationDir   = new Vector2(cos($angle), sin($angle));
-        $this->ninjaCurrentMoveTime = 10; // 200ms at 50 tick/s
-        $this->ninjaOldVelAmount    = $this->vel->length();
-        $this->ninjaNumObjectsHit   = 0;
-        $this->ninjaHitObjects      = [];
+        return new Vector2(cos($angle), sin($angle));
+    }
 
-        $this->world->addEvent(new ObjEventSoundWorldItem(
-            x: (int) round($this->position->x),
-            y: (int) round($this->position->y),
-            soundId: GameConstants::SOUND_NINJA_FIRE,
-        ));
-
-        return 40; // 800ms at 50 tick/s
+    protected function getProjectileStartPosition(Vector2 $direction): Vector2
+    {
+        return $this->position->add($direction->mul(self::PHYS_SIZE * 0.75));
     }
 }

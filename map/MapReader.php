@@ -4,6 +4,7 @@ namespace TeeFrame\Map;
 
 class MapReader
 {
+    protected string $rawContent = '';
     /**
      * @var array<int, array{typeId: int, start: int, num: int}>
      */
@@ -23,6 +24,29 @@ class MapReader
 
     public function read(): void
     {
+        $buffer = $this->readFile();
+        $reader = new MapBufferReader($buffer);
+        $header = $this->readHeader($reader, strlen($buffer));
+
+        $itemTypes   = $this->readItemTypes($reader, $header['numItemTypes'], $header['numItems']);
+        $itemOffsets = $reader->readInts($header['numItems']);
+        $dataOffsets = $reader->readInts($header['numData']);
+        $dataSizes   = $header['version'] === 4 ? $reader->readInts($header['numData']) : [];
+
+        $this->validateOffsets($itemOffsets, $header['itemSize'], 'item');
+        $this->validateOffsets($dataOffsets, $header['dataSize'], 'data');
+
+        $items      = $this->readItems($reader->readBytes($header['itemSize']), $itemTypes, $itemOffsets);
+        $dataBlocks = $this->readDataBlocks($reader->readBytes($header['dataSize']), $dataOffsets, $dataSizes, $header['version']);
+
+        $this->rawContent = $buffer;
+        $this->itemTypes  = $itemTypes;
+        $this->items      = $items;
+        $this->dataBlocks = $dataBlocks;
+    }
+
+    protected function readFile(): string
+    {
         set_error_handler(static fn (): bool => true, E_WARNING);
         try {
             $buffer = file_get_contents($this->path);
@@ -33,9 +57,14 @@ class MapReader
             $this->throwException('Failed to read file');
         }
 
-        $reader = new MapBufferReader($buffer);
+        return $buffer;
+    }
 
-        // Version Header
+    /**
+     * @return array{version: int, numItemTypes: int, numItems: int, numData: int, itemSize: int, dataSize: int}
+     */
+    protected function readHeader(MapBufferReader $reader, int $fileSize): array
+    {
         $magic   = $reader->readMagic();
         $version = $reader->readInt();
 
@@ -43,7 +72,6 @@ class MapReader
             $this->throwException("Invalid file format or version ({$magic}, {$version})");
         }
 
-        // Header
         $size         = $reader->readInt();
         $swapLen      = $reader->readInt();
         $numItemTypes = $reader->readInt();
@@ -60,15 +88,30 @@ class MapReader
 
         $itemsStart = 36 + $numItemTypes * 12 + $numItems * 4 + $numData * ($version === 4 ? 8 : 4);
         $dataStart  = $itemsStart + $itemSize;
-        if ($size !== strlen($buffer) - 16
+        if ($size !== $fileSize - 16
             || $swapLen !== $dataStart - 16
-            || $dataStart + $dataSize !== strlen($buffer)
+            || $dataStart + $dataSize !== $fileSize
             || $itemSize % 4 !== 0
             || $numItems > intdiv($itemSize, 8)
         ) {
             $this->throwException('Invalid datafile section sizes');
         }
 
+        return [
+            'version'      => $version,
+            'numItemTypes' => $numItemTypes,
+            'numItems'     => $numItems,
+            'numData'      => $numData,
+            'itemSize'     => $itemSize,
+            'dataSize'     => $dataSize,
+        ];
+    }
+
+    /**
+     * @return array<int, array{typeId: int, start: int, num: int}>
+     */
+    protected function readItemTypes(MapBufferReader $reader, int $numItemTypes, int $numItems): array
+    {
         $itemTypes = [];
         $seenTypes = [];
         $nextItem  = 0;
@@ -89,24 +132,18 @@ class MapReader
             $this->throwException('Item type ranges do not cover the items section');
         }
 
-        // Item Offsets
-        $itemOffsets = $reader->readInts($numItems);
+        return $itemTypes;
+    }
 
-        // Data Offsets
-        $dataOffsets = $reader->readInts($numData);
-
-        // Data Sizes (version 4 only)
-        $dataSizes = [];
-        if ($version === 4) {
-            $dataSizes = $reader->readInts($numData);
-        }
-
-        $this->validateOffsets($itemOffsets, $itemSize, 'item');
-        $this->validateOffsets($dataOffsets, $dataSize, 'data');
-
-        $itemBytes = $reader->readBytes($itemSize);
-        $rawData   = $reader->readBytes($dataSize);
-        $items     = [];
+    /**
+     * @param  array<int, array{typeId: int, start: int, num: int}>  $itemTypes
+     * @param  int[]  $itemOffsets
+     * @return array<int, array{typeId: int, id: int, size: int, data: string}>
+     */
+    protected function readItems(string $itemBytes, array $itemTypes, array $itemOffsets): array
+    {
+        $itemSize = strlen($itemBytes);
+        $items    = [];
         foreach ($itemTypes as $itemType) {
             $seenIds = [];
             for ($i = $itemType['start']; $i < $itemType['start'] + $itemType['num']; $i++) {
@@ -136,34 +173,54 @@ class MapReader
             }
         }
 
+        return $items;
+    }
+
+    /**
+     * @param  int[]  $dataOffsets
+     * @param  int[]  $dataSizes
+     * @return array<int, string>
+     */
+    protected function readDataBlocks(string $rawData, array $dataOffsets, array $dataSizes, int $version): array
+    {
+        $dataSize   = strlen($rawData);
         $dataBlocks = [];
-        for ($i = 0; $i < $numData; $i++) {
-            $start = $dataOffsets[$i];
+        foreach ($dataOffsets as $i => $start) {
             $end   = $dataOffsets[$i + 1] ?? $dataSize;
             $block = substr($rawData, $start, $end - $start);
             if ($version === 4) {
-                $expectedSize = $dataSizes[$i];
-                if ($expectedSize < 0) {
-                    $this->throwException("Negative uncompressed size for data block {$i}");
-                }
-                // Bound expansion and reject streams larger than the declared size.
-                // Malformed streams report warnings; expose them as the exception below.
-                set_error_handler(static fn (): bool => true, E_WARNING);
-                try {
-                    $block = zlib_decode($block, max(1, $expectedSize + 1));
-                } finally {
-                    restore_error_handler();
-                }
-                if ($block === false || strlen($block) !== $expectedSize) {
-                    $this->throwException("Invalid compression or uncompressed size for data block {$i}");
-                }
+                $block = $this->decompressDataBlock($block, $dataSizes[$i], $i);
             }
             $dataBlocks[$i] = $block;
         }
 
-        $this->itemTypes  = $itemTypes;
-        $this->items      = $items;
-        $this->dataBlocks = $dataBlocks;
+        return $dataBlocks;
+    }
+
+    protected function decompressDataBlock(string $block, int $expectedSize, int $index): string
+    {
+        if ($expectedSize < 0) {
+            $this->throwException("Negative uncompressed size for data block {$index}");
+        }
+
+        // Bound expansion and reject streams larger than the declared size.
+        // Malformed streams report warnings; expose them as the exception below.
+        set_error_handler(static fn (): bool => true, E_WARNING);
+        try {
+            $block = zlib_decode($block, max(1, $expectedSize + 1));
+        } finally {
+            restore_error_handler();
+        }
+        if ($block === false || strlen($block) !== $expectedSize) {
+            $this->throwException("Invalid compression or uncompressed size for data block {$index}");
+        }
+
+        return $block;
+    }
+
+    public function getRawContent(): string
+    {
+        return $this->rawContent;
     }
 
     /**

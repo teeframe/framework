@@ -153,20 +153,13 @@ class PvpLaserEntity extends AbstractLaserEntity
 
     protected function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd, Vector2 $point): Vector2
     {
-        $dx    = $lineEnd->x - $lineStart->x;
-        $dy    = $lineEnd->y - $lineStart->y;
-        $lenSq = $dx * $dx + $dy * $dy;
-
-        if ($lenSq < 0.0001) {
+        $line = $lineEnd->diff($lineStart);
+        // Lasers use a squared-length cutoff; hooks and projectiles use length.
+        if ($line->dot($line) < 0.0001) {
             return clone $lineStart;
         }
 
-        $t = max(0, min(1, (($point->x - $lineStart->x) * $dx + ($point->y - $lineStart->y) * $dy) / $lenSq));
-
-        return new Vector2(
-            $lineStart->x + $t * $dx,
-            $lineStart->y + $t * $dy,
-        );
+        return $point->closestPointOnLine($lineStart, $lineEnd);
     }
 
     public function doSnap(AbstractTee $requestingTee): array
