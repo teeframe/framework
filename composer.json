@@ -14,6 +14,8 @@
         }
     },
     "require": {
+        "php": ">=8.5",
+        "ext-swoole": "*",
         "nesbot/carbon": "^3.0"
     },
     "require-dev": {
