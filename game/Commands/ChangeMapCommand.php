@@ -46,12 +46,10 @@ class ChangeMapCommand extends AbstractCommand
             $text = 'Unable to change map to '.$this->mapName;
         }
 
-        foreach ($world->getTees() as $recipient) {
-            $world->getServer()->sendToTee($world, $recipient->teeIndex, new SvChatChunk(
-                team: 0,
-                clientId: -1,
-                text: $text,
-            ));
-        }
+        $world->broadcast(new SvChatChunk(
+            team: 0,
+            clientId: -1,
+            text: $text,
+        ));
     }
 }

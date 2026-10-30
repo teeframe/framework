@@ -250,6 +250,22 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $this->tees;
     }
 
+    public function findTee(int $teeIndex): ?AbstractTee
+    {
+        return $this->tees[$teeIndex] ?? null;
+    }
+
+    public function findCharacter(int $teeIndex): ?AbstractCharacterEntity
+    {
+        foreach ($this->entities as $entity) {
+            if ($entity instanceof AbstractCharacterEntity && $entity->alive && $entity->tee?->teeIndex === $teeIndex) {
+                return $entity;
+            }
+        }
+
+        return null;
+    }
+
     public function getSlotsLimit(): int
     {
         return $this->slotsLimit;
@@ -339,17 +355,21 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
+    public function broadcast(AbstractChunk $chunk): void
+    {
+        foreach ($this->tees as $tee) {
+            // Vital sequence numbers and resend flags belong to each connection.
+            $this->server->sendToTee($this, $tee->teeIndex, clone $chunk);
+        }
+    }
+
     public function createSoundGlobal(int $soundId): void
     {
         if ($soundId < 0) {
             return;
         }
 
-        $chunk = new SvSoundGlobalChunk(soundId: $soundId);
-
-        foreach ($this->tees as $tee) {
-            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
-        }
+        $this->broadcast(new SvSoundGlobalChunk(soundId: $soundId));
     }
 
     public function createSoundGlobalFor(int $soundId, int $teeIndex): void
@@ -431,9 +451,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 text: "'{$tee->name}' entered and joined the game",
             );
 
-            foreach ($this->tees as $existingTee) {
-                $this->server->sendToTee($this, $existingTee->teeIndex, $chunk);
-            }
+            $this->broadcast($chunk);
         }
     }
 
@@ -459,9 +477,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                     text: $text,
                 );
 
-                foreach ($this->tees as $recipientTee) {
-                    $this->server->sendToTee($this, $recipientTee->teeIndex, $chunk);
-                }
+                $this->broadcast($chunk);
             }
 
             $this->voteController->abortVoteOnDisconnect($index);
@@ -599,11 +615,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
                 // Spectators following a player use that player's view position
                 if ($tee->team === GameConstants::TEAM_SPECTATORS && $tee->spectatorId !== GameConstants::SPEC_FREEVIEW) {
-                    foreach ($this->tees as $targetTee) {
-                        if ($targetTee->teeIndex === $tee->spectatorId) {
-                            $tee->viewPosition = clone $targetTee->viewPosition;
-                            break;
-                        }
+                    if (($targetTee = $this->findTee($tee->spectatorId)) !== null) {
+                        $tee->viewPosition = clone $targetTee->viewPosition;
                     }
                 }
             }
@@ -762,28 +775,19 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             }
         }
 
-        // Send chat message
-        $chunk = new SvChatChunk(
+        $this->broadcast(new SvChatChunk(
             team: $chunk->team ? 1 : 0,
-            clientId: $tee->teeIndex, // From
+            clientId: $tee->teeIndex,
             text: $message,
-        );
-
-        foreach ($this->tees as $tee) {
-            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
-        }
+        ));
     }
 
     protected function handleEmoticonMessage(AbstractTee $tee, ClEmoticonChunk $chunk): void
     {
-        $chunk = new SvEmoticonChunk(
+        $this->broadcast(new SvEmoticonChunk(
             clientId: $tee->teeIndex,
             emoticon: $chunk->emoticon,
-        );
-
-        foreach ($this->tees as $tee) {
-            $this->server->sendToTee($this, $tee->teeIndex, $chunk);
-        }
+        ));
     }
 
     protected function handleKillMessage(AbstractTee $tee, ClKillChunk $chunk): void
@@ -873,13 +877,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         if ($chunk->spectatorId !== GameConstants::SPEC_FREEVIEW) {
             // Validate the target exists and is not a spectator
-            $target = null;
-            foreach ($this->tees as $t) {
-                if ($t->teeIndex === $chunk->spectatorId) {
-                    $target = $t;
-                    break;
-                }
-            }
+            $target = $this->findTee($chunk->spectatorId);
 
             if ($target === null || ($target instanceof PlayerTee && $target->team === GameConstants::TEAM_SPECTATORS)) {
                 $this->server->sendToTee($this, $tee->teeIndex, new SvChatChunk(

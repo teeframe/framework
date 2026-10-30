@@ -48,6 +48,21 @@ class ConnectionHandler
         return false;
     }
 
+    /** Find an in-game connection by its world-local tee index. */
+    public function findByTee(AbstractWorld $world, int $teeIndex): ?ConnectionSlot
+    {
+        foreach ($this->slots as $connection) {
+            if ($connection->state === ConnectionSlot::STATE_INGAME
+                && $connection->world() === $world
+                && $connection->playerTee()->teeIndex === $teeIndex
+            ) {
+                return $connection;
+            }
+        }
+
+        return null;
+    }
+
     public function isWorldFull(AbstractWorld $world): bool
     {
         $connections = array_filter(

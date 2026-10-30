@@ -2,16 +2,15 @@
 
 namespace TeeFrame\Game\Vote;
 
-use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteClearOptionsChunk;
-use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteOptionListAddChunk;
-use TeeFrame\Network\Chunks\Game\SvVoteOptionRemoveChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteStatusChunk;
 use TeeFrame\Network\NetworkParams;
@@ -22,12 +21,19 @@ class VoteController
     protected array $voteOptions = [];
 
     protected int $voteCloseTime = 0;
+
     protected int $voteCreator = -1;
+
     protected string $voteDescription = '';
+
     protected string $voteCommand = '';
+
     protected string $voteReason = '';
+
     protected int $voteEnforce = VoteEnforce::UNKNOWN;
+
     protected bool $voteUpdate = false;
+
     protected int $votePos = 0;
 
     /**
@@ -131,22 +137,22 @@ class VoteController
             return;
         }
 
-        $this->voteEnforce = VoteEnforce::UNKNOWN;
-        $this->voteCloseTime = $world->getCurrentTick() + $this->voteDurationTicks;
+        $this->voteEnforce     = VoteEnforce::UNKNOWN;
+        $this->voteCloseTime   = $world->getCurrentTick() + $this->voteDurationTicks;
         $this->voteDescription = $description;
-        $this->voteCommand = $command;
-        $this->voteReason = $reason !== '' ? $reason : 'No reason given';
-        $this->voteUpdate = true;
+        $this->voteCommand     = $command;
+        $this->voteReason      = $reason !== '' ? $reason : 'No reason given';
+        $this->voteUpdate      = true;
 
         // Reset all players' votes
         foreach ($world->getTees() as $tee) {
             if ($tee instanceof PlayerTee) {
-                $tee->vote = 0;
+                $tee->vote    = 0;
                 $tee->votePos = 0;
             }
         }
 
-        $this->broadcast($world, new SvVoteSetChunk(
+        $world->broadcast(new SvVoteSetChunk(
             timeout: (int) ceil($this->voteDurationTicks / NetworkParams::TICKS_PER_SECOND),
             description: $this->voteDescription,
             reason: $this->voteReason,
@@ -156,7 +162,8 @@ class VoteController
     public function endVote(AbstractWorld $world): void
     {
         $this->voteCloseTime = 0;
-        $this->broadcast($world, new SvVoteSetChunk(
+        $this->voteCreator   = -1;
+        $world->broadcast(new SvVoteSetChunk(
             timeout: 0,
             description: '',
             reason: '',
@@ -199,107 +206,89 @@ class VoteController
 
         $reason = $reason !== '' ? $reason : 'No reason given';
 
-        $description = '';
-        $command = '';
+        $type   = strtolower($type);
+        $option = match ($type) {
+            'option'           => $this->resolveOptionVote($world, $tee, $value),
+            'kick', 'spectate' => $this->resolvePlayerVote($world, $tee, $type, $value),
+            default            => null,
+        };
 
-        if (strcasecmp($type, 'option') === 0) {
-            // First check registered vote options
-            $option = $this->voteOptions[strtolower($value)] ?? null;
-            if ($option !== null) {
-                $description = $option->description;
-                $command = $option->command;
-                $chatMsg = "'{$tee->name}' called vote to change server option '{$option->description}' ({$reason})";
-            } else {
-                // Then check registered vote-type commands
-                $matchedCommand = null;
-                foreach ($world->getCommands() as $cmd) {
-                    if (! ($cmd->getType() & AbstractCommand::TYPE_VOTE)) {
-                        continue;
-                    }
-                    if ($cmd->getCommand() === $value || $cmd->getDescription() === $value) {
-                        $matchedCommand = $cmd;
-                        break;
-                    }
-                }
-
-                if ($matchedCommand === null) {
-                    $this->sendChat($world, $tee, "'{$value}' isn't an option on this server");
-
-                    return;
-                }
-
-                $description = $matchedCommand->getDescription();
-                $command = $matchedCommand->getCommand();
-                $chatMsg = "'{$tee->name}' called vote to change server option '{$description}' ({$reason})";
-            }
-        } elseif (strcasecmp($type, 'kick') === 0) {
-            $kickId = (int) $value;
-            $targetTee = null;
-            foreach ($world->getTees() as $t) {
-                if ($t->teeIndex === $kickId) {
-                    $targetTee = $t;
-                    break;
-                }
-            }
-
-            if ($targetTee === null) {
-                $this->sendChat($world, $tee, 'Invalid client id to kick');
-
-                return;
-            }
-
-            if ($kickId === $tee->teeIndex) {
-                $this->sendChat($world, $tee, "You can't kick yourself");
-
-                return;
-            }
-
-            $description = "Kick '{$targetTee->name}'";
-            $command = "kick {$kickId} Kicked by vote";
-            $chatMsg = "'{$tee->name}' called for vote to kick '{$targetTee->name}' ({$reason})";
-        } elseif (strcasecmp($type, 'spectate') === 0) {
-            $specId = (int) $value;
-            $targetTee = null;
-            foreach ($world->getTees() as $t) {
-                if ($t->teeIndex === $specId) {
-                    $targetTee = $t;
-                    break;
-                }
-            }
-
-            if ($targetTee === null) {
-                $this->sendChat($world, $tee, 'Invalid client id to move');
-
-                return;
-            }
-
-            if ($specId === $tee->teeIndex) {
-                $this->sendChat($world, $tee, "You can't move yourself");
-
-                return;
-            }
-
-            $description = "Move '{$targetTee->name}' to spectators";
-            $command = "set_team {$specId} -1 0";
-            $chatMsg = "'{$tee->name}' called for vote to move '{$targetTee->name}' to spectators ({$reason})";
-        } else {
+        if ($option === null) {
             return;
         }
 
-        // Broadcast the chat announcement
-        $this->broadcast($world, new SvChatChunk(
+        $announcement = $type === 'option'
+            ? "'{$tee->name}' called vote to change server option '{$option->description}' ({$reason})"
+            : "'{$tee->name}' called for vote to ".lcfirst($option->description)." ({$reason})";
+
+        $world->broadcast(new SvChatChunk(
             team: 0,
             clientId: -1,
-            text: $chatMsg,
+            text: $announcement,
         ));
 
-        $this->startVote($world, $description, $command, $reason);
+        $this->startVote($world, $option->description, $option->command, $reason);
 
         // The caller automatically votes yes
-        $tee->vote = 1;
-        $tee->votePos = ++$this->votePos;
+        $tee->vote         = 1;
+        $tee->votePos      = ++$this->votePos;
         $this->voteCreator = $tee->teeIndex;
         $tee->lastVoteCall = $currentTick;
+    }
+
+    protected function resolveOptionVote(AbstractWorld $world, PlayerTee $tee, string $value): ?VoteOption
+    {
+        $option = $this->voteOptions[strtolower($value)] ?? null;
+        if ($option !== null) {
+            return $option;
+        }
+
+        $command = $this->findVoteCommand($world, $value, matchDescription: true);
+        if ($command === null) {
+            $this->sendChat($world, $tee, "'{$value}' isn't an option on this server");
+
+            return null;
+        }
+
+        return new VoteOption($command->getDescription(), $command->getCommand());
+    }
+
+    protected function resolvePlayerVote(AbstractWorld $world, PlayerTee $tee, string $type, string $value): ?VoteOption
+    {
+        $targetIndex = (int) $value;
+        $target      = $world->findTee($targetIndex);
+        $action      = $type === 'kick' ? 'kick' : 'move';
+
+        if ($target === null) {
+            $this->sendChat($world, $tee, 'Invalid client id to '.$action);
+
+            return null;
+        }
+
+        if ($target === $tee) {
+            $this->sendChat($world, $tee, "You can't {$action} yourself");
+
+            return null;
+        }
+
+        return $type === 'kick'
+            ? new VoteOption("Kick '{$target->name}'", "kick {$targetIndex} Kicked by vote")
+            : new VoteOption("Move '{$target->name}' to spectators", "set_team {$targetIndex} -1 0");
+    }
+
+    protected function findVoteCommand(AbstractWorld $world, string $value, bool $matchDescription = false): ?AbstractCommand
+    {
+        foreach ($world->getCommands() as $command) {
+            if (! ($command->getType() & AbstractCommand::TYPE_VOTE)) {
+                continue;
+            }
+
+            if ($command->getCommand() === $value || ($matchDescription && $command->getDescription() === $value)) {
+                return $command;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -324,8 +313,8 @@ class VoteController
             return;
         }
 
-        $tee->vote = $vote;
-        $tee->votePos = ++$this->votePos;
+        $tee->vote        = $vote;
+        $tee->votePos     = ++$this->votePos;
         $this->voteUpdate = true;
     }
 
@@ -342,7 +331,7 @@ class VoteController
 
         // Abort (e.g. kick target disconnected)
         if ($this->voteEnforce === VoteEnforce::ABORT) {
-            $this->broadcast($world, new SvChatChunk(team: 0, clientId: -1, text: 'Vote aborted'));
+            $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote aborted'));
             $this->endVote($world);
 
             return;
@@ -350,7 +339,7 @@ class VoteController
 
         // Cancel (creator left)
         if ($this->voteEnforce === VoteEnforce::CANCEL) {
-            $this->broadcast($world, new SvChatChunk(team: 0, clientId: -1, text: 'Vote canceled'));
+            $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote canceled'));
             $this->endVote($world);
 
             return;
@@ -370,13 +359,13 @@ class VoteController
         if ($this->voteEnforce === VoteEnforce::YES) {
             $this->executeVoteCommand($world);
             $this->endVote($world);
-            $this->broadcast($world, new SvChatChunk(team: 0, clientId: -1, text: 'Vote passed'));
+            $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote passed'));
         } elseif ($this->voteEnforce === VoteEnforce::NO || $currentTick > $this->voteCloseTime) {
             $this->endVote($world);
-            $this->broadcast($world, new SvChatChunk(team: 0, clientId: -1, text: 'Vote failed'));
+            $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote failed'));
         } elseif ($this->voteUpdate) {
             $this->voteUpdate = false;
-            $this->broadcast($world, new SvVoteStatusChunk(
+            $world->broadcast(new SvVoteStatusChunk(
                 yes: $yes,
                 no: $no,
                 pass: $total - ($yes + $no),
@@ -431,8 +420,8 @@ class VoteController
     protected function countVotes(AbstractWorld $world): array
     {
         $total = 0;
-        $yes = 0;
-        $no = 0;
+        $yes   = 0;
+        $no    = 0;
 
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee) {
@@ -440,7 +429,7 @@ class VoteController
             }
 
             // Spectators don't count (mirrors CGameContext::OnTick vote counting)
-            if ($tee->team === \TeeFrame\Game\GameConstants::TEAM_SPECTATORS) {
+            if ($tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
 
@@ -463,7 +452,7 @@ class VoteController
     {
         // Built-in: kick <id> <reason>
         if (str_starts_with($this->voteCommand, 'kick ')) {
-            $parts = explode(' ', $this->voteCommand, 3);
+            $parts  = explode(' ', $this->voteCommand, 3);
             $kickId = (int) ($parts[1] ?? -1);
             $reason = $parts[2] ?? 'Kicked by vote';
             $world->getServer()->kick($world, $kickId, $reason);
@@ -474,47 +463,19 @@ class VoteController
         // Built-in: set_team <id> <team> <delay> (spectate vote)
         if (str_starts_with($this->voteCommand, 'set_team ')) {
             $parts = explode(' ', $this->voteCommand, 4);
-            $teeId = (int) ($parts[1] ?? -1);
-            $this->moveToSpectators($world, $teeId);
+            $tee   = $world->findTee((int) ($parts[1] ?? -1));
+            if ($tee instanceof PlayerTee) {
+                $tee->setTeam(GameConstants::TEAM_SPECTATORS);
+            }
 
             return;
         }
 
-        // Dispatch to registered vote-type commands
-        foreach ($world->getCommands() as $command) {
-            if (! ($command->getType() & AbstractCommand::TYPE_VOTE)) {
-                continue;
-            }
+        $command = $this->findVoteCommand($world, $this->voteCommand);
+        $caller  = $world->findTee($this->voteCreator);
 
-            if ($command->getCommand() === $this->voteCommand) {
-                $tees = $world->getTees();
-                $caller = $tees[0] ?? new PlayerTee;
-                $command->execute($world, $caller, []);
-
-                return;
-            }
-        }
-    }
-
-    /**
-     * Moves a tee to spectators (mirrors CPlayer::SetTeam(TEAM_SPECTATORS)).
-     */
-    protected function moveToSpectators(AbstractWorld $world, int $teeIndex): void
-    {
-        foreach ($world->getTees() as $tee) {
-            if ($tee->teeIndex === $teeIndex && $tee instanceof PlayerTee) {
-                $tee->setTeam(\TeeFrame\Game\GameConstants::TEAM_SPECTATORS);
-
-                return;
-            }
-        }
-    }
-
-    protected function broadcast(AbstractWorld $world, AbstractChunk $chunk): void
-    {
-        $server = $world->getServer();
-        foreach ($world->getTees() as $tee) {
-            $server->sendToTee($world, $tee->teeIndex, $chunk);
+        if ($command !== null && $caller instanceof PlayerTee) {
+            $command->execute($world, $caller, []);
         }
     }
 

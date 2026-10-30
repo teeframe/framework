@@ -123,13 +123,9 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             return true;
         }
 
-        foreach ($world->getTees() as $tee) {
-            if (! $tee instanceof PlayerTee) {
-                continue;
-            }
-            if ($tee->teeIndex === $notThisTeeIndex && $tee->team !== GameConstants::TEAM_SPECTATORS) {
-                return true;
-            }
+        $tee = $world->findTee($notThisTeeIndex);
+        if ($tee instanceof PlayerTee && $tee->team !== GameConstants::TEAM_SPECTATORS) {
+            return true;
         }
 
         $numPlayers = 0;

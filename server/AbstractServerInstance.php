@@ -124,21 +124,8 @@ abstract class AbstractServerInstance
 
     public function sendToTee(AbstractWorld $world, int $teeIndex, AbstractChunk $chunk): void
     {
-        foreach ($this->connectionHandler->getConnections() as $connection) {
-            if ($connection->state !== ConnectionSlot::STATE_INGAME) {
-                continue;
-            }
-
-            if ($connection->world() === $world && $connection->playerTee()->teeIndex === $teeIndex) {
-                // Insert chunk
-                $connection->chunks()->add($chunk);
-
-                // And send chunk instantly, don't wait for the queue
-                $connection->chunks()->send();
-
-                return;
-            }
-        }
+        $connection = $this->connectionHandler->findByTee($world, $teeIndex);
+        $connection?->chunks()->add($chunk)->send();
     }
 
     public function changeWorld(AbstractTee $tee, AbstractWorld $world): bool
@@ -226,20 +213,14 @@ abstract class AbstractServerInstance
 
     public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
     {
-        foreach ($this->connectionHandler->getConnections() as $connection) {
-            if ($connection->state !== ConnectionSlot::STATE_INGAME) {
-                continue;
-            }
-
-            if ($connection->world() === $world && $connection->playerTee()->teeIndex === $teeIndex) {
-                // Ban the address so they can't reconnect immediately
-                $this->banList->ban($connection->destinationAddress, $this->kickBanDuration, $reason);
-
-                $connection->closeConnection($reason);
-
-                return;
-            }
+        $connection = $this->connectionHandler->findByTee($world, $teeIndex);
+        if ($connection === null) {
+            return;
         }
+
+        // Ban the address so they can't reconnect immediately.
+        $this->banList->ban($connection->destinationAddress, $this->kickBanDuration, $reason);
+        $connection->closeConnection($reason);
     }
 
     /**

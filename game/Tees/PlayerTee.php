@@ -94,9 +94,7 @@ class PlayerTee extends AbstractTee
                 text: "'{$this->name}' joined the {$teamName}",
             );
 
-            foreach ($world->getTees() as $tee) {
-                $world->getServer()->sendToTee($world, $tee->teeIndex, $chat);
-            }
+            $world->broadcast($chat);
 
             // Re-check team balance after a team change (IGameController::CheckTeamBalance)
             $world->getGameController()->checkTeamBalance();

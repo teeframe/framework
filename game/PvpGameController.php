@@ -137,17 +137,7 @@ class PvpGameController extends AbstractGameController
             return $hadFlag;
         }
 
-        // Find the killer's tee
-        $killerTee = null;
-        $world     = $this->getWorld();
-        if ($world !== null) {
-            foreach ($world->getTees() as $tee) {
-                if ($tee->teeIndex === $killerTeeIndex) {
-                    $killerTee = $tee;
-                    break;
-                }
-            }
-        }
+        $killerTee = $this->world?->findTee($killerTeeIndex);
 
         if ($killerTee === null) {
             return $hadFlag;
@@ -342,7 +332,7 @@ class PvpGameController extends AbstractGameController
     public function canBeMovedOnBalance(int $teeIndex): bool
     {
         if ($this->isCaptureTheFlag) {
-            $character = $this->findCharacterByTeeIndex($teeIndex);
+            $character = $this->world?->findCharacter($teeIndex);
             if ($character !== null) {
                 for ($i = 0; $i < 2; $i++) {
                     $flag = $this->flags[$i];
@@ -366,21 +356,10 @@ class PvpGameController extends AbstractGameController
             return false;
         }
 
-        $victimTee = null;
-        $killerTee = null;
-        foreach ($this->world->getTees() as $tee) {
-            if (! $tee instanceof PlayerTee) {
-                continue;
-            }
-            if ($tee->teeIndex === $victimTeeIndex) {
-                $victimTee = $tee;
-            }
-            if ($tee->teeIndex === $killerTeeIndex) {
-                $killerTee = $tee;
-            }
-        }
+        $victimTee = $this->world->findTee($victimTeeIndex);
+        $killerTee = $this->world->findTee($killerTeeIndex);
 
-        if ($victimTee === null || $killerTee === null) {
+        if (! $victimTee instanceof PlayerTee || ! $killerTee instanceof PlayerTee) {
             return false;
         }
 
@@ -862,7 +841,7 @@ class PvpGameController extends AbstractGameController
                 continue;
             }
 
-            $killerCharacter = $this->findCharacterByTeeIndex($killerTeeIndex);
+            $killerCharacter = $this->world?->findCharacter($killerTeeIndex);
             if ($killerCharacter !== null && $flag->carryingCharacter === $killerCharacter) {
                 $hadFlag |= 2;
             }
@@ -875,7 +854,7 @@ class PvpGameController extends AbstractGameController
                 $flag->carryingCharacter = null;
                 $flag->vel               = new Vector2(0, 0);
 
-                $killerTee = $this->findTeeByIndex($killerTeeIndex);
+                $killerTee = $this->world?->findTee($killerTeeIndex);
                 $victimTee = $victim->tee;
                 if ($killerTee instanceof PlayerTee && $victimTee instanceof PlayerTee
                                                     && $killerTee->team !== $victimTee->team) {
@@ -887,49 +866,5 @@ class PvpGameController extends AbstractGameController
         }
 
         return $hadFlag;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Lookup helpers
-    |--------------------------------------------------------------------------
-    */
-
-    protected function findCharacterByTeeIndex(int $teeIndex): ?AbstractCharacterEntity
-    {
-        $world = $this->world;
-        if ($world === null) {
-            return null;
-        }
-
-        foreach ($world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
-                continue;
-            }
-            if ($entity->tee !== null && $entity->tee->teeIndex === $teeIndex) {
-                return $entity;
-            }
-        }
-
-        return null;
-    }
-
-    protected function findTeeByIndex(int $teeIndex): ?PlayerTee
-    {
-        $world = $this->world;
-        if ($world === null) {
-            return null;
-        }
-
-        foreach ($world->getTees() as $tee) {
-            if (! $tee instanceof PlayerTee) {
-                continue;
-            }
-            if ($tee->teeIndex === $teeIndex) {
-                return $tee;
-            }
-        }
-
-        return null;
     }
 }

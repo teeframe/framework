@@ -70,9 +70,7 @@ trait HasCharacterLifecycle
             weapon: $weapon,
             modeSpecial: $modeSpecial,
         );
-        foreach ($this->world->getTees() as $tee) {
-            $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, $killMsg);
-        }
+        $this->world->broadcast($killMsg);
 
         // Player die sound
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
