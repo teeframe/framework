@@ -227,8 +227,10 @@ test('enemy player can grab a flag from the stand', function () use ($ctfMapPath
 
     expect($redFlag->atStand)->toBeFalse();
     expect($redFlag->carryingCharacter)->toBe($character);
-    // +1 team score (from grab) +1 personal score = 2
-    expect($blueTee->score)->toBe(2);
+    expect($blueTee->score)->toBe(1);
+    $data = $controller->doSnap($blueTee)[1];
+    assert($data instanceof ObjGameDataItem);
+    expect([$data->teamScoreRed, $data->teamScoreBlue])->toBe([0, 1]);
 });
 
 test('same-team player cannot grab their own flag from the stand', function () use ($ctfMapPath, $ctfMapExists) {
@@ -345,8 +347,10 @@ test('carrying the enemy flag to your own stand captures it', function () use ($
     expect($blueFlag->atStand)->toBeTrue();
     expect($redFlag->carryingCharacter)->toBeNull();
 
-    // Capture awards +100 to the carrier's score
-    expect($blueTee->score)->toBe(100);
+    expect($blueTee->score)->toBe(5);
+    $data = $controller->doSnap($blueTee)[1];
+    assert($data instanceof ObjGameDataItem);
+    expect([$data->teamScoreRed, $data->teamScoreBlue])->toBe([0, 100]);
 });
 
 test('capture does not happen when own flag is not at stand', function () use ($ctfMapPath, $ctfMapExists) {
@@ -515,8 +519,8 @@ test('flags survive round restart and return to their stands', function () use (
     $tee->name = 'Restart';
     $world->addTee($tee);
 
-    // Trigger game over
-    $tee->score = 100;
+    // Trigger game over with team points, independently of personal scores.
+    (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [100, 0]);
     $world->doTick();
     expect($world->isPaused())->toBeTrue();
 
@@ -588,11 +592,11 @@ test('CTF round ends when a team reaches the score limit', function () use ($ctf
     $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
     $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $red        = new PlayerTee;
-    $red->name  = 'Red';
-    $red->score = 1000;
+    $red       = new PlayerTee;
+    $red->name = 'Red';
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
+    (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [1000, 0]);
 
     $world->doTick();
 
@@ -609,21 +613,24 @@ test('CTF sudden death triggers when scores are tied at the limit', function () 
     $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
     $world       = createCtfWorld($map, $tickHandler, $controller);
 
-    $red        = new PlayerTee;
-    $red->name  = 'Red';
-    $red->score = 1000;
+    $red       = new PlayerTee;
+    $red->name = 'Red';
+    (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [1000, 1000]);
     $world->addTee($red);
     $red->team = GameConstants::TEAM_RED;
 
-    $blue        = new PlayerTee;
-    $blue->name  = 'Blue';
-    $blue->score = 1000;
+    $blue       = new PlayerTee;
+    $blue->name = 'Blue';
+
     $world->addTee($blue);
     $blue->team = GameConstants::TEAM_BLUE;
 
     $world->doTick();
 
     expect($controller->isGameOver())->toBeFalse();
+    $info = $controller->doSnap($red)[0];
+    assert($info instanceof ObjGameInfoItem);
+    expect($info->gameStateFlags & GameConstants::GAMESTATEFLAG_SUDDENDEATH)->not->toBe(0);
 });
 
 /*
@@ -918,7 +925,7 @@ test('takeDamage sends SOUND_HIT to the attacker only', function () use ($ctfMap
     $victim->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $blueTee);
     $world->addEntity($victim);
 
-    $victim->takeDamage(new Vector2(0, 0), 5, $attacker);
+    $victim->takeDamage(new Vector2(0, 0), 5, $redTee->teeIndex, GameConstants::WEAPON_GUN);
 
     // Attacker should hear SOUND_HIT
     expect(soundsSentToTee($world, $redTee->teeIndex))->toContain(GameConstants::SOUND_HIT);
@@ -946,7 +953,7 @@ test('takeDamage does not send SOUND_HIT on self-damage', function () use ($ctfM
     $character->spawn(clone $spawnPos, $tee);
     $world->addEntity($character);
 
-    $character->takeDamage(new Vector2(0, 0), 4, $character);
+    $character->takeDamage(new Vector2(0, 0), 4, $tee->teeIndex, GameConstants::WEAPON_GRENADE);
 
     // No SOUND_HIT should be sent for self-damage
     expect(soundsSentToTee($world, $tee->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);
@@ -980,7 +987,7 @@ test('takeDamage does not send SOUND_HIT on friendly fire (blocked)', function (
     $victim->spawn(new Vector2($spawnPos->x + 50, $spawnPos->y), $red2);
     $world->addEntity($victim);
 
-    $victim->takeDamage(new Vector2(0, 0), 5, $attacker);
+    $victim->takeDamage(new Vector2(0, 0), 5, $red1->teeIndex, GameConstants::WEAPON_GUN);
 
     // Friendly fire is blocked — no damage, no SOUND_HIT
     expect(soundsSentToTee($world, $red1->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);

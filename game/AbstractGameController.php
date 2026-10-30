@@ -90,7 +90,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
     }
 
-    public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
+    public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
     {
         return 0;
     }

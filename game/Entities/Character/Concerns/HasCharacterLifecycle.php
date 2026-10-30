@@ -2,7 +2,6 @@
 
 namespace TeeFrame\Game\Entities\Character\Concerns;
 
-use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\CharacterWeaponState;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -60,7 +59,7 @@ trait HasCharacterLifecycle
         }
 
         // Notify game controller for scoring (returns mode-specific value)
-        $modeSpecial = $this->world->getGameController()->onCharacterDeath($this, $killerTeeIndex);
+        $modeSpecial = $this->world->getGameController()->onCharacterDeath($this, $killerTeeIndex, $weapon);
 
         // Send the kill message to all clients (CNetMsg_Sv_KillMsg)
         $victimTeeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
@@ -132,7 +131,7 @@ trait HasCharacterLifecycle
         $this->emote = $emote;
     }
 
-    public function takeDamage(Vector2 $force, int $damage, AbstractCharacterEntity $inflictor): void
+    public function takeDamage(Vector2 $force, int $damage, int $attackerTeeIndex, int $weapon): void
     {
         if (! $this->alive) {
             return;
@@ -165,8 +164,7 @@ trait HasCharacterLifecycle
         }
 
         if ($this->health <= 0) {
-            $killerTeeIndex = $inflictor->tee !== null ? $inflictor->tee->teeIndex : -1;
-            $this->die($killerTeeIndex, $inflictor->activeWeapon);
+            $this->die($attackerTeeIndex, $weapon);
         }
     }
 

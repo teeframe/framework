@@ -4,6 +4,7 @@ namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjLaserItem;
@@ -139,11 +140,8 @@ class PvpLaserEntity extends AbstractLaserEntity
                 $closestEntity->getPosition()->x,
                 $closestEntity->getPosition()->y,
             );
-            $this->energy   = -1;
-            $ownerCharacter = $this->world->findCharacter($this->owner);
-            if ($ownerCharacter !== null) {
-                $closestEntity->takeDamage(new Vector2(0, 0), $this->damage, $ownerCharacter);
-            }
+            $this->energy = -1;
+            $closestEntity->takeDamage(new Vector2(0, 0), $this->damage, $this->owner, GameConstants::WEAPON_RIFLE);
 
             return true;
         }

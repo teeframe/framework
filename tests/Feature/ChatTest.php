@@ -1,11 +1,14 @@
 <?php
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\Commands\WhisperCommand;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\RawPayload;
+use Tests\Support\RecordingGameServer;
 
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
@@ -109,6 +112,59 @@ test('onMessage handles ClSayChunk by broadcasting', function () use ($mapPath, 
 
     expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });
+
+test('chat recipients respect team privacy and world boundaries', function (string $mode, int $senderTeam, bool $teamChat) {
+    $clock      = new TickHandler(100);
+    $server     = new RecordingGameServer($clock);
+    $controller = new PvpGameController($clock);
+    $controller->setGameMode($mode);
+    $world = new TestWorldWithController($clock, new Map, $controller, $server);
+    $other = new TestWorldWithController($clock, new Map, new PvpGameController($clock), $server);
+    $other->addTee(new PlayerTee);
+
+    $sender = new PlayerTee;
+    $world->addTee($sender);
+    $sender->team = $senderTeam;
+    $expected     = [$sender->teeIndex];
+    $teams        = $mode === 'DM' ? [0, 0, -1, -1] : [0, 0, 1, 1, -1, -1];
+    foreach ($teams as $team) {
+        $recipient = new PlayerTee;
+        $world->addTee($recipient);
+        $recipient->team = $team;
+        // Following a player must not grant access to that player's team chat.
+        $recipient->spectatorId = $sender->teeIndex;
+        if (! $teamChat || $team === $senderTeam) {
+            $expected[] = $recipient->teeIndex;
+        }
+    }
+    $server->clear();
+
+    $world->onMessage($sender, new ClSayChunk(team: $teamChat, text: 'hello'));
+
+    expect($server->sentTeeIndexes)->toBe($expected);
+    foreach ($server->sentPairs as $pair) {
+        expect($pair['world'])->toBe($world);
+        expect($pair['chunk'])->toBeInstanceOf(SvChatChunk::class);
+        assert($pair['chunk'] instanceof SvChatChunk);
+        expect($pair['chunk']->team)->toBe($teamChat ? 1 : 0);
+        expect($pair['chunk']->clientId)->toBe($sender->teeIndex);
+        expect($pair['chunk']->text)->toBe('hello');
+    }
+    if (count($server->sentChunks) > 1) {
+        expect($server->sentChunks[0])->not->toBe($server->sentChunks[1]);
+    }
+})->with([
+    'TDM red team'          => ['TDM', 0, true],
+    'TDM blue team'         => ['TDM', 1, true],
+    'TDM spectators'        => ['TDM', -1, true],
+    'CTF red team'          => ['CTF', 0, true],
+    'CTF blue team'         => ['CTF', 1, true],
+    'CTF spectators'        => ['CTF', -1, true],
+    'DM players'            => ['DM', 0, true],
+    'DM spectators'         => ['DM', -1, true],
+    'public player chat'    => ['TDM', 0, false],
+    'public spectator chat' => ['CTF', -1, false],
+]);
 
 test('onMessage handles whisper command via ClSayChunk', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {

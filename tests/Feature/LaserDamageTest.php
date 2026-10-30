@@ -110,14 +110,22 @@ test('a lethal laser credits its owner instead of the victim', function () {
     }
 });
 
-test('a laser without an owner character does not attribute damage to its victim', function () {
-    [$world, $attacker, $victim] = createLaserDamageWorld();
+test('a laser still damages and credits its owner after the owner character disappears', function () {
+    [$world, $attacker, $victim, $owner] = createLaserDamageWorld();
     $attacker->die();
+    $world->removeEntity($attacker);
+    $attacker->activeWeapon = GameConstants::WEAPON_HAMMER;
+    $victim->health         = 2;
     recordingServer($world)->clear();
 
     fireDamageTestLaser($world, $attacker);
 
-    expect($victim->health)->toBe(10);
-    expect($victim->alive)->toBeTrue();
-    expect(recordingServer($world)->sentChunks)->toBe([]);
+    expect($victim->alive)->toBeFalse();
+    expect($owner->score)->toBe(1);
+    $kills = array_values(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk));
+    expect($kills)->toHaveCount(2);
+    foreach ($kills as $kill) {
+        expect($kill->killer)->toBe($owner->teeIndex);
+        expect($kill->weapon)->toBe(GameConstants::WEAPON_RIFLE);
+    }
 });

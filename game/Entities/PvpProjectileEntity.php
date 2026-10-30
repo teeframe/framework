@@ -59,12 +59,12 @@ class PvpProjectileEntity extends AbstractProjectileEntity
                 $this->explode($curPos);
             } elseif ($targetChar !== null) {
                 // Direct hit damage for gun/shotgun
-                $ownerChar = $this->findOwnerCharacter();
-                $inflictor = $ownerChar ?? $targetChar;
+
                 $targetChar->takeDamage(
                     new Vector2($this->direction->x * 0.001, $this->direction->y * 0.001),
                     1,
-                    $inflictor,
+                    $this->owner,
+                    $this->type,
                 );
             }
 
@@ -116,20 +116,8 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         return [$closest, $closestPos];
     }
 
-    protected function findOwnerCharacter(): ?AbstractCharacterEntity
-    {
-        foreach ($this->world->getEntities() as $entity) {
-            if ($entity instanceof AbstractCharacterEntity && $entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
-                return $entity;
-            }
-        }
-
-        return null;
-    }
-
     protected function explode(Vector2 $pos): void
     {
-        $innerRadius = 48.0;
         // Create explosion event (visual effect on client)
         $this->world->addEvent(new ObjEventExplosionItem(
             x: (int) round($pos->x),
@@ -142,13 +130,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             y: (int) round($pos->y),
             soundId: GameConstants::SOUND_GRENADE_EXPLODE,
         ));
-
-        // Find the owner character for damage attribution
-        $ownerChar = $this->findOwnerCharacter();
-
-        if ($ownerChar === null) {
-            return;
-        }
 
         // Deal damage to characters within explosion radius
         $radius      = 135.0;
@@ -178,7 +159,8 @@ class PvpProjectileEntity extends AbstractProjectileEntity
                 $entity->takeDamage(
                     new Vector2($forceDir->x * $dmg * 2, $forceDir->y * $dmg * 2),
                     $dmg,
-                    $ownerChar,
+                    $this->owner,
+                    $this->type,
                 );
             }
         }

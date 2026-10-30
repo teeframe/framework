@@ -74,7 +74,7 @@ class PlayerTee extends AbstractTee
         }
 
         if ($this->character !== null) {
-            $this->character->die($this->teeIndex, GameConstants::WEAPON_WORLD);
+            $this->character->die($this->teeIndex, GameConstants::WEAPON_GAME);
         }
 
         $wasSpectator      = $this->team === GameConstants::TEAM_SPECTATORS;

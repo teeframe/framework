@@ -26,6 +26,9 @@ class PvpGameController extends AbstractGameController
     protected int $unbalancedTick = -1;
     protected bool $forceBalanced = false;
 
+    /** @var array{int, int} */
+    protected array $teamScores = [0, 0];
+
     /** @var array<int, FlagEntity|null> */
     protected array $flags = [null, null];
 
@@ -120,34 +123,24 @@ class PvpGameController extends AbstractGameController
         }
     }
 
-    public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
+    public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
     {
-        $hadFlag = $this->dropFlagsOnDeath($victim, $killerTeeIndex); // If not capture the flag, it will return 0
-
-        if ($killerTeeIndex < 0) {
-            return $hadFlag;
-        }
-
+        $hadFlag   = $this->dropFlagsOnDeath($victim, $killerTeeIndex);
         $killerTee = $this->world?->findTee($killerTeeIndex);
-
-        if ($killerTee === null) {
+        if (! $killerTee instanceof PlayerTee || $weapon === GameConstants::WEAPON_GAME) {
             return $hadFlag;
         }
 
         $victimTee = $victim->tee;
+        $suicide   = $victimTee === $killerTee;
+        $teamkill  = $this->isTeamMode && $victimTee instanceof PlayerTee && $victimTee->team === $killerTee->team;
+        $points    = $suicide || $teamkill ? -1 : 1;
+        $killerTee->score += $points;
 
-        // Suicide check
-        if ($killerTeeIndex === ($victimTee !== null ? $victimTee->teeIndex : -1)) {
-            if ($killerTee instanceof PlayerTee) {
-                $killerTee->score--;
-            }
-
-            return $hadFlag;
-        }
-
-        // Normal kill
-        if ($killerTee instanceof PlayerTee) {
-            $killerTee->score++;
+        if ($this->isTeamMode && ! $this->isCaptureTheFlag
+            && in_array($killerTee->team, [GameConstants::TEAM_RED, GameConstants::TEAM_BLUE], true)
+        ) {
+            $this->teamScores[$killerTee->team] += $points;
         }
 
         return $hadFlag;
@@ -251,6 +244,7 @@ class PvpGameController extends AbstractGameController
         if ($world !== null) {
             $world->setPaused(false);
         }
+        $this->teamScores    = [0, 0];
         $this->forceBalanced = false;
     }
 
@@ -258,6 +252,7 @@ class PvpGameController extends AbstractGameController
     {
         parent::resetMap();
 
+        $this->teamScores     = [0, 0];
         $this->flags          = [null, null];
         $this->roundStartTick = $this->tickHandler->get();
         $this->gameOverTick   = -1;
@@ -594,17 +589,7 @@ class PvpGameController extends AbstractGameController
     /** @return array{int, int} */
     protected function getTeamScores(): array
     {
-        $scores = [0, 0];
-        foreach ($this->world?->getTees() ?? [] as $tee) {
-            if (! $tee instanceof PlayerTee) {
-                continue;
-            }
-            if ($tee->team === GameConstants::TEAM_RED || $tee->team === GameConstants::TEAM_BLUE) {
-                $scores[$tee->team] += $tee->score;
-            }
-        }
-
-        return $scores;
+        return $this->teamScores;
     }
 
     protected function getFlagCarrierId(int $team): int
@@ -721,9 +706,11 @@ class PvpGameController extends AbstractGameController
 
     protected function onFlagCapture(FlagEntity $flag, int $fi): void
     {
+        $team = $fi === GameConstants::TEAM_RED ? GameConstants::TEAM_BLUE : GameConstants::TEAM_RED;
+        $this->teamScores[$team] += 100;
         $carrierTee = $flag->carryingCharacter?->tee;
         if ($carrierTee instanceof PlayerTee) {
-            $carrierTee->score += 100;
+            $carrierTee->score += 5;
         }
 
         $flag->reset();
@@ -790,9 +777,8 @@ class PvpGameController extends AbstractGameController
     {
         $carrierTee = $carrier->tee;
         if ($flag->atStand) {
-            if ($carrierTee instanceof PlayerTee) {
-                $carrierTee->score += 1;
-            }
+            $team = $flag->team === GameConstants::TEAM_RED ? GameConstants::TEAM_BLUE : GameConstants::TEAM_RED;
+            $this->teamScores[$team]++;
             $flag->grabTick = $currentTick;
         }
 

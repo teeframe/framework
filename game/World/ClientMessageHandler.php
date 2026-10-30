@@ -70,11 +70,25 @@ class ClientMessageHandler
             }
         }
 
-        $this->world->broadcast(new SvChatChunk(
+        $chat = new SvChatChunk(
             team: $chunk->team ? 1 : 0,
             clientId: $tee->teeIndex,
             text: $message,
-        ));
+        );
+
+        if (! $chunk->team) {
+            $this->world->broadcast($chat);
+
+            return;
+        }
+
+        $team = $tee instanceof PlayerTee ? $tee->team : GameConstants::TEAM_RED;
+        foreach ($this->world->getTees() as $recipient) {
+            $recipientTeam = $recipient instanceof PlayerTee ? $recipient->team : GameConstants::TEAM_RED;
+            if ($recipientTeam === $team) {
+                $this->world->getServer()->sendToTee($this->world, $recipient->teeIndex, clone $chat);
+            }
+        }
     }
 
     protected function handleEmoticonMessage(AbstractTee $tee, ClEmoticonChunk $chunk): void

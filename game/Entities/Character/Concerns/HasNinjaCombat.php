@@ -75,7 +75,7 @@ trait HasNinjaCombat
                 $this->ninjaHitObjects[$this->ninjaNumObjectsHit++] = $entity;
             }
 
-            $entity->takeDamage(new Vector2(0, -10.0), 9, $this);
+            $entity->takeDamage(new Vector2(0, -10.0), 9, $this->tee->teeIndex ?? -1, GameConstants::WEAPON_NINJA);
         }
     }
 

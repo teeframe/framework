@@ -31,7 +31,7 @@ function makeGameController(TickHandler $tickHandler, array $opts = []): PvpGame
 {
     return new class($tickHandler, $opts['isTeamMode'] ?? false, $opts['isCaptureTheFlag'] ?? false, $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0) extends PvpGameController
     {
-        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
+        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
         {
             return 0;
         }
@@ -56,12 +56,13 @@ function setGameTick(TickHandler $tickHandler, int $tick): void
     $prop->setValue($tickHandler, $tick);
 }
 
-test('team snapshots and win checks aggregate the same active-team scores', function (bool $ctf) {
+test('team snapshots and win checks use the same independent team scores', function (bool $ctf) {
     $clock      = new TickHandler(100);
     $controller = new PvpGameController($clock, isTeamMode: true, isCaptureTheFlag: $ctf, scoreLimit: 5);
     $world      = new TestWorldWithController($clock, new Map, $controller);
     $requester  = new PlayerTee;
-    foreach ([[0, 3], [0, 2], [1, 4], [-1, 1000], [2, 1000]] as [$team, $score]) {
+    (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [5, 4]);
+    foreach ([[0, 1000], [0, 1000], [1, 1000], [-1, 1000]] as [$team, $score]) {
         $tee = new PlayerTee;
         $world->addTee($tee);
         $tee->team  = $team;
@@ -247,6 +248,7 @@ test('sudden death triggers when scores are tied at the limit', function () use 
     $tickHandler = new TickHandler(100);
     $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
     $world       = createWorldWithController($map, $tickHandler, $controller);
+    (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [2, 2]);
 
     $red        = new PlayerTee;
     $red->name  = 'Red';
@@ -264,6 +266,9 @@ test('sudden death triggers when scores are tied at the limit', function () use 
 
     // Tied scores → sudden death, not game over
     expect($controller->isGameOver())->toBeFalse();
+    $info = $controller->doSnap($red)[0];
+    assert($info instanceof ObjGameInfoItem);
+    expect($info->gameStateFlags & GameConstants::GAMESTATEFLAG_SUDDENDEATH)->not->toBe(0);
 });
 
 test('team mode round ends when one team exceeds the other at score limit', function () use ($mapPath, $mapExists) {
@@ -275,6 +280,7 @@ test('team mode round ends when one team exceeds the other at score limit', func
     $tickHandler = new TickHandler(100);
     $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
     $world       = createWorldWithController($map, $tickHandler, $controller);
+    (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [3, 1]);
 
     $red        = new PlayerTee;
     $red->name  = 'Red';
@@ -340,6 +346,7 @@ test('doSnap includes team scores in team mode', function () use ($mapPath, $map
     $tickHandler = new TickHandler(100);
     $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 10]);
     $world       = createWorldWithController($map, $tickHandler, $controller);
+    (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [5, 3]);
 
     $red        = new PlayerTee;
     $red->name  = 'Red';
@@ -929,7 +936,7 @@ test('same-team takeDamage deals no damage in team mode', function () use ($mapP
     $world->addEntity($victim);
 
     $healthBefore = $victim->health;
-    $victim->takeDamage(new Vector2(0, 0), 5, $attacker);
+    $victim->takeDamage(new Vector2(0, 0), 5, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     // Same team → no damage
     expect($victim->health)->toBe($healthBefore);
@@ -965,7 +972,7 @@ test('different-team takeDamage deals damage in team mode', function () use ($ma
     $world->addEntity($victim);
 
     $healthBefore = $victim->health;
-    $victim->takeDamage(new Vector2(0, 0), 5, $attacker);
+    $victim->takeDamage(new Vector2(0, 0), 5, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     // Different team → damage applied
     expect($victim->health)->toBeLessThan($healthBefore);
@@ -998,7 +1005,7 @@ test('non-team mode takeDamage always deals damage', function () use ($mapPath, 
     $world->addEntity($victim);
 
     $healthBefore = $victim->health;
-    $victim->takeDamage(new Vector2(0, 0), 5, $attacker);
+    $victim->takeDamage(new Vector2(0, 0), 5, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     expect($victim->health)->toBeLessThan($healthBefore);
 });
@@ -1024,7 +1031,7 @@ test('self-damage is halved', function () use ($mapPath, $mapExists) {
 
     $healthBefore = $character->health;
     // Self-damage of 4 → halved to max(1, 4/2) = 2
-    $character->takeDamage(new Vector2(0, 0), 4, $character);
+    $character->takeDamage(new Vector2(0, 0), 4, $tee->teeIndex, GameConstants::WEAPON_GRENADE);
 
     expect($character->health)->toBe($healthBefore - 2);
 });
@@ -1053,7 +1060,7 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
             // no-op: let the world drive respawning without controller logic
         }
 
-        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
+        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
         {
             return 0;
         }

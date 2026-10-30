@@ -685,7 +685,7 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     $world->addEntity($target);
 
     // Deal 3 damage to target
-    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+    $target->takeDamage(new Vector2(0, 0), 3, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     // Check damage indicator events were created (one per point of damage)
     $ref    = new ReflectionClass($world);
@@ -748,10 +748,10 @@ test('damage indicators group when damage taken in quick succession', function (
     $world->addEntity($target);
 
     // First hit: 3 damage
-    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+    $target->takeDamage(new Vector2(0, 0), 3, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     // Second hit within 25 ticks: 2 damage — should use angle offset
-    $target->takeDamage(new Vector2(0, 0), 2, $attacker);
+    $target->takeDamage(new Vector2(0, 0), 2, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     // Total damage indicator events: 3 + 2 = 5
     $ref    = new ReflectionClass($world);
@@ -807,14 +807,14 @@ test('killing blow still emits damage indicators', function () use ($mapPath, $m
     // Three hits of 3 damage each: 3 + 3 + 3 = 9 total. Target starts with
     // 10 health, so the third hit (bringing total to 9) is NOT lethal yet.
     // A fourth hit of 3 damage would be the killing blow (total 12 > 10).
-    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
-    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
-    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+    $target->takeDamage(new Vector2(0, 0), 3, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
+    $target->takeDamage(new Vector2(0, 0), 3, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
+    $target->takeDamage(new Vector2(0, 0), 3, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     expect($target->alive)->toBeTrue();
 
     // Killing blow: 3 damage that brings health to/below 0.
-    $target->takeDamage(new Vector2(0, 0), 3, $attacker);
+    $target->takeDamage(new Vector2(0, 0), 3, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     expect($target->alive)->toBeFalse();
 

@@ -70,7 +70,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             }
             $knockback = (new Vector2(0, -1))->add($dir->add(new Vector2(0, -1.1))->normalize()->mul(10.0));
 
-            $entity->takeDamage($knockback, 3, $this);
+            $entity->takeDamage($knockback, 3, $this->tee->teeIndex ?? -1, GameConstants::WEAPON_HAMMER);
             $hits++;
         }
 
@@ -302,7 +302,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
     }
 
-    public function takeDamage(Vector2 $force, int $damage, AbstractCharacterEntity $inflictor): void
+    public function takeDamage(Vector2 $force, int $damage, int $attackerTeeIndex, int $weapon): void
     {
         // Apply knockback first (mirrors CCharacter::TakeDamage: m_Core.m_Vel += Force)
         $this->vel->x += $force->x;
@@ -311,18 +311,17 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         // Friendly fire check (gamecontroller.cpp L698): in teamplay, same-team
         // hits deal no damage. Self-damage is allowed (handled below).
         $victimTeeIndex = $this->tee !== null ? $this->tee->teeIndex : -1;
-        $killerTeeIndex = $inflictor->tee !== null ? $inflictor->tee->teeIndex : -1;
-        if ($this->world->getGameController()->isFriendlyFire($victimTeeIndex, $killerTeeIndex)) {
+        if ($this->world->getGameController()->isFriendlyFire($victimTeeIndex, $attackerTeeIndex)) {
             return;
         }
 
         // Self-damage is halved (mirrors CCharacter::TakeDamage: Dmg = max(1, Dmg/2))
-        if ($victimTeeIndex === $killerTeeIndex && $damage > 0) {
+        if ($attackerTeeIndex >= 0 && $victimTeeIndex === $attackerTeeIndex && $damage > 0) {
             $damage = max(1, (int) ($damage / 2));
         }
 
         if (! $this->alive || $damage <= 0) {
-            parent::takeDamage(new Vector2(0, 0), $damage, $inflictor);
+            parent::takeDamage(new Vector2(0, 0), $damage, $attackerTeeIndex, $weapon);
 
             return;
         }
@@ -345,13 +344,13 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $this->damageTakenTick = $currentTick;
 
         // Knockback already applied above; pass zero force to the parent.
-        parent::takeDamage(new Vector2(0, 0), $damage, $inflictor);
+        parent::takeDamage(new Vector2(0, 0), $damage, $attackerTeeIndex, $weapon);
 
         // Hit sound: sent only to the attacker (mirrors CCharacter::TakeDamage
         // ctf.cpp L746-756: CreateSound(attacker->m_ViewPos, SOUND_HIT, Mask)).
         // Self-damage and world damage don't emit the hit sound.
-        if ($killerTeeIndex >= 0 && $killerTeeIndex !== $victimTeeIndex) {
-            $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $killerTeeIndex);
+        if ($attackerTeeIndex >= 0 && $attackerTeeIndex !== $victimTeeIndex && $this->world->findTee($attackerTeeIndex) !== null) {
+            $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $attackerTeeIndex);
         }
     }
 

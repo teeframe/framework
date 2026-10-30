@@ -518,7 +518,7 @@ test('character death sets respawn on tee and notifies game controller', functio
 
         public function doTick(): void {}
 
-        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
+        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
         {
             $this->deathCalled    = true;
             $this->victim         = $victim;
@@ -546,7 +546,7 @@ test('character death sets respawn on tee and notifies game controller', functio
     $world->addEntity($victim);
 
     // Kill the victim
-    $victim->takeDamage(new Vector2(0, 0), 10, $attacker);
+    $victim->takeDamage(new Vector2(0, 0), 10, $attackerTee->teeIndex, GameConstants::WEAPON_GUN);
 
     // Victim should be dead
     expect($victim->alive)->toBeFalse();
