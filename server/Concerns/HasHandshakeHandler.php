@@ -158,7 +158,7 @@ trait HasHandshakeHandler
     {
         $world = $connection->world();
 
-        $world->getServer()->setClientName($world, $connection->playerTee(), $chunk->name);
+        $world->setTeeName($connection->playerTee(), $chunk->name);
 
         $connection->playerTee()->setInfo(
             name: $connection->playerTee()->name,

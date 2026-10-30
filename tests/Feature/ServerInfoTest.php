@@ -5,10 +5,12 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Server\AbstractServerInstance;
 use TeeFrame\Server\ConnectionSlot;
+use TeeFrame\Server\ServerInfoPacketBuilder;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 class ServerInfoTestSocket extends AbstractSocket
@@ -100,6 +102,46 @@ function serverInfoFields(ServerInfoTestSocket $socket): array
 
     return explode("\0", substr($data, 14, -1));
 }
+
+test('server info packet builders are reusable and do not mutate or send through connections', function () {
+    $server                    = new ServerInfoTestServer;
+    $firstWorld                = $server->addWorld(slotsLimit: 12, spectatorSlots: 2);
+    $secondWorld               = $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 20);
+    $socket                    = new ServerInfoTestSocket;
+    $first                     = $server->addClient($firstWorld, $socket, 8300);
+    $second                    = $server->addClient($secondWorld, $socket, 8301);
+    $closed                    = $server->addClient($firstWorld, $socket, 8302, ConnectionSlot::STATE_CLOSED);
+    $first->playerTee()->name  = 'First';
+    $second->playerTee()->name = 'Second';
+    $first->peerAck            = 7;
+    $first->lastRecvTime       = 123;
+    $socket->sent              = [];
+    $builder                   = new ServerInfoPacketBuilder;
+    $slots                     = [$first, $second, $closed];
+
+    $packets = $builder->build([$firstWorld], $slots, 'Explicit name', true, 33);
+    expect($packets)->toHaveCount(1);
+    $firstReply = $packets[0]->encodeToSend();
+    $fields     = explode("\0", substr($packets[0]->getData(), strlen(NetworkMessages::SERVERBROWSE_INFO_EXTENDED), -1));
+    expect(array_slice($fields, 0, 4))->toBe(['33', '0.6 TeeFrame', 'Explicit name', 'dm1']);
+    expect(array_slice($fields, 6, 6))->toBe(['DM', '1', '1', '10', '1', '12']);
+    expect($fields)->toContain('First');
+    expect($fields)->not->toContain('Second');
+
+    $otherPackets = $builder->build([$secondWorld], $slots, 'Other name', false, 44);
+    expect($otherPackets)->toHaveCount(1);
+    $otherFields = explode("\0", substr($otherPackets[0]->getData(), strlen(NetworkMessages::SERVERBROWSE_INFO_EXTENDED), -1));
+    expect(array_slice($otherFields, 0, 4))->toBe(['44', '0.6 TeeFrame', 'Other name', 'ctf1']);
+    expect($otherFields[6])->toBe('CTF');
+    expect($otherFields)->toContain('Second');
+    expect($otherFields)->not->toContain('First');
+    expect($packets[0]->encodeToSend())->toBe($firstReply);
+    expect($first->peerAck)->toBe(7);
+    expect($first->lastRecvTime)->toBe(123);
+    expect($first->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($closed->state)->toBe(ConnectionSlot::STATE_CLOSED);
+    expect($socket->sent)->toBe([]);
+});
 
 test('connectionless packets decode and encode with the six-byte 0.6 header', function () {
     $raw    = str_repeat("\xFF", 10).'gie3'.chr(255);

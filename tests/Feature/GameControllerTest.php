@@ -56,6 +56,47 @@ function setGameTick(TickHandler $tickHandler, int $tick): void
     $prop->setValue($tickHandler, $tick);
 }
 
+test('team snapshots and win checks aggregate the same active-team scores', function (bool $ctf) {
+    $clock      = new TickHandler(100);
+    $controller = new PvpGameController($clock, isTeamMode: true, isCaptureTheFlag: $ctf, scoreLimit: 5);
+    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $requester  = new PlayerTee;
+    foreach ([[0, 3], [0, 2], [1, 4], [-1, 1000], [2, 1000]] as [$team, $score]) {
+        $tee = new PlayerTee;
+        $world->addTee($tee);
+        $tee->team  = $team;
+        $tee->score = $score;
+    }
+
+    $data = $controller->doSnap($requester)[1];
+    assert($data instanceof ObjGameDataItem);
+    expect([$data->teamScoreRed, $data->teamScoreBlue])->toBe([5, 4]);
+    $controller->doWincheck();
+    expect($controller->isGameOver())->toBeTrue();
+    expect($world->isPaused())->toBeTrue();
+    $data = $controller->doSnap($requester)[1];
+    assert($data instanceof ObjGameDataItem);
+    expect([$data->teamScoreRed, $data->teamScoreBlue])->toBe([5, 4]);
+})->with([false, true]);
+
+test('overridden team scoring is shared by snapshots and round resolution', function () {
+    $clock      = new TickHandler(100);
+    $controller = new class($clock, isTeamMode: true, scoreLimit: 9) extends PvpGameController
+    {
+        protected function getTeamScores(): array
+        {
+            return [9, 4];
+        }
+    };
+    new TestWorldWithController($clock, new Map, $controller);
+    $data = $controller->doSnap(new PlayerTee)[1];
+    assert($data instanceof ObjGameDataItem);
+    expect([$data->teamScoreRed, $data->teamScoreBlue])->toBe([9, 4]);
+
+    $controller->doWincheck();
+    expect($controller->isGameOver())->toBeTrue();
+});
+
 test('warmup counts down and starts round when it reaches zero', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');

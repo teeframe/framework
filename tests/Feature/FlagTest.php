@@ -49,6 +49,30 @@ function setCtfTick(TickHandler $tickHandler, int $tick): void
 |--------------------------------------------------------------------------
 */
 
+test('cloned PvP controllers keep their flag collections independent', function () use ($ctfMapPath) {
+    $clock      = new TickHandler(100);
+    $controller = makeCtfGameController($clock);
+    $world      = createCtfWorld(new Map($ctfMapPath), $clock, $controller);
+    $red        = $controller->getFlag(GameConstants::TEAM_RED);
+    assert($red !== null);
+    $red->atStand = false;
+    $red->setPosition(new Vector2(123, 456));
+
+    $copy = clone $controller;
+    $copy->resetMap();
+
+    expect($copy->getFlags())->toBe([null, null]);
+    expect($controller->getFlag(GameConstants::TEAM_RED))->toBe($red);
+    expect($red->atStand)->toBeFalse();
+    expect($red->getPosition())->toEqual(new Vector2(123, 456));
+    $otherWorld = createCtfWorld(new Map($ctfMapPath), $clock, $copy);
+    expect($copy->getFlag(GameConstants::TEAM_RED))->not->toBe($red);
+    expect($copy->getFlag(GameConstants::TEAM_RED))->not->toBeNull();
+    expect($controller->getFlag(GameConstants::TEAM_RED))->toBe($red);
+    expect($world->getEntities())->toContain($red);
+    expect($otherWorld->getEntities())->not->toContain($red);
+});
+
 test('CTF controller creates flags from flag stand entities', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
         throw new RuntimeException('Required CTF map fixture is missing');

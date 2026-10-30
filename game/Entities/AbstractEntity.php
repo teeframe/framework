@@ -32,6 +32,18 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
 
     abstract public function doTick(): void;
 
+    /** Transient entities are removed on round reset; persistent entities override this hook. */
+    public function reset(): void
+    {
+        $this->markToDestroy();
+    }
+
+    /** A fixed protocol ID, or null to use IDs allocated from the world pool. */
+    public function getFixedSnapId(): ?int
+    {
+        return null;
+    }
+
     public function tickPaused(): void
     {
         // no-op by default

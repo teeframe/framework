@@ -26,17 +26,17 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     // Game state
     public int $health = 10;
-    public int $armor = 0;
+    public int $armor  = 0;
 
     public int $activeWeapon = GameConstants::WEAPON_GUN;
-    public int $lastWeapon = GameConstants::WEAPON_HAMMER;
+    public int $lastWeapon   = GameConstants::WEAPON_HAMMER;
     public int $queuedWeapon = -1;
 
     public bool $alive = false;
 
-    public int $tick = 0;
-    public int $attackTick = 0;
-    public int $emote = GameConstants::EMOTE_NORMAL;
+    public int $tick        = 0;
+    public int $attackTick  = 0;
+    public int $emote       = GameConstants::EMOTE_NORMAL;
     public int $playerFlags = 0;
     public int $reloadTimer = 0;
 
@@ -120,6 +120,13 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     }
 
     abstract protected function handleWeapons(bool $firePressed): void;
+
+    public function getFixedSnapId(): ?int
+    {
+        $teeIndex = $this->tee?->teeIndex;
+
+        return $teeIndex !== null && $teeIndex >= 0 ? $teeIndex : null;
+    }
 
     public function getHitBoxRadius(): int
     {

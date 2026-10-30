@@ -37,6 +37,11 @@ class FlagEntity extends AbstractEntity
         return self::PHYS_SIZE;
     }
 
+    public function getFixedSnapId(): ?int
+    {
+        return $this->team;
+    }
+
     public function reset(): void
     {
         $this->carryingCharacter = null;

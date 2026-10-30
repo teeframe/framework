@@ -6,6 +6,43 @@ use TeeFrame\Map\Map;
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
+test('world-owned names are unique only within that world', function () {
+    $firstWorld  = createWorld(new Map);
+    $secondWorld = createWorld(new Map);
+    $first       = new PlayerTee;
+    $second      = new PlayerTee;
+    $firstWorld->setTeeName($first, "\x01Alice\x01");
+    $secondWorld->setTeeName($second, 'Alice');
+    $firstWorld->addTee($first);
+    $secondWorld->addTee($second);
+    $duplicate       = new PlayerTee;
+    $duplicate->name = 'Unchanged';
+
+    expect($first->name)->toBe('Alice');
+    expect($second->name)->toBe('Alice');
+    expect($firstWorld->trySetTeeName($duplicate, 'Alice'))->toBeFalse();
+    expect($duplicate->name)->toBe('Unchanged');
+    $firstWorld->setTeeName($duplicate, 'Alice');
+    expect($duplicate->name)->toBe('(1)Alice');
+    expect($secondWorld->trySetTeeName($second, 'Alice'))->toBeTrue();
+});
+
+test('world name validation preserves case sensitivity and replaces embedded controls', function () {
+    $world = createWorld(new Map);
+    $first = new PlayerTee;
+    $world->setTeeName($first, 'Alice');
+    $world->addTee($first);
+    $second = new PlayerTee;
+    $world->setTeeName($second, 'alice');
+    expect($second->name)->toBe('alice');
+    $world->setTeeName($second, "A\x01B");
+    expect($second->name)->toBe('A B');
+    expect($world->trySetTeeName($second, '   '))->toBeFalse();
+    expect($second->name)->toBe('A B');
+    $world->setTeeName($second, "\0\t");
+    expect($second->name)->toBe('(1)');
+});
+
 test('setClientName sets the name when no collision', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
