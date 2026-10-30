@@ -19,7 +19,6 @@
             "elements": {
                 "const": "none",
                 "method": "one",
-                "property": "one",
                 "trait_import": "none",
                 "case": "none"
             }
