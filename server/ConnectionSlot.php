@@ -12,7 +12,6 @@ use TeeFrame\Network\Chunks\System\MapChangeChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\Connection\AbstractConnection;
 use TeeFrame\Network\NetworkMessages;
-
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
@@ -71,7 +70,7 @@ class ConnectionSlot extends AbstractConnection
         $previousTee = $this->playerTee;
         $this->world->removeTee($previousTee);
 
-        $this->world = $world;
+        $this->world     = $world;
         $this->playerTee = new PlayerTee;
         $this->playerTee->setInfo(
             $previousTee->name,
@@ -83,13 +82,13 @@ class ConnectionSlot extends AbstractConnection
             $previousTee->colorFeet,
         );
 
-        $this->playerTee->latency = $previousTee->latency;
+        $this->playerTee->latency      = $previousTee->latency;
         $this->playerTee->lastChatTick = $previousTee->lastChatTick;
 
         $this->state = static::STATE_LOADING;
         $this->snaps()->reset();
 
-        $this->lastInputTick = -1;
+        $this->lastInputTick       = -1;
         $this->worldInfoUpdateTick = null;
 
         // Keep the transport sequence/ACK state: only the map handshake restarts.

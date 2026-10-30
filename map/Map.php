@@ -92,7 +92,7 @@ class Map
         $usedLayers = [];
         foreach ($this->groups as $group) {
             if ($group->startLayer < 0 || $group->numLayers < 0
-                                       || $group->startLayer + $group->numLayers > count($this->layers)
+                || $group->startLayer + $group->numLayers > count($this->layers)
             ) {
                 throw new \RuntimeException('Invalid group layer range');
             }

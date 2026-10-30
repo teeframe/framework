@@ -1,10 +1,11 @@
 <?php
 
+use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
-use TeeFrame\Map\Collision;
+use TeeFrame\Network\NetworkBase;
 
-$mapPath   = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('loads dm1 map and computes correct crc', function () use ($mapPath, $mapExists) {
@@ -106,8 +107,8 @@ test('dm1 map crc round-trips correctly through packInt', function () use ($mapP
     expect($crc)->toBeLessThan(0); // dm1 CRC has bit 31 set, so it's negative as signed 32-bit
 
     // Pack and unpack through Teeworlds' variable-length int encoding
-    $packed     = \TeeFrame\Network\NetworkBase::packInt($crc);
-    [$unpacked] = \TeeFrame\Network\NetworkBase::unpackInt($packed);
+    $packed     = NetworkBase::packInt($crc);
+    [$unpacked] = NetworkBase::unpackInt($packed);
 
     expect($unpacked)->toBe($crc);
 });

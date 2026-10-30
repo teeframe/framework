@@ -8,7 +8,6 @@ use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Server\AbstractServerInstance;
-
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -41,8 +40,8 @@ class ServerInfoTestServer extends AbstractServerInstance
 
     public function addWorld(string $map = 'dm1', bool $teams = false, bool $ctf = false, int $spectatorSlots = 0, int $slotsLimit = 64): AbstractWorld
     {
-        $controller = new TestGameController($this->tickHandler, isTeamMode: $teams, isCaptureTheFlag: $ctf, spectatorSlots: $spectatorSlots);
-        $world = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this, $slotsLimit);
+        $controller     = new TestGameController($this->tickHandler, isTeamMode: $teams, isCaptureTheFlag: $ctf, spectatorSlots: $spectatorSlots);
+        $world          = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this, $slotsLimit);
         $this->worlds[] = $world;
 
         return $world;
@@ -103,7 +102,7 @@ function serverInfoFields(ServerInfoTestSocket $socket): array
 }
 
 test('connectionless packets decode and encode with the six-byte 0.6 header', function () {
-    $raw = str_repeat("\xFF", 10).'gie3'.chr(255);
+    $raw    = str_repeat("\xFF", 10).'gie3'.chr(255);
     $packet = PacketDecoder::decodeFromRaw($raw);
     expect($packet)->toBeInstanceOf(ConnectionlessPacket::class);
     assert($packet instanceof ConnectionlessPacket);
@@ -121,7 +120,7 @@ test('truncated connectionless headers are rejected', function (int $size) {
 
 test('server info answers browser queries with decimal string fields and echoed tokens', function (int $token) {
     $server = new ServerInfoTestServer;
-    $world = $server->addWorld();
+    $world  = $server->addWorld();
     $socket = new ServerInfoTestSocket;
 
     $server->receive(serverInfoRequest($token), $socket);
@@ -137,17 +136,17 @@ test('server info answers browser queries with decimal string fields and echoed 
 })->with([0, 42, 255]);
 
 test('server info includes players spectators and loading clients but not closed connections', function () {
-    $server = new ServerInfoTestServer(password: 'secret');
-    $world = $server->addWorld();
-    $socket = new ServerInfoTestSocket;
-    $player = $server->addClient($world, $socket, 8300);
-    $player->playerTee()->name = 'Player';
-    $player->playerTee()->clan = 'Clan';
+    $server                       = new ServerInfoTestServer(password: 'secret');
+    $world                        = $server->addWorld();
+    $socket                       = new ServerInfoTestSocket;
+    $player                       = $server->addClient($world, $socket, 8300);
+    $player->playerTee()->name    = 'Player';
+    $player->playerTee()->clan    = 'Clan';
     $player->playerTee()->country = 76;
-    $player->playerTee()->score = -3;
-    $player->peerAck = 7;
-    $player->lastRecvTime = 123;
-    $spectator = $server->addClient($world, $socket, 8301);
+    $player->playerTee()->score   = -3;
+    $player->peerAck              = 7;
+    $player->lastRecvTime         = 123;
+    $spectator                    = $server->addClient($world, $socket, 8301);
     $spectator->playerTee()->name = 'Spectator';
     $spectator->playerTee()->team = GameConstants::TEAM_SPECTATORS;
     $server->addClient($world, $socket, 8302, ConnectionSlot::STATE_LOADING);
@@ -170,15 +169,15 @@ test('server info includes players spectators and loading clients but not closed
 });
 
 test('server info selects the connected clients world without leaking another worlds clients', function (int $state) {
-    $server = new ServerInfoTestServer;
-    $firstWorld = $server->addWorld();
-    $secondWorld = $server->addWorld('ctf1', teams: true, ctf: true);
-    $socket = new ServerInfoTestSocket;
-    $first = $server->addClient($firstWorld, $socket, 8300);
-    $first->playerTee()->name = 'First world';
-    $second = $server->addClient($secondWorld, $socket, 8301, $state);
+    $server                    = new ServerInfoTestServer;
+    $firstWorld                = $server->addWorld();
+    $secondWorld               = $server->addWorld('ctf1', teams: true, ctf: true);
+    $socket                    = new ServerInfoTestSocket;
+    $first                     = $server->addClient($firstWorld, $socket, 8300);
+    $first->playerTee()->name  = 'First world';
+    $second                    = $server->addClient($secondWorld, $socket, 8301, $state);
     $second->playerTee()->name = 'Second world';
-    $socket->sent = [];
+    $socket->sent              = [];
 
     $server->receive(serverInfoRequest(), $socket, 8301);
 
@@ -225,7 +224,7 @@ test('non-extended server info requests are ignored without a legacy fallback', 
 });
 
 test('extended connectionless requests preserve their extra token', function (int $extraToken) {
-    $raw = serverInfoRequest(255, $extraToken);
+    $raw    = serverInfoRequest(255, $extraToken);
     $packet = PacketDecoder::decodeFromRaw($raw);
     expect($packet)->toBeInstanceOf(ConnectionlessPacket::class);
     assert($packet instanceof ConnectionlessPacket);
@@ -236,7 +235,7 @@ test('extended connectionless requests preserve their extra token', function (in
 
 test('extended server info advertises the actual capacity and combines the full request token', function (int $extraToken) {
     $server = new ServerInfoTestServer;
-    $world = $server->addWorld(spectatorSlots: 4);
+    $world  = $server->addWorld(spectatorSlots: 4);
     $socket = new ServerInfoTestSocket;
 
     $server->receive(serverInfoRequest(255, $extraToken), $socket);
@@ -250,20 +249,20 @@ test('extended server info advertises the actual capacity and combines the full 
 })->with([0, 0x1234, 0xFFFF]);
 
 test('extended server info sends every client without a sixteen-player cap', function (int $clientCount) {
-    $server = new ServerInfoTestServer;
-    $world = $server->addWorld(spectatorSlots: 4);
-    $socket = new ServerInfoTestSocket;
+    $server          = new ServerInfoTestServer;
+    $world           = $server->addWorld(spectatorSlots: 4);
+    $socket          = new ServerInfoTestSocket;
     $expectedClients = [];
-    $numPlayers = 0;
+    $numPlayers      = 0;
     for ($i = 0; $i < $clientCount; $i++) {
-        $slot = $server->addClient($world, $socket, 8300 + $i);
-        $tee = $slot->playerTee();
-        $tee->name = sprintf('Player%010d', $i);
-        $tee->clan = str_repeat('C', 12);
+        $slot         = $server->addClient($world, $socket, 8300 + $i);
+        $tee          = $slot->playerTee();
+        $tee->name    = sprintf('Player%010d', $i);
+        $tee->clan    = str_repeat('C', 12);
         $tee->country = 76;
-        $tee->score = $i;
-        $isPlayer = $i % 4 !== 0;
-        $tee->team = $isPlayer ? GameConstants::TEAM_RED : GameConstants::TEAM_SPECTATORS;
+        $tee->score   = $i;
+        $isPlayer     = $i % 4 !== 0;
+        $tee->team    = $isPlayer ? GameConstants::TEAM_RED : GameConstants::TEAM_SPECTATORS;
         $numPlayers += (int) $isPlayer;
         $expectedClients[] = [$tee->name, $tee->clan, '76', (string) $i, (string) (int) $isPlayer, ''];
     }
@@ -301,10 +300,10 @@ test('extended server info sends every client without a sixteen-player cap', fun
 
 test('extended server info reports all active players and the configured capacity', function (int $capacity) {
     $server = new ServerInfoTestServer;
-    $world = $server->addWorld(slotsLimit: $capacity);
+    $world  = $server->addWorld(slotsLimit: $capacity);
     $socket = new ServerInfoTestSocket;
     for ($i = 0; $i < $capacity; $i++) {
-        $slot = $server->addClient($world, $socket, 8300 + $i);
+        $slot                    = $server->addClient($world, $socket, 8300 + $i);
         $slot->playerTee()->name = 'P'.$i;
     }
     $socket->sent = [];
@@ -318,15 +317,15 @@ test('extended server info reports all active players and the configured capacit
 })->with([32, 64]);
 
 test('extended server info retains world isolation', function () {
-    $server = new ServerInfoTestServer;
-    $firstWorld = $server->addWorld();
-    $secondWorld = $server->addWorld('ctf1', teams: true, ctf: true);
-    $socket = new ServerInfoTestSocket;
-    $first = $server->addClient($firstWorld, $socket, 8300);
-    $first->playerTee()->name = 'First world';
-    $second = $server->addClient($secondWorld, $socket, 8301);
+    $server                    = new ServerInfoTestServer;
+    $firstWorld                = $server->addWorld();
+    $secondWorld               = $server->addWorld('ctf1', teams: true, ctf: true);
+    $socket                    = new ServerInfoTestSocket;
+    $first                     = $server->addClient($firstWorld, $socket, 8300);
+    $first->playerTee()->name  = 'First world';
+    $second                    = $server->addClient($secondWorld, $socket, 8301);
     $second->playerTee()->name = 'Second world';
-    $socket->sent = [];
+    $socket->sent              = [];
 
     $server->receive(serverInfoRequest(42, 0x1234), $socket, 8301);
 
@@ -340,15 +339,15 @@ test('extended server info retains world isolation', function () {
 });
 
 test('browser info merges worlds and sums their player and client capacities', function () {
-    $server = new ServerInfoTestServer;
-    $dm = $server->addWorld(slotsLimit: 32, spectatorSlots: 2);
-    $ctf = $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 64, spectatorSlots: 4);
-    $socket = new ServerInfoTestSocket;
-    $server->addClient($dm, $socket, 8300)->playerTee()->name = 'DM player';
+    $server                                                    = new ServerInfoTestServer;
+    $dm                                                        = $server->addWorld(slotsLimit: 32, spectatorSlots: 2);
+    $ctf                                                       = $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 64, spectatorSlots: 4);
+    $socket                                                    = new ServerInfoTestSocket;
+    $server->addClient($dm, $socket, 8300)->playerTee()->name  = 'DM player';
     $server->addClient($ctf, $socket, 8301)->playerTee()->name = 'CTF player';
-    $spectator = $server->addClient($ctf, $socket, 8302)->playerTee();
-    $spectator->name = 'CTF spectator';
-    $spectator->team = GameConstants::TEAM_SPECTATORS;
+    $spectator                                                 = $server->addClient($ctf, $socket, 8302)->playerTee();
+    $spectator->name                                           = 'CTF spectator';
+    $spectator->team                                           = GameConstants::TEAM_SPECTATORS;
     $server->addClient($dm, $socket, 8303, ConnectionSlot::STATE_LOADING);
     $server->addClient($ctf, $socket, 8304, ConnectionSlot::STATE_CLOSED);
     $socket->sent = [];
@@ -373,14 +372,14 @@ test('browser info merges worlds and sums their player and client capacities', f
 });
 
 test('connected queries use each worlds gamemode and slot limit including after switching worlds', function () {
-    $server = new ServerInfoTestServer;
-    $dm = $server->addWorld(slotsLimit: 32, spectatorSlots: 2);
-    $ctf = $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 48, spectatorSlots: 4);
-    $socket = new ServerInfoTestSocket;
-    $client = $server->addClient($dm, $socket, 8300);
-    $client->playerTee()->name = 'Traveler';
+    $server                                                    = new ServerInfoTestServer;
+    $dm                                                        = $server->addWorld(slotsLimit: 32, spectatorSlots: 2);
+    $ctf                                                       = $server->addWorld('ctf1', teams: true, ctf: true, slotsLimit: 48, spectatorSlots: 4);
+    $socket                                                    = new ServerInfoTestSocket;
+    $client                                                    = $server->addClient($dm, $socket, 8300);
+    $client->playerTee()->name                                 = 'Traveler';
     $server->addClient($ctf, $socket, 8301)->playerTee()->name = 'CTF player';
-    $socket->sent = [];
+    $socket->sent                                              = [];
 
     $server->receive(serverInfoRequest(), $socket, 8300);
 
@@ -432,15 +431,15 @@ test('browser capacity is derived only from the configured world limits', functi
 });
 
 test('browser info sends all 128 clients across worlds with complete continuation records', function () {
-    $server = new ServerInfoTestServer;
-    $worlds = [$server->addWorld(), $server->addWorld('ctf1', teams: true, ctf: true)];
-    $socket = new ServerInfoTestSocket;
+    $server        = new ServerInfoTestServer;
+    $worlds        = [$server->addWorld(), $server->addWorld('ctf1', teams: true, ctf: true)];
+    $socket        = new ServerInfoTestSocket;
     $expectedNames = [];
     for ($i = 0; $i < 128; $i++) {
-        $slot = $server->addClient($worlds[intdiv($i, 64)], $socket, 8300 + $i);
+        $slot                    = $server->addClient($worlds[intdiv($i, 64)], $socket, 8300 + $i);
         $slot->playerTee()->name = sprintf('Player%010d', $i);
         $slot->playerTee()->clan = str_repeat('C', 12);
-        $expectedNames[] = $slot->playerTee()->name;
+        $expectedNames[]         = $slot->playerTee()->name;
     }
     $socket->sent = [];
 
@@ -467,13 +466,13 @@ test('browser info sends all 128 clients across worlds with complete continuatio
 });
 
 test('server info limits strings and prevents embedded nulls from adding fields', function () {
-    $server = new ServerInfoTestServer(name: str_repeat('N', 400));
-    $world = $server->addWorld();
-    $socket = new ServerInfoTestSocket;
-    $slot = $server->addClient($world, $socket, 8300);
+    $server                  = new ServerInfoTestServer(name: str_repeat('N', 400));
+    $world                   = $server->addWorld();
+    $socket                  = new ServerInfoTestSocket;
+    $slot                    = $server->addClient($world, $socket, 8300);
     $slot->playerTee()->name = "Name\0injected";
     $slot->playerTee()->clan = str_repeat('C', 50);
-    $socket->sent = [];
+    $socket->sent            = [];
 
     $server->receive(serverInfoRequest(), $socket);
 
@@ -495,10 +494,10 @@ test('unknown and malformed connectionless requests are ignored without allocati
     expect($server->connectionCount())->toBe(0);
     expect($server->worldSelections)->toBe(0);
 })->with([
-    'empty' => '',
-    'unknown' => str_repeat("\xFF", 4).'other',
-    'missing token' => str_repeat("\xFF", 4).'gie3',
-    'extra data' => str_repeat("\xFF", 4).'gie3'.chr(42).'extra',
-    'wrong signature' => 'gie3'.chr(42),
+    'empty'             => '',
+    'unknown'           => str_repeat("\xFF", 4).'other',
+    'missing token'     => str_repeat("\xFF", 4).'gie3',
+    'extra data'        => str_repeat("\xFF", 4).'gie3'.chr(42).'extra',
+    'wrong signature'   => 'gie3'.chr(42),
     'unsolicited reply' => str_repeat("\xFF", 4).'iext'.chr(42),
 ]);

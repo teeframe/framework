@@ -39,8 +39,8 @@ class ObjClientInfoItem extends AbstractSnapItem
      */
     protected function convertStringToIntArray(string $string, int $num): array
     {
-        $integers   = array_fill(0, $num, 0);
-        $bytes      = unpack('c*', $string);
+        $integers = array_fill(0, $num, 0);
+        $bytes    = unpack('c*', $string);
 
         if ($bytes === false) {
             return $integers;

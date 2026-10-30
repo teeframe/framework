@@ -147,7 +147,7 @@ class NetworkBase
         $pointer = 0;
         $shift   = 6;
         $sign    = ($data[0] >> 6) & 1;
-        $result  = $data[0]        & 0x3F;
+        $result  = $data[0] & 0x3F;
 
         while ($data[$pointer] & 0x80) {
             $pointer++;

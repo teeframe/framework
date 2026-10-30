@@ -512,11 +512,9 @@ test('character death sets respawn on tee and notifies game controller', functio
 
     $gc = new class($tickHandler) extends TestGameController
     {
-        public bool $deathCalled = false;
-
+        public bool $deathCalled                = false;
         public ?AbstractCharacterEntity $victim = null;
-
-        public int $killerTeeIndex = -1;
+        public int $killerTeeIndex              = -1;
 
         public function doTick(): void {}
 

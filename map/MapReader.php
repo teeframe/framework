@@ -58,12 +58,12 @@ class MapReader
             }
         }
 
-        $itemsStart = 36          + $numItemTypes * 12 + $numItems * 4 + $numData * ($version === 4 ? 8 : 4);
+        $itemsStart = 36 + $numItemTypes * 12 + $numItems * 4 + $numData * ($version === 4 ? 8 : 4);
         $dataStart  = $itemsStart + $itemSize;
-        if ($size                     !== strlen($buffer) - 16
-            || $swapLen               !== $dataStart      - 16
+        if ($size !== strlen($buffer) - 16
+            || $swapLen !== $dataStart - 16
             || $dataStart + $dataSize !== strlen($buffer)
-            || $itemSize % 4          !== 0
+            || $itemSize % 4 !== 0
             || $numItems > intdiv($itemSize, 8)
         ) {
             $this->throwException('Invalid datafile section sizes');
@@ -76,8 +76,8 @@ class MapReader
             $typeId = $reader->readInt();
             $start  = $reader->readInt();
             $num    = $reader->readInt();
-            if ($typeId < 0 || $typeId                       > 0xFFFF || isset($seenTypes[$typeId])
-                            || $start !== $nextItem || $num <= 0 || $num > $numItems - $start
+            if ($typeId < 0 || $typeId > 0xFFFF || isset($seenTypes[$typeId])
+                || $start !== $nextItem || $num <= 0 || $num > $numItems - $start
             ) {
                 $this->throwException('Invalid item type range or duplicate type');
             }
@@ -119,10 +119,10 @@ class MapReader
                 $typeIdAndId = $itemReader->readInt();
                 $payloadSize = $itemReader->readInt();
                 $typeId      = ($typeIdAndId >> 16) & 0xFFFF;
-                $id          = $typeIdAndId         & 0xFFFF;
-                if ($typeId                                 !== $itemType['typeId'] || isset($seenIds[$id])
-                                                                                    || $payloadSize < 0 || $payloadSize % 4 !== 0
-                                                                                    || $payloadSize                         !== $itemReader->remaining()
+                $id          = $typeIdAndId & 0xFFFF;
+                if ($typeId !== $itemType['typeId'] || isset($seenIds[$id])
+                    || $payloadSize < 0 || $payloadSize % 4 !== 0
+                    || $payloadSize !== $itemReader->remaining()
                 ) {
                     $this->throwException("Invalid item header at index {$i}");
                 }

@@ -3,7 +3,7 @@
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 
-$mapPath   = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('setClientName sets the name when no collision', function () use ($mapPath, $mapExists) {
@@ -29,7 +29,7 @@ test('setClientName trims whitespace from the name', function () use ($mapPath, 
     $world = createWorld($map);
 
     $tee = new PlayerTee;
-    $world->getServer()->setClientName($world, $tee, "  Bob  ");
+    $world->getServer()->setClientName($world, $tee, '  Bob  ');
 
     expect($tee->name)->toBe('Bob');
 });
@@ -137,7 +137,7 @@ test('trySetClientName returns false for empty name', function () use ($mapPath,
     $tee = new PlayerTee;
 
     expect($world->getServer()->trySetClientName($world, $tee, ''))->toBeFalse();
-    expect($world->getServer()->trySetClientName($world, $tee, "   "))->toBeFalse();
+    expect($world->getServer()->trySetClientName($world, $tee, '   '))->toBeFalse();
 });
 
 test('trySetClientName returns false when name is taken by another tee', function () use ($mapPath, $mapExists) {

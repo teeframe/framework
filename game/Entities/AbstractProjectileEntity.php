@@ -3,8 +3,8 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjProjectileItem;
 
@@ -47,7 +47,7 @@ abstract class AbstractProjectileEntity extends AbstractEntity
 
     public function tickPaused(): void
     {
-        ++$this->startTick;
+        $this->startTick++;
     }
 
     abstract protected function getPos(float $time): Vector2;

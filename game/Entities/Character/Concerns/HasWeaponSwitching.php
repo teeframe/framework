@@ -43,7 +43,7 @@ trait HasWeaponSwitching
     protected function countInput(int $prev, int $cur): int
     {
         $prev &= self::INPUT_STATE_MASK;
-        $cur  &= self::INPUT_STATE_MASK;
+        $cur &= self::INPUT_STATE_MASK;
         $presses = 0;
         $i       = $prev;
 
@@ -97,8 +97,9 @@ trait HasWeaponSwitching
 
         // Queue the switch if valid
         if ($wantedWeapon >= 0 && $wantedWeapon < GameConstants::NUM_WEAPONS
-                               && $wantedWeapon !== $this->activeWeapon
-                               && $this->weapons[$wantedWeapon]->got) {
+            && $wantedWeapon !== $this->activeWeapon
+            && $this->weapons[$wantedWeapon]->got
+        ) {
             $this->queuedWeapon = $wantedWeapon;
         }
 

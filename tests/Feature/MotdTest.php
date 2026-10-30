@@ -28,7 +28,7 @@ test('MOTD decodes as MOTD and preserves its text', function (string $text) {
     expect($decoded[0]->text)->toBe($text);
     expect($decoded[0]->getSequence())->toBe(1);
 })->with([
-    'welcome' => 'Welcome to TeeFrame DM!',
+    'welcome'   => 'Welcome to TeeFrame DM!',
     'multiline' => "Welcome to TeeFrame!\nEnjoy your stay.",
-    'empty' => '',
+    'empty'     => '',
 ]);

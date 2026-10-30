@@ -12,12 +12,11 @@ class ChangeMapCommand extends AbstractCommand
     public function __construct(
         protected string $mapName,
         protected string $reason = '',
-    ) {
-    }
+    ) {}
 
     public function getName(): string
     {
-        return 'change_map ' . $this->mapName;
+        return 'change_map '.$this->mapName;
     }
 
     public function getType(): int
@@ -27,7 +26,7 @@ class ChangeMapCommand extends AbstractCommand
 
     public function getDescription(): string
     {
-        return 'Change map to ' . $this->mapName;
+        return 'Change map to '.$this->mapName;
     }
 
     /**

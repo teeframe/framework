@@ -13,30 +13,21 @@ use TeeFrame\Network\SnapItems\ObjSpectatorInfoItem;
 
 abstract class AbstractTee implements SnapableObject
 {
-    protected ?AbstractWorld $world = null;
-
+    protected ?AbstractWorld $world            = null;
     public ?AbstractCharacterEntity $character = null;
 
     // Client Info
     public string $name;
-
     public string $clan;
-
     public int $country;
-
     public string $skinName;
-
     public bool $useCustomColor;
-
     public int $colorBody;
-
     public int $colorFeet;
 
     // Tee On World
     public Vector2 $viewPosition;
-
     public int $teeIndex;
-
     public int $latency = 0;
 
     public function __construct()
@@ -56,9 +47,9 @@ abstract class AbstractTee implements SnapableObject
         $this->colorFeet      = 0;
 
         // Tee On World
-        $this->viewPosition  = new Vector2(0, 0);
-        $this->teeIndex      = -1;
-        $this->latency       = 0;
+        $this->viewPosition = new Vector2(0, 0);
+        $this->teeIndex     = -1;
+        $this->latency      = 0;
     }
 
     public function setInfo(string $name, string $clan, int $country, string $skinName, bool $useCustomColor, int $colorBody, int $colorFeet): void

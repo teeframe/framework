@@ -2,9 +2,7 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
-
 use TeeFrame\Network\NetworkBase;
-
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;

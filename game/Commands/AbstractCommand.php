@@ -18,7 +18,7 @@ abstract class AbstractCommand
      */
     public function getPattern(): string
     {
-        return '/^\/' . preg_quote($this->getName(), '/') . '$/i';
+        return '/^\/'.preg_quote($this->getName(), '/').'$/i';
     }
 
     /**

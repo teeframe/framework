@@ -13,8 +13,7 @@ class ConnectionSnap
         protected int $tick,
         protected array $snapItems,
         protected float $sendTime,
-    ) {
-    }
+    ) {}
 
     public function getTick(): int
     {

@@ -10,7 +10,7 @@ use TeeFrame\Network\RawPayload;
 class MapDataChunk extends AbstractChunk
 {
     /**
-     * @param int[] $data
+     * @param  int[]  $data
      */
     public function __construct(
         public int $last,

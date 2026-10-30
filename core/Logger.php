@@ -2,7 +2,4 @@
 
 namespace TeeFrame\Core;
 
-class Logger
-{
-    
-}
+class Logger {}

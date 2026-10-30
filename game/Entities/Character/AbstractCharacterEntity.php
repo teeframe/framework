@@ -26,25 +26,18 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     // Game state
     public int $health = 10;
-
     public int $armor = 0;
 
     public int $activeWeapon = GameConstants::WEAPON_GUN;
-
     public int $lastWeapon = GameConstants::WEAPON_HAMMER;
-
     public int $queuedWeapon = -1;
 
     public bool $alive = false;
 
     public int $tick = 0;
-
     public int $attackTick = 0;
-
     public int $emote = GameConstants::EMOTE_NORMAL;
-
     public int $playerFlags = 0;
-
     public int $reloadTimer = 0;
 
     /**
@@ -54,14 +47,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     // Ninja state
     public int $ninjaActivationTick = 0;
-
     public Vector2 $ninjaActivationDir;
-
     public int $ninjaCurrentMoveTime = 0;
-
-    public float $ninjaOldVelAmount = 0.0;
-
-    public int $ninjaNumObjectsHit = 0;
+    public float $ninjaOldVelAmount  = 0.0;
+    public int $ninjaNumObjectsHit   = 0;
 
     /**
      * @var array<int, AbstractCharacterEntity|null>
@@ -72,13 +61,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     // Input state (mirrors CCharacter::m_Input / m_LatestInput / m_LatestPrevInput)
     protected PlayerInput $input;
-
     protected PlayerInput $latestInput;
-
     protected PlayerInput $latestPrevInput;
 
-    protected int $numInputs = 0;
-
+    protected int $numInputs      = 0;
     protected int $lastActionTick = 0;
 
     public function __construct(AbstractWorld $world, protected Vector2 $position)
@@ -204,7 +190,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         // The local client predicts ground-jump and ground/no-hook sounds, but
         // other clients need server events (CCharacter::TickDefered in 0.6).
-        $events = $this->triggeredEvents;
+        $events           = $this->triggeredEvents;
         $excludedTeeIndex = $this->tee?->teeIndex;
         if ($events & GameConstants::COREEVENT_GROUND_JUMP) {
             $this->createSound(GameConstants::SOUND_PLAYER_JUMP, $excludedTeeIndex);
@@ -229,7 +215,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             // fire button is held and there's ammo (mirrors CCharacter::FireWeapon
             // in teeworlds 0.6).
             if (! $firePressed
-                && ($this->activeWeapon    === GameConstants::WEAPON_GRENADE
+                && ($this->activeWeapon === GameConstants::WEAPON_GRENADE
                     || $this->activeWeapon === GameConstants::WEAPON_SHOTGUN
                     || $this->activeWeapon === GameConstants::WEAPON_RIFLE)
                 && ($this->latestInput->fire & 1)

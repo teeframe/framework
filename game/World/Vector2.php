@@ -4,9 +4,7 @@ namespace TeeFrame\Game\World;
 
 class Vector2
 {
-    public function __construct(public float $x, public float $y)
-    {
-    }
+    public function __construct(public float $x, public float $y) {}
 
     public function add(Vector2 $other): Vector2
     {

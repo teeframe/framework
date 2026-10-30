@@ -3,9 +3,9 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
-use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
@@ -18,8 +18,8 @@ class PickupEntity extends AbstractEntity
     protected int $spawnTick = -1;
 
     /**
-     * @param int $respawnTime Respawn time in ticks after being picked up (-1 = never respawn).
-     * @param int $spawnDelay  Initial spawn delay in ticks before the pickup first appears (0 = immediately available).
+     * @param  int  $respawnTime  Respawn time in ticks after being picked up (-1 = never respawn).
+     * @param  int  $spawnDelay  Initial spawn delay in ticks before the pickup first appears (0 = immediately available).
      */
     public function __construct(
         AbstractWorld $world,
@@ -55,7 +55,7 @@ class PickupEntity extends AbstractEntity
     public function tickPaused(): void
     {
         if ($this->spawnTick !== -1) {
-            ++$this->spawnTick;
+            $this->spawnTick++;
         }
     }
 
@@ -70,7 +70,7 @@ class PickupEntity extends AbstractEntity
 
         // Check if a character is close enough to pick us up
         foreach ($this->world->getEntities() as $entity) {
-                if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
+            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
                 continue;
             }
 
@@ -95,20 +95,20 @@ class PickupEntity extends AbstractEntity
      */
     protected function onPickup(AbstractCharacterEntity $character): int
     {
-        $soundId = -1;
+        $soundId     = -1;
         $respawnTime = -1;
 
         switch ($this->type) {
             case GameConstants::POWERUP_HEALTH:
                 if ($character->increaseHealth(1)) {
-                    $soundId = GameConstants::SOUND_PICKUP_HEALTH;
+                    $soundId     = GameConstants::SOUND_PICKUP_HEALTH;
                     $respawnTime = $this->respawnTime;
                 }
                 break;
 
             case GameConstants::POWERUP_ARMOR:
                 if ($character->increaseArmor(1)) {
-                    $soundId = GameConstants::SOUND_PICKUP_ARMOR;
+                    $soundId     = GameConstants::SOUND_PICKUP_ARMOR;
                     $respawnTime = $this->respawnTime;
                 }
                 break;
@@ -119,7 +119,7 @@ class PickupEntity extends AbstractEntity
                         $soundId = match ($this->subType) {
                             GameConstants::WEAPON_SHOTGUN => GameConstants::SOUND_PICKUP_SHOTGUN,
                             GameConstants::WEAPON_GRENADE => GameConstants::SOUND_PICKUP_GRENADE,
-                            default => GameConstants::SOUND_PICKUP_SHOTGUN,
+                            default                       => GameConstants::SOUND_PICKUP_SHOTGUN,
                         };
                         $respawnTime = $this->respawnTime;
                     }
@@ -128,7 +128,7 @@ class PickupEntity extends AbstractEntity
 
             case GameConstants::POWERUP_NINJA:
                 $character->giveNinja();
-                $soundId = GameConstants::SOUND_PICKUP_NINJA;
+                $soundId     = GameConstants::SOUND_PICKUP_NINJA;
                 $respawnTime = $this->respawnTime;
                 break;
         }

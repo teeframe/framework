@@ -29,7 +29,6 @@ abstract class AbstractServerInstance
     protected array $sockets = [];
 
     protected ConnectionHandler $connectionHandler;
-
     protected BanList $banList;
 
     public function __construct(
@@ -37,8 +36,7 @@ abstract class AbstractServerInstance
         protected string $name,
         protected string $password = '',
         protected int $kickBanDuration = 600,
-    )
-    {
+    ) {
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
         $this->banList           = new BanList;
     }
@@ -176,7 +174,6 @@ abstract class AbstractServerInstance
             return false;
         }
 
-
         foreach ($world->getTees() as $existingTee) {
             if ($existingTee === $tee) {
                 continue;
@@ -203,7 +200,7 @@ abstract class AbstractServerInstance
             return;
         }
 
-        for ($i = 1;; $i++) {
+        for ($i = 1; ; $i++) {
             $nameTry = "({$i}){$cleanName}";
             if ($this->trySetClientName($world, $tee, $nameTry)) {
                 return;
@@ -224,7 +221,7 @@ abstract class AbstractServerInstance
     }
 
     /**
-     * @param array{address: string, port: int} $clientInfo
+     * @param  array{address: string, port: int}  $clientInfo
      */
     protected function onPacket(AbstractPacket $packet, array $clientInfo, AbstractSocket $socket): void
     {
@@ -265,7 +262,7 @@ abstract class AbstractServerInstance
             $socket->sendto(
                 $clientInfo['address'],
                 $clientInfo['port'],
-                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'You are banned for ' . $minutesLeft . ' more minute(s): ' . ($ban->reason ?? 'Kicked by vote')))->encodeToSend()
+                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'You are banned for '.$minutesLeft.' more minute(s): '.($ban->reason ?? 'Kicked by vote')))->encodeToSend()
             );
 
             return;
@@ -291,12 +288,12 @@ abstract class AbstractServerInstance
     }
 
     /**
-     * @param array{address: string, port: int} $clientInfo
+     * @param  array{address: string, port: int}  $clientInfo
      */
     protected function handleServerInfoRequest(ConnectionlessPacket $packet, array $clientInfo, AbstractSocket $socket): void
     {
-        $data = $packet->getData();
-        $header = NetworkMessages::SERVERBROWSE_GETINFO;
+        $data       = $packet->getData();
+        $header     = NetworkMessages::SERVERBROWSE_GETINFO;
         $extraToken = $packet->getExtraToken();
 
         if ($extraToken === null || strlen($data) !== strlen($header) + 1 || ! str_starts_with($data, $header)) {
@@ -304,7 +301,7 @@ abstract class AbstractServerInstance
         }
 
         $connection = $this->connectionHandler->tryToMatch($clientInfo);
-        $worlds = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
+        $worlds     = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
             ? [$connection->world()]
             : $this->worlds;
 

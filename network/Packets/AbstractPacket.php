@@ -9,14 +9,13 @@ abstract class AbstractPacket
     protected int $numChunks = 0;
 
     /**
-     * @param int[] $payload
+     * @param  int[]  $payload
      */
     public function __construct(
         protected int $flags,
         protected int $ack,
         protected array $payload
-    ) {
-    }
+    ) {}
 
     public function getFlags(): int
     {

@@ -23,8 +23,8 @@ class GameConstants
 
     // Team constants (Teeworlds 0.6)
     public const TEAM_SPECTATORS = -1;
-    public const TEAM_RED         = 0;
-    public const TEAM_BLUE        = 1;
+    public const TEAM_RED        = 0;
+    public const TEAM_BLUE       = 1;
 
     // Spectator mode (Teeworlds 0.6)
     public const SPEC_FREEVIEW = -1;
@@ -79,18 +79,18 @@ class GameConstants
     public const PLAYERFLAG_SCOREBOARD = 1 << 3;
 
     // Game flags (Teeworlds 0.6)
-    public const GAMEFLAG_TEAMS  = 1 << 0;
-    public const GAMEFLAG_FLAGS  = 1 << 1;
+    public const GAMEFLAG_TEAMS = 1 << 0;
+    public const GAMEFLAG_FLAGS = 1 << 1;
 
     // Flag carrier states reported in ObjGameData (Teeworlds 0.6)
     public const FLAG_MISSING = -3; // flag entity does not exist
     public const FLAG_ATSTAND = -2; // flag is at its stand
-    public const FLAG_TAKEN  = -1; // flag is dropped on the ground
+    public const FLAG_TAKEN   = -1; // flag is dropped on the ground
 
     // Game state flags (Teeworlds 0.6)
-    public const GAMESTATEFLAG_GAMEOVER     = 1 << 0;
-    public const GAMESTATEFLAG_SUDDENDEATH  = 1 << 1;
-    public const GAMESTATEFLAG_PAUSED       = 1 << 2;
+    public const GAMESTATEFLAG_GAMEOVER    = 1 << 0;
+    public const GAMESTATEFLAG_SUDDENDEATH = 1 << 1;
+    public const GAMESTATEFLAG_PAUSED      = 1 << 2;
 
     // Core event bit flags (Teeworlds 0.6)
     public const COREEVENT_GROUND_JUMP        = 0x01;
@@ -102,46 +102,46 @@ class GameConstants
     public const COREEVENT_HOOK_RETRACT       = 0x40;
 
     // Sound constants (Teeworlds 0.6)
-    public const SOUND_GUN_FIRE = 0;
-    public const SOUND_SHOTGUN_FIRE = 1;
-    public const SOUND_GRENADE_FIRE = 2;
-    public const SOUND_HAMMER_FIRE = 3;
-    public const SOUND_HAMMER_HIT = 4;
-    public const SOUND_NINJA_FIRE = 5;
-    public const SOUND_GRENADE_EXPLODE = 6;
-    public const SOUND_NINJA_HIT = 7;
-    public const SOUND_RIFLE_FIRE = 8;
-    public const SOUND_RIFLE_BOUNCE = 9;
-    public const SOUND_WEAPON_SWITCH = 10;
-    public const SOUND_PLAYER_PAIN_SHORT = 11;
-    public const SOUND_PLAYER_PAIN_LONG = 12;
-    public const SOUND_BODY_LAND = 13;
-    public const SOUND_PLAYER_AIRJUMP = 14;
-    public const SOUND_PLAYER_JUMP = 15;
-    public const SOUND_PLAYER_DIE = 16;
-    public const SOUND_PLAYER_SPAWN = 17;
-    public const SOUND_PLAYER_SKID = 18;
-    public const SOUND_TEE_CRY = 19;
-    public const SOUND_HOOK_LOOP = 20;
+    public const SOUND_GUN_FIRE           = 0;
+    public const SOUND_SHOTGUN_FIRE       = 1;
+    public const SOUND_GRENADE_FIRE       = 2;
+    public const SOUND_HAMMER_FIRE        = 3;
+    public const SOUND_HAMMER_HIT         = 4;
+    public const SOUND_NINJA_FIRE         = 5;
+    public const SOUND_GRENADE_EXPLODE    = 6;
+    public const SOUND_NINJA_HIT          = 7;
+    public const SOUND_RIFLE_FIRE         = 8;
+    public const SOUND_RIFLE_BOUNCE       = 9;
+    public const SOUND_WEAPON_SWITCH      = 10;
+    public const SOUND_PLAYER_PAIN_SHORT  = 11;
+    public const SOUND_PLAYER_PAIN_LONG   = 12;
+    public const SOUND_BODY_LAND          = 13;
+    public const SOUND_PLAYER_AIRJUMP     = 14;
+    public const SOUND_PLAYER_JUMP        = 15;
+    public const SOUND_PLAYER_DIE         = 16;
+    public const SOUND_PLAYER_SPAWN       = 17;
+    public const SOUND_PLAYER_SKID        = 18;
+    public const SOUND_TEE_CRY            = 19;
+    public const SOUND_HOOK_LOOP          = 20;
     public const SOUND_HOOK_ATTACH_GROUND = 21;
     public const SOUND_HOOK_ATTACH_PLAYER = 22;
-    public const SOUND_HOOK_NOATTACH = 23;
-    public const SOUND_PICKUP_HEALTH = 24;
-    public const SOUND_PICKUP_ARMOR = 25;
-    public const SOUND_PICKUP_GRENADE = 26;
-    public const SOUND_PICKUP_SHOTGUN = 27;
-    public const SOUND_PICKUP_NINJA = 28;
-    public const SOUND_WEAPON_SPAWN = 29;
-    public const SOUND_WEAPON_NOAMMO = 30;
-    public const SOUND_HIT = 31;
-    public const SOUND_CHAT_SERVER = 32;
-    public const SOUND_CHAT_CLIENT = 33;
-    public const SOUND_CHAT_HIGHLIGHT = 34;
-    public const SOUND_CTF_DROP = 35;
-    public const SOUND_CTF_RETURN = 36;
-    public const SOUND_CTF_GRAB_PL = 37;
-    public const SOUND_CTF_GRAB_EN = 38;
-    public const SOUND_CTF_CAPTURE = 39;
-    public const SOUND_MENU = 40;
-    public const NUM_SOUNDS = 41;
+    public const SOUND_HOOK_NOATTACH      = 23;
+    public const SOUND_PICKUP_HEALTH      = 24;
+    public const SOUND_PICKUP_ARMOR       = 25;
+    public const SOUND_PICKUP_GRENADE     = 26;
+    public const SOUND_PICKUP_SHOTGUN     = 27;
+    public const SOUND_PICKUP_NINJA       = 28;
+    public const SOUND_WEAPON_SPAWN       = 29;
+    public const SOUND_WEAPON_NOAMMO      = 30;
+    public const SOUND_HIT                = 31;
+    public const SOUND_CHAT_SERVER        = 32;
+    public const SOUND_CHAT_CLIENT        = 33;
+    public const SOUND_CHAT_HIGHLIGHT     = 34;
+    public const SOUND_CTF_DROP           = 35;
+    public const SOUND_CTF_RETURN         = 36;
+    public const SOUND_CTF_GRAB_PL        = 37;
+    public const SOUND_CTF_GRAB_EN        = 38;
+    public const SOUND_CTF_CAPTURE        = 39;
+    public const SOUND_MENU               = 40;
+    public const NUM_SOUNDS               = 41;
 }

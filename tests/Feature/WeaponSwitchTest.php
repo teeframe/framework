@@ -1,16 +1,15 @@
 <?php
 
-use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\GameConstants;
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\CharacterWeaponState;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
-use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
 
-$makeChar = fn () => new PvpCharacterEntity(createWorld(new Map(__DIR__ . '/../dm1.map')), new Vector2(0, 0));
+$makeChar = fn () => new PvpCharacterEntity(createWorld(new Map(__DIR__.'/../dm1.map')), new Vector2(0, 0));
 
 /**
  * Helper: invoke a private method on CharacterEntity via reflection.
@@ -18,6 +17,7 @@ $makeChar = fn () => new PvpCharacterEntity(createWorld(new Map(__DIR__ . '/../d
 function invokePrivate(AbstractCharacterEntity $char, string $method, mixed ...$args): mixed
 {
     $ref = new ReflectionClass(AbstractCharacterEntity::class);
+
     return $ref->getMethod($method)->invoke($char, ...$args);
 }
 
@@ -26,25 +26,25 @@ function invokePrivate(AbstractCharacterEntity $char, string $method, mixed ...$
  */
 function createCharacterWithWorld(PlayerTee $tee): AbstractCharacterEntity
 {
-    $mapPath = __DIR__ . '/../dm1.map';
+    $mapPath = __DIR__.'/../dm1.map';
     if (! file_exists($mapPath)) {
-        throw new \RuntimeException('Map file not found: ' . $mapPath);
+        throw new RuntimeException('Map file not found: '.$mapPath);
     }
 
-    $map = new Map($mapPath);
+    $map       = new Map($mapPath);
     $collision = $map->getCollision();
 
     // Create a minimal mock world
-    $world = new class(new \TeeFrame\Core\TickHandler, $map) extends TestWorld
+    $world = new class(new TickHandler, $map) extends TestWorld
     {
         public function doTick(): void {}
     };
 
-    $character = new PvpCharacterEntity(createWorld(new Map(__DIR__ . '/../dm1.map')), new Vector2(0, 0));
+    $character = new PvpCharacterEntity(createWorld(new Map(__DIR__.'/../dm1.map')), new Vector2(0, 0));
     $character->spawn(new Vector2(100, 100), $tee);
 
     // Inject world via reflection (protected property from AbstractEntity)
-    $ref = new ReflectionClass($character);
+    $ref  = new ReflectionClass($character);
     $prop = $ref->getProperty('world');
     $prop->setValue($character, $world);
 
@@ -54,7 +54,7 @@ function createCharacterWithWorld(PlayerTee $tee): AbstractCharacterEntity
 // --- Spawn state ---
 
 test('character spawns with hammer and gun, gun active', function () use ($makeChar) {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
@@ -72,7 +72,7 @@ test('character spawns with hammer and gun, gun active', function () use ($makeC
 // --- Direct weapon selection ---
 
 test('direct weapon selection switches to hammer', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     // Feed 2 idle inputs to pass the m_NumInputs > 2 guard
@@ -88,7 +88,7 @@ test('direct weapon selection switches to hammer', function () {
 });
 
 test('direct weapon selection to unowned weapon is ignored', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     feedInput($character, input());
@@ -104,7 +104,7 @@ test('direct weapon selection to unowned weapon is ignored', function () {
 // --- Next weapon cycling ---
 
 test('next weapon cycles to hammer from gun', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     feedInput($character, input());
@@ -118,7 +118,7 @@ test('next weapon cycles to hammer from gun', function () {
 });
 
 test('next weapon skips unowned weapons', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     // Give shotgun so we can test skipping
@@ -142,7 +142,7 @@ test('next weapon skips unowned weapons', function () {
 // --- Previous weapon cycling ---
 
 test('prev weapon cycles from gun to hammer', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     feedInput($character, input());
@@ -156,7 +156,7 @@ test('prev weapon cycles from gun to hammer', function () {
 });
 
 test('prev weapon wraps around from hammer to gun', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     feedInput($character, input());
@@ -176,7 +176,7 @@ test('prev weapon wraps around from hammer to gun', function () {
 // --- CountInput press detection ---
 
 test('countInput detects single press', function () use ($makeChar) {
-    $ref = new ReflectionClass(AbstractCharacterEntity::class);
+    $ref    = new ReflectionClass(AbstractCharacterEntity::class);
     $method = $ref->getMethod('countInput');
 
     $character = $makeChar();
@@ -187,7 +187,7 @@ test('countInput detects single press', function () use ($makeChar) {
 });
 
 test('countInput detects multiple presses', function () use ($makeChar) {
-    $ref = new ReflectionClass(AbstractCharacterEntity::class);
+    $ref    = new ReflectionClass(AbstractCharacterEntity::class);
     $method = $ref->getMethod('countInput');
 
     $character = $makeChar();
@@ -199,7 +199,7 @@ test('countInput detects multiple presses', function () use ($makeChar) {
 });
 
 test('countInput returns zero for no change', function () use ($makeChar) {
-    $ref = new ReflectionClass(AbstractCharacterEntity::class);
+    $ref    = new ReflectionClass(AbstractCharacterEntity::class);
     $method = $ref->getMethod('countInput');
 
     $character = $makeChar();
@@ -209,7 +209,7 @@ test('countInput returns zero for no change', function () use ($makeChar) {
 });
 
 test('countInput wraps at INPUT_STATE_MASK', function () use ($makeChar) {
-    $ref = new ReflectionClass(AbstractCharacterEntity::class);
+    $ref    = new ReflectionClass(AbstractCharacterEntity::class);
     $method = $ref->getMethod('countInput');
 
     $character = $makeChar();
@@ -222,7 +222,7 @@ test('countInput wraps at INPUT_STATE_MASK', function () use ($makeChar) {
 // --- Reload guard ---
 
 test('weapon switch is blocked during reload', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     feedInput($character, input());
@@ -242,7 +242,7 @@ test('weapon switch is blocked during reload', function () {
 });
 
 test('queued weapon executes after reload ends', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     feedInput($character, input());
@@ -271,12 +271,12 @@ test('queued weapon executes after reload ends', function () {
 // --- Ninja lock ---
 
 test('cannot switch away from ninja', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     // Give ninja
     $character->weapons[GameConstants::WEAPON_NINJA] = new CharacterWeaponState(got: true, ammo: -1);
-    $character->activeWeapon = GameConstants::WEAPON_NINJA;
+    $character->activeWeapon                         = GameConstants::WEAPON_NINJA;
 
     feedInput($character, input());
     feedInput($character, input());
@@ -291,7 +291,7 @@ test('cannot switch away from ninja', function () {
 // --- giveWeapon ---
 
 test('giveWeapon grants a new weapon', function () use ($makeChar) {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
@@ -302,7 +302,7 @@ test('giveWeapon grants a new weapon', function () use ($makeChar) {
 });
 
 test('giveWeapon caps ammo at 10', function () use ($makeChar) {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
@@ -312,7 +312,7 @@ test('giveWeapon caps ammo at 10', function () use ($makeChar) {
 });
 
 test('giveWeapon returns false when already at max ammo', function () use ($makeChar) {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
@@ -322,7 +322,7 @@ test('giveWeapon returns false when already at max ammo', function () use ($make
 });
 
 test('giveWeapon returns false for invalid weapon', function () use ($makeChar) {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
@@ -336,7 +336,7 @@ test('giveWeapon returns false for invalid weapon', function () use ($makeChar) 
 // --- Snap reflects active weapon ---
 
 test('snap output reflects active weapon after switch', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     feedInput($character, input());
@@ -356,10 +356,10 @@ test('snap output reflects active weapon after switch', function () {
 // --- setWeapon via reflection ---
 
 test('setWeapon updates lastWeapon and clears queuedWeapon', function () use ($makeChar) {
-    $ref = new ReflectionClass(AbstractCharacterEntity::class);
+    $ref    = new ReflectionClass(AbstractCharacterEntity::class);
     $method = $ref->getMethod('setWeapon');
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
@@ -374,14 +374,14 @@ test('setWeapon updates lastWeapon and clears queuedWeapon', function () use ($m
 });
 
 test('setWeapon is no-op for same weapon', function () use ($makeChar) {
-    $ref = new ReflectionClass(AbstractCharacterEntity::class);
+    $ref    = new ReflectionClass(AbstractCharacterEntity::class);
     $method = $ref->getMethod('setWeapon');
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = $makeChar();
     $character->spawn(new Vector2(100, 100), $tee);
 
-    $oldLastWeapon = $character->lastWeapon;
+    $oldLastWeapon           = $character->lastWeapon;
     $character->queuedWeapon = GameConstants::WEAPON_HAMMER;
 
     $method->invoke($character, GameConstants::WEAPON_GUN); // same as active
@@ -394,7 +394,7 @@ test('setWeapon is no-op for same weapon', function () use ($makeChar) {
 // --- No-ammo behavior ---
 
 test('no ammo does not set attackTick', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     // Deplete gun ammo
@@ -416,7 +416,7 @@ test('no ammo does not set attackTick', function () {
 // --- First-tick input sync ---
 
 test('first tick syncs prevInputFire to avoid spurious presses', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     // The m_NumInputs > 2 guard ignores weapon switch/fire for the first 2 inputs.
@@ -433,7 +433,7 @@ test('first tick syncs prevInputFire to avoid spurious presses', function () {
 });
 
 test('second tick detects real fire press after first-tick sync', function () {
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $character = createCharacterWithWorld($tee);
 
     // Feed 2 inputs with fire=4 to establish baseline (m_NumInputs > 2 guard)

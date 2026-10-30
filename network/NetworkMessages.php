@@ -54,32 +54,31 @@ class NetworkMessages
     /*
      * Game Messages
      */
-    const SV_MOTD = 1;
-
-    const SV_BROADCAST  = 2;
-    const SV_CHAT = 3;
-
-    const SV_KILLMSG    = 4;
-    const SV_SOUNDGLOBAL = 5;
+    const SV_MOTD         = 1;
+    const SV_BROADCAST    = 2;
+    const SV_CHAT         = 3;
+    const SV_KILLMSG      = 4;
+    const SV_SOUNDGLOBAL  = 5;
     const SV_TUNEPARAMS   = 6;
+    // const SV_XXX          = 7;
     const SV_READYTOENTER = 8;
 
     // const SV_WEAPONPICKUP = 9;
-    const SV_EMOTICON         = 10;
-    const SV_VOTECLEAROPTIONS = 11;
-    const SV_VOTEOPTIONLISTADD = 12;
-    const SV_VOTEOPTIONADD    = 13;
-    const SV_VOTEOPTIONREMOVE = 14;
-    const SV_VOTESET          = 15;
-    const SV_VOTESTATUS       = 16;
-    const CL_SAY              = 17;
-    const CL_SET_TEAM         = 18;
+    const SV_EMOTICON           = 10;
+    const SV_VOTECLEAROPTIONS   = 11;
+    const SV_VOTEOPTIONLISTADD  = 12;
+    const SV_VOTEOPTIONADD      = 13;
+    const SV_VOTEOPTIONREMOVE   = 14;
+    const SV_VOTESET            = 15;
+    const SV_VOTESTATUS         = 16;
+    const CL_SAY                = 17;
+    const CL_SET_TEAM           = 18;
     const CL_SET_SPECTATOR_MODE = 19;
-    const CL_START_INFO       = 20;
-    const CL_KILL             = 22;
-    const CL_EMOTICON         = 23;
-    const CL_VOTE             = 24;
-    const CL_CALLVOTE         = 25;
+    const CL_START_INFO         = 20;
+    const CL_KILL               = 22;
+    const CL_EMOTICON           = 23;
+    const CL_VOTE               = 24;
+    const CL_CALLVOTE           = 25;
 
     /*
      * Snap Items
@@ -103,5 +102,5 @@ class NetworkMessages
     const NETEVENTTYPE_HAMMERHIT  = 16;
     const NETEVENTTYPE_DEATH      = 17;
     const NETEVENTTYPE_SOUNDWORLD = 19;
-    const NETEVENTTYPE_DAMAGEIND = 20;
+    const NETEVENTTYPE_DAMAGEIND  = 20;
 }

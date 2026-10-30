@@ -11,6 +11,5 @@ class VoteOption
         public string $description,
         public string $command,
         public ?VoteOption $next = null,
-    ) {
-    }
+    ) {}
 }

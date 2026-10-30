@@ -47,8 +47,8 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
         $tileX = (int) ((int) round($position->x) / 32);
         $tileY = (int) ((int) round($position->y) / 32);
 
-        return $tileX                  < -200 || $tileX > $collision->getWidth()  + 200
-                             || $tileY < -200 || $tileY > $collision->getHeight() + 200;
+        return $tileX < -200 || $tileX > $collision->getWidth() + 200
+            || $tileY < -200 || $tileY > $collision->getHeight() + 200;
     }
 
     public function isToDestroy(): bool

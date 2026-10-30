@@ -27,7 +27,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         $tickSpeed   = 50.0;
 
         $pt = ($currentTick - $this->startTick - 1) / $tickSpeed;
-        $ct = ($currentTick - $this->startTick)     / $tickSpeed;
+        $ct = ($currentTick - $this->startTick) / $tickSpeed;
 
         $prevPos = $this->getPos($pt);
         $curPos  = $this->getPos($ct);

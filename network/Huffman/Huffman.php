@@ -45,7 +45,7 @@ class Huffman
     public int $startNodeIndex;
 
     /**
-     * @param int[] $frequencies
+     * @param  int[]  $frequencies
      */
     public function __construct(array $frequencies = self::FREQ_TABLE)
     {
@@ -109,7 +109,7 @@ class Huffman
             $changed = false;
             for ($i = 0; $i < $size - 1; $i++) {
                 if ($nodeList[$indexList[$i]]->frequency < $nodeList[$indexList[$i + 1]]->frequency) {
-                    $temp               = $indexList[$i];
+                    $temp              = $indexList[$i];
                     $indexList[$i]     = $indexList[$i + 1];
                     $indexList[$i + 1] = $temp;
                     $changed           = true;
@@ -122,7 +122,7 @@ class Huffman
     }
 
     /**
-     * @param int[] $frequencies
+     * @param  int[]  $frequencies
      */
     public function constructTree(array $frequencies): void
     {
@@ -134,7 +134,7 @@ class Huffman
         }
 
         /** @var array<int, int> $nodesLeft */
-        $nodesLeft     = array_fill(0, self::HUFFMAN_MAX_SYMBOLS, 0);
+        $nodesLeft    = array_fill(0, self::HUFFMAN_MAX_SYMBOLS, 0);
         $numNodesLeft = self::HUFFMAN_MAX_SYMBOLS;
 
         for ($i = 0; $i < self::HUFFMAN_MAX_SYMBOLS; $i++) {
@@ -225,11 +225,11 @@ class Huffman
      */
     public function decompress(array $inputBuffer, int $size = 0): array
     {
-        $bits      = 0;
-        $bitCount  = 0;
-        $eof       = $this->nodes[self::HUFFMAN_EOF_SYMBOL];
+        $bits     = 0;
+        $bitCount = 0;
+        $eof      = $this->nodes[self::HUFFMAN_EOF_SYMBOL];
         /** @var int[] $output */
-        $output    = [];
+        $output = [];
 
         if ($size === 0) {
             $size = count($inputBuffer);

@@ -18,19 +18,12 @@ use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 class PvpGameController extends AbstractGameController
 {
     protected int $roundStartTick = 0;
-
-    protected int $gameOverTick = -1;
-
-    protected int $suddenDeath = 0;
-
-    protected int $warmup = 0;
-
-    protected int $unpauseTimer = 0;
-
-    protected int $roundCount = 0;
-
+    protected int $gameOverTick   = -1;
+    protected int $suddenDeath    = 0;
+    protected int $warmup         = 0;
+    protected int $unpauseTimer   = 0;
+    protected int $roundCount     = 0;
     protected int $unbalancedTick = -1;
-
     protected bool $forceBalanced = false;
 
     /**
@@ -111,8 +104,8 @@ class PvpGameController extends AbstractGameController
             $this->roundStartTick++;
         }
 
-        if ($this->isTeamMode && $this->teamBalanceTime    > 0 && $this->unbalancedTick !== -1
-                              && $this->tickHandler->get() > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
+        if ($this->isTeamMode && $this->teamBalanceTime > 0 && $this->unbalancedTick !== -1
+            && $this->tickHandler->get() > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
         ) {
             $this->balanceTeams();
             $this->unbalancedTick = -1;
@@ -184,7 +177,7 @@ class PvpGameController extends AbstractGameController
             }
 
             $scoreLimitReached = $this->scoreLimit > 0
-                && ($teamScore[GameConstants::TEAM_RED]     >= $this->scoreLimit
+                && ($teamScore[GameConstants::TEAM_RED] >= $this->scoreLimit
                     || $teamScore[GameConstants::TEAM_BLUE] >= $this->scoreLimit);
 
             if ($scoreLimitReached || $timeLimitReached) {
@@ -857,7 +850,8 @@ class PvpGameController extends AbstractGameController
                 $killerTee = $this->world?->findTee($killerTeeIndex);
                 $victimTee = $victim->tee;
                 if ($killerTee instanceof PlayerTee && $victimTee instanceof PlayerTee
-                                                    && $killerTee->team !== $victimTee->team) {
+                    && $killerTee->team !== $victimTee->team
+                ) {
                     $killerTee->score++;
                 }
 

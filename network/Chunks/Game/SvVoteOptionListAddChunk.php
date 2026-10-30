@@ -18,7 +18,7 @@ class SvVoteOptionListAddChunk extends AbstractChunk
     public const MAX_OPTIONS = 15;
 
     /**
-     * @param string[] $descriptions 1 to 15 vote option descriptions.
+     * @param  string[]  $descriptions  1 to 15 vote option descriptions.
      */
     public function __construct(public array $descriptions)
     {
@@ -40,7 +40,7 @@ class SvVoteOptionListAddChunk extends AbstractChunk
     public function getPayload(): RawPayload
     {
         $descriptions = array_values($this->descriptions);
-        $numOptions = count($descriptions);
+        $numOptions   = count($descriptions);
 
         $payload = (new RawPayload)->addInt($numOptions);
 

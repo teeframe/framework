@@ -9,9 +9,7 @@ abstract class AbstractSnapItem
 {
     protected int $id = -1;
 
-    public function __construct(protected int $itemId)
-    {
-    }
+    public function __construct(protected int $itemId) {}
 
     /**
      * @return int[]

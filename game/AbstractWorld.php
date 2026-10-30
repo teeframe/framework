@@ -16,8 +16,8 @@ use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\Vote\VoteController;
 use TeeFrame\Game\World\SnapIdPool;
-use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\World\TuneController;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
@@ -27,8 +27,8 @@ use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\ClSetSpectatorModeChunk;
 use TeeFrame\Network\Chunks\Game\ClSetTeamChunk;
 use TeeFrame\Network\Chunks\Game\ClVoteChunk;
-use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
 use TeeFrame\Network\NetworkParams;
@@ -70,18 +70,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected array $releasedTeeIndexes = [];
 
     protected SnapIdPool $snapIdPool;
-
     protected AbstractGameController $gameController;
-
     protected VoteController $voteController;
-
     protected TuneController $tuneController;
-
-    protected bool $paused = false;
-    protected bool $resetRequested = false;
-
-    protected ?Map $pendingMap = null;
-
+    protected bool $paused                                   = false;
+    protected bool $resetRequested                           = false;
+    protected ?Map $pendingMap                               = null;
     protected ?AbstractGameController $pendingGameController = null;
 
     public function __construct(
@@ -392,7 +386,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function clearEvents(): void
     {
-        $this->pendingEvents = [];
+        $this->pendingEvents           = [];
         $this->excludedEventTeeIndexes = [];
     }
 
@@ -441,7 +435,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 $tee->team = $autoTeam;
             }
 
-            $tee->spawning = true;
+            $tee->spawning       = true;
             $tee->lastActionTick = $this->getCurrentTick();
             $tee->scoreStartTick = $this->getCurrentTick();
 
@@ -831,9 +825,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         // Team change cooldown (mirrors CPlayer::m_TeamChangeTick)
         if ($tee->teamChangeTick > $currentTick) {
             $tee->lastSetTeam = $currentTick;
-            $timeLeft = (int) (($tee->teamChangeTick - $currentTick) / NetworkParams::TICKS_PER_SECOND);
-            $mins = (int) ($timeLeft / 60);
-            $secs = $timeLeft % 60;
+            $timeLeft         = (int) (($tee->teamChangeTick - $currentTick) / NetworkParams::TICKS_PER_SECOND);
+            $mins             = (int) ($timeLeft / 60);
+            $secs             = $timeLeft % 60;
             $this->server->sendToTee($this, $tee->teeIndex, new SvBroadcastChunk(
                 sprintf('Time to wait before changing team: %02d:%02d', $mins, $secs),
             ));

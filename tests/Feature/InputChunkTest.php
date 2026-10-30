@@ -1,7 +1,6 @@
 <?php
 
 use TeeFrame\Network\Chunks\System\InputChunk;
-use TeeFrame\Network\RawPayload;
 
 test('InputChunk round-trips correctly with fire=false', function () {
     $original = new InputChunk(

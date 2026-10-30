@@ -21,7 +21,7 @@ class TickHandler
     public function getTimeUntilTick(int $tick): int
     {
         $tickDuration = intdiv(1_000_000_000, NetworkParams::TICKS_PER_SECOND);
-        $deadline = $this->currentTickStartTime + ($tick - $this->currentTick) * $tickDuration;
+        $deadline     = $this->currentTickStartTime + ($tick - $this->currentTick) * $tickDuration;
 
         return (int) (($deadline - $this->getTime()) / 1_000_000);
     }

@@ -10,7 +10,7 @@ use TeeFrame\Network\RawPayload;
 class SnapSliceChunk extends AbstractChunk
 {
     /**
-     * @param int[] $snapPayload
+     * @param  int[]  $snapPayload
      */
     public function __construct(
         public int $currentTick,

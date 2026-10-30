@@ -8,9 +8,9 @@ use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
 use TeeFrame\Network\SnapItems\ObjEventDeathItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
-use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
 
 trait HasCharacterLifecycle
 {
@@ -64,7 +64,7 @@ trait HasCharacterLifecycle
 
         // Send the kill message to all clients (CNetMsg_Sv_KillMsg)
         $victimTeeIndex = $this->tee instanceof AbstractTee ? $this->tee->teeIndex : -1;
-        $killMsg = new SvKillMsgChunk(
+        $killMsg        = new SvKillMsgChunk(
             killer: $killerTeeIndex,
             victim: $victimTeeIndex,
             weapon: $weapon,

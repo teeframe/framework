@@ -20,21 +20,14 @@ class VoteController
     /** @var array<string, VoteOption> keyed by lowercase description */
     protected array $voteOptions = [];
 
-    protected int $voteCloseTime = 0;
-
-    protected int $voteCreator = -1;
-
+    protected int $voteCloseTime      = 0;
+    protected int $voteCreator        = -1;
     protected string $voteDescription = '';
-
-    protected string $voteCommand = '';
-
-    protected string $voteReason = '';
-
-    protected int $voteEnforce = VoteEnforce::UNKNOWN;
-
-    protected bool $voteUpdate = false;
-
-    protected int $votePos = 0;
+    protected string $voteCommand     = '';
+    protected string $voteReason      = '';
+    protected int $voteEnforce        = VoteEnforce::UNKNOWN;
+    protected bool $voteUpdate        = false;
+    protected int $votePos            = 0;
 
     /**
      * Vote duration in ticks (mirrors g_Config.m_SvVoteTime = 25 seconds).

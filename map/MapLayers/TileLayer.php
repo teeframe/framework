@@ -27,8 +27,8 @@ class TileLayer
         $rawTiles = [];
         $dataLen  = strlen($rawData);
         if ($this->width <= 0 || $this->height <= 0
-                              || $this->width > intdiv(intdiv(PHP_INT_MAX, 4), $this->height)
-                              || $dataLen % 4 !== 0
+            || $this->width > intdiv(intdiv(PHP_INT_MAX, 4), $this->height)
+            || $dataLen % 4 !== 0
         ) {
             throw new \RuntimeException('Invalid tile dimensions or incomplete tile record');
         }

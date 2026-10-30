@@ -2,17 +2,21 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\Entities\PickupEntity;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClSetSpectatorModeChunk;
 use TeeFrame\Network\Chunks\Game\ClSetTeamChunk;
 use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\RawPayload;
+use TeeFrame\Network\SnapItems\ObjPickupItem;
+use TeeFrame\Network\SnapItems\ObjSpectatorInfoItem;
 
-$mapPath   = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 function createSpectatorWorld(Map $map, TickHandler $tickHandler): AbstractWorld
@@ -94,7 +98,7 @@ test('setTeam broadcasts joined the spectators chat message', function () use ($
 
     $tee1->setTeam(GameConstants::TEAM_SPECTATORS);
 
-    $chats     = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof \TeeFrame\Network\Chunks\Game\SvChatChunk);
+    $chats     = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $joinChats = array_filter($chats, fn ($c) => str_contains($c->text, "'Joiner' joined the spectators"));
     expect($joinChats)->not->toBeEmpty();
 });
@@ -119,7 +123,7 @@ test('setTeam broadcasts joined the game chat message', function () use ($mapPat
     // Now move back to the game
     $tee->setTeam(GameConstants::TEAM_RED);
 
-    $chats     = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof \TeeFrame\Network\Chunks\Game\SvChatChunk);
+    $chats     = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $joinChats = array_filter($chats, fn ($c) => str_contains($c->text, "'Returner' joined the game"));
     expect($joinChats)->not->toBeEmpty();
 });
@@ -260,11 +264,11 @@ test('spectator info is included in snap for local spectator', function () use (
 
     $snaps = $world->doSnap($tee);
 
-    $specInfos = array_filter($snaps, fn ($s) => $s instanceof \TeeFrame\Network\SnapItems\ObjSpectatorInfoItem);
+    $specInfos = array_filter($snaps, fn ($s) => $s instanceof ObjSpectatorInfoItem);
     expect($specInfos)->toHaveCount(1);
 
     $specInfo = reset($specInfos);
-    assert($specInfo instanceof \TeeFrame\Network\SnapItems\ObjSpectatorInfoItem);
+    assert($specInfo instanceof ObjSpectatorInfoItem);
     expect($specInfo->spectatorId)->toBe(GameConstants::SPEC_FREEVIEW);
     expect($specInfo->x)->toBe(500);
     expect($specInfo->y)->toBe(300);
@@ -286,7 +290,7 @@ test('spectator info is not sent to non-spectators', function () use ($mapPath, 
     // tee is TEAM_RED, not a spectator
     $snaps = $world->doSnap($tee);
 
-    $specInfos = array_filter($snaps, fn ($s) => $s instanceof \TeeFrame\Network\SnapItems\ObjSpectatorInfoItem);
+    $specInfos = array_filter($snaps, fn ($s) => $s instanceof ObjSpectatorInfoItem);
     expect($specInfos)->toBeEmpty();
 });
 
@@ -374,7 +378,7 @@ test('spectator sees entities regardless of distance', function () use ($mapPath
 
     // Place a pickup very far away (well beyond the 1100 culling distance)
     $farPos = new Vector2(5000, 5000);
-    $pickup = new \TeeFrame\Game\Entities\PickupEntity(
+    $pickup = new PickupEntity(
         world: $world,
         position: $farPos,
         type: GameConstants::POWERUP_HEALTH,
@@ -384,7 +388,7 @@ test('spectator sees entities regardless of distance', function () use ($mapPath
     $snaps = $world->doSnap($spectator);
 
     // The spectator should see the pickup despite being far away
-    $pickupSnaps = array_filter($snaps, fn ($s) => $s instanceof \TeeFrame\Network\SnapItems\ObjPickupItem);
+    $pickupSnaps = array_filter($snaps, fn ($s) => $s instanceof ObjPickupItem);
     expect($pickupSnaps)->not->toBeEmpty();
 });
 
@@ -404,7 +408,7 @@ test('non-spectator does not see entities beyond culling distance', function () 
 
     // Place a pickup very far away
     $farPos = new Vector2(5000, 5000);
-    $pickup = new \TeeFrame\Game\Entities\PickupEntity(
+    $pickup = new PickupEntity(
         world: $world,
         position: $farPos,
         type: GameConstants::POWERUP_HEALTH,
@@ -414,6 +418,6 @@ test('non-spectator does not see entities beyond culling distance', function () 
     $snaps = $world->doSnap($player);
 
     // The player should NOT see the pickup (beyond 1100 culling distance)
-    $pickupSnaps = array_filter($snaps, fn ($s) => $s instanceof \TeeFrame\Network\SnapItems\ObjPickupItem);
+    $pickupSnaps = array_filter($snaps, fn ($s) => $s instanceof ObjPickupItem);
     expect($pickupSnaps)->toBeEmpty();
 });

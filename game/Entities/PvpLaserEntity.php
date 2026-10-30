@@ -4,8 +4,8 @@ namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
-use TeeFrame\Game\World\Vector2;
 use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\ObjLaserItem;
 
 class PvpLaserEntity extends AbstractLaserEntity
@@ -28,7 +28,7 @@ class PvpLaserEntity extends AbstractLaserEntity
     ) {
         parent::__construct($world, $position, $direction, $energy, $owner);
 
-        $tune = $world->getTuneController();
+        $tune              = $world->getTuneController();
         $this->bounceDelay = $tune->laserBounceDelay / 100.0;
         $this->bounceNum   = (int) ($tune->laserBounceNum / 100);
         $this->bounceCost  = $tune->laserBounceCost / 100.0;
@@ -50,7 +50,7 @@ class PvpLaserEntity extends AbstractLaserEntity
 
     public function tickPaused(): void
     {
-        ++$this->evalTick;
+        $this->evalTick++;
     }
 
     protected function doBounce(): void
@@ -79,13 +79,13 @@ class PvpLaserEntity extends AbstractLaserEntity
             // Check if a character was hit before the wall
             if (! $this->hitCharacter($this->position, $colPos)) {
                 // Bounce off wall
-                $this->from = clone $this->position;
+                $this->from     = clone $this->position;
                 $this->position = $colPos;
 
                 $tempPos = clone $this->position;
                 $tempDir = new Vector2($this->direction->x * 4, $this->direction->y * 4);
                 $collision->movePoint($tempPos, $tempDir, 1.0);
-                $this->position = $tempPos;
+                $this->position  = $tempPos;
                 $this->direction = (new Vector2($tempDir->x, $tempDir->y))->normalize();
 
                 $this->energy -= $this->position->distance($this->from) + $this->bounceCost;
@@ -98,15 +98,15 @@ class PvpLaserEntity extends AbstractLaserEntity
                 $this->doBounce();
             }
         } elseif (! $this->hitCharacter($this->position, $to)) {
-            $this->from    = clone $this->position;
+            $this->from     = clone $this->position;
             $this->position = $to;
-            $this->energy  = -1;
+            $this->energy   = -1;
         }
     }
 
     protected function hitCharacter(Vector2 $from, Vector2 $to): bool
     {
-        $closestDist = PHP_FLOAT_MAX;
+        $closestDist   = PHP_FLOAT_MAX;
         $closestEntity = null;
 
         foreach ($this->world->getEntities() as $entity) {
@@ -120,21 +120,21 @@ class PvpLaserEntity extends AbstractLaserEntity
             }
 
             // Check intersection with character hitbox
-            $radius = $entity->getHitBoxRadius();
+            $radius    = $entity->getHitBoxRadius();
             $projected = $this->closestPointOnLine($from, $to, $entity->getPosition());
 
             $dist = $projected->distance($entity->getPosition());
             if ($dist <= $radius) {
                 $lineDist = $projected->distance($from);
                 if ($lineDist < $closestDist) {
-                    $closestDist = $lineDist;
+                    $closestDist   = $lineDist;
                     $closestEntity = $entity;
                 }
             }
         }
 
         if ($closestEntity !== null) {
-            $this->from = clone $from;
+            $this->from     = clone $from;
             $this->position = new Vector2(
                 $closestEntity->getPosition()->x,
                 $closestEntity->getPosition()->y,
@@ -150,8 +150,8 @@ class PvpLaserEntity extends AbstractLaserEntity
 
     protected function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd, Vector2 $point): Vector2
     {
-        $dx = $lineEnd->x - $lineStart->x;
-        $dy = $lineEnd->y - $lineStart->y;
+        $dx    = $lineEnd->x - $lineStart->x;
+        $dy    = $lineEnd->y - $lineStart->y;
         $lenSq = $dx * $dx + $dy * $dy;
 
         if ($lenSq < 0.0001) {

@@ -15,9 +15,7 @@ class ConnectionHandler
      */
     protected array $slots = [];
 
-    public function __construct(protected TickHandler $tickHandler)
-    {
-    }
+    public function __construct(protected TickHandler $tickHandler) {}
 
     public function startNew(AbstractSocket $socket, AbstractWorld $world): ConnectionSlot|false
     {
@@ -33,7 +31,7 @@ class ConnectionHandler
     }
 
     /**
-     * @param array{address: string, port: int} $clientInfo
+     * @param  array{address: string, port: int}  $clientInfo
      */
     public function tryToMatch(array $clientInfo): ConnectionSlot|false
     {
@@ -73,7 +71,6 @@ class ConnectionHandler
         return count($connections) >= $world->getSlotsLimit();
     }
 
-
     /**
      * @return ConnectionSlot[]
      */
@@ -88,7 +85,6 @@ class ConnectionHandler
             if ($connection->state === ConnectionSlot::STATE_CLOSED) {
                 unset($this->slots[$i]);
             }
-
 
         }
 

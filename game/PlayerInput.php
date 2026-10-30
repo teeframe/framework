@@ -18,6 +18,5 @@ final class PlayerInput
         public readonly int $wantedWeapon,
         public readonly int $nextWeapon,
         public readonly int $prevWeapon,
-    ) {
-    }
+    ) {}
 }

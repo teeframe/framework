@@ -9,9 +9,7 @@ abstract class AbstractChunk
 {
     protected int $sequence = -1;
 
-    public function __construct(protected int $flags, protected int $message, protected bool $isSystem = false)
-    {
-    }
+    public function __construct(protected int $flags, protected int $message, protected bool $isSystem = false) {}
 
     abstract public function getPayload(): RawPayload;
 
@@ -60,7 +58,7 @@ abstract class AbstractChunk
 
         if ($this->flags & NetworkBase::CHUNK_FLAG_VITAL) {
             $header[1] |= ($this->sequence >> 2) & 0xF0;
-            $header[2] = $this->sequence         & 0xFF;
+            $header[2] = $this->sequence & 0xFF;
         }
 
         $message = $this->message;

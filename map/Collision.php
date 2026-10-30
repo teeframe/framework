@@ -19,9 +19,7 @@ class Collision
     protected int $width  = 0;
     protected int $height = 0;
 
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     public function init(GameLayer $gameLayer): void
     {
@@ -36,6 +34,7 @@ class Collision
 
             if ($index > 128) {
                 $this->tiles[] = 0;
+
                 continue;
             }
 

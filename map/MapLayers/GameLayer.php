@@ -5,18 +5,18 @@ namespace TeeFrame\Map\MapLayers;
 class GameLayer extends TileLayer
 {
     // Entity types (tile indices > 0 and <= ENTITY_OFFSET)
-    public const ENTITY_NULL          = 0;
-    public const ENTITY_SPAWN         = 192;
-    public const ENTITY_SPAWN_RED     = 193;
-    public const ENTITY_SPAWN_BLUE    = 194;
-    public const ENTITY_FLAGSTAND_RED = 195;
+    public const ENTITY_NULL           = 0;
+    public const ENTITY_SPAWN          = 192;
+    public const ENTITY_SPAWN_RED      = 193;
+    public const ENTITY_SPAWN_BLUE     = 194;
+    public const ENTITY_FLAGSTAND_RED  = 195;
     public const ENTITY_FLAGSTAND_BLUE = 196;
-    public const ENTITY_ARMOR_1       = 197;
-    public const ENTITY_HEALTH_1      = 198;
+    public const ENTITY_ARMOR_1        = 197;
+    public const ENTITY_HEALTH_1       = 198;
     public const ENTITY_WEAPON_SHOTGUN = 199;
     public const ENTITY_WEAPON_GRENADE = 200;
-    public const ENTITY_POWERUP_NINJA = 201;
-    public const ENTITY_WEAPON_RIFLE  = 202;
+    public const ENTITY_POWERUP_NINJA  = 201;
+    public const ENTITY_WEAPON_RIFLE   = 202;
 
     // Collision tile types
     public const TILE_AIR    = 0;

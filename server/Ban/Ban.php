@@ -11,8 +11,7 @@ class Ban
         public string $address,
         public int $expiry,
         public string $reason,
-    ) {
-    }
+    ) {}
 
     public function isExpired(int $now): bool
     {

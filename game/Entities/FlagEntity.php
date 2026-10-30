@@ -9,21 +9,17 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjFlagItem;
 
-
 class FlagEntity extends AbstractEntity
 {
     public const PHYS_SIZE = 14;
 
     public Vector2 $vel;
     public Vector2 $standPos;
-
-    /** @var AbstractCharacterEntity|null */
-    public ?AbstractCharacterEntity $carryingCharacter = null;
-
     public int $team;
-    public bool $atStand = true;
-    public int $dropTick = 0;
-    public int $grabTick = 0;
+    public ?AbstractCharacterEntity $carryingCharacter = null;
+    public bool $atStand                               = true;
+    public int $dropTick                               = 0;
+    public int $grabTick                               = 0;
 
     public function __construct(AbstractWorld $world, Vector2 $position, int $team)
     {
@@ -52,9 +48,9 @@ class FlagEntity extends AbstractEntity
 
     public function tickPaused(): void
     {
-        ++$this->dropTick;
+        $this->dropTick++;
         if ($this->grabTick !== 0) {
-            ++$this->grabTick;
+            $this->grabTick++;
         }
     }
 

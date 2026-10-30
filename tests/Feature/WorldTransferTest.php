@@ -34,8 +34,8 @@ use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\AbstractPacket;
-use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
+use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
@@ -69,7 +69,7 @@ class WorldTransferTestSocket extends AbstractSocket
         $packet = WorldTransferTestPacketDecoder::decodeFromRaw($send_data);
         assert($packet instanceof AbstractPacket);
         $this->packets[] = $packet;
-        $this->sent[] = ['address' => $ip, 'port' => $port, 'packet' => $packet];
+        $this->sent[]    = ['address' => $ip, 'port' => $port, 'packet' => $packet];
 
         return true;
     }
@@ -112,12 +112,12 @@ class WorldTransferTestServer extends AbstractServerInstance
     public function __construct(int $dmSlots = 64, int $ctfSlots = 64)
     {
         parent::__construct(new TickHandler(1000), name: 'Multiworld test');
-        $this->socket = new WorldTransferTestSocket;
-        $dmController = new PvpGameController($this->tickHandler);
+        $this->socket  = new WorldTransferTestSocket;
+        $dmController  = new PvpGameController($this->tickHandler);
         $ctfController = new PvpGameController($this->tickHandler, isTeamMode: true, isCaptureTheFlag: true);
-        $this->dm = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../dm1.map'), $dmController, $this, $dmSlots);
-        $this->ctf = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../ctf1.map'), $ctfController, $this, $ctfSlots);
-        $this->worlds = [$this->dm, $this->ctf];
+        $this->dm      = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../dm1.map'), $dmController, $this, $dmSlots);
+        $this->ctf     = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../ctf1.map'), $ctfController, $this, $ctfSlots);
+        $this->worlds  = [$this->dm, $this->ctf];
         foreach ($this->worlds as $world) {
             $world->registerCommand(new WorldTransferTestCommand($this->dm));
             $world->registerCommand(new WorldTransferTestCommand($this->ctf));
@@ -208,7 +208,7 @@ function worldTransferInfoCount(WorldTransferTestSocket $socket): int
 
 test('new clients enter DM through the normal map handshake and transport ACKs advance', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     expect($slot->world())->toBe($server->dm);
     expect($slot->state)->toBe(ConnectionSlot::STATE_CONNECTING);
 
@@ -227,17 +227,17 @@ test('new clients enter DM through the normal map handshake and transport ACKs a
 
 test('a chat command transfers a player without resetting the transport or leaking world state', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->advance();
-    $oldTee = $slot->playerTee();
-    $character = $oldTee->character;
-    $oldTee->score = 15;
-    $oldTee->inputs[1002] = input(['direction' => 1]);
-    $oldTee->vote = 1;
-    $oldTee->spectatorId = 10;
-    $oldSequence = $slot->sequence;
-    $oldAck = $slot->ack;
+    $oldTee                  = $slot->playerTee();
+    $character               = $oldTee->character;
+    $oldTee->score           = 15;
+    $oldTee->inputs[1002]    = input(['direction' => 1]);
+    $oldTee->vote            = 1;
+    $oldTee->spectatorId     = 10;
+    $oldSequence             = $slot->sequence;
+    $oldAck                  = $slot->ack;
     $server->socket->packets = [];
 
     $server->send($slot, new ClSayChunk(false, '/ctf'), worldTransferInput(), new ClSayChunk(false, '/dm'));
@@ -276,7 +276,7 @@ test('a chat command transfers a player without resetting the transport or leaki
 
 test('map transfers repeat ready start-info and enter-game then start with fresh snapshots', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->advance();
     $server->send($slot, new ClSayChunk(false, '/ctf'));
@@ -316,7 +316,7 @@ test('map transfers repeat ready start-info and enter-game then start with fresh
 
 test('entering another world resolves name collisions and joins the smaller CTF team', function () {
     $server = new WorldTransferTestServer;
-    $first = $server->connect();
+    $first  = $server->connect();
     $server->enter($first);
     $server->changeWorld($first->playerTee(), $server->ctf);
     $server->enter($first);
@@ -337,12 +337,12 @@ test('entering another world resolves name collisions and joins the smaller CTF 
 
 test('map download requests after a transfer serve the destination map', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->changeWorld($slot->playerTee(), $server->ctf);
     $server->socket->packets = [];
-    $map = $server->ctf->getMap();
-    $lastChunk = intdiv($map->getSize() - 1, 896);
+    $map                     = $server->ctf->getMap();
+    $lastChunk               = intdiv($map->getSize() - 1, 896);
 
     $server->send($slot, new RequestMapDataChunk(0));
     $server->send($slot, new RequestMapDataChunk($lastChunk));
@@ -359,14 +359,14 @@ test('map download requests after a transfer serve the destination map', functio
 
 test('a loading client reserves its destination slot and a rejected switch leaves the source intact', function () {
     $server = new WorldTransferTestServer(ctfSlots: 1);
-    $first = $server->connect();
+    $first  = $server->connect();
     $server->enter($first);
     expect($server->changeWorld($first->playerTee(), $server->ctf))->toBeTrue();
     $second = $server->connect(8301);
     $server->enter($second);
     $server->advance();
-    $tee = $second->playerTee();
-    $character = $tee->character;
+    $tee                     = $second->playerTee();
+    $character               = $tee->character;
     $server->socket->packets = [];
 
     expect($server->changeWorld($tee, $server->ctf))->toBeFalse();
@@ -404,7 +404,7 @@ test('a single-world server keeps the default server full rejection message', fu
 
 test('a full entry world rejects connections even when other worlds have free slots', function () {
     $server = new WorldTransferTestServer(dmSlots: 1, ctfSlots: 1);
-    $first = $server->connect();
+    $first  = $server->connect();
     $server->enter($first);
     $server->receive(new ConnectionlessPacket(NetworkMessages::SERVERBROWSE_GETINFO.chr(42), extraToken: 0), 9000);
     $fields = worldTransferInfoFields($server->socket, 9000);
@@ -431,7 +431,7 @@ test('a full entry world rejects connections even when other worlds have free sl
 
 test('entry world slots are reserved throughout the handshake and released on disconnect', function (int $state) {
     $server = new WorldTransferTestServer(dmSlots: 1, ctfSlots: 4);
-    $first = $server->connect();
+    $first  = $server->connect();
     if ($state === ConnectionSlot::STATE_INGAME) {
         $server->enter($first);
     } else {
@@ -466,7 +466,7 @@ test('entry world slots are reserved throughout the handshake and released on di
 
 test('world changes reject unregistered destinations unknown tees and clients already loading', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     expect($server->changeWorld($slot->playerTee(), $server->ctf))->toBeFalse();
     $server->enter($slot);
     $foreignServer = new WorldTransferTestServer;
@@ -480,12 +480,12 @@ test('world changes reject unregistered destinations unknown tees and clients al
 
 test('Client receives world info on its gameplay socket after acknowledging a newer snapshot', function () {
     $server = new WorldTransferTestServer(dmSlots: 12, ctfSlots: 36);
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->socket->sent = [];
     $server->advance(2);
     $sequence = $slot->sequence;
-    $ack = $slot->ack;
+    $ack      = $slot->ack;
 
     $server->send($slot, worldTransferInput(1003, ackTick: 1000));
     expect(worldTransferInfoCount($server->socket))->toBe(0);
@@ -507,7 +507,7 @@ test('Client receives world info on its gameplay socket after acknowledging a ne
 
 test('Client receives the destination gamemode and capacity again after a world switch', function () {
     $server = new WorldTransferTestServer(dmSlots: 12, ctfSlots: 36);
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->advance(2);
     $server->send($slot, worldTransferInput(1003, ackTick: 1001));
@@ -531,7 +531,7 @@ test('Client receives the destination gamemode and capacity again after a world 
 
 test('Client contact queries get aggregate info then each gameplay endpoint gets its own world', function () {
     $server = new WorldTransferTestServer(dmSlots: 32, ctfSlots: 64);
-    $dm = $server->connect(8300);
+    $dm     = $server->connect(8300);
     $server->enter($dm);
     $ctf = $server->connect(8301);
     $server->enter($ctf);
@@ -559,7 +559,7 @@ test('Client contact queries get aggregate info then each gameplay endpoint gets
     $server->send($ctf, worldTransferInput(1005, ackTick: 1003));
 
     expect(worldTransferInfoCount($server->socket))->toBe(3);
-    $dmFields = worldTransferInfoFields($server->socket, 8300);
+    $dmFields  = worldTransferInfoFields($server->socket, 8300);
     $ctfFields = worldTransferInfoFields($server->socket, 8301);
     expect([$dmFields[0], $dmFields[3], $dmFields[6], $dmFields[11]])->toBe(['-1', 'dm1', 'DM', '32']);
     expect([$ctfFields[0], $ctfFields[3], $ctfFields[6], $ctfFields[11]])->toBe(['-1', 'ctf1', 'CTF', '64']);
@@ -570,7 +570,7 @@ test('Client contact queries get aggregate info then each gameplay endpoint gets
 
 test('reset and world loading do not send a stale queued world info update', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->changeWorld($slot->playerTee(), $server->ctf);
     $server->socket->sent = [];
@@ -587,19 +587,19 @@ test('reset and world loading do not send a stale queued world info update', fun
 
 test('leaving CTF drops carried flags and resets spectators following the departing tee', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->changeWorld($slot->playerTee(), $server->ctf);
     $server->enter($slot);
     $server->advance();
-    $tee = $slot->playerTee();
+    $tee  = $slot->playerTee();
     $flag = $server->ctf->getGameController()->getFlag(GameConstants::TEAM_BLUE);
     assert($flag !== null);
     $flag->carryingCharacter = $tee->character;
-    $flag->atStand = false;
-    $spectator = new PlayerTee;
+    $flag->atStand           = false;
+    $spectator               = new PlayerTee;
     $server->ctf->addTee($spectator);
-    $spectator->team = GameConstants::TEAM_SPECTATORS;
+    $spectator->team        = GameConstants::TEAM_SPECTATORS;
     $spectator->spectatorId = $tee->teeIndex;
 
     expect($server->changeWorld($tee, $server->dm))->toBeTrue();
@@ -611,31 +611,31 @@ test('leaving CTF drops carried flags and resets spectators following the depart
 
 test('a passed map vote reloads only its world and restarts map loading without resetting transport', function (string $mapName) {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $other = $server->connect(8301);
     $server->enter($other);
     $server->changeWorld($other->playerTee(), $server->ctf);
     $server->enter($other);
     $server->advance();
-    $oldTee = $slot->playerTee();
-    $character = $oldTee->character;
+    $oldTee               = $slot->playerTee();
+    $character            = $oldTee->character;
     $oldTee->inputs[2000] = input(['direction' => 1]);
-    $oldTee->score = 15;
+    $oldTee->score        = 15;
     $slot->snaps()->setLastAckedTick(1000);
-    $otherTee = $other->playerTee();
-    $otherCharacter = $otherTee->character;
+    $otherTee               = $other->playerTee();
+    $otherCharacter         = $otherTee->character;
     $otherTee->inputs[2000] = input(['direction' => -1]);
-    $otherTee->score = 20;
-    $otherMap = $server->ctf->getMap();
-    $otherFlags = $server->ctf->getGameController()->getFlags();
-    $command = new ChangeMapCommand($mapName, 'A different arena');
+    $otherTee->score        = 20;
+    $otherMap               = $server->ctf->getMap();
+    $otherFlags             = $server->ctf->getGameController()->getFlags();
+    $command                = new ChangeMapCommand($mapName, 'A different arena');
     $server->dm->registerCommand($command);
     $server->dm->getVoteController()->addVoteOption($command->getDescription(), $command->getCommand());
     $server->send($slot, new ClCallVoteChunk('option', $command->getDescription(), ''));
     expect($server->dm->getVoteController()->isVoteRunning())->toBeTrue();
-    $sequence = $slot->sequence;
-    $ack = $slot->ack;
+    $sequence                = $slot->sequence;
+    $ack                     = $slot->ack;
     $server->socket->packets = [];
     $server->advance();
 
@@ -672,7 +672,7 @@ test('a passed map vote reloads only its world and restarts map loading without 
     expect($server->ctf->getGameController()->getFlags())->toBe($otherFlags);
     expect($server->ctf->getTees())->toBe([$otherTee]);
 
-    $chunks = $server->socket->chunks();
+    $chunks  = $server->socket->chunks();
     $changes = array_values(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
     expect($changes)->toHaveCount(1);
     expect([$changes[0]->mapName, $changes[0]->crc, $changes[0]->size])->toBe($server->dm->getMapInfo());
@@ -682,12 +682,12 @@ test('a passed map vote reloads only its world and restarts map loading without 
         'Changing map to '.$mapName.' (A different arena)',
         'Vote passed',
     ]);
-    $voteEnds = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
+    $voteEnds   = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
     $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
     expect($voteEnds[0])->toBeLessThan($mapChanges[0]);
 
-    $map = $server->dm->getMap();
-    $lastChunk = intdiv($map->getSize() - 1, 896);
+    $map                     = $server->dm->getMap();
+    $lastChunk               = intdiv($map->getSize() - 1, 896);
     $server->socket->packets = [];
     $server->send($slot, new RequestMapDataChunk(0));
     $server->send($slot, new RequestMapDataChunk($lastChunk));
@@ -716,7 +716,7 @@ test('a passed map vote reloads only its world and restarts map loading without 
 
 test('map reload restarts authenticated loading phases but does not bypass the initial INFO validation', function (int $state) {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     if ($state >= ConnectionSlot::STATE_LOADING) {
         $server->send($slot, new InfoChunk('0.6 626fce9a778df4d4'));
     }
@@ -724,7 +724,7 @@ test('map reload restarts authenticated loading phases but does not bypass the i
         $server->send($slot, new ReadyChunk);
     }
     expect($slot->state)->toBe($state);
-    $ack = $slot->ack;
+    $ack                     = $slot->ack;
     $server->socket->packets = [];
     $server->dm->changeMap('ctf1');
     $server->advance();
@@ -747,7 +747,7 @@ test('map reload restarts authenticated loading phases but does not bypass the i
 
 test('a client awaiting INFO receives the new map only after successful authentication', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->dm->changeMap('ctf1');
     $server->advance();
     $server->socket->packets = [];
@@ -761,13 +761,13 @@ test('a client awaiting INFO receives the new map only after successful authenti
 
 test('a failed map vote reports the load failure and leaves players on the current map', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->advance();
-    $tee = $slot->playerTee();
+    $tee       = $slot->playerTee();
     $character = $tee->character;
-    $map = $server->dm->getMap();
-    $command = new ChangeMapCommand('missing-map');
+    $map       = $server->dm->getMap();
+    $command   = new ChangeMapCommand('missing-map');
     $server->dm->registerCommand($command);
     $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), ''));
     $server->socket->packets = [];
@@ -786,7 +786,7 @@ test('a failed map vote reports the load failure and leaves players on the curre
 
 test('chat cannot execute a vote-only map command', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $map = $server->dm->getMap();
     $server->dm->registerCommand(new ChangeMapCommand('ctf1'));
@@ -801,7 +801,7 @@ test('chat cannot execute a vote-only map command', function () {
 
 test('gamemode votes reset only their world and players rejoin with the new teams flags and server info', function () {
     $server = new WorldTransferTestServer(dmSlots: 8, ctfSlots: 12);
-    $first = $server->connect();
+    $first  = $server->connect();
     $server->enter($first);
     $second = $server->connect(8301);
     $server->enter($second);
@@ -810,24 +810,24 @@ test('gamemode votes reset only their world and players rejoin with the new team
     $server->changeWorld($other->playerTee(), $server->ctf);
     $server->enter($other);
     $server->advance();
-    $otherTee = $other->playerTee();
-    $otherCharacter = $otherTee->character;
+    $otherTee        = $other->playerTee();
+    $otherCharacter  = $otherTee->character;
     $otherController = $server->ctf->getGameController();
-    $otherFlags = $otherController->getFlags();
+    $otherFlags      = $otherController->getFlags();
 
     foreach (['ctf', 'tdm', 'dm'] as $mode) {
         $command = new ChangeGameModeCommand($mode, reason: 'Try another mode', mapName: $mode === 'ctf' ? 'ctf1' : null);
         $server->dm->registerCommand($command);
         $server->dm->getVoteController()->addVoteOption($command->getDescription(), $command->getCommand());
-        $oldTee = $first->playerTee();
-        $oldCharacter = $oldTee->character;
-        $oldTee->score = 15;
+        $oldTee               = $first->playerTee();
+        $oldCharacter         = $oldTee->character;
+        $oldTee->score        = 15;
         $oldTee->inputs[2000] = input(['direction' => 1]);
-        $oldController = $server->dm->getGameController();
+        $oldController        = $server->dm->getGameController();
         $server->send($first, new ClCallVoteChunk('option', $command->getDescription(), ''));
         $server->send($second, new ClVoteChunk(1));
-        $sequence = $first->sequence;
-        $ack = $first->ack;
+        $sequence                = $first->sequence;
+        $ack                     = $first->ack;
         $server->socket->packets = [];
         $server->advance();
 
@@ -864,7 +864,7 @@ test('gamemode votes reset only their world and players rejoin with the new team
         expect(array_filter($chunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk))->toBeEmpty();
         $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
         expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Changing gamemode to '.strtoupper($mode).' (Try another mode)', 'Vote passed');
-        $voteEnds = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
+        $voteEnds   = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
         $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
         assert($voteEnds !== [] && $mapChanges !== []);
         expect(max($voteEnds))->toBeLessThan(min($mapChanges));
@@ -885,8 +885,8 @@ test('gamemode votes reset only their world and players rejoin with the new team
         $info = $controller->doSnap($first->playerTee())[0];
         assert($info instanceof ObjGameInfoItem);
         $expectedFlags = match ($mode) {
-            'ctf' => GameConstants::GAMEFLAG_TEAMS | GameConstants::GAMEFLAG_FLAGS,
-            'tdm' => GameConstants::GAMEFLAG_TEAMS,
+            'ctf'   => GameConstants::GAMEFLAG_TEAMS | GameConstants::GAMEFLAG_FLAGS,
+            'tdm'   => GameConstants::GAMEFLAG_TEAMS,
             default => 0,
         };
         expect($info->gameFlags)->toBe($expectedFlags);
@@ -900,14 +900,14 @@ test('gamemode votes reset only their world and players rejoin with the new team
 
 test('failed gamemode votes keep the active match and report the failure', function (string $mode, ?string $mapName) {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->advance();
-    $tee = $slot->playerTee();
-    $character = $tee->character;
-    $map = $server->dm->getMap();
+    $tee        = $slot->playerTee();
+    $character  = $tee->character;
+    $map        = $server->dm->getMap();
     $controller = $server->dm->getGameController();
-    $command = new ChangeGameModeCommand($mode, mapName: $mapName);
+    $command    = new ChangeGameModeCommand($mode, mapName: $mapName);
     $server->dm->registerCommand($command);
     $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), ''));
     $server->socket->packets = [];
@@ -926,12 +926,12 @@ test('failed gamemode votes keep the active match and report the failure', funct
     expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Unable to change gamemode to '.strtoupper($mode));
 })->with([
     'unsupported mode' => ['unknown', null],
-    'missing map' => ['ctf', 'missing-map'],
+    'missing map'      => ['ctf', 'missing-map'],
 ]);
 
 test('chat cannot execute a vote-only gamemode command', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $controller = $server->dm->getGameController();
     $server->dm->registerCommand(new ChangeGameModeCommand('ctf', mapName: 'ctf1'));
@@ -946,18 +946,18 @@ test('chat cannot execute a vote-only gamemode command', function () {
 
 test('a plain world reload restarts its clients without resetting transport or other worlds', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $other = $server->connect(8301);
     $server->enter($other);
     $server->changeWorld($other->playerTee(), $server->ctf);
     $server->enter($other);
     $server->advance();
-    $tee = $slot->playerTee();
-    $otherTee = $other->playerTee();
-    $otherMap = $server->ctf->getMap();
-    $sequence = $slot->sequence;
-    $ack = $slot->ack;
+    $tee                     = $slot->playerTee();
+    $otherTee                = $other->playerTee();
+    $otherMap                = $server->ctf->getMap();
+    $sequence                = $slot->sequence;
+    $ack                     = $slot->ack;
     $server->socket->packets = [];
 
     $server->dm->reload();
@@ -983,11 +983,11 @@ test('a plain world reload restarts its clients without resetting transport or o
 
 test('reload votes finish before reloading and cannot be executed through chat', function () {
     $server = new WorldTransferTestServer;
-    $slot = $server->connect();
+    $slot   = $server->connect();
     $server->enter($slot);
     $server->advance();
-    $map = $server->dm->getMap();
-    $tee = $slot->playerTee();
+    $map     = $server->dm->getMap();
+    $tee     = $slot->playerTee();
     $command = new ReloadCommand;
     $server->dm->registerCommand($command);
     $votes = $server->dm->getVoteController();
@@ -1000,8 +1000,8 @@ test('reload votes finish before reloading and cannot be executed through chat',
     $server->send($slot, new ClCallVoteChunk('option', 'Reload', ''));
     expect($votes->isVoteRunning())->toBeTrue();
     expect($server->dm->getMap())->toBe($map);
-    $sequence = $slot->sequence;
-    $ack = $slot->ack;
+    $sequence                = $slot->sequence;
+    $ack                     = $slot->ack;
     $server->socket->packets = [];
     $server->advance();
 
@@ -1013,9 +1013,9 @@ test('reload votes finish before reloading and cannot be executed through chat',
     expect($server->dm->getMap())->not()->toBe($map);
     expect($server->dm->getMapInfo())->toBe([$map->getName(), $map->getCrc(), $map->getSize()]);
     $chunks = $server->socket->chunks();
-    $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+    $chats  = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
     expect(array_values(array_map(fn ($chunk) => $chunk->text, $chats)))->toBe(['Reloading world', 'Vote passed']);
-    $voteEnds = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
+    $voteEnds   = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
     $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
     expect($voteEnds)->toHaveCount(1);
     expect($mapChanges)->toHaveCount(1);

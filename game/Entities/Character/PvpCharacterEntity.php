@@ -12,11 +12,9 @@ use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
 class PvpCharacterEntity extends AbstractCharacterEntity
 {
-    public int $damageTaken = 0;
-
+    public int $damageTaken     = 0;
     public int $damageTakenTick = 0;
-
-    public int $ammoRegenStart = -1;
+    public int $ammoRegenStart  = -1;
 
     protected function shootHammer(): int
     {
@@ -114,7 +112,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             owner: $this->tee->teeIndex,
         );
         $proj->setTuning(
-            $tune->gunSpeed     / 100.0,
+            $tune->gunSpeed / 100.0,
             $tune->gunCurvature / 100.0,
             (int) ($tune->gunLifetime / 2),
         );
@@ -201,7 +199,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             owner: $this->tee->teeIndex,
         );
         $proj->setTuning(
-            $tune->grenadeSpeed     / 100.0,
+            $tune->grenadeSpeed / 100.0,
             $tune->grenadeCurvature / 100.0,
             (int) ($tune->grenadeLifetime / 2),
         );
@@ -342,10 +340,10 @@ class PvpCharacterEntity extends AbstractCharacterEntity
     {
         parent::tickPaused();
 
-        ++$this->damageTakenTick;
+        $this->damageTakenTick++;
 
         if ($this->ammoRegenStart > -1) {
-            ++$this->ammoRegenStart;
+            $this->ammoRegenStart++;
         }
     }
 
@@ -404,7 +402,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function createDamageInd(float $angleMod, int $amount): void
     {
-        $a = 3 * M_PI  / 2 + $angleMod;
+        $a = 3 * M_PI / 2 + $angleMod;
         $s = $a - M_PI / 3;
         $e = $a + M_PI / 3;
 
