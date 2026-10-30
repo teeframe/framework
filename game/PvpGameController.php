@@ -312,6 +312,29 @@ class PvpGameController extends AbstractGameController
     |--------------------------------------------------------------------------
     */
 
+    public function clampTeam(int $team): int
+    {
+        return $this->isTeamMode && $team >= 0 ? $team & 1 : parent::clampTeam($team);
+    }
+
+    public function canChangeTeam(PlayerTee $tee, int $team): bool
+    {
+        $team = $this->clampTeam($team);
+        if (! $this->isTeamMode || $team === GameConstants::TEAM_SPECTATORS || $this->teamBalanceTime === 0 || $this->world === null) {
+            return true;
+        }
+
+        $counts = [0, 0];
+        foreach ($this->world->getTees() as $player) {
+            if ($player instanceof PlayerTee && $player !== $tee && $player->team !== GameConstants::TEAM_SPECTATORS) {
+                $counts[$player->team]++;
+            }
+        }
+        $counts[$team]++;
+
+        return abs($counts[0] - $counts[1]) < 2 || $counts[$team] < $counts[$team ^ 1];
+    }
+
     public function canBeMovedOnBalance(int $teeIndex): bool
     {
         if (! $this->isCaptureTheFlag) {

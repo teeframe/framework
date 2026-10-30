@@ -103,12 +103,14 @@ class ClientMessageHandler
 
     protected function handleSetTeamMessage(AbstractTee $tee, ClSetTeamChunk $chunk): void
     {
-        if (! $tee instanceof PlayerTee) {
+        if (! $tee instanceof PlayerTee || $this->world->isPaused()) {
             return;
         }
 
+        $controller  = $this->world->getGameController();
+        $team        = $controller->clampTeam($chunk->team);
         $currentTick = $this->world->getCurrentTick();
-        if ($tee->team === $chunk->team || ($tee->lastSetTeam > 0 && $tee->lastSetTeam + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)) {
+        if ($tee->team === $team || ($tee->lastSetTeam > 0 && $tee->lastSetTeam + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)) {
             return;
         }
 
@@ -124,12 +126,24 @@ class ClientMessageHandler
             return;
         }
 
-        $tee->lastSetTeam = $currentTick;
-        if ($tee->team === GameConstants::TEAM_SPECTATORS || $chunk->team === GameConstants::TEAM_SPECTATORS) {
-            $this->world->getVoteController()->onTeamChange($tee);
+        if (! $controller->canJoinTeam($team, $tee->teeIndex)) {
+            $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvBroadcastChunk(
+                sprintf('Only %d active players are allowed', $this->world->getSlotsLimit() - $controller->getSpectatorSlots()),
+            ));
+
+            return;
         }
 
-        $tee->setTeam($chunk->team);
+        if (! $controller->canChangeTeam($tee, $team)) {
+            $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvBroadcastChunk(
+                'Teams must be balanced, please join other team',
+            ));
+
+            return;
+        }
+
+        $tee->lastSetTeam = $currentTick;
+        $tee->setTeam($team);
         $tee->teamChangeTick = $currentTick;
     }
 

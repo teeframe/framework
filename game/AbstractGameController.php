@@ -112,6 +112,16 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             : GameConstants::TEAM_SPECTATORS;
     }
 
+    public function clampTeam(int $team): int
+    {
+        return $team < 0 ? GameConstants::TEAM_SPECTATORS : GameConstants::TEAM_RED;
+    }
+
+    public function canChangeTeam(PlayerTee $tee, int $team): bool
+    {
+        return true;
+    }
+
     public function canJoinTeam(int $team, int $notThisTeeIndex): bool
     {
         $world = $this->world;

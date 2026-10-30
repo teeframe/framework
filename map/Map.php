@@ -47,48 +47,51 @@ class Map
 
     public function load(string $mapPath): void
     {
-        $this->reader = new MapReader($mapPath);
-        $this->reader->read();
-        $this->groups    = [];
-        $this->layers    = [];
-        $this->gameLayer = null;
-        $this->collision = null;
+        $reader = new MapReader($mapPath);
+        $reader->read();
 
-        $rawContent = $this->reader->getRawContent();
-        $crc        = crc32($rawContent);
+        [$groups, $layers] = $this->parseItems($reader);
+        $gameLayer         = $this->parseGameLayer($reader, $groups, $layers);
+        $collision         = $this->createCollision($gameLayer);
+        $rawContent        = $reader->getRawContent();
+        $crc               = crc32($rawContent);
+        $rawData           = array_values(unpack('C*', $rawContent) ?: []);
+        $path              = realpath($mapPath) ?: $mapPath;
 
+        // Publish only after every parsing/validation stage succeeds.
+        $this->reader    = $reader;
+        $this->groups    = $groups;
+        $this->layers    = $layers;
+        $this->gameLayer = $gameLayer;
+        $this->collision = $collision;
         // Teeworlds packs the CRC as a signed 32-bit integer.
         $this->crc     = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
         $this->size    = strlen($rawContent);
-        $this->rawData = array_values(unpack('C*', $rawContent) ?: []);
-
-        $this->name = basename($mapPath, '.map');
-
-        $this->parseItems();
-        $this->path = realpath($mapPath) ?: $mapPath;
+        $this->rawData = $rawData;
+        $this->name    = basename($mapPath, '.map');
+        $this->path    = $path;
     }
 
-    protected function parseItems(): void
+    /** @return array{array<int, GroupItem>, array<int, LayerItem>} */
+    protected function parseItems(MapReader $reader): array
     {
-        if ($this->reader === null) {
-            return;
-        }
-
-        $groupsRaw = $this->reader->getItemsByType(4); // MAPITEMTYPE_GROUP
-        $layersRaw = $this->reader->getItemsByType(5); // MAPITEMTYPE_LAYER
+        $groups    = [];
+        $layers    = [];
+        $groupsRaw = $reader->getItemsByType(4); // MAPITEMTYPE_GROUP
+        $layersRaw = $reader->getItemsByType(5); // MAPITEMTYPE_LAYER
 
         foreach ($groupsRaw as $raw) {
-            $this->groups[] = GroupItem::make($raw['id'], $raw['size'], $raw['data']);
+            $groups[] = GroupItem::make($raw['id'], $raw['size'], $raw['data']);
         }
 
         foreach ($layersRaw as $raw) {
-            $this->layers[] = LayerItem::make($raw['id'], $raw['size'], $raw['data']);
+            $layers[] = LayerItem::make($raw['id'], $raw['size'], $raw['data']);
         }
 
         $usedLayers = [];
-        foreach ($this->groups as $group) {
+        foreach ($groups as $group) {
             if ($group->startLayer < 0 || $group->numLayers < 0
-                || $group->startLayer + $group->numLayers > count($this->layers)
+                || $group->startLayer + $group->numLayers > count($layers)
             ) {
                 throw new \RuntimeException('Invalid group layer range');
             }
@@ -100,55 +103,52 @@ class Map
             }
         }
 
-        $this->initGameLayer();
-        $this->initCollision();
+        return [$groups, $layers];
     }
 
-    protected function initGameLayer(): void
+    /**
+     * @param  array<int, GroupItem>  $groups
+     * @param  array<int, LayerItem>  $layers
+     */
+    protected function parseGameLayer(MapReader $reader, array $groups, array $layers): ?GameLayer
     {
-        if ($this->reader === null) {
-            return;
-        }
-
-        foreach ($this->groups as $group) {
+        foreach ($groups as $group) {
             for ($l = 0; $l < $group->numLayers; $l++) {
                 $layerIndex = $group->startLayer + $l;
-                if (! isset($this->layers[$layerIndex])) {
-                    continue;
-                }
-
-                $layer = $this->layers[$layerIndex];
+                $layer      = $layers[$layerIndex];
 
                 if (
                     $layer->type === LayerItem::LAYERTYPE_TILES
                     && ($layer->tileFlags & LayerItem::TILESLAYERFLAG_GAME)
                 ) {
-                    $rawData = $this->reader->getDataBlock($layer->data);
+                    $rawData = $reader->getDataBlock($layer->data);
                     if ($rawData === null) {
                         throw new \RuntimeException('Game layer references a missing data block');
                     }
 
-                    $this->gameLayer = new GameLayer(
+                    return new GameLayer(
                         $layer->width,
                         $layer->height,
                         $rawData,
                         $layer->version,
                     );
-
-                    return;
                 }
             }
         }
+
+        return null;
     }
 
-    protected function initCollision(): void
+    protected function createCollision(?GameLayer $gameLayer): ?Collision
     {
-        if ($this->gameLayer === null) {
-            return;
+        if ($gameLayer === null) {
+            return null;
         }
 
-        $this->collision = new Collision;
-        $this->collision->init($this->gameLayer);
+        $collision = new Collision;
+        $collision->init($gameLayer);
+
+        return $collision;
     }
 
     public function getGameLayer(): ?GameLayer

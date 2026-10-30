@@ -20,7 +20,7 @@ function createWeaponHelpersWorld(): array
         public function __construct()
         {
             $this->gameLayer = new GameLayer(64, 16, str_repeat(pack('C4', GameLayer::TILE_AIR, 0, 0, 0), 64 * 16));
-            $this->initCollision();
+            $this->collision = $this->createCollision($this->gameLayer);
         }
     };
     $world     = createWorld($map);

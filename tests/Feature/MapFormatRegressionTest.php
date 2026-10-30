@@ -7,12 +7,14 @@ use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapBufferReader;
 use TeeFrame\Map\MapItems\EnvelopeItem;
 use TeeFrame\Map\MapItems\GroupItem;
 use TeeFrame\Map\MapItems\ImageItem;
 use TeeFrame\Map\MapItems\InfoItem;
+use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Map\MapLayers\TileLayer;
 use TeeFrame\Map\MapReader;
 use TeeFrame\Network\Chunks\System\MapChangeChunk;
@@ -157,6 +159,113 @@ test('failed reader reloads preserve the last validated content and parsed secti
         expect($reader->getItems())->toBe($items);
         expect($reader->getItemTypes())->toBe($itemTypes);
         expect($reader->getDataBlocks())->toBe($dataBlocks);
+    } finally {
+        unlink($path);
+    }
+});
+
+/** @return array<string, mixed> */
+function mapRegressionState(Map $map): array
+{
+    return [
+        'reader'    => (new ReflectionProperty(Map::class, 'reader'))->getValue($map),
+        'name'      => $map->getName(),
+        'path'      => $map->getPath(),
+        'crc'       => $map->getCrc(),
+        'size'      => $map->getSize(),
+        'rawData'   => $map->getRawData(),
+        'groups'    => $map->getGroups(),
+        'layers'    => $map->getLayers(),
+        'gameLayer' => $map->getGameLayer(),
+        'collision' => $map->getCollision(),
+    ];
+}
+
+test('failed map loads preserve the complete previously published state and allow retrying', function (string $failure, bool $loaded) {
+    $path = tempnam(sys_get_temp_dir(), 'teeframe-map-');
+    assert(is_string($path));
+    $map    = $loaded ? new Map(__DIR__.'/../dm1.map') : new Map;
+    $before = mapRegressionState($map);
+    $group  = [1, 0, 0, 100, 100, 0, $failure === 'group range' ? 2 : 1];
+    $layer  = [0, 2, 0, 2, 3, 3, 1, 255, 255, 255, 255, -1, 0, -1, $failure === 'data reference' ? 7 : 0];
+    if ($failure === 'tile dimensions') {
+        $layer[4] = 0;
+    }
+    $items = [
+        ['type' => 4, 'id' => 0, 'data' => mapRegressionInts($group)],
+    ];
+    if ($failure === 'group overlap') {
+        $items[] = ['type' => 4, 'id' => 1, 'data' => mapRegressionInts($group)];
+    }
+    $items[] = ['type' => 5, 'id' => 0, 'data' => mapRegressionInts($failure === 'layer fields' ? array_slice($layer, 0, 5) : $layer)];
+    $invalid = $failure === 'header'
+        ? 'DATA'
+        : mapRegressionDatafile(4, $items, [str_repeat("\0", $failure === 'tile data' ? 32 : 36)]);
+
+    try {
+        file_put_contents($path, $invalid);
+        if ($failure === 'file read') {
+            unlink($path);
+        }
+        expect(fn () => $map->load($path))->toThrow(RuntimeException::class);
+        expect(mapRegressionState($map))->toBe($before);
+
+        $valid = mapRegressionGameFile(str_repeat("\0", 36));
+        file_put_contents($path, $valid);
+        $map->load($path);
+        expect($map->getPath())->toBe(realpath($path));
+        expect($map->getName())->toBe(basename($path, '.map'));
+        expect($map->getSize())->toBe(strlen($valid));
+        expect($map->getRawData())->toBe(array_values(unpack('C*', $valid) ?: []));
+        $crc = crc32($valid);
+        expect($map->getCrc())->toBe(($crc & 0x80000000) ? $crc - 0x100000000 : $crc);
+        expect($map->getGameLayer()?->width)->toBe(3);
+        expect($map->getCollision()?->getWidth())->toBe(3);
+        expect($map->getGameLayer())->not->toBe($before['gameLayer']);
+        expect($map->getCollision())->not->toBe($before['collision']);
+    } finally {
+        if (file_exists($path)) {
+            unlink($path);
+        }
+    }
+})->with(['file read', 'header', 'group range', 'group overlap', 'layer fields', 'data reference', 'tile data', 'tile dimensions'])
+    ->with(['initially empty' => false, 'previously loaded' => true]);
+
+test('collision construction failures do not publish partially loaded map state', function () {
+    $map = new class(__DIR__.'/../dm1.map') extends Map
+    {
+        public bool $failCollision = false;
+
+        protected function createCollision(?GameLayer $gameLayer): ?Collision
+        {
+            if ($this->failCollision) {
+                throw new RuntimeException('Collision construction failed');
+            }
+
+            return parent::createCollision($gameLayer);
+        }
+    };
+    $before             = mapRegressionState($map);
+    $map->failCollision = true;
+
+    expect(fn () => $map->load(__DIR__.'/../ctf1.map'))
+        ->toThrow(RuntimeException::class, 'Collision construction failed');
+    expect(mapRegressionState($map))->toBe($before);
+});
+
+test('successful map loads without a game layer clear the previous game and collision layers', function () {
+    $path = tempnam(sys_get_temp_dir(), 'teeframe-map-');
+    assert(is_string($path));
+    try {
+        file_put_contents($path, mapRegressionDatafile(4, [], []));
+        $map = new Map(__DIR__.'/../dm1.map');
+        $map->load($path);
+
+        expect($map->getGroups())->toBeEmpty();
+        expect($map->getLayers())->toBeEmpty();
+        expect($map->getGameLayer())->toBeNull();
+        expect($map->getCollision())->toBeNull();
+        expect($map->getPath())->toBe(realpath($path));
     } finally {
         unlink($path);
     }

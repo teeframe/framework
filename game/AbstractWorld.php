@@ -453,15 +453,16 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $tee->setWorld($this, $index);
 
+        // Select the initial team before registration so capacity checks see a new player.
+        if ($tee instanceof PlayerTee) {
+            $controller = $this->getGameController();
+            $tee->team  = $controller->clampTeam($controller->getAutoTeam($index));
+        }
+
         $this->tees[$index] = $tee;
 
         if ($tee instanceof PlayerTee) {
-            $autoTeam = $this->getGameController()->getAutoTeam($tee->teeIndex);
-            if ($tee->team !== $autoTeam) {
-                $tee->team = $autoTeam;
-            }
-
-            $tee->spawning       = true;
+            $tee->spawning       = $tee->team !== GameConstants::TEAM_SPECTATORS;
             $tee->lastActionTick = $this->getCurrentTick();
             $tee->scoreStartTick = $this->getCurrentTick();
 
@@ -472,6 +473,15 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             );
 
             $this->broadcast($chunk);
+        }
+    }
+
+    public function resetSpectatorsFollowing(int $teeIndex): void
+    {
+        foreach ($this->tees as $tee) {
+            if ($tee instanceof PlayerTee && $tee->spectatorId === $teeIndex) {
+                $tee->spectatorId = GameConstants::SPEC_FREEVIEW;
+            }
         }
     }
 
@@ -503,11 +513,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $this->voteController->abortVoteOnDisconnect($index);
             $this->voteController->cancelVoteOnCreatorLeave($index);
 
-            foreach ($this->tees as $otherTee) {
-                if ($otherTee instanceof PlayerTee && $otherTee->spectatorId === $index) {
-                    $otherTee->spectatorId = GameConstants::SPEC_FREEVIEW;
-                }
-            }
+            $this->resetSpectatorsFollowing($index);
 
             $this->releasedTeeIndexes[] = $index;
             unset($this->tees[$index]);

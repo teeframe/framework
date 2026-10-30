@@ -25,7 +25,7 @@ function createCharacterSoundWorld(int $wallTile = GameLayer::TILE_SOLID): array
         public function __construct(GameLayer $gameLayer)
         {
             $this->gameLayer = $gameLayer;
-            $this->initCollision();
+            $this->collision = $this->createCollision($this->gameLayer);
         }
     };
     $world     = createWorld($map);

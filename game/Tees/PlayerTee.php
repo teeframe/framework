@@ -66,6 +66,9 @@ class PlayerTee extends AbstractTee
 
     public function setTeam(int $team): void
     {
+        $world = $this->world;
+        $team  = $world?->getGameController()->clampTeam($team)
+            ?? max(GameConstants::TEAM_SPECTATORS, min(GameConstants::TEAM_BLUE, $team));
         if ($this->team === $team) {
             return;
         }
@@ -74,11 +77,20 @@ class PlayerTee extends AbstractTee
             $this->character->die($this->teeIndex, GameConstants::WEAPON_WORLD);
         }
 
+        $wasSpectator      = $this->team === GameConstants::TEAM_SPECTATORS;
         $this->team        = $team;
         $this->spectatorId = GameConstants::SPEC_FREEVIEW;
+        $this->spawning    = $team !== GameConstants::TEAM_SPECTATORS;
 
-        $world = $this->world;
         if ($world !== null) {
+            if ($wasSpectator !== ($team === GameConstants::TEAM_SPECTATORS)) {
+                $world->getVoteController()->onTeamChange($this);
+            }
+
+            if ($team === GameConstants::TEAM_SPECTATORS) {
+                $world->resetSpectatorsFollowing($this->teeIndex);
+            }
+
             // we got to wait 0.5 secs before respawning
             $this->respawnTick    = $world->getCurrentTick() + (int) (NetworkParams::TICKS_PER_SECOND / 2);
             $this->lastActionTick = $world->getCurrentTick();

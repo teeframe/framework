@@ -19,7 +19,7 @@ function createLaserDamageWorld(string $gameMode = 'DM'): array
         public function __construct()
         {
             $this->gameLayer = new GameLayer(64, 8, str_repeat(pack('C4', GameLayer::TILE_AIR, 0, 0, 0), 64 * 8));
-            $this->initCollision();
+            $this->collision = $this->createCollision($this->gameLayer);
         }
     };
     $tickHandler = new TickHandler(100);
