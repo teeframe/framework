@@ -143,7 +143,7 @@ trait HasHandshakeHandler
     {
         $connection->state = ConnectionSlot::STATE_READY;
 
-        if ($runningVote = $connection->world()->getVoteController()->getRunningVote($connection->playerTee())) {
+        if ($runningVote = $connection->world()->getVoteController()->getRunningVote($connection->world())) {
             $connection->chunks()->add($runningVote);
         }
 

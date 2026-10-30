@@ -6,6 +6,7 @@ use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\ChangeMapCommand;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -136,6 +137,120 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
     expect($tee1->vote)->toBe(1);
     expect($tee1->votePos)->toBe(1);
 });
+
+test('running vote timeout reports remaining whole seconds independently of server uptime', function (int $elapsedTicks, int $expectedSeconds) {
+    $clock = new TickHandler(100_000);
+    $world = createVoteWorld(new Map, $clock);
+    $tee   = new PlayerTee;
+    $world->addTee($tee);
+    $votes = $world->getVoteController();
+    expect($votes->getRunningVote($world))->toBeNull();
+
+    $votes->startVote($world, 'Example option', 'example', 'Example reason');
+    setVoteTick($clock, 100_000 + $elapsedTicks);
+    $running = $votes->getRunningVote($world);
+    expect($running)->toBeInstanceOf(SvVoteSetChunk::class);
+    assert($running instanceof SvVoteSetChunk);
+    expect($running->timeout)->toBe($expectedSeconds);
+    expect($running->description)->toBe('Example option');
+    expect($running->reason)->toBe('Example reason');
+
+    $votes->endVote($world);
+    expect($votes->getRunningVote($world))->toBeNull();
+})->with([
+    'just started'             => [0, 25],
+    'one tick elapsed'         => [1, 24],
+    'one second elapsed'       => [50, 24],
+    'partial second remaining' => [375, 17],
+    'one second remaining'     => [1200, 1],
+    'less than one second'     => [1201, 0],
+    'last tick'                => [1249, 0],
+    'deadline'                 => [1250, 0],
+    'past deadline'            => [1251, 0],
+    'long past deadline'       => [1350, 0],
+]);
+
+test('votes resolve at the Teeworlds 0.6 integer thresholds', function (int $total, int $vote, int $threshold) {
+    $clock   = new TickHandler(100);
+    $world   = createVoteWorld(new Map, $clock);
+    $command = new class extends AbstractCommand
+    {
+        public int $executions = 0;
+
+        public function getName(): string
+        {
+            return 'threshold_test';
+        }
+
+        public function getType(): int
+        {
+            return self::TYPE_VOTE;
+        }
+
+        public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
+        {
+            $this->executions++;
+        }
+    };
+    $world->registerCommand($command);
+    $players = [];
+    for ($i = 0; $i < $total; $i++) {
+        $player = new PlayerTee;
+        $world->addTee($player);
+        $players[] = $player;
+    }
+    $spectator = new PlayerTee;
+    $world->addTee($spectator);
+    $spectator->team = GameConstants::TEAM_SPECTATORS;
+    $votes           = $world->getVoteController();
+    $votes->addVoteOption('Threshold test', $command->getCommand());
+    $world->onMessage($players[0], new ClCallVoteChunk('option', 'Threshold test', ''));
+    $world->onMessage($spectator, new ClVoteChunk($vote));
+
+    // The caller has already voted YES; all remaining votes use other players.
+    $additionalVotes = $threshold - ($vote === 1 ? 1 : 0);
+    for ($i = 1; $i < $additionalVotes; $i++) {
+        $world->onMessage($players[$i], new ClVoteChunk($vote));
+    }
+    recordingServer($world)->clear();
+    $world->doTick();
+    expect($votes->isVoteRunning())->toBeTrue();
+    expect($command->executions)->toBe(0);
+    $status = $votes->getRunningVoteStatus($world);
+    assert($status instanceof SvVoteStatusChunk);
+    expect($status->total)->toBe($total);
+    expect($status->yes)->toBe($vote === 1 ? $threshold - 1 : 1);
+    expect($status->no)->toBe($vote === -1 ? $threshold - 1 : 0);
+
+    $world->onMessage($players[$additionalVotes], new ClVoteChunk($vote));
+    recordingServer($world)->clear();
+    $world->doTick();
+    expect($votes->isVoteRunning())->toBeFalse();
+    expect($command->executions)->toBe($vote === 1 ? 1 : 0);
+    $messages = array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+    expect($messages)->not->toBeEmpty();
+    foreach ($messages as $message) {
+        expect($message->text)->toBe($vote === 1 ? 'Vote passed' : 'Vote failed');
+    }
+    $ended = array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk);
+    expect($ended)->toHaveCount($total + 1);
+    foreach ($ended as $chunk) {
+        expect($chunk->timeout)->toBe(0);
+    }
+})->with([
+    'two players need two YES'    => [2, 1, 2],
+    'three players need two YES'  => [3, 1, 2],
+    'four players need three YES' => [4, 1, 3],
+    'five players need three YES' => [5, 1, 3],
+    'six players need four YES'   => [6, 1, 4],
+    'seven players need four YES' => [7, 1, 4],
+    'two players need one NO'     => [2, -1, 1],
+    'three players need two NO'   => [3, -1, 2],
+    'four players need two NO'    => [4, -1, 2],
+    'five players need three NO'  => [5, -1, 3],
+    'six players need three NO'   => [6, -1, 3],
+    'seven players need four NO'  => [7, -1, 4],
+]);
 
 test('vote passes when majority votes yes', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
@@ -274,7 +389,7 @@ test('cannot call a vote while another is running', function () use ($mapPath, $
     $world->onMessage($tee1, new ClCallVoteChunk('option', 'option2', ''));
 
     // The second vote should not have started — description should still be option1
-    $runningVote = $world->getVoteController()->getRunningVote($tee1);
+    $runningVote = $world->getVoteController()->getRunningVote($world);
     assert($runningVote instanceof SvVoteSetChunk);
     expect($runningVote->description)->toBe('option1');
 });
@@ -329,7 +444,7 @@ test('vote option lookup is case insensitive', function () use ($mapPath, $mapEx
     // Call with different case
     $world->onMessage($tee1, new ClCallVoteChunk('option', 'change map', ''));
 
-    $runningVote = $world->getVoteController()->getRunningVote($tee1);
+    $runningVote = $world->getVoteController()->getRunningVote($world);
     assert($runningVote instanceof SvVoteSetChunk);
     expect($runningVote->description)->toBe('Change Map');
 });
@@ -378,10 +493,13 @@ test('vote status is broadcast after a vote', function () use ($mapPath, $mapExi
     // Start vote (caller auto-votes yes)
     $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
 
-    // tee2 votes no
+    $tee3 = new PlayerTee;
+    $world->addTee($tee3);
+
+    // One NO is below the rejection threshold with three eligible players.
     $world->onMessage($tee2, new ClVoteChunk(-1));
 
-    // Tick — should broadcast vote status (not yet decided: 1 yes, 1 no, total 2)
+    // Tick — should broadcast vote status (not yet decided: 1 yes, 1 no, total 3)
     $world->doTick();
 
     $statuses = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvVoteStatusChunk);
@@ -391,7 +509,8 @@ test('vote status is broadcast after a vote', function () use ($mapPath, $mapExi
     assert($status instanceof SvVoteStatusChunk);
     expect($status->yes)->toBe(1);
     expect($status->no)->toBe(1);
-    expect($status->total)->toBe(2);
+    expect($status->pass)->toBe(1);
+    expect($status->total)->toBe(3);
 });
 
 test('kick vote kicks the target when it passes', function () use ($mapPath, $mapExists) {
@@ -529,7 +648,7 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
     $world->onMessage($tee1, new ClCallVoteChunk('option', 'change_map dm1', ''));
 
     // The vote description should match the command's description
-    $runningVote = $world->getVoteController()->getRunningVote($tee1);
+    $runningVote = $world->getVoteController()->getRunningVote($world);
     assert($runningVote instanceof SvVoteSetChunk);
     expect($runningVote->description)->toBe('Change map to dm1');
 

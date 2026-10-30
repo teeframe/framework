@@ -303,7 +303,7 @@ test('option votes resolve menu labels command names and descriptions', function
     $votes->addVoteOption('Friendly option', $command->getCommand());
 
     $votes->callVote($world, $caller, 'OpTiOn', $value, '');
-    $running = $votes->getRunningVote($caller);
+    $running = $votes->getRunningVote($world);
     expect($running)->not->toBeNull();
     assert($running instanceof SvVoteSetChunk);
     expect($running->description)->toBe($description);

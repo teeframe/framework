@@ -225,6 +225,37 @@ test('new clients enter DM through the normal map handshake and transport ACKs a
     expect($server->ctf->getGameController()->getFlag(GameConstants::TEAM_BLUE))->not()->toBeNull();
 });
 
+test('the ready handshake sends only the destination worlds vote with its remaining timeout', function (bool $transfer) {
+    $server = new WorldTransferTestServer;
+    $first  = $server->connect();
+    $server->enter($first);
+    $resident = $server->connect(8301);
+    $server->enter($resident);
+    $server->changeWorld($resident->playerTee(), $server->ctf);
+    $server->enter($resident);
+
+    $server->dm->getVoteController()->startVote($server->dm, 'DM option', 'dm_option', 'DM reason');
+    $server->ctf->getVoteController()->startVote($server->ctf, 'CTF option', 'ctf_option', 'CTF reason');
+    $server->advance(375);
+
+    if ($transfer) {
+        $slot = $first;
+        $server->changeWorld($slot->playerTee(), $server->ctf);
+    } else {
+        $slot = $server->connect(8302);
+        $server->send($slot, new InfoChunk('0.6 626fce9a778df4d4'));
+    }
+    $server->socket->packets = [];
+    $server->send($slot, new ReadyChunk);
+
+    expect($slot->state)->toBe(ConnectionSlot::STATE_READY);
+    $votes = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof SvVoteSetChunk));
+    expect($votes)->toHaveCount(1);
+    expect($votes[0]->timeout)->toBe(17);
+    expect($votes[0]->description)->toBe($transfer ? 'CTF option' : 'DM option');
+    expect($votes[0]->reason)->toBe($transfer ? 'CTF reason' : 'DM reason');
+})->with(['new connection' => false, 'world transfer' => true]);
+
 test('a chat command transfers a player without resetting the transport or leaking world state', function () {
     $server = new WorldTransferTestServer;
     $slot   = $server->connect();

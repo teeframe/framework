@@ -74,14 +74,14 @@ class VoteController
         return $chunks;
     }
 
-    public function getRunningVote(AbstractTee $requestingTee): ?AbstractChunk
+    public function getRunningVote(AbstractWorld $world): ?AbstractChunk
     {
         if ($this->voteCloseTime === 0) {
             return null;
         }
 
         return new SvVoteSetChunk(
-            timeout: (int) ceil(($this->voteCloseTime) / NetworkParams::TICKS_PER_SECOND),
+            timeout: max(0, intdiv($this->voteCloseTime - $world->getCurrentTick(), NetworkParams::TICKS_PER_SECOND)),
             description: $this->voteDescription,
             reason: $this->voteReason,
         );
@@ -342,9 +342,9 @@ class VoteController
 
         if ($this->voteUpdate) {
             // Majority check (teeworlds 0.6: Yes >= Total/2+1, No >= (Total+1)/2)
-            if ($yes >= (int) ($total / 2) + 1) {
+            if ($yes >= intdiv($total, 2) + 1) {
                 $this->voteEnforce = VoteEnforce::YES;
-            } elseif ($no >= (int) ($total + 1) / 2) {
+            } elseif ($no >= intdiv($total + 1, 2)) {
                 $this->voteEnforce = VoteEnforce::NO;
             }
         }
