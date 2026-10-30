@@ -11,10 +11,9 @@ use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 /** @return array{TestWorld, TickHandler, PlayerTee, PvpCharacterEntity} */
 function createAmmoRegenerationWorld(): array
 {
-    resetMockServer();
     $tickHandler = new TickHandler(100);
-    $world = new TestWorld($tickHandler, new Map(__DIR__.'/../dm1.map'));
-    $tee = new PlayerTee;
+    $world       = new TestWorld($tickHandler, new Map(__DIR__.'/../dm1.map'));
+    $tee         = new PlayerTee;
     $world->addTee($tee);
     $world->doTick();
     $world->clearEvents();
@@ -47,11 +46,11 @@ function advanceAmmoRegenerationTick(TestWorld $world, TickHandler $tickHandler,
 }
 
 test('an exhausted gun regenerates and fires again while the player keeps clicking', function (int $pressInterval) {
-    [$world, $tickHandler, $tee, $character] = createAmmoRegenerationWorld();
+    [$world, $tickHandler, $tee, $character]             = createAmmoRegenerationWorld();
     $character->weapons[GameConstants::WEAPON_GUN]->ammo = 1;
-    $fireCounter = -1;
-    $shotTicks = [];
-    $emptyAttempts = 0;
+    $fireCounter                                         = -1;
+    $shotTicks                                           = [];
+    $emptyAttempts                                       = 0;
 
     for ($tick = 0; $tick < 150; $tick++) {
         if ($tick % $pressInterval === 0) {
@@ -59,7 +58,7 @@ test('an exhausted gun regenerates and fires again while the player keeps clicki
             $fireCounter = ($fireCounter + 2) & PvpCharacterEntity::INPUT_STATE_MASK;
         }
         $currentTick = $tickHandler->get();
-        $sounds = advanceAmmoRegenerationTick($world, $tickHandler, $tee, input(['fire' => $fireCounter]));
+        $sounds      = advanceAmmoRegenerationTick($world, $tickHandler, $tee, input(['fire' => $fireCounter]));
         if (in_array(GameConstants::SOUND_GUN_FIRE, $sounds, true)) {
             $shotTicks[] = $currentTick;
         }
@@ -79,13 +78,13 @@ test('an exhausted gun regenerates and fires again while the player keeps clicki
             ->toBeLessThanOrEqual(25 + 12 + $pressInterval);
     }
 })->with([
-    'press every tick' => [1],
-    'press every no-ammo cooldown' => [6],
+    'press every tick'                        => [1],
+    'press every no-ammo cooldown'            => [6],
     'press with idle ticks between cooldowns' => [8],
 ]);
 
 test('an idle equipped gun regenerates one bullet after 500 milliseconds', function () {
-    [$world, $tickHandler, $tee, $character] = createAmmoRegenerationWorld();
+    [$world, $tickHandler, $tee, $character]             = createAmmoRegenerationWorld();
     $character->weapons[GameConstants::WEAPON_GUN]->ammo = 0;
 
     advanceAmmoRegenerationTick($world, $tickHandler, $tee, input());
@@ -98,9 +97,9 @@ test('an idle equipped gun regenerates one bullet after 500 milliseconds', funct
 });
 
 test('a successful gun shot resets regeneration and waits until after reload to restart it', function () {
-    [$world, $tickHandler, $tee, $character] = createAmmoRegenerationWorld();
+    [$world, $tickHandler, $tee, $character]             = createAmmoRegenerationWorld();
     $character->weapons[GameConstants::WEAPON_GUN]->ammo = 2;
-    $character->ammoRegenStart = $tickHandler->get() - 24;
+    $character->ammoRegenStart                           = $tickHandler->get() - 24;
 
     $sounds = advanceAmmoRegenerationTick($world, $tickHandler, $tee, input(['fire' => 1]));
     expect($sounds)->toContain(GameConstants::SOUND_GUN_FIRE);
@@ -124,7 +123,7 @@ test('a successful gun shot resets regeneration and waits until after reload to 
 });
 
 test('gun regeneration never exceeds ten bullets', function () {
-    [$world, $tickHandler, $tee, $character] = createAmmoRegenerationWorld();
+    [$world, $tickHandler, $tee, $character]             = createAmmoRegenerationWorld();
     $character->weapons[GameConstants::WEAPON_GUN]->ammo = 9;
 
     for ($tick = 0; $tick < 100; $tick++) {
@@ -150,11 +149,11 @@ test('weapons without regeneration stay empty while the player keeps clicking', 
 })->with([
     'shotgun' => [GameConstants::WEAPON_SHOTGUN],
     'grenade' => [GameConstants::WEAPON_GRENADE],
-    'rifle' => [GameConstants::WEAPON_RIFLE],
+    'rifle'   => [GameConstants::WEAPON_RIFLE],
 ]);
 
 test('holding fire on an empty gun regenerates ammo without making the gun full-auto', function () {
-    [$world, $tickHandler, $tee, $character] = createAmmoRegenerationWorld();
+    [$world, $tickHandler, $tee, $character]             = createAmmoRegenerationWorld();
     $character->weapons[GameConstants::WEAPON_GUN]->ammo = 0;
 
     for ($tick = 0; $tick < 75; $tick++) {

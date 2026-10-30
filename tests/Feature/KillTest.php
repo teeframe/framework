@@ -39,10 +39,8 @@ test('ClKillChunk encodes and decodes correctly', function () {
 
 test('onMessage handles ClKillChunk by killing the character', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -69,10 +67,8 @@ test('onMessage handles ClKillChunk by killing the character', function () use (
 
 test('ClKill is ignored during the 3 second cooldown', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -114,10 +110,8 @@ test('ClKill is ignored during the 3 second cooldown', function () use ($mapPath
 
 test('ClKill with no character does nothing', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -138,10 +132,8 @@ test('ClKill with no character does nothing', function () use ($mapPath, $mapExi
 
 test('ClKill emits a death event at the character position', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -189,10 +181,8 @@ test('SvKillMsgChunk encodes and decodes correctly', function () {
 
 test('ClKill broadcasts SvKillMsgChunk to all tees', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -213,7 +203,7 @@ test('ClKill broadcasts SvKillMsgChunk to all tees', function () use ($mapPath, 
     $world->onMessage($tee1, new ClKillChunk);
 
     $killMsgs = array_filter(
-        $GLOBALS['mockGameServer']->sentChunks,
+        recordingServer($world)->sentChunks,
         fn ($c) => $c instanceof SvKillMsgChunk,
     );
 

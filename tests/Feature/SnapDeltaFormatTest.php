@@ -1,62 +1,9 @@
 <?php
 
-use TeeFrame\Network\Connection\ConnectionSnap;
-use TeeFrame\Network\Connection\SnapHandler;
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjProjectileItem;
-
-/**
- * A concrete SnapHandler for testing — exposes protected methods.
- */
-class TestSnapHandler extends SnapHandler
-{
-    public function __construct()
-    {
-        // Bypass the AbstractConnection dependency by using a mock-like approach
-    }
-
-    /**
-     * @param  array<int, \TeeFrame\Network\SnapItems\AbstractSnapItem>  $items
-     */
-    public function testCalculateCrc(array $items): int
-    {
-        return $this->calculateCrc($items);
-    }
-
-    /**
-     * @param  array<int, \TeeFrame\Network\SnapItems\AbstractSnapItem>  $items
-     * @return array{array<int, int>, int, int}
-     */
-    public function testCalculateSendablePayload(array $items): array
-    {
-        return $this->calculateSendablePayload($items);
-    }
-
-    /**
-     * @param  \TeeFrame\Network\SnapItems\AbstractSnapItem  $deltaItem
-     * @param  \TeeFrame\Network\SnapItems\AbstractSnapItem  $item
-     * @return int[]
-     */
-    public function testDiffItem($deltaItem, $item): array
-    {
-        return $this->diffItem($deltaItem, $item);
-    }
-
-    /**
-     * @param  \TeeFrame\Network\SnapItems\AbstractSnapItem[]  $items
-     * @return array<int, \TeeFrame\Network\SnapItems\AbstractSnapItem>
-     */
-    public function testIndexItemsList(array $items): array
-    {
-        return $this->indexItemsList($items);
-    }
-
-    public function setDeltaSnap(?ConnectionSnap $snap): void
-    {
-        $this->deltaSnap = $snap;
-    }
-}
+use TeeFrame\Network\SnapshotEncoder;
 
 // --- Test: encode() produces packed type and id ---
 
@@ -94,7 +41,7 @@ test('snap item encode produces packed type and id', function () {
 // --- Test: removed items use item keys (single packed int) ---
 
 test('delta payload uses item keys for removed items', function () {
-    $handler = new TestSnapHandler;
+    $handler = new SnapshotEncoder;
 
     // Create a delta snapshot with a character item
     $oldChar = new ObjCharacterItem(
@@ -107,13 +54,12 @@ test('delta payload uses item keys for removed items', function () {
     );
     $oldChar->setId(1);
 
-    $oldItems = $handler->testIndexItemsList([$oldChar]);
-    $handler->setDeltaSnap(new ConnectionSnap(100, $oldItems, 0));
+    $oldItems = $handler->indexItems([$oldChar]);
 
     // Current items: empty (character was removed)
-    $currentItems = $handler->testIndexItemsList([]);
+    $currentItems = $handler->indexItems([]);
 
-    [$payload, $removedCount, $updatedCount] = $handler->testCalculateSendablePayload($currentItems);
+    [$payload, $removedCount, $updatedCount] = $handler->calculateDelta($currentItems, $oldItems);
 
     // Should have 1 removed item, 0 updated
     expect($removedCount)->toBe(1);
@@ -133,7 +79,7 @@ test('delta payload uses item keys for removed items', function () {
 // --- Test: diffItem produces packed type and id ---
 
 test('diffItem produces packed type and id', function () {
-    $handler = new TestSnapHandler;
+    $handler = new SnapshotEncoder;
 
     $oldProj = new ObjProjectileItem(
         x: 1700, y: 1068, velX: 0, velY: 0, type: 0, startTick: 0,
@@ -145,7 +91,7 @@ test('diffItem produces packed type and id', function () {
     );
     $newProj->setId(2);
 
-    $diff = $handler->testDiffItem($oldProj, $newProj);
+    [$diff] = $handler->calculateDelta($handler->indexItems([$newProj]), $handler->indexItems([$oldProj]));
 
     // Decompress to verify format: [type, id, diff_x, diff_y, diff_velX, diff_velY, diff_type, diff_startTick]
     $decompressed = decompressVarInts($diff);
@@ -163,7 +109,7 @@ test('diffItem produces packed type and id', function () {
 // --- Test: full delta payload matches libtw2 format ---
 
 test('full delta payload matches libtw2 snapshot delta format', function () {
-    $handler = new TestSnapHandler;
+    $handler = new SnapshotEncoder;
 
     // --- Build the "old" snapshot (delta base) ---
     $oldChar = new ObjCharacterItem(
@@ -181,8 +127,7 @@ test('full delta payload matches libtw2 snapshot delta format', function () {
     );
     $oldProj->setId(2);
 
-    $oldItems = $handler->testIndexItemsList([$oldChar, $oldProj]);
-    $handler->setDeltaSnap(new ConnectionSnap(100, $oldItems, 0));
+    $oldItems = $handler->indexItems([$oldChar, $oldProj]);
 
     // --- Build the "new" snapshot ---
     // Character removed, projectile updated
@@ -191,9 +136,9 @@ test('full delta payload matches libtw2 snapshot delta format', function () {
     );
     $newProj->setId(2);
 
-    $newItems = $handler->testIndexItemsList([$newProj]);
+    $newItems = $handler->indexItems([$newProj]);
 
-    [$payload, $removedCount, $updatedCount] = $handler->testCalculateSendablePayload($newItems);
+    [$payload, $removedCount, $updatedCount] = $handler->calculateDelta($newItems, $oldItems);
 
     expect($removedCount)->toBe(1);
     expect($updatedCount)->toBe(1);
@@ -234,7 +179,7 @@ test('full delta payload matches libtw2 snapshot delta format', function () {
 // --- Test: CRC is computed from getInts(), matching client-side Crc() ---
 
 test('snap crc matches client-side Crc computation', function () {
-    $handler = new TestSnapHandler;
+    $handler = new SnapshotEncoder;
 
     $char = new ObjCharacterItem(
         tick: 100, x: 1584, y: 1072,
@@ -251,8 +196,8 @@ test('snap crc matches client-side Crc computation', function () {
     );
     $proj->setId(2);
 
-    $items = $handler->testIndexItemsList([$char, $proj]);
-    $crc = $handler->testCalculateCrc($items);
+    $items = $handler->indexItems([$char, $proj]);
+    $crc   = $handler->calculateCrc($items);
 
     // The CRC should be the sum of all getInts() values, wrapped to int32
     $expectedSum = 0;
@@ -278,12 +223,12 @@ test('snap crc matches client-side Crc computation', function () {
 function decompressVarInts(array $bytes): array
 {
     $result = [];
-    $i = 0;
-    $len = count($bytes);
+    $i      = 0;
+    $len    = count($bytes);
 
     while ($i < $len) {
         [$value, $consumed] = NetworkBase::unpackInt(array_slice($bytes, $i));
-        $result[] = $value;
+        $result[]           = $value;
         $i += $consumed;
     }
 

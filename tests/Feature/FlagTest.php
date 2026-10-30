@@ -51,10 +51,8 @@ function setCtfTick(TickHandler $tickHandler, int $tick): void
 
 test('CTF controller creates flags from flag stand entities', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -76,10 +74,8 @@ test('CTF controller creates flags from flag stand entities', function () use ($
 
 test('CTF flags are added to the world entity list', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -92,10 +88,8 @@ test('CTF flags are added to the world entity list', function () use ($ctfMapPat
 
 test('non-CTF controller does not create flags from flag stands', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -114,10 +108,8 @@ test('non-CTF controller does not create flags from flag stands', function () us
 
 test('CTF doSnap emits GAMEFLAG_TEAMS and GAMEFLAG_FLAGS', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -137,10 +129,8 @@ test('CTF doSnap emits GAMEFLAG_TEAMS and GAMEFLAG_FLAGS', function () use ($ctf
 
 test('CTF doSnap emits ObjGameData with FLAG_ATSTAND when flags are at stand', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -160,10 +150,8 @@ test('CTF doSnap emits ObjGameData with FLAG_ATSTAND when flags are at stand', f
 
 test('CTF doSnap emits ObjFlagItem for each flag', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -189,10 +177,8 @@ test('CTF doSnap emits ObjFlagItem for each flag', function () use ($ctfMapPath,
 
 test('enemy player can grab a flag from the stand', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -223,10 +209,8 @@ test('enemy player can grab a flag from the stand', function () use ($ctfMapPath
 
 test('same-team player cannot grab their own flag from the stand', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -260,10 +244,8 @@ test('same-team player cannot grab their own flag from the stand', function () u
 
 test('same-team player can return a dropped flag', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -303,10 +285,8 @@ test('same-team player can return a dropped flag', function () use ($ctfMapPath,
 
 test('carrying the enemy flag to your own stand captures it', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -347,10 +327,8 @@ test('carrying the enemy flag to your own stand captures it', function () use ($
 
 test('capture does not happen when own flag is not at stand', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -396,10 +374,8 @@ test('capture does not happen when own flag is not at stand', function () use ($
 
 test('flag is dropped when the carrier dies', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -438,10 +414,8 @@ test('flag is dropped when the carrier dies', function () use ($ctfMapPath, $ctf
 
 test('dropped flag auto-returns after 30 seconds', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -467,10 +441,8 @@ test('dropped flag auto-returns after 30 seconds', function () use ($ctfMapPath,
 
 test('dropped flag does not auto-return before 30 seconds', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -500,10 +472,8 @@ test('dropped flag does not auto-return before 30 seconds', function () use ($ct
 
 test('flags survive round restart and return to their stands', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -550,10 +520,8 @@ test('flags survive round restart and return to their stands', function () use (
 
 test('player carrying a flag cannot be moved by team balancer', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -588,10 +556,8 @@ test('player carrying a flag cannot be moved by team balancer', function () use 
 
 test('CTF round ends when a team reaches the score limit', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -611,10 +577,8 @@ test('CTF round ends when a team reaches the score limit', function () use ($ctf
 
 test('CTF sudden death triggers when scores are tied at the limit', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -646,10 +610,8 @@ test('CTF sudden death triggers when scores are tied at the limit', function () 
 
 test('CTF doSnap reports the carrier tee index when a flag is carried', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -681,10 +643,8 @@ test('CTF doSnap reports the carrier tee index when a flag is carried', function
 
 test('CTF doSnap reports FLAG_TAKEN when a flag is dropped', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -716,10 +676,8 @@ test('CTF doSnap reports FLAG_TAKEN when a flag is dropped', function () use ($c
 
 test('CTF flag grab sends grab sounds to the correct teams', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -748,20 +706,18 @@ test('CTF flag grab sends grab sounds to the correct teams', function () use ($c
     $world->doTick();
 
     // Red team hears SOUND_CTF_GRAB_EN (enemy grabbed their flag)
-    $redSounds = soundsSentToTee($redTee->teeIndex);
+    $redSounds = soundsSentToTee($world, $redTee->teeIndex);
     expect($redSounds)->toContain(GameConstants::SOUND_CTF_GRAB_EN);
 
     // Blue team hears SOUND_CTF_GRAB_PL (we grabbed their flag)
-    $blueSounds = soundsSentToTee($blueTee->teeIndex);
+    $blueSounds = soundsSentToTee($world, $blueTee->teeIndex);
     expect($blueSounds)->toContain(GameConstants::SOUND_CTF_GRAB_PL);
 });
 
 test('CTF flag capture sends SOUND_CTF_CAPTURE to all tees', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -795,16 +751,14 @@ test('CTF flag capture sends SOUND_CTF_CAPTURE to all tees', function () use ($c
     $world->doTick();
 
     // Both tees should hear SOUND_CTF_CAPTURE
-    expect(soundsSentToTee($redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_CAPTURE);
-    expect(soundsSentToTee($blueTee->teeIndex))->toContain(GameConstants::SOUND_CTF_CAPTURE);
+    expect(soundsSentToTee($world, $redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_CAPTURE);
+    expect(soundsSentToTee($world, $blueTee->teeIndex))->toContain(GameConstants::SOUND_CTF_CAPTURE);
 });
 
 test('CTF flag return sends SOUND_CTF_RETURN to all tees', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -836,16 +790,14 @@ test('CTF flag return sends SOUND_CTF_RETURN to all tees', function () use ($ctf
 
     $world->doTick();
 
-    expect(soundsSentToTee($redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_RETURN);
-    expect(soundsSentToTee($blueTee->teeIndex))->toContain(GameConstants::SOUND_CTF_RETURN);
+    expect(soundsSentToTee($world, $redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_RETURN);
+    expect(soundsSentToTee($world, $blueTee->teeIndex))->toContain(GameConstants::SOUND_CTF_RETURN);
 });
 
 test('CTF flag drop on death sends SOUND_CTF_DROP to all tees', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -875,16 +827,14 @@ test('CTF flag drop on death sends SOUND_CTF_DROP to all tees', function () use 
     // Kill the carrier
     $character->die(-1, GameConstants::WEAPON_WORLD);
 
-    expect(soundsSentToTee($redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_DROP);
-    expect(soundsSentToTee($blueTee->teeIndex))->toContain(GameConstants::SOUND_CTF_DROP);
+    expect(soundsSentToTee($world, $redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_DROP);
+    expect(soundsSentToTee($world, $blueTee->teeIndex))->toContain(GameConstants::SOUND_CTF_DROP);
 });
 
 test('CTF flag auto-return after 30 seconds sends SOUND_CTF_RETURN', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -907,7 +857,7 @@ test('CTF flag auto-return after 30 seconds sends SOUND_CTF_RETURN', function ()
     setCtfTick($tickHandler, 100 + 1551);
     $world->doTick();
 
-    expect(soundsSentToTee($redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_RETURN);
+    expect(soundsSentToTee($world, $redTee->teeIndex))->toContain(GameConstants::SOUND_CTF_RETURN);
 });
 
 /*
@@ -918,10 +868,8 @@ test('CTF flag auto-return after 30 seconds sends SOUND_CTF_RETURN', function ()
 
 test('takeDamage sends SOUND_HIT to the attacker only', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -949,17 +897,15 @@ test('takeDamage sends SOUND_HIT to the attacker only', function () use ($ctfMap
     $victim->takeDamage(new Vector2(0, 0), 5, $attacker);
 
     // Attacker should hear SOUND_HIT
-    expect(soundsSentToTee($redTee->teeIndex))->toContain(GameConstants::SOUND_HIT);
+    expect(soundsSentToTee($world, $redTee->teeIndex))->toContain(GameConstants::SOUND_HIT);
     // Victim should NOT hear SOUND_HIT
-    expect(soundsSentToTee($blueTee->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);
+    expect(soundsSentToTee($world, $blueTee->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);
 });
 
 test('takeDamage does not send SOUND_HIT on self-damage', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -979,15 +925,13 @@ test('takeDamage does not send SOUND_HIT on self-damage', function () use ($ctfM
     $character->takeDamage(new Vector2(0, 0), 4, $character);
 
     // No SOUND_HIT should be sent for self-damage
-    expect(soundsSentToTee($tee->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);
+    expect(soundsSentToTee($world, $tee->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);
 });
 
 test('takeDamage does not send SOUND_HIT on friendly fire (blocked)', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -1015,7 +959,7 @@ test('takeDamage does not send SOUND_HIT on friendly fire (blocked)', function (
     $victim->takeDamage(new Vector2(0, 0), 5, $attacker);
 
     // Friendly fire is blocked — no damage, no SOUND_HIT
-    expect(soundsSentToTee($red1->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);
+    expect(soundsSentToTee($world, $red1->teeIndex))->not()->toContain(GameConstants::SOUND_HIT);
 });
 
 /*
@@ -1026,10 +970,8 @@ test('takeDamage does not send SOUND_HIT on friendly fire (blocked)', function (
 
 test('red tee spawns at a red spawn point on the CTF map', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -1062,7 +1004,7 @@ test('red tee spawns at a red spawn point on the CTF map', function () use ($ctf
     // The character should be at one of the red spawn positions
     $atRedSpawn = false;
     foreach ($redSpawnPositions as $redSpawn) {
-        if ((int) round($spawnPos->x)    === (int) round($redSpawn->x)
+        if ((int) round($spawnPos->x) === (int) round($redSpawn->x)
             && (int) round($spawnPos->y) === (int) round($redSpawn->y)) {
             $atRedSpawn = true;
             break;
@@ -1073,10 +1015,8 @@ test('red tee spawns at a red spawn point on the CTF map', function () use ($ctf
 
 test('blue tee spawns at a blue spawn point on the CTF map', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -1109,7 +1049,7 @@ test('blue tee spawns at a blue spawn point on the CTF map', function () use ($c
     // The character should be at one of the blue spawn positions
     $atBlueSpawn = false;
     foreach ($blueSpawnPositions as $blueSpawn) {
-        if ((int) round($spawnPos->x)    === (int) round($blueSpawn->x)
+        if ((int) round($spawnPos->x) === (int) round($blueSpawn->x)
             && (int) round($spawnPos->y) === (int) round($blueSpawn->y)) {
             $atBlueSpawn = true;
             break;
@@ -1120,10 +1060,8 @@ test('blue tee spawns at a blue spawn point on the CTF map', function () use ($c
 
 test('red tee does not spawn at a blue spawn point on the CTF map', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
-        return;
+        throw new RuntimeException('Required CTF map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
@@ -1154,7 +1092,7 @@ test('red tee does not spawn at a blue spawn point on the CTF map', function () 
     // The character should NOT be at any blue spawn position
     $atBlueSpawn = false;
     foreach ($blueSpawnPositions as $blueSpawn) {
-        if ((int) round($spawnPos->x)    === (int) round($blueSpawn->x)
+        if ((int) round($spawnPos->x) === (int) round($blueSpawn->x)
             && (int) round($spawnPos->y) === (int) round($blueSpawn->y)) {
             $atBlueSpawn = true;
             break;

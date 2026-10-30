@@ -12,7 +12,7 @@ use TeeFrame\Network\Chunks\Game\ClSetTeamChunk;
 use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\RawPayload;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 function createSpectatorWorld(Map $map, TickHandler $tickHandler): AbstractWorld
@@ -47,21 +47,19 @@ test('ClSetSpectatorModeChunk encodes and decodes correctly', function () {
 
 test('setTeam moves player to spectators and kills character', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'TestPlayer';
     $world->addTee($tee);
 
     // Spawn a character
-    $spawnPos = new Vector2(100, 100);
+    $spawnPos  = new Vector2(100, 100);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
     $character->spawn(clone $spawnPos, $tee);
     $world->addEntity($character);
@@ -79,69 +77,63 @@ test('setTeam moves player to spectators and kills character', function () use (
 
 test('setTeam broadcasts joined the spectators chat message', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Joiner';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Witness';
     $world->addTee($tee2);
 
     $tee1->setTeam(GameConstants::TEAM_SPECTATORS);
 
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof \TeeFrame\Network\Chunks\Game\SvChatChunk);
+    $chats     = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof \TeeFrame\Network\Chunks\Game\SvChatChunk);
     $joinChats = array_filter($chats, fn ($c) => str_contains($c->text, "'Joiner' joined the spectators"));
     expect($joinChats)->not->toBeEmpty();
 });
 
 test('setTeam broadcasts joined the game chat message', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Returner';
     $world->addTee($tee);
 
     // First move to spectators
     $tee->setTeam(GameConstants::TEAM_SPECTATORS);
-    resetMockServer();
+    recordingServer($world)->clear();
 
     // Now move back to the game
     $tee->setTeam(GameConstants::TEAM_RED);
 
-    $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof \TeeFrame\Network\Chunks\Game\SvChatChunk);
+    $chats     = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof \TeeFrame\Network\Chunks\Game\SvChatChunk);
     $joinChats = array_filter($chats, fn ($c) => str_contains($c->text, "'Returner' joined the game"));
     expect($joinChats)->not->toBeEmpty();
 });
 
 test('ClSetTeam to spectators works via onMessage', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'Joiner';
     $world->addTee($tee);
 
@@ -153,16 +145,14 @@ test('ClSetTeam to spectators works via onMessage', function () use ($mapPath, $
 
 test('team change cooldown broadcasts time to wait', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'CooldownTest';
     $world->addTee($tee);
 
@@ -174,7 +164,7 @@ test('team change cooldown broadcasts time to wait', function () use ($mapPath, 
 
     expect($tee->team)->toBe(GameConstants::TEAM_RED); // unchanged
 
-    $broadcasts = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvBroadcastChunk);
+    $broadcasts = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvBroadcastChunk);
     expect($broadcasts)->not->toBeEmpty();
 
     $broadcast = reset($broadcasts);
@@ -184,20 +174,18 @@ test('team change cooldown broadcasts time to wait', function () use ($mapPath, 
 
 test('spectators can change spectator mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Spectator';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Player';
     $world->addTee($tee2);
 
@@ -212,20 +200,18 @@ test('spectators can change spectator mode', function () use ($mapPath, $mapExis
 
 test('non-spectators cannot change spectator mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee1 = new PlayerTee;
+    $tee1       = new PlayerTee;
     $tee1->name = 'Player1';
     $world->addTee($tee1);
 
-    $tee2 = new PlayerTee;
+    $tee2       = new PlayerTee;
     $tee2->name = 'Player2';
     $world->addTee($tee2);
 
@@ -237,16 +223,14 @@ test('non-spectators cannot change spectator mode', function () use ($mapPath, $
 
 test('cannot spectate yourself', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'SelfSpec';
     $world->addTee($tee);
 
@@ -260,16 +244,14 @@ test('cannot spectate yourself', function () use ($mapPath, $mapExists) {
 
 test('spectator info is included in snap for local spectator', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'SpecSnap';
     $world->addTee($tee);
 
@@ -290,16 +272,14 @@ test('spectator info is included in snap for local spectator', function () use (
 
 test('spectator info is not sent to non-spectators', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $tee = new PlayerTee;
+    $tee       = new PlayerTee;
     $tee->name = 'NonSpec';
     $world->addTee($tee);
 
@@ -312,20 +292,18 @@ test('spectator info is not sent to non-spectators', function () use ($mapPath, 
 
 test('spectator view position follows spectated player', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = new class($tickHandler, $map) extends TestWorld {};
+    $world       = new class($tickHandler, $map) extends TestWorld {};
 
-    $player = new PlayerTee;
+    $player       = new PlayerTee;
     $player->name = 'Player';
     $world->addTee($player);
 
-    $spectator = new PlayerTee;
+    $spectator       = new PlayerTee;
     $spectator->name = 'Spectator';
     $world->addTee($spectator);
 
@@ -334,7 +312,7 @@ test('spectator view position follows spectated player', function () use ($mapPa
     $spectator->spectatorId = $player->teeIndex;
 
     // Defer spawning so this tick tests camera following, not spawn positioning.
-    $player->respawnTick = $tickHandler->get() + 1;
+    $player->respawnTick  = $tickHandler->get() + 1;
     $player->viewPosition = new Vector2(5000, 3000);
 
     // Spectator's view position is still at origin
@@ -350,27 +328,25 @@ test('spectator view position follows spectated player', function () use ($mapPa
 
 test('spectator in free view does not follow any player', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = new class($tickHandler, $map) extends TestWorld {};
+    $world       = new class($tickHandler, $map) extends TestWorld {};
 
-    $player = new PlayerTee;
+    $player       = new PlayerTee;
     $player->name = 'Player';
     $world->addTee($player);
 
-    $spectator = new PlayerTee;
+    $spectator       = new PlayerTee;
     $spectator->name = 'FreeViewer';
     $world->addTee($spectator);
 
     $spectator->setTeam(GameConstants::TEAM_SPECTATORS);
     // spectatorId stays SPEC_FREEVIEW
 
-    $player->viewPosition = new Vector2(5000, 3000);
+    $player->viewPosition    = new Vector2(5000, 3000);
     $spectator->viewPosition = new Vector2(100, 200);
 
     $world->doTick();
@@ -382,16 +358,14 @@ test('spectator in free view does not follow any player', function () use ($mapP
 
 test('spectator sees entities regardless of distance', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $spectator = new PlayerTee;
+    $spectator       = new PlayerTee;
     $spectator->name = 'FarSpectator';
     $world->addTee($spectator);
     $spectator->setTeam(GameConstants::TEAM_SPECTATORS);
@@ -416,16 +390,14 @@ test('spectator sees entities regardless of distance', function () use ($mapPath
 
 test('non-spectator does not see entities beyond culling distance', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $world = createSpectatorWorld($map, $tickHandler);
+    $world       = createSpectatorWorld($map, $tickHandler);
 
-    $player = new PlayerTee;
+    $player       = new PlayerTee;
     $player->name = 'Player';
     $world->addTee($player);
     $player->viewPosition = new Vector2(0, 0);

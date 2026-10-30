@@ -3,17 +3,15 @@
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('setClientName sets the name when no collision', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $tee = new PlayerTee;
@@ -24,12 +22,10 @@ test('setClientName sets the name when no collision', function () use ($mapPath,
 
 test('setClientName trims whitespace from the name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $tee = new PlayerTee;
@@ -40,12 +36,10 @@ test('setClientName trims whitespace from the name', function () use ($mapPath, 
 
 test('setClientName rejects empty name and keeps it empty', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $tee = new PlayerTee;
@@ -58,12 +52,10 @@ test('setClientName rejects empty name and keeps it empty', function () use ($ma
 
 test('setClientName auto-renames on duplicate to (1)name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $first = new PlayerTee;
@@ -79,12 +71,10 @@ test('setClientName auto-renames on duplicate to (1)name', function () use ($map
 
 test('setClientName auto-renames with incrementing suffix for multiple duplicates', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $first = new PlayerTee;
@@ -105,12 +95,10 @@ test('setClientName auto-renames with incrementing suffix for multiple duplicate
 
 test('setClientName does not rename when the tee keeps its own name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $tee = new PlayerTee;
@@ -125,12 +113,10 @@ test('setClientName does not rename when the tee keeps its own name', function (
 
 test('setClientName cleans control characters from the name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $tee = new PlayerTee;
@@ -142,12 +128,10 @@ test('setClientName cleans control characters from the name', function () use ($
 
 test('trySetClientName returns false for empty name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $tee = new PlayerTee;
@@ -158,12 +142,10 @@ test('trySetClientName returns false for empty name', function () use ($mapPath,
 
 test('trySetClientName returns false when name is taken by another tee', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $first = new PlayerTee;
@@ -177,12 +159,10 @@ test('trySetClientName returns false when name is taken by another tee', functio
 
 test('trySetClientName returns true when tee reclaims its own name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
-    resetMockServer();
-
-    $map = new Map($mapPath);
+    $map   = new Map($mapPath);
     $world = createWorld($map);
 
     $tee = new PlayerTee;

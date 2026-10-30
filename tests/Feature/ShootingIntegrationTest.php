@@ -43,7 +43,7 @@ function setupCharacter(Map $map): array
 
 test('shootGun creates projectile that appears in world entities', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map                 = new Map($mapPath);
@@ -66,7 +66,7 @@ test('shootGun creates projectile that appears in world entities', function () u
 
 test('projectile snap item has correct type and velocity', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map                 = new Map($mapPath);
@@ -98,7 +98,7 @@ test('projectile snap item has correct type and velocity', function () use ($map
 
 test('hammer hit does not crash and returns reload timer', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map                 = new Map($mapPath);
@@ -114,14 +114,14 @@ test('hammer hit does not crash and returns reload timer', function () use ($map
 
 test('hammer hit creates hammer hit snap event for nearby target', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $world     = createWorld($map);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
@@ -161,14 +161,14 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
 
 test('hammer hits target at edge of reach range', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $world     = createWorld($map);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
@@ -206,14 +206,14 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
 
 test('hammer does not hit target beyond reach range', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $world     = createWorld($map);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
@@ -248,7 +248,7 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
 
 test('projectile getPos returns forward displacement', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map                 = new Map($mapPath);
@@ -271,7 +271,7 @@ test('projectile getPos returns forward displacement', function () use ($mapPath
 
 test('character tick is updated from world tick in doTick', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -298,7 +298,7 @@ test('character tick is updated from world tick in doTick', function () use ($ma
 
 test('hammer fire sets attackTick to current world tick', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -336,13 +336,13 @@ test('hammer fire sets attackTick to current world tick', function () use ($mapP
 
 test('gun projectile survives 0.5 seconds without collision', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $tickHandler = new TickHandler(0);
@@ -397,7 +397,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
 
 test('projectile snap velocity is normalized direction times 100', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -444,7 +444,7 @@ test('projectile snap velocity is normalized direction times 100', function () u
 
 test('character snap id matches tee index when pickups are present', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -489,7 +489,7 @@ test('character snap id matches tee index when pickups are present', function ()
 
 test('character death sets respawn on tee and notifies game controller', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -565,7 +565,7 @@ test('character death sets respawn on tee and notifies game controller', functio
 
 test('tee index is reused on reconnect and snap id matches', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -653,7 +653,7 @@ function createCharacterForAutoFire(PlayerTee $tee, int $weapon): array
 
 test('grenade auto-fires while fire button is held', function () use ($mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $tee                 = new PlayerTee;
@@ -683,7 +683,7 @@ test('grenade auto-fires while fire button is held', function () use ($mapExists
 
 test('shotgun auto-fires while fire button is held', function () use ($mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $tee                 = new PlayerTee;
@@ -711,7 +711,7 @@ test('shotgun auto-fires while fire button is held', function () use ($mapExists
 
 test('rifle auto-fires while fire button is held', function () use ($mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $tee                 = new PlayerTee;
@@ -739,7 +739,7 @@ test('rifle auto-fires while fire button is held', function () use ($mapExists) 
 
 test('gun does not auto-fire while fire button is held', function () use ($mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $tee                 = new PlayerTee;

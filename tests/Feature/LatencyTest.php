@@ -49,9 +49,8 @@ class LatencyTestConnection extends ConnectionSlot
 /** @return array{TestWorld, LatencyTestTickHandler, LatencyTestConnection} */
 function createLatencyTestWorld(int $tick = 1): array
 {
-    resetMockServer();
-    $ticks = new LatencyTestTickHandler($tick);
-    $world = new TestWorld($ticks, new Map(__DIR__.'/../dm1.map'));
+    $ticks      = new LatencyTestTickHandler($tick);
+    $world      = new TestWorld($ticks, new Map(__DIR__.'/../dm1.map'));
     $connection = new LatencyTestConnection($world, $ticks);
     $world->addTee($connection->playerTee());
     $connection->state = ConnectionSlot::STATE_INGAME;
@@ -91,7 +90,7 @@ function latencyTestPlayerInfo(PlayerTee $tee, PlayerTee $requestingTee): ObjPla
 
 test('snapshot ACK latency uses elapsed send time and truncates milliseconds like 0.6', function (float $elapsed, int $expected) {
     [, $ticks, $connection] = createLatencyTestWorld();
-    $snaps = $connection->snaps();
+    $snaps                  = $connection->snaps();
     $ticks->now += 1_000_000_000;
     $snaps->sendItems(100, []);
     $ticks->now += (int) round($elapsed * 1_000_000_000);
@@ -101,14 +100,14 @@ test('snapshot ACK latency uses elapsed send time and truncates milliseconds lik
     expect($snaps->getLatency())->toBe($expected);
     expect($connection->playerTee()->latency)->toBe($expected);
 })->with([
-    'sub-millisecond localhost ACK' => [0.0009765625, 0],
-    'fractional milliseconds' => [0.015625, 15],
+    'sub-millisecond localhost ACK'                     => [0.0009765625, 0],
+    'fractional milliseconds'                           => [0.015625, 15],
     'remote ACK without an artificial tick subtraction' => [0.125, 125],
 ]);
 
 test('unknown snapshot ACKs leave latency unchanged and connection reset clears it', function () {
     [, $ticks, $connection] = createLatencyTestWorld();
-    $snaps = $connection->snaps();
+    $snaps                  = $connection->snaps();
     $ticks->now += 1_000_000_000;
     $snaps->sendItems(100, []);
     $ticks->now += 15_625_000;
@@ -127,8 +126,8 @@ test('unknown snapshot ACKs leave latency unchanged and connection reset clears 
 
 test('player info reports the minimum per second instead of flashing raw ACK samples', function (bool $spectator, bool $paused) {
     [$world, $ticks, $connection] = createLatencyTestWorld();
-    $tee = $connection->playerTee();
-    $other = new PlayerTee;
+    $tee                          = $connection->playerTee();
+    $other                        = new PlayerTee;
     $world->addTee($other);
     $tee->team = $spectator ? GameConstants::TEAM_SPECTATORS : GameConstants::TEAM_RED;
     $world->setPaused($paused);
@@ -157,14 +156,14 @@ test('player info reports the minimum per second instead of flashing raw ACK sam
         expect(latencyTestPlayerInfo($tee, $other)->latency)->toBe($expected);
     }
 })->with([
-    'playing' => [false, false],
-    'spectating' => [true, false],
+    'playing'      => [false, false],
+    'spectating'   => [true, false],
     'paused world' => [false, true],
 ]);
 
 test('reset clears both the reported latency and an unfinished minimum window', function () {
     [, $ticks, $connection] = createLatencyTestWorld();
-    $snaps = $connection->snaps();
+    $snaps                  = $connection->snaps();
     $snaps->sendItems(100, []);
     $connection->feedConnection(new DefaultPacket([latencyTestInput(100, 101)], ack: 0));
 
@@ -185,14 +184,14 @@ test('reset clears both the reported latency and an unfinished minimum window', 
 
 test('connection timing uses the injected server clock rather than the assigned world', function () {
     $serverTicks = new LatencyTestTickHandler(100);
-    $worldTicks = new LatencyTestTickHandler(900);
+    $worldTicks  = new LatencyTestTickHandler(900);
     $worldTicks->now += 10_000_000_000;
-    $world = new TestWorld($worldTicks, new Map(__DIR__.'/../dm1.map'));
-    $connection = new LatencyTestConnection($world, $serverTicks);
+    $world             = new TestWorld($worldTicks, new Map(__DIR__.'/../dm1.map'));
+    $connection        = new LatencyTestConnection($world, $serverTicks);
     $connection->state = ConnectionSlot::STATE_INGAME;
 
     $serverTicks->now += 7_000_000;
-    $input = latencyTestInput(-1, 101);
+    $input                 = latencyTestInput(-1, 101);
     $input->inputDirection = 1;
     $connection->feedConnection(new DefaultPacket([$input], ack: 0));
     $connection->chunks()->send();
@@ -227,10 +226,10 @@ test('input timing accounts for time within the tick and signed late inputs', fu
     expect($timing->intendedTick)->toBe($predictionTick);
     expect($timing->timeLeft)->toBe($expected);
 })->with([
-    'early within tick' => [7_000_000, 101, 13],
-    'late within tick' => [15_000_000, 101, 5],
-    'two ticks ahead' => [7_000_000, 102, 33],
-    'late input' => [7_000_000, 100, -7],
+    'early within tick'                         => [7_000_000, 101, 13],
+    'late within tick'                          => [15_000_000, 101, 5],
+    'two ticks ahead'                           => [7_000_000, 102, 33],
+    'late input'                                => [7_000_000, 100, -7],
     'truncate positive fractional milliseconds' => [7_750_000, 101, 12],
     'truncate negative fractional milliseconds' => [7_750_000, 100, -7],
 ]);
@@ -247,7 +246,7 @@ test('advancing the tick preserves its deadline rather than pretending no time h
 });
 
 test('the server records each tick start before processing worlds and snapshots', function () {
-    $ticks = new LatencyTestTickHandler(100);
+    $ticks  = new LatencyTestTickHandler(100);
     $server = new class($ticks, name: 'Latency test') extends AbstractServerInstance
     {
         protected function boot(): void {}

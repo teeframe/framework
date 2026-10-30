@@ -4,12 +4,12 @@ use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Map\Collision;
 
-$mapPath = __DIR__ . '/../dm1.map';
+$mapPath   = __DIR__ . '/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('loads dm1 map and computes correct crc', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map = new Map($mapPath);
@@ -29,7 +29,7 @@ test('loads dm1 map and computes correct crc', function () use ($mapPath, $mapEx
 
 test('dm1 map has a game layer with correct dimensions', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map = new Map($mapPath);
@@ -38,7 +38,7 @@ test('dm1 map has a game layer with correct dimensions', function () use ($mapPa
     expect($gameLayer)->not->toBeNull();
 
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     // dm1.map game layer dimensions
@@ -48,7 +48,7 @@ test('dm1 map has a game layer with correct dimensions', function () use ($mapPa
 
 test('dm1 map collision is initialized', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map = new Map($mapPath);
@@ -57,7 +57,7 @@ test('dm1 map collision is initialized', function () use ($mapPath, $mapExists) 
     expect($collision)->not->toBeNull();
 
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     // Collision dimensions should match game layer
@@ -67,7 +67,7 @@ test('dm1 map collision is initialized', function () use ($mapPath, $mapExists) 
 
 test('dm1 map raw data is available for download', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map = new Map($mapPath);
@@ -81,7 +81,7 @@ test('dm1 map raw data is available for download', function () use ($mapPath, $m
 
 test('dm1 map has groups and layers', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map = new Map($mapPath);
@@ -95,7 +95,7 @@ test('dm1 map has groups and layers', function () use ($mapPath, $mapExists) {
 
 test('dm1 map crc round-trips correctly through packInt', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map = new Map($mapPath);
@@ -106,7 +106,7 @@ test('dm1 map crc round-trips correctly through packInt', function () use ($mapP
     expect($crc)->toBeLessThan(0); // dm1 CRC has bit 31 set, so it's negative as signed 32-bit
 
     // Pack and unpack through Teeworlds' variable-length int encoding
-    $packed = \TeeFrame\Network\NetworkBase::packInt($crc);
+    $packed     = \TeeFrame\Network\NetworkBase::packInt($crc);
     [$unpacked] = \TeeFrame\Network\NetworkBase::unpackInt($packed);
 
     expect($unpacked)->toBe($crc);
@@ -114,7 +114,7 @@ test('dm1 map crc round-trips correctly through packInt', function () use ($mapP
 
 test('dm1 map has spawn tiles', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map = new Map($mapPath);
@@ -123,7 +123,7 @@ test('dm1 map has spawn tiles', function () use ($mapPath, $mapExists) {
     expect($gameLayer)->not->toBeNull();
 
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();

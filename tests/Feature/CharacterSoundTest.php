@@ -12,8 +12,6 @@ use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 /** @return array{AbstractWorld, PvpCharacterEntity, PlayerTee, PlayerTee, PlayerTee} */
 function createCharacterSoundWorld(int $wallTile = GameLayer::TILE_SOLID): array
 {
-    resetMockServer();
-
     // A floor at y=128 and a wall at x=192 make hook/jump events deterministic.
     $tiles = '';
     for ($y = 0; $y < 8; $y++) {
@@ -30,14 +28,14 @@ function createCharacterSoundWorld(int $wallTile = GameLayer::TILE_SOLID): array
             $this->initCollision();
         }
     };
-    $world = createWorld($map);
-    $owner = new PlayerTee;
-    $other = new PlayerTee;
+    $world     = createWorld($map);
+    $owner     = new PlayerTee;
+    $other     = new PlayerTee;
     $spectator = new PlayerTee;
     $world->addTee($owner);
     $world->addTee($other);
     $world->addTee($spectator);
-    $spectator->team = GameConstants::TEAM_SPECTATORS;
+    $spectator->team         = GameConstants::TEAM_SPECTATORS;
     $spectator->viewPosition = new Vector2(128, 110);
 
     $character = new PvpCharacterEntity($world, new Vector2(128, 110));
@@ -88,8 +86,8 @@ test('predicted character sounds reach other tees and spectators but not their o
     expect(characterSoundSnapshot($world, $other))->toBe([]);
 })->with([
     'hook attaches to ground' => [GameLayer::TILE_SOLID, false, GameConstants::COREEVENT_HOOK_ATTACH_GROUND, GameConstants::SOUND_HOOK_ATTACH_GROUND],
-    'hook hits no-hook tile' => [GameLayer::TILE_NOHOOK, false, GameConstants::COREEVENT_HOOK_HIT_NOHOOK, GameConstants::SOUND_HOOK_NOATTACH],
-    'ground jump' => [GameLayer::TILE_SOLID, true, GameConstants::COREEVENT_GROUND_JUMP, GameConstants::SOUND_PLAYER_JUMP],
+    'hook hits no-hook tile'  => [GameLayer::TILE_NOHOOK, false, GameConstants::COREEVENT_HOOK_HIT_NOHOOK, GameConstants::SOUND_HOOK_NOATTACH],
+    'ground jump'             => [GameLayer::TILE_SOLID, true, GameConstants::COREEVENT_GROUND_JUMP, GameConstants::SOUND_PLAYER_JUMP],
 ]);
 
 test('hook attaching to a player sends sound to everyone including the hook owner', function () {
@@ -143,10 +141,10 @@ test('weapon switching sends the 0.6 switch sound to the owner other players and
     feedInput($character, input());
     $world->clearEvents();
     $soundPosition = clone $character->getPosition();
-    $switchInput = input([
+    $switchInput   = input([
         'wantedWeapon' => $wantedWeapon,
-        'nextWeapon' => $nextWeapon,
-        'prevWeapon' => $prevWeapon,
+        'nextWeapon'   => $nextWeapon,
+        'prevWeapon'   => $prevWeapon,
     ]);
 
     feedInput($character, $switchInput);
@@ -170,8 +168,8 @@ test('weapon switching sends the 0.6 switch sound to the owner other players and
     }
 })->with([
     'direct selection' => [GameConstants::WEAPON_HAMMER + 1, 0, 0],
-    'next weapon' => [0, 1, 0],
-    'previous weapon' => [0, 0, 1],
+    'next weapon'      => [0, 1, 0],
+    'previous weapon'  => [0, 0, 1],
 ]);
 
 test('selecting the current or an unavailable weapon does not emit a switch sound', function (int $wantedWeapon) {
@@ -188,8 +186,8 @@ test('selecting the current or an unavailable weapon does not emit a switch soun
         expect(characterSoundSnapshot($world, $tee))->toBe([]);
     }
 })->with([
-    'current weapon' => [GameConstants::WEAPON_GUN + 1],
-    'unowned weapon' => [GameConstants::WEAPON_SHOTGUN + 1],
+    'current weapon'      => [GameConstants::WEAPON_GUN + 1],
+    'unowned weapon'      => [GameConstants::WEAPON_SHOTGUN + 1],
     'out-of-range weapon' => [GameConstants::NUM_WEAPONS + 1],
 ]);
 
@@ -240,6 +238,6 @@ test('air jumps and hook launches do not create server sound events in Teeworlds
         expect(characterSoundSnapshot($world, $tee))->toBe([]);
     }
 })->with([
-    'air jump' => [true, false, GameConstants::COREEVENT_AIR_JUMP],
+    'air jump'                      => [true, false, GameConstants::COREEVENT_AIR_JUMP],
     'hook launch without collision' => [false, true, GameConstants::COREEVENT_HOOK_LAUNCH],
 ]);

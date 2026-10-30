@@ -58,10 +58,8 @@ function setGameTick(TickHandler $tickHandler, int $tick): void
 
 test('warmup counts down and starts round when it reaches zero', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -84,10 +82,8 @@ test('warmup counts down and starts round when it reaches zero', function () use
 
 test('doWarmup with negative seconds clears warmup', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -110,10 +106,8 @@ test('doWarmup with negative seconds clears warmup', function () use ($mapPath, 
 
 test('round ends when a tee reaches the score limit', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -133,10 +127,8 @@ test('round ends when a tee reaches the score limit', function () use ($mapPath,
 
 test('round does not end during warmup even if score limit reached', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -157,10 +149,8 @@ test('round does not end during warmup even if score limit reached', function ()
 
 test('game over pauses the world', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -180,10 +170,8 @@ test('game over pauses the world', function () use ($mapPath, $mapExists) {
 
 test('round restarts after the 10 second game-over pause', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -211,10 +199,8 @@ test('round restarts after the 10 second game-over pause', function () use ($map
 
 test('sudden death triggers when scores are tied at the limit', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -241,10 +227,8 @@ test('sudden death triggers when scores are tied at the limit', function () use 
 
 test('team mode round ends when one team exceeds the other at score limit', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -276,10 +260,8 @@ test('team mode round ends when one team exceeds the other at score limit', func
 
 test('doSnap reflects game over and paused state flags', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -310,10 +292,8 @@ test('doSnap reflects game over and paused state flags', function () use ($mapPa
 
 test('doSnap includes team scores in team mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -342,10 +322,8 @@ test('doSnap includes team scores in team mode', function () use ($mapPath, $map
 
 test('doSnap emits GAMEFLAG_TEAMS in team mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -370,10 +348,8 @@ test('doSnap emits GAMEFLAG_TEAMS in team mode', function () use ($mapPath, $map
 
 test('checkTeamBalance marks teams as unbalanced when diff is 2 or more', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -397,10 +373,8 @@ test('checkTeamBalance marks teams as unbalanced when diff is 2 or more', functi
 
 test('checkTeamBalance returns true when teams are even', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -422,10 +396,8 @@ test('checkTeamBalance returns true when teams are even', function () use ($mapP
 
 test('team balancing moves a player from the larger team after the balance time elapses', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -479,10 +451,8 @@ test('team balancing moves a player from the larger team after the balance time 
 
 test('team balancing is disabled when teamBalanceTime is zero', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -510,10 +480,8 @@ test('team balancing is disabled when teamBalanceTime is zero', function () use 
 
 test('inactive kick moves player to spectators after the timeout', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -538,10 +506,8 @@ test('inactive kick moves player to spectators after the timeout', function () u
 
 test('inactive kick is disabled when inactiveKickTime is zero', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -565,10 +531,8 @@ test('inactive kick is disabled when inactiveKickTime is zero', function () use 
 
 test('inactive kick does not affect spectators', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -592,10 +556,8 @@ test('inactive kick does not affect spectators', function () use ($mapPath, $map
 
 test('inactive kick in kick mode kicks the player', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -614,16 +576,14 @@ test('inactive kick in kick mode kicks the player', function () use ($mapPath, $
     setGameTick($tickHandler, 100 + 3001);
     $world->doTick();
 
-    expect($GLOBALS['mockGameServer']->kickedTees)->toHaveKey($tee->teeIndex);
-    expect($GLOBALS['mockGameServer']->kickedTees[$tee->teeIndex])->toBe('Kicked for inactivity');
+    expect(recordingServer($world)->kickedTees)->toHaveKey($tee->teeIndex);
+    expect(recordingServer($world)->kickedTees[$tee->teeIndex])->toBe('Kicked for inactivity');
 });
 
 test('active player is not kicked for inactivity', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -655,10 +615,8 @@ test('active player is not kicked for inactivity', function () use ($mapPath, $m
 
 test('paused world does not apply input to characters', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -699,8 +657,6 @@ test('paused world does not apply input to characters', function () use ($mapPat
 });
 
 test('paused character snapshots disable dead reckoning until play resumes', function (bool $endMatch) use ($mapPath) {
-    resetMockServer();
-
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
     $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
@@ -737,8 +693,8 @@ test('paused character snapshots disable dead reckoning until play resumes', fun
         expect($world->isPaused())->toBeTrue();
 
         foreach ([$tee, $observer] as $requester) {
-            $snaps = $world->doSnap($requester);
-            $gameInfo = array_find($snaps, fn ($item) => $item instanceof ObjGameInfoItem);
+            $snaps         = $world->doSnap($requester);
+            $gameInfo      = array_find($snaps, fn ($item) => $item instanceof ObjGameInfoItem);
             $characterSnap = array_find($snaps, fn ($item) => $item instanceof ObjCharacterItem);
             assert($gameInfo instanceof ObjGameInfoItem);
             assert($characterSnap instanceof ObjCharacterItem);
@@ -772,16 +728,14 @@ test('paused character snapshots disable dead reckoning until play resumes', fun
     expect($world->isPaused())->toBeFalse();
     expect($character->doSnap($tee)[0]->getInts()[0])->toBe($tickHandler->get());
 })->with([
-    'manual pause' => [false],
+    'manual pause'   => [false],
     'match finished' => [true],
 ]);
 
 test('paused world does not tick entities (no gravity)', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -825,10 +779,8 @@ test('paused world does not tick entities (no gravity)', function () use ($mapPa
 
 test('isFriendlyFire returns false in non-team mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -847,10 +799,8 @@ test('isFriendlyFire returns false in non-team mode', function () use ($mapPath,
 
 test('isFriendlyFire returns true for same-team players in team mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -871,10 +821,8 @@ test('isFriendlyFire returns true for same-team players in team mode', function 
 
 test('isFriendlyFire returns false for different teams in team mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -895,10 +843,8 @@ test('isFriendlyFire returns false for different teams in team mode', function (
 
 test('isFriendlyFire returns false for self-damage', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -915,10 +861,8 @@ test('isFriendlyFire returns false for self-damage', function () use ($mapPath, 
 
 test('same-team takeDamage deals no damage in team mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -953,10 +897,8 @@ test('same-team takeDamage deals no damage in team mode', function () use ($mapP
 
 test('different-team takeDamage deals damage in team mode', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -990,10 +932,8 @@ test('different-team takeDamage deals damage in team mode', function () use ($ma
 
 test('non-team mode takeDamage always deals damage', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1024,10 +964,8 @@ test('non-team mode takeDamage always deals damage', function () use ($mapPath, 
 
 test('self-damage is halved', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1058,10 +996,8 @@ test('self-damage is halved', function () use ($mapPath, $mapExists) {
 
 test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1109,10 +1045,8 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
 
 test('first player in team mode joins red team automatically', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1128,10 +1062,8 @@ test('first player in team mode joins red team automatically', function () use (
 
 test('second player in team mode joins blue team automatically', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1151,10 +1083,8 @@ test('second player in team mode joins blue team automatically', function () use
 
 test('third player in team mode joins the team with fewer players', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1179,10 +1109,8 @@ test('third player in team mode joins the team with fewer players', function () 
 
 test('non-team mode always assigns red team', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1208,10 +1136,8 @@ test('non-team mode always assigns red team', function () use ($mapPath, $mapExi
 
 test('round restart destroys existing characters and respawns everyone', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1265,10 +1191,8 @@ test('round restart destroys existing characters and respawns everyone', functio
 
 test('pickups survive round restart and reset their spawn tick', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -1311,10 +1235,8 @@ test('pickups survive round restart and reset their spawn tick', function () use
 
 test('pickups with spawn delay re-enter spawn delay after round restart', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);

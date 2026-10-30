@@ -174,7 +174,6 @@ test('a base controller can reload maps and spawn again without PvP APIs', funct
 });
 
 test('PvP controllers retain their mode snapshots and kill and suicide scoring', function (bool $teams, bool $ctf, string $mode, int $gameFlags) {
-    resetMockServer();
     $clock      = new TickHandler(100);
     $controller = new PvpGameController($clock, isTeamMode: $teams, isCaptureTheFlag: $ctf, scoreLimit: 20, timeLimit: 10);
     $world      = new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller);

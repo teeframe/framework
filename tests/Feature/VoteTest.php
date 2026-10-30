@@ -99,10 +99,8 @@ test('SvVoteStatusChunk encodes and decodes correctly', function () {
 
 test('callVote option starts a vote and broadcasts SvVoteSet', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -125,7 +123,7 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
     ));
 
     // Should have sent SvVoteSet to both tees
-    $voteSets = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvVoteSetChunk);
+    $voteSets = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvVoteSetChunk);
     expect($voteSets)->toHaveCount(2);
 
     $msg = reset($voteSets);
@@ -141,10 +139,8 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
 
 test('vote passes when majority votes yes', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -177,17 +173,15 @@ test('vote passes when majority votes yes', function () use ($mapPath, $mapExist
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
     // Should have sent "Vote passed" chat
-    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $passed = array_filter($chats, fn ($c) => $c->text === 'Vote passed');
     expect($passed)->not->toBeEmpty();
 });
 
 test('vote fails when majority votes no', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -218,17 +212,15 @@ test('vote fails when majority votes no', function () use ($mapPath, $mapExists)
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $failed = array_filter($chats, fn ($c) => $c->text === 'Vote failed');
     expect($failed)->not->toBeEmpty();
 });
 
 test('vote fails on timeout', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -253,17 +245,15 @@ test('vote fails on timeout', function () use ($mapPath, $mapExists) {
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $failed = array_filter($chats, fn ($c) => $c->text === 'Vote failed');
     expect($failed)->not->toBeEmpty();
 });
 
 test('cannot call a vote while another is running', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -291,10 +281,8 @@ test('cannot call a vote while another is running', function () use ($mapPath, $
 
 test('player cannot vote twice', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -325,10 +313,8 @@ test('player cannot vote twice', function () use ($mapPath, $mapExists) {
 
 test('vote option lookup is case insensitive', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -350,10 +336,8 @@ test('vote option lookup is case insensitive', function () use ($mapPath, $mapEx
 
 test('calling a non-existent option is rejected', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -367,17 +351,15 @@ test('calling a non-existent option is rejected', function () use ($mapPath, $ma
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats    = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats    = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $rejected = array_filter($chats, fn ($c) => str_contains($c->text, "isn't an option"));
     expect($rejected)->not->toBeEmpty();
 });
 
 test('vote status is broadcast after a vote', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -402,7 +384,7 @@ test('vote status is broadcast after a vote', function () use ($mapPath, $mapExi
     // Tick — should broadcast vote status (not yet decided: 1 yes, 1 no, total 2)
     $world->doTick();
 
-    $statuses = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvVoteStatusChunk);
+    $statuses = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvVoteStatusChunk);
     expect($statuses)->not->toBeEmpty();
 
     $status = reset($statuses);
@@ -414,10 +396,8 @@ test('vote status is broadcast after a vote', function () use ($mapPath, $mapExi
 
 test('kick vote kicks the target when it passes', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -444,16 +424,14 @@ test('kick vote kicks the target when it passes', function () use ($mapPath, $ma
     $world->doTick();
 
     // tee2 should have been kicked
-    expect($GLOBALS['mockGameServer']->kickedTees)->toHaveKey($tee2->teeIndex);
-    expect($GLOBALS['mockGameServer']->kickedTees[$tee2->teeIndex])->toBe('Kicked by vote');
+    expect(recordingServer($world)->kickedTees)->toHaveKey($tee2->teeIndex);
+    expect(recordingServer($world)->kickedTees[$tee2->teeIndex])->toBe('Kicked by vote');
 });
 
 test('cannot kick yourself', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -467,17 +445,15 @@ test('cannot kick yourself', function () use ($mapPath, $mapExists) {
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats   = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats   = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $blocked = array_filter($chats, fn ($c) => str_contains($c->text, "can't kick yourself"));
     expect($blocked)->not->toBeEmpty();
 });
 
 test('spectate vote kills the target character when it passes', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -531,10 +507,8 @@ test('ChangeMapCommand is vote-only', function () {
 
 test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -567,7 +541,7 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
     // Vote should have passed and the command executed
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
-    $chats  = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats  = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
     $passed = array_filter($chats, fn ($c) => $c->text === 'Vote passed');
     expect($passed)->not->toBeEmpty();
 });

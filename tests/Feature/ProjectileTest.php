@@ -16,23 +16,23 @@ $mapExists = file_exists($mapPath);
 
 test('projectile survives full lifecycle', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $world    = createWorld($map);
@@ -81,23 +81,23 @@ function getProjectilePos(PvpProjectileEntity $proj, float $time): Vector2
 
 test('character firing creates valid projectile snap', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $world    = createWorld($map);
@@ -124,23 +124,23 @@ test('character firing creates valid projectile snap', function () use ($mapPath
 
 test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $world    = createWorld($map);
@@ -166,23 +166,23 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
 
 test('projectile snap has valid integer values', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $pos = $gameLayer->getEntityPositions();
     if (empty($pos)) {
-        return;
+        throw new RuntimeException('Required map fixture has no spawn positions');
     }
 
     $map      = new Map($mapPath);
@@ -221,13 +221,13 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
 
 test('projectile snap uses start position not current position', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $world    = createWorld($map);
@@ -279,7 +279,7 @@ function createTestWorld(Map $map): AbstractWorld
 
 test('grenade creates explosion event on lifespan expiry', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map   = new Map($mapPath);
@@ -315,7 +315,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
 
 test('grenade explosion damages nearby character', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map   = new Map($mapPath);
@@ -358,7 +358,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
 
 test('grenade explosion does not damage character outside radius', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map   = new Map($mapPath);
@@ -397,7 +397,7 @@ test('grenade explosion does not damage character outside radius', function () u
 
 test('non-grenade projectile does not create explosion event', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map   = new Map($mapPath);
@@ -433,7 +433,7 @@ test('non-grenade projectile does not create explosion event', function () use (
 
 test('grenade collides with character and explodes', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -446,12 +446,12 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
@@ -513,7 +513,7 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
 
 test('gun projectile damages character on hit', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -526,12 +526,12 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $world    = createWorld($map);
@@ -585,7 +585,7 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
 
 test('projectile does not collide with owner character', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -598,12 +598,12 @@ test('projectile does not collide with owner character', function () use ($mapPa
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $world    = createWorld($map);
@@ -644,7 +644,7 @@ test('projectile does not collide with owner character', function () use ($mapPa
 
 test('damage indicators are created on takeDamage', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -657,12 +657,12 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $world    = createWorld($map);
@@ -707,7 +707,7 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
 
 test('damage indicators group when damage taken in quick succession', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -720,12 +720,12 @@ test('damage indicators group when damage taken in quick succession', function (
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $world    = createWorld($map);
@@ -767,7 +767,7 @@ test('damage indicators group when damage taken in quick succession', function (
 
 test('killing blow still emits damage indicators', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map         = new Map($mapPath);
@@ -780,12 +780,12 @@ test('killing blow still emits damage indicators', function () use ($mapPath, $m
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);

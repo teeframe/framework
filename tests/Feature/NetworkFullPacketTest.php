@@ -2,16 +2,16 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
-use TeeFrame\Network\Chunks\UnsupportedChunk;
-use TeeFrame\Network\Connection\AbstractConnection;
+
 use TeeFrame\Network\NetworkBase;
-use TeeFrame\Network\Packets\AbstractPacket;
+
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Network\SnapItems\ObjPickupItem;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
+use Tests\Support\RecordingConnection;
 
 /**
  * @return int[]
@@ -142,33 +142,12 @@ test('can encode a full packet with multiple snap items', function () {
 });
 
 test('can encode a full packet with multiple snap items through snap handler', function () {
-    $connectionClass = new class(new TickHandler) extends AbstractConnection
-    {
-        protected function handlePacketSending(AbstractPacket $packet): bool
-        {
-            throw new \Exception($packet->encodeToSend());
-        }
+    $connection      = new RecordingConnection(new TickHandler);
+    $connection->ack = 6;
+    $connection->snaps()->sendItems(4970, getCommonSnapItems());
 
-        protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void
-        {
-        }
-
-        protected function handleConnectionOutOfSequence(int $sequence, int $ack): void
-        {
-        }
-    };
-
-    $connectionClass->ack = 6;
-
-    try {
-        $connectionClass->snaps()->sendItems(4970, getCommonSnapItems());
-    } catch (\Exception $e) {
-        $encodedPacket = NetworkBase::unpackBuffer($e->getMessage());
-    }
-
-    if (! isset($encodedPacket)) {
-        throw new \Exception('Packet was not sent');
-    }
+    expect($connection->sentPackets)->toHaveCount(1);
+    $encodedPacket = NetworkBase::unpackBuffer($connection->sentPackets[0]->encodeToSend());
 
     // Verify packet structure: [flags, ack, numChunks, ...chunk]
     expect($encodedPacket)->not->toBeEmpty();

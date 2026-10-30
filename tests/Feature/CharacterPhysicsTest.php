@@ -6,29 +6,30 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
+use TeeFrame\Map\MapLayers\GameLayer;
 
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
 test('character spawns and survives physics ticks at spawn position', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
@@ -53,23 +54,23 @@ test('character spawns and survives physics ticks at spawn position', function (
 
 test('character with walk input survives physics ticks', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
@@ -95,23 +96,23 @@ test('character with walk input survives physics ticks', function () use ($mapPa
 
 test('character with hook input survives physics ticks', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
@@ -135,23 +136,23 @@ test('character with hook input survives physics ticks', function () use ($mapPa
 
 test('character with firing input survives physics ticks', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
@@ -175,23 +176,23 @@ test('character with firing input survives physics ticks', function () use ($map
 
 test('character snap output is valid', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
@@ -227,34 +228,19 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
     }
 });
 
-test('hook stops at wall collision point not past it', function () use ($mapPath, $mapExists) {
-    if (! $mapExists) {
-        return;
+test('hook stops at wall collision point not past it', function () {
+    $tiles = '';
+    for ($y = 0; $y < 3; $y++) {
+        for ($x = 0; $x < 6; $x++) {
+            $tiles .= pack('C4', $x >= 3 ? GameLayer::TILE_SOLID : 0, 0, 0, 0);
+        }
     }
-
-    $map       = new Map($mapPath);
-    $collision = $map->getCollision();
-    if ($collision === null) {
-        return;
-    }
-
-    $gameLayer = $map->getGameLayer();
-    if ($gameLayer === null) {
-        return;
-    }
-
-    $entities = $gameLayer->getEntityPositions();
-    if (empty($entities)) {
-        return;
-    }
-
-    $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
-
-    $tee       = new PlayerTee;
-    $world     = createWorld($map);
+    $collision = new Collision;
+    $collision->init(new GameLayer(6, 3, $tiles));
+    $spawnPos  = new Vector2(80, 48);
+    $world     = createWorld(new Map);
     $character = new PvpCharacterEntity($world, clone $spawnPos);
-    $character->spawn(clone $spawnPos, $tee);
-
+    $character->spawn($spawnPos, new PlayerTee);
     $tune = $world->getTuneController();
 
     // Set hook state to flying toward the right
@@ -271,10 +257,8 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
     // Check if there's a wall between hookPos and fullExtension
     [$hit, $expectedColPos] = $collision->intersectLine($character->hookPos, $fullExtension);
 
-    if (! $hit) {
-        // No wall in range, can't test collision — but hook should still extend
-        return;
-    }
+    expect($hit)->toBe(Collision::COLFLAG_SOLID);
+    expect($expectedColPos->x)->toBe(96.0);
 
     // Run the hook state machine
     $ref    = new ReflectionClass(PvpCharacterEntity::class);
@@ -288,23 +272,23 @@ test('hook stops at wall collision point not past it', function () use ($mapPath
 
 test('players push each other apart when overlapping', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $gameLayer = $map->getGameLayer();
     if ($gameLayer === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no game layer');
     }
 
     $entities = $gameLayer->getEntityPositions();
     if (empty($entities)) {
-        return;
+        throw new RuntimeException('Required map fixture has no entities');
     }
 
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);

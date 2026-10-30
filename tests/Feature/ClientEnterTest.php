@@ -1,26 +1,11 @@
 <?php
 
-use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
-use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
-use TeeFrame\Server\AbstractServerInstance;
 
-$mapPath   = __DIR__.'/../dm1.map';
-$mapExists = file_exists($mapPath);
-
-test('addTee marks PlayerTee as spawning', function () use ($mapPath, $mapExists) {
-    if (! $mapExists) {
-        return;
-    }
-
-    resetMockServer();
-
-    $map   = new Map($mapPath);
-    $world = createWorld($map);
-
+test('addTee marks PlayerTee as spawning', function () {
+    $world     = createWorld(new Map(__DIR__.'/../dm1.map'));
     $tee       = new PlayerTee;
     $tee->name = 'NewPlayer';
 
@@ -30,111 +15,48 @@ test('addTee marks PlayerTee as spawning', function () use ($mapPath, $mapExists
     expect($tee->teeIndex)->toBe(0);
 });
 
-test('addTee broadcasts enter chat message to all tees', function () use ($mapPath, $mapExists) {
-    if (! $mapExists) {
-        return;
-    }
-
-    resetMockServer();
-
-    $map   = new Map($mapPath);
-    $world = createWorld($map);
-
-    $existing           = new PlayerTee;
-    $existing->name     = 'Existing';
-    $existing->teeIndex = 0;
-
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('tees');
-    $prop->setValue($world, [0 => $existing]);
-
+test('addTee broadcasts enter chat message to all tees', function () {
+    $world          = createWorld(new Map(__DIR__.'/../dm1.map'));
+    $existing       = new PlayerTee;
+    $existing->name = 'Existing';
+    $world->addTee($existing);
+    recordingServer($world)->clear();
     $newTee       = new PlayerTee;
     $newTee->name = 'NewPlayer';
 
     $world->addTee($newTee);
 
-    // Should send to both the existing tee and the new tee
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0, 1]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });
 
-test('addTee enter message uses server clientId -1', function () use ($mapPath, $mapExists) {
-    if (! $mapExists) {
-        return;
-    }
-
-    resetMockServer();
-
-    $map   = new Map($mapPath);
-    $world = createWorld($map);
-
+test('addTee enter message uses server clientId -1', function () {
+    $world     = createWorld(new Map(__DIR__.'/../dm1.map'));
     $tee       = new PlayerTee;
     $tee->name = 'Joiner';
 
-    // Capture the chunk sent via sendToTee by overriding the mock server's method
-    $sentChunk  = null;
-    $mockServer = $GLOBALS['mockGameServer'];
-
     $world->addTee($tee);
 
-    // The mock server records sentTeeIndexes; verify a single tee got the message
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0]);
+    $server = recordingServer($world);
+    expect($server->sentTeeIndexes)->toBe([0]);
+    expect($server->sentChunks)->toHaveCount(1);
+    $chat = $server->sentChunks[0];
+    assert($chat instanceof SvChatChunk);
+    expect($chat->clientId)->toBe(-1);
 });
 
-test('addTee enter message contains tee name', function () use ($mapPath, $mapExists) {
-    if (! $mapExists) {
-        return;
-    }
-
-    resetMockServer();
-
-    $map   = new Map($mapPath);
-    $world = createWorld($map);
-
-    // Use a custom mock server to capture the chunk content
-    /** @var AbstractChunk[] $capturedChunks */
-    $capturedChunks = [];
-    $customServer   = new class($capturedChunks) extends AbstractServerInstance
-    {
-        /** @var int[] */
-        public array $sentTeeIndexes = [];
-
-        /** @param AbstractChunk[] $captured */
-        public function __construct(public array &$captured)
-        {
-            // bypass parent constructor
-        }
-
-        protected function boot(): void {}
-
-        protected function selectWorldForNewConnection(): AbstractWorld
-        {
-            throw new RuntimeException('not implemented');
-        }
-
-        public function sendToTee(AbstractWorld $world, int $teeIndex, AbstractChunk $chunk): void
-        {
-            $this->sentTeeIndexes[] = $teeIndex;
-            $this->captured[]       = $chunk;
-        }
-    };
-
-    // Build a world wired to the custom server
-    $world = new class(new TickHandler, $map, $customServer) extends TestWorld
-    {
-        public function doTick(): void {}
-    };
-
+test('addTee enter message contains tee name', function () {
+    $world     = createWorld(new Map(__DIR__.'/../dm1.map'));
     $tee       = new PlayerTee;
     $tee->name = 'FancyName';
 
     $world->addTee($tee);
 
-    expect($customServer->sentTeeIndexes)->toBe([0]);
-    expect($capturedChunks)->toHaveCount(1);
-    expect($capturedChunks[0])->toBeInstanceOf(SvChatChunk::class);
-
-    /** @var SvChatChunk $chatChunk */
-    $chatChunk = $capturedChunks[0];
-    expect($chatChunk->clientId)->toBe(-1);
-    expect($chatChunk->text)->toBe("'FancyName' entered and joined the game");
+    $server = recordingServer($world);
+    expect($server->sentTeeIndexes)->toBe([0]);
+    expect($server->sentChunks)->toHaveCount(1);
+    $chat = $server->sentChunks[0];
+    expect($chat)->toBeInstanceOf(SvChatChunk::class);
+    assert($chat instanceof SvChatChunk);
+    expect($chat->clientId)->toBe(-1);
+    expect($chat->text)->toBe("'FancyName' entered and joined the game");
 });

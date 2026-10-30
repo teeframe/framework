@@ -1,43 +1,8 @@
 <?php
 
-/*
-|--------------------------------------------------------------------------
-| Test Case
-|--------------------------------------------------------------------------
-|
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "uses()" function to bind a different classes or traits.
-|
-*/
-
-// uses(Tests\TestCase::class)->in('Feature');
-
-/*
-|--------------------------------------------------------------------------
-| Expectations
-|--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
-*/
-
-/*
-|--------------------------------------------------------------------------
-| Functions
-|--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
-*/
-
-use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractGameController;
+use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\PlayerInput;
@@ -45,11 +10,13 @@ use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
 use TeeFrame\Server\AbstractServerInstance;
+use Tests\Support\RecordingGameServer;
 
-/**
- * Concrete game controller for tests — no scoring, no win check.
- */
+require_once __DIR__.'/Support/RecordingGameServer.php';
+require_once __DIR__.'/Support/RecordingConnection.php';
+
 class TestGameController extends PvpGameController
 {
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
@@ -58,9 +25,6 @@ class TestGameController extends PvpGameController
     }
 }
 
-/**
- * Shared test world: uses TestGameController, empty motd, ticks normally.
- */
 class TestWorld extends AbstractWorld
 {
     public function __construct(
@@ -68,7 +32,7 @@ class TestWorld extends AbstractWorld
         Map $map,
         ?AbstractServerInstance $server = null,
     ) {
-        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer'], slotsLimit: 64);
+        parent::__construct('test', $tickHandler, $map, $server ?? new RecordingGameServer($tickHandler), slotsLimit: 64);
     }
 
     public function getMotd(AbstractTee $requestingTee): string
@@ -87,9 +51,6 @@ class TestWorld extends AbstractWorld
     }
 }
 
-/**
- * Test world with a custom game controller injected via constructor.
- */
 class TestWorldWithController extends AbstractWorld
 {
     public function __construct(
@@ -100,7 +61,7 @@ class TestWorldWithController extends AbstractWorld
         int $slotsLimit = 64,
     ) {
         $this->gameController = $controller;
-        parent::__construct('test', $tickHandler, $map, $server ?? $GLOBALS['mockGameServer'], $slotsLimit);
+        parent::__construct('test', $tickHandler, $map, $server ?? new RecordingGameServer($tickHandler), $slotsLimit);
     }
 
     public function getMotd(AbstractTee $requestingTee): string
@@ -110,7 +71,7 @@ class TestWorldWithController extends AbstractWorld
 
     protected function bootGameController(): void
     {
-        // Controller already set in __construct
+        // Controller already set in __construct.
     }
 
     protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity
@@ -130,75 +91,26 @@ class TestPvpWorldWithController extends TestWorldWithController
     }
 }
 
-/**
- * A mock server with sendToTee tracking.
- */
-$GLOBALS['mockGameServer'] = new class extends \TeeFrame\Server\AbstractServerInstance {
-    /** @var int[] */
-    public array $sentTeeIndexes = [];
-
-    /** @var array<int, \TeeFrame\Network\Chunks\AbstractChunk> */
-    public array $sentChunks = [];
-
-    /** @var array<int, array{teeIndex: int, chunk: \TeeFrame\Network\Chunks\AbstractChunk}> */
-    public array $sentPairs = [];
-
-    /** @var array<int, string> kicked teeIndex => reason */
-    public array $kickedTees = [];
-
-    public function __construct()
-    {
-        // bypass parent constructor
-    }
-
-    protected function boot(): void {}
-
-    protected function selectWorldForNewConnection(): AbstractWorld
-    {
-        throw new \RuntimeException('not implemented');
-    }
-
-    public function sendToTee(AbstractWorld $world, int $teeIndex, \TeeFrame\Network\Chunks\AbstractChunk $chunk): void
-    {
-        $this->sentTeeIndexes[] = $teeIndex;
-        $this->sentChunks[]      = $chunk;
-        $this->sentPairs[]       = ['teeIndex' => $teeIndex, 'chunk' => $chunk];
-    }
-
-    public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
-    {
-        $this->kickedTees[$teeIndex] = $reason;
-    }
-
-    public function resetSentTees(): void
-    {
-        $this->sentTeeIndexes = [];
-        $this->sentChunks     = [];
-        $this->sentPairs     = [];
-        $this->kickedTees     = [];
-    }
-};
-
-function resetMockServer(): void
+function recordingServer(AbstractWorld $world): RecordingGameServer
 {
-    $GLOBALS['mockGameServer']->resetSentTees();
+    $server = $world->getServer();
+    if (! $server instanceof RecordingGameServer) {
+        throw new LogicException('Test world does not use a recording server');
+    }
+
+    return $server;
 }
 
-/**
- * Find all SvSoundGlobal chunks sent to a specific tee index.
- * @return int[] list of sound IDs
- */
-function soundsSentToTee(int $teeIndex): array
+/** @return list<int> */
+function soundsSentToTee(AbstractWorld $world, int $teeIndex): array
 {
     $sounds = [];
-    foreach ($GLOBALS['mockGameServer']->sentPairs as $pair) {
-        if ($pair['teeIndex'] !== $teeIndex) {
-            continue;
-        }
-        if ($pair['chunk'] instanceof \TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk) {
+    foreach (recordingServer($world)->sentPairs as $pair) {
+        if ($pair['world'] === $world && $pair['teeIndex'] === $teeIndex && $pair['chunk'] instanceof SvSoundGlobalChunk) {
             $sounds[] = $pair['chunk']->soundId;
         }
     }
+
     return $sounds;
 }
 
@@ -210,11 +122,7 @@ function createWorld(Map $map): AbstractWorld
     };
 }
 
-/**
- * Build a PlayerInput with sensible defaults; override only what the test cares about.
- *
- * @param array<string, mixed> $overrides
- */
+/** @param array<string, mixed> $overrides */
 function input(array $overrides = []): PlayerInput
 {
     return new PlayerInput(
@@ -231,10 +139,6 @@ function input(array $overrides = []): PlayerInput
     );
 }
 
-/**
- * Feed a PlayerInput to the character and advance one tick.
- * Mirrors what AbstractWorld::doTick() does: onPredictedInput + applyInput + doTick.
- */
 function feedInput(AbstractCharacterEntity $character, PlayerInput $input): void
 {
     $character->onPredictedInput($input);

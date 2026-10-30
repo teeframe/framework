@@ -34,10 +34,8 @@ test('SvEmoticonChunk encodes and decodes correctly', function () {
 
 test('emoticon broadcast calls sendToTee for each tee', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map   = new Map($mapPath);
     $world = createWorld($map);
@@ -56,15 +54,13 @@ test('emoticon broadcast calls sendToTee for each tee', function () use ($mapPat
 
     $world->onMessage($tee1, new ClEmoticonChunk(emoticon: 7));
 
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0, 1]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });
 
 test('onMessage handles ClEmoticonChunk by broadcasting', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map   = new Map($mapPath);
     $world = createWorld($map);
@@ -83,5 +79,5 @@ test('onMessage handles ClEmoticonChunk by broadcasting', function () use ($mapP
 
     $world->onMessage($tee1, new ClEmoticonChunk(emoticon: 2));
 
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0, 1]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });

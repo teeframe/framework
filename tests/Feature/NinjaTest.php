@@ -28,13 +28,13 @@ function advanceWorldTick(AbstractWorld $world): void
 
 test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $world = createNinjaWorld($map);
@@ -72,13 +72,13 @@ test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, 
 
 test('ninja move time is 10 ticks', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $world = createNinjaWorld($map);
@@ -104,13 +104,13 @@ test('ninja move time is 10 ticks', function () use ($mapPath, $mapExists) {
 
 test('ninja dash moves character forward by expected distance', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $world = createNinjaWorld($map);
@@ -149,13 +149,13 @@ test('ninja dash moves character forward by expected distance', function () use 
 
 test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $world = createNinjaWorld($map);
@@ -199,13 +199,13 @@ test('ninja expires after 15 seconds', function () use ($mapPath, $mapExists) {
 
 test('ninja dash does not move after move time expires', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $world = createNinjaWorld($map);
@@ -248,13 +248,13 @@ test('ninja dash does not move after move time expires', function () use ($mapPa
 
 test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
 
     $map       = new Map($mapPath);
     $collision = $map->getCollision();
     if ($collision === null) {
-        return;
+        throw new RuntimeException('Required map fixture has no collision layer');
     }
 
     $world = createNinjaWorld($map);

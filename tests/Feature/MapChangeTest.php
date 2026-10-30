@@ -229,7 +229,7 @@ test('reload commands report a missing map without resetting the running world',
         $tee       = new PlayerTee;
         $tee->name = 'Voter';
         $world->addTee($tee);
-        resetMockServer();
+        recordingServer($world)->clear();
         unlink($path);
 
         (new ReloadCommand)->execute($world, $tee, []);
@@ -237,7 +237,7 @@ test('reload commands report a missing map without resetting the running world',
 
         expect($world->getMap())->toBe($map);
         expect($world->getTees())->toBe([$tee]);
-        $chats = array_filter($GLOBALS['mockGameServer']->sentChunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+        $chats = array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvChatChunk);
         expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Unable to reload world');
     } finally {
         if (file_exists($path)) {

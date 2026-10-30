@@ -32,10 +32,8 @@ function setTick(TickHandler $tickHandler, int $tick): void
 
 test('tee respawns after respawnTick elapses via doTick', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -69,8 +67,6 @@ test('tee respawns after respawnTick elapses via doTick', function () use ($mapP
 });
 
 test('first two snapshots include the local character so the scoreboard does not dismiss MOTD on join', function () use ($mapPath) {
-    resetMockServer();
-
     $tickHandler = new TickHandler(100);
     $world       = createTickingWorld(new Map($mapPath), $tickHandler);
     $tee         = new PlayerTee;
@@ -91,10 +87,8 @@ test('first two snapshots include the local character so the scoreboard does not
 
 test('dead tee respawns after respawnTick elapses', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -134,10 +128,8 @@ test('dead tee respawns after respawnTick elapses', function () use ($mapPath, $
 
 test('dead tee respawns on fire press after respawnTick', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -181,10 +173,8 @@ test('dead tee respawns on fire press after respawnTick', function () use ($mapP
 
 test('dead tee auto-respawns at respawnTick without fire press', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -212,10 +202,8 @@ test('dead tee auto-respawns at respawnTick without fire press', function () use
 
 test('tryRespawnTee clears spawning flag on success', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
@@ -235,10 +223,8 @@ test('tryRespawnTee clears spawning flag on success', function () use ($mapPath,
 
 test('world with custom game controller still collects spawn points', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);

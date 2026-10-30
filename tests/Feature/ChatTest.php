@@ -62,10 +62,8 @@ test('SvChatChunk server message encodes and decodes correctly', function () {
 
 test('chat broadcast calls sendToTee for each tee', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map   = new Map($mapPath);
     $world = createWorld($map);
@@ -84,15 +82,13 @@ test('chat broadcast calls sendToTee for each tee', function () use ($mapPath, $
 
     $world->onMessage($tee1, new ClSayChunk(team: false, text: 'hello'));
 
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0, 1]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });
 
 test('onMessage handles ClSayChunk by broadcasting', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map   = new Map($mapPath);
     $world = createWorld($map);
@@ -111,15 +107,13 @@ test('onMessage handles ClSayChunk by broadcasting', function () use ($mapPath, 
 
     $world->onMessage($tee1, new ClSayChunk(team: false, text: 'hello everyone'));
 
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0, 1]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });
 
 test('onMessage handles whisper command via ClSayChunk', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map   = new Map($mapPath);
     $world = createWorld($map);
@@ -138,15 +132,13 @@ test('onMessage handles whisper command via ClSayChunk', function () use ($mapPa
 
     $world->onMessage($from, new ClSayChunk(team: false, text: '/w targetplayer secret'));
 
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([1, 0]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([1, 0]);
 });
 
 test('WhisperCommand finds target by name case-insensitively', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map   = new Map($mapPath);
     $world = createWorld($map);
@@ -166,15 +158,13 @@ test('WhisperCommand finds target by name case-insensitively', function () use (
     $command = new WhisperCommand;
     $command->execute($world, $from, ['', '', 'targetplayer', 'secret']);
 
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([1, 0]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([1, 0]);
 });
 
 test('WhisperCommand notifies sender when target not found', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
-        return;
+        throw new RuntimeException('Required map fixture is missing');
     }
-
-    resetMockServer();
 
     $map   = new Map($mapPath);
     $world = createWorld($map);
@@ -190,7 +180,7 @@ test('WhisperCommand notifies sender when target not found', function () use ($m
     $command = new WhisperCommand;
     $command->execute($world, $from, ['', '', 'NonExistent', 'secret']);
 
-    expect($GLOBALS['mockGameServer']->sentTeeIndexes)->toBe([0]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0]);
 });
 
 test('whisper regex parses quoted name with spaces', function () {
