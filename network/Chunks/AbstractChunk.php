@@ -39,6 +39,13 @@ abstract class AbstractChunk
         return $this->flags;
     }
 
+    public function setFlags(int $flags): static
+    {
+        $this->flags = $flags;
+
+        return $this;
+    }
+
     public function isSystem(): bool
     {
         return $this->isSystem;

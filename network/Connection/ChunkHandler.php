@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Network\Connection;
 
+use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkParams;
@@ -16,13 +17,12 @@ class ChunkHandler
 
     protected int $queueSize;
 
-    /**
-     * @var AbstractChunk[]
-     */
+    /** @var list<array{chunk: AbstractChunk, firstSendTime: int, lastSendTime: int}> */
     protected array $sentList;
 
     public function __construct(
-        protected AbstractConnection $connection
+        protected AbstractConnection $connection,
+        protected TickHandler $tickHandler,
     ) {
         $this->reset();
     }
@@ -50,7 +50,9 @@ class ChunkHandler
         $this->queue[] = $chunk;
         $this->queueSize += $chunkSize;
 
-        if ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL) {
+        if (($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL)
+            && ! ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_RESEND)
+        ) {
             $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
 
             $chunk->setSequence($this->connection->sequence);
@@ -61,29 +63,69 @@ class ChunkHandler
 
     public function send(): bool
     {
-        $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->queue);
+        if ($this->queue === []) {
+            return true;
+        }
 
-        $this->sentList  = [...$this->sentList, ...$this->queue];
+        $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $this->queue);
+        $now    = $this->tickHandler->getTime();
+
+        foreach ($this->queue as $chunk) {
+            if (($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL)
+                && ! ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_RESEND)
+            ) {
+                $this->sentList[] = ['chunk' => clone $chunk, 'firstSendTime' => $now, 'lastSendTime' => $now];
+            }
+        }
+
         $this->queue     = [];
         $this->queueSize = NetworkParams::PACKET_HEADER_SIZE_DEFAULT;
 
         return $this->connection->sendPacket($packet);
     }
 
-    public function resend(): bool
+    /** Resend all pending vital chunks, or just the selected sequence. */
+    public function resend(?int $sequence = null): bool
     {
-        // TODO: Implement code to check MAXIMUM_PACKET_SIZE and MAXIMUM_CHUNKS_PER_PACKET
+        $now = $this->tickHandler->getTime();
 
-        $resendChunks = array_map(fn (AbstractChunk $chunk): AbstractChunk => $chunk->addResendFlag(), $this->sentList);
+        foreach ($this->sentList as $i => $entry) {
+            if ($sequence !== null && $entry['chunk']->getSequence() !== $sequence) {
+                continue;
+            }
 
-        $packet = new DefaultPacket(ack: $this->connection->ack, chunks: $resendChunks, resend: true);
+            // Use normal batching, retaining the original sequence and resend entry.
+            $this->add((clone $entry['chunk'])->addResendFlag());
+            $this->sentList[$i]['lastSendTime'] = $now;
+        }
 
-        return $this->connection->sendPacket($packet);
+        return $this->send();
+    }
+
+    public function update(): ?string
+    {
+        $oldest = $this->sentList[0] ?? null;
+        if ($oldest === null) {
+            return null;
+        }
+
+        $now = $this->tickHandler->getTime();
+        if ($now - $oldest['firstSendTime'] > 10_000_000_000) {
+            return 'Too weak connection (not acked for 10 seconds)';
+        }
+        if ($now - $oldest['lastSendTime'] > 1_000_000_000) {
+            $this->resend($oldest['chunk']->getSequence());
+        }
+
+        return null;
     }
 
     public function flushSentList(int $sequence): void
     {
-        $this->sentList = array_filter($this->sentList, fn (AbstractChunk $chunk) => ! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $sequence));
+        $this->sentList = array_values(array_filter(
+            $this->sentList,
+            fn (array $entry): bool => ! NetworkBase::isSequenceInBackroom($entry['chunk']->getSequence(), $sequence),
+        ));
     }
 
     protected function getQueueSize(): int

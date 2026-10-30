@@ -118,7 +118,7 @@ class ConnectionSlot extends AbstractConnection
             return $this->handleControlMessagePacket($packet);
         }
         if ($packet instanceof DefaultPacket) {
-            return $this->state === static::STATE_INGAME ? $this->handleDefaultPacket($packet) : true;
+            return $this->state === static::STATE_INGAME ? $this->handleDefaultPacket() : true;
         }
 
         return false;
@@ -138,6 +138,10 @@ class ConnectionSlot extends AbstractConnection
     {
         $message = $packet->getControlMessage();
 
+        if ($message === NetworkMessages::CONTROL_CONNECT && $this->state === static::STATE_CONNECTING) {
+            $this->sendControlMessage(NetworkMessages::CONTROL_CONNECT_ACCEPT);
+        }
+
         if ($message === NetworkMessages::CONTROL_CLOSE) {
             $this->consoleInfo('Closed reason='.$packet->getControlMessageExtra());
 
@@ -154,9 +158,9 @@ class ConnectionSlot extends AbstractConnection
         return true;
     }
 
-    protected function handleDefaultPacket(DefaultPacket $packet): bool
+    protected function handleDefaultPacket(): bool
     {
-        foreach ($packet->getChunks() as $chunk) {
+        foreach ($this->getReceivedChunks() as $chunk) {
             // GameServer()->OnMessage
             if (! $chunk->isSystem()) {
                 $this->world()->onMessage($this->playerTee(), $chunk);

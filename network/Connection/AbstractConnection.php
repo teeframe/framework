@@ -3,8 +3,10 @@
 namespace TeeFrame\Network\Connection;
 
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
@@ -22,6 +24,7 @@ abstract class AbstractConnection
 
     public int $peerAck;
 
+    /** Monotonic transport timestamps, in nanoseconds. */
     public int $lastSendTime;
 
     public int $lastRecvTime;
@@ -32,9 +35,12 @@ abstract class AbstractConnection
 
     protected SnapHandler $snapHandler;
 
+    /** @var list<AbstractChunk> */
+    protected array $receivedChunks = [];
+
     public function __construct(protected TickHandler $tickHandler)
     {
-        $this->chunkHandler = new ChunkHandler($this);
+        $this->chunkHandler = new ChunkHandler($this, $tickHandler);
         $this->snapHandler  = new SnapHandler($this, $tickHandler);
 
         $this->reset();
@@ -50,6 +56,7 @@ abstract class AbstractConnection
         $this->lastSendTime       = 0;
         $this->lastRecvTime       = 0;
         $this->lastResendAskTime  = 0;
+        $this->receivedChunks     = [];
 
         $this->chunks()->reset();
         $this->snaps()->reset();
@@ -59,9 +66,10 @@ abstract class AbstractConnection
     {
         $this->destinationAddress = $destinationAddress;
         $this->destinationPort    = $destinationPort;
-        $this->lastSendTime       = time();
-        $this->lastRecvTime       = time();
-        $this->lastResendAskTime  = time();
+        $now                      = $this->tickHandler->getTime();
+        $this->lastSendTime       = $now;
+        $this->lastRecvTime       = $now;
+        $this->lastResendAskTime  = $now - 1_000_000_000;
     }
 
     abstract protected function handlePacketSending(AbstractPacket $packet): bool;
@@ -80,9 +88,36 @@ abstract class AbstractConnection
         return $this->snapHandler;
     }
 
+    /** @return list<AbstractChunk> */
+    public function getReceivedChunks(): array
+    {
+        return $this->receivedChunks;
+    }
+
+    public function update(): ?string
+    {
+        $now = $this->tickHandler->getTime();
+        if ($now - $this->lastRecvTime > 10_000_000_000) {
+            return 'Timeout';
+        }
+
+        if (($reason = $this->chunks()->update()) !== null) {
+            return $reason;
+        }
+
+        if ($now - $this->lastSendTime > 500_000_000) {
+            $this->chunks()->send();
+        }
+        if ($now - $this->lastSendTime > 1_000_000_000) {
+            $this->sendControlMessage(NetworkMessages::CONTROL_KEEP_ALIVE);
+        }
+
+        return null;
+    }
+
     public function sendPacket(AbstractPacket $packet): bool
     {
-        $this->lastSendTime = time();
+        $this->lastSendTime = $this->tickHandler->getTime();
 
         return $this->handlePacketSending($packet);
     }
@@ -94,6 +129,8 @@ abstract class AbstractConnection
 
     protected function validateFeeding(AbstractPacket $packet): bool
     {
+        $this->receivedChunks = [];
+
         if ($this->sequence >= $this->peerAck) {
             if ($packet->getAck() < $this->peerAck || $packet->getAck() > $this->sequence) {
                 return false;
@@ -111,7 +148,7 @@ abstract class AbstractConnection
 
     protected function updateConnectionState(AbstractPacket $packet): void
     {
-        $this->lastRecvTime = time();
+        $this->lastRecvTime = $this->tickHandler->getTime();
         $this->peerAck      = $packet->getAck();
 
         $this->chunks()->flushSentList($this->peerAck);
@@ -121,30 +158,28 @@ abstract class AbstractConnection
         }
 
         foreach ($packet->getChunks() as $chunk) {
+            if ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL) {
+                $futureAck = ($this->ack + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
+
+                if ($chunk->getSequence() === $futureAck) {
+                    $this->ack = $futureAck;
+                } else {
+                    if (! NetworkBase::isSequenceInBackroom($chunk->getSequence(), $this->ack)
+                        && $this->lastRecvTime - $this->lastResendAskTime >= 1_000_000_000
+                    ) {
+                        $this->lastResendAskTime = $this->lastRecvTime;
+                        $this->handleConnectionOutOfSequence($chunk->getSequence(), $futureAck);
+                    }
+
+                    continue;
+                }
+            }
+
             if ($chunk instanceof UnsupportedChunk) {
                 $this->handleUnsupportedChunk($chunk);
             }
 
-            if (! ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL)) {
-                continue;
-            }
-
-            $futureAck = ($this->ack + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
-
-            if ($chunk->getSequence() === $futureAck) {
-                $this->ack = $futureAck;
-
-                continue;
-            }
-
-            // Out of Sequence
-            if (NetworkBase::isSequenceInBackroom($chunk->getSequence(), $this->ack) || $this->lastResendAskTime >= time() - 1) {
-                continue;
-            }
-
-            $this->lastResendAskTime = time();
-
-            $this->handleConnectionOutOfSequence($chunk->getSequence(), $futureAck);
+            $this->receivedChunks[] = $chunk;
         }
     }
 }

@@ -85,6 +85,7 @@ abstract class AbstractServerInstance
     protected function doTick(): void
     {
         $this->tickHandler->startTick();
+        $this->connectionHandler->update();
 
         foreach ($this->worlds as $world) {
             $world->doTick();
@@ -206,6 +207,8 @@ abstract class AbstractServerInstance
             }
 
             $connectionSlot->feedConnection($packet);
+
+            return;
         }
 
         // Is not a connect control message...

@@ -83,12 +83,12 @@ class PacketDecoder
 
         $payload = array_slice($data, NetworkParams::PACKET_HEADER_SIZE_DEFAULT);
 
-        if ($flags & NetworkBase::PACKET_FLAG_COMPRESSION) {
-            $payload = NetworkBase::decompressHuffman($payload);
-        }
-
         // Default Packet
         try {
+            if ($flags & NetworkBase::PACKET_FLAG_COMPRESSION) {
+                $payload = NetworkBase::decompressHuffman($payload);
+            }
+
             $chunks = static::decodeChunksFromPayload($payload);
         } catch (\UnexpectedValueException) {
             return false;
@@ -138,7 +138,8 @@ class PacketDecoder
                 $chunks[] = $chunkClass->setSequence($sequence);
             } else {
                 $chunks[] = $chunkClass::make(new RawPayload(array_slice($payload, $pointer + $headerSize + 1, $size - 1))) // +1 to skip the message byte
-                    ->setSequence($sequence);
+                    ->setSequence($sequence)
+                    ->setFlags($flags);
             }
 
             $pointer += $headerSize + $size; // The +1 CANNOT be added here

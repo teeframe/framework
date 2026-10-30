@@ -35,7 +35,7 @@ trait HasHandshakeHandler
             return false;
         }
 
-        foreach ($packet->getChunks() as $chunk) {
+        foreach ($connection->getReceivedChunks() as $chunk) {
             // Step 1
             if ($chunk instanceof InfoChunk && $connection->state === ConnectionSlot::STATE_CONNECTING) {
                 $connection->consoleInfo('player sent info');

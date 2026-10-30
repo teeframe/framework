@@ -1,6 +1,61 @@
 <?php
 
+use TeeFrame\Network\Huffman\Huffman;
 use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\PacketDecoder;
+
+test('huffman rejects empty and truncated streams without a complete EOF', function () {
+    $huffman    = new Huffman;
+    $data       = range(0, 255);
+    $compressed = $huffman->compress($data);
+
+    for ($length = 0; $length < count($compressed); $length++) {
+        expect(fn () => $huffman->decompress(array_slice($compressed, 0, $length)))
+            ->toThrow(UnexpectedValueException::class);
+    }
+
+    expect($huffman->decompress($compressed))->toBe($data);
+});
+
+test('huffman accepts a complete EOF for an empty output', function () {
+    $huffman = new Huffman;
+
+    expect($huffman->decompress($huffman->compress([]), outputSize: 0))->toBe([]);
+});
+
+test('huffman enforces its output limit before appending another byte', function () {
+    $huffman = new Huffman;
+    $limit   = NetworkParams::MAXIMUM_PACKET_SIZE - NetworkParams::PACKET_HEADER_SIZE_DEFAULT;
+    $data    = array_fill(0, $limit, 0);
+
+    expect($huffman->decompress($huffman->compress($data)))->toBe($data);
+    expect(fn () => $huffman->decompress($huffman->compress([...$data, 0])))
+        ->toThrow(UnexpectedValueException::class, 'Huffman output exceeds the size limit');
+    expect(fn () => $huffman->decompress($huffman->compress([0]), outputSize: 0))
+        ->toThrow(UnexpectedValueException::class);
+});
+
+test('huffman validates explicit input and output sizes', function (int $size, int $outputSize) {
+    expect(fn () => (new Huffman)->decompress([0], $size, $outputSize))
+        ->toThrow(UnexpectedValueException::class, 'Invalid Huffman buffer size');
+})->with([
+    'negative input size'  => [-1, 100],
+    'missing input bytes'  => [2, 100],
+    'negative output size' => [1, -1],
+]);
+
+test('packet decoding rejects malformed or oversized compressed payloads', function () {
+    $header     = [NetworkBase::PACKET_FLAG_COMPRESSION << 4, 0, 0];
+    $compressed = NetworkBase::compressHuffman(range(0, 255));
+
+    expect(PacketDecoder::decodeFromRaw(NetworkBase::packBuffer($header)))->toBeFalse();
+    expect(PacketDecoder::decodeFromRaw(NetworkBase::packBuffer([...$header, ...array_slice($compressed, 0, -1)])))->toBeFalse();
+    expect(PacketDecoder::decodeFromRaw(NetworkBase::packBuffer([
+        ...$header,
+        ...NetworkBase::compressHuffman(array_fill(0, NetworkParams::MAXIMUM_PACKET_SIZE, 0)),
+    ])))->toBeFalse();
+});
 
 test('huffman round-trips snap-like data correctly', function () {
     // Simulate a small snapshot payload: 3 small ints (removedCount=0, updatedCount=1, 0)

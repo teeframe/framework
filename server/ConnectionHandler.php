@@ -36,7 +36,10 @@ class ConnectionHandler
     public function tryToMatch(array $clientInfo): ConnectionSlot|false
     {
         foreach ($this->slots as $connection) {
-            if ($connection->destinationAddress !== $clientInfo['address'] || $connection->destinationPort !== $clientInfo['port']) {
+            if ($connection->state === ConnectionSlot::STATE_CLOSED
+                || $connection->destinationAddress !== $clientInfo['address']
+                || $connection->destinationPort !== $clientInfo['port']
+            ) {
                 continue;
             }
 
@@ -79,13 +82,27 @@ class ConnectionHandler
         return $this->slots;
     }
 
+    public function update(): void
+    {
+        foreach ($this->slots as $connection) {
+            if ($connection->state === ConnectionSlot::STATE_WAITING_INIT || $connection->state === ConnectionSlot::STATE_CLOSED) {
+                continue;
+            }
+
+            if (($reason = $connection->update()) !== null) {
+                $connection->closeConnection($reason);
+            }
+        }
+
+        $this->clearConnections();
+    }
+
     protected function clearConnections(): void
     {
         foreach ($this->slots as $i => $connection) {
             if ($connection->state === ConnectionSlot::STATE_CLOSED) {
                 unset($this->slots[$i]);
             }
-
         }
 
         $this->slots = array_values($this->slots);

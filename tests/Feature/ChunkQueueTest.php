@@ -5,6 +5,7 @@ use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\RawPayload;
 use Tests\Support\RecordingConnection;
 
@@ -29,6 +30,105 @@ class QueueEncodingTestChunk extends AbstractChunk
         return new RawPayload(array_fill(0, $this->payloadSize, 0));
     }
 }
+
+test('only vital chunks are retained for retransmission', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    $connection->chunks()
+        ->add(new QueueEncodingTestChunk)
+        ->add($vital = new QueueEncodingTestChunk(vital: true))
+        ->send();
+    $connection->chunks()->resend();
+
+    expect($connection->sentPackets)->toHaveCount(2);
+    $resent = $connection->sentPackets[1];
+    expect($resent->getNumChunks())->toBe(1);
+    expect($resent->isResend())->toBeFalse();
+    assert($resent instanceof DefaultPacket);
+    $chunk = $resent->getChunks()[0];
+    expect($chunk->getSequence())->toBe(1);
+    expect($chunk->getFlags())->toBe(NetworkBase::CHUNK_FLAG_VITAL | NetworkBase::CHUNK_FLAG_RESEND);
+    expect($vital->getFlags())->toBe(NetworkBase::CHUNK_FLAG_VITAL);
+});
+
+test('retransmissions respect the packet byte limit without allocating new sequences', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    $connection->chunks()
+        ->add(new QueueEncodingTestChunk(900, vital: true))
+        ->send();
+    $connection->chunks()
+        ->add(new QueueEncodingTestChunk(900, vital: true))
+        ->send();
+    $connection->chunks()->resend();
+
+    expect($connection->sentPackets)->toHaveCount(4);
+    expect($connection->sequence)->toBe(2);
+    foreach (array_slice($connection->sentPackets, 2) as $index => $packet) {
+        expect(strlen($packet->encodeToSend()))->toBeLessThanOrEqual(NetworkParams::MAXIMUM_PACKET_SIZE);
+        expect($packet->getNumChunks())->toBe(1);
+        expect($packet->isResend())->toBeFalse();
+        assert($packet instanceof DefaultPacket);
+        expect($packet->getChunks()[0]->getSequence())->toBe($index + 1);
+    }
+});
+
+test('retransmissions respect the maximum number of chunks per packet', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    for ($i = 0; $i < 260; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
+    }
+    $connection->chunks()->send();
+    $connection->chunks()->resend();
+
+    expect($connection->sentPackets)->toHaveCount(4);
+    expect($connection->sentPackets[2]->getNumChunks())->toBe(255);
+    expect($connection->sentPackets[3]->getNumChunks())->toBe(5);
+    expect($connection->sequence)->toBe(260);
+});
+
+test('repeated resends do not duplicate retained entries and acknowledged chunks stop resending', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    $connection->chunks()->add(new QueueEncodingTestChunk(vital: true))->send();
+    $connection->chunks()->resend();
+    $connection->chunks()->resend();
+    $connection->chunks()->flushSentList(1);
+    $connection->chunks()->resend();
+
+    expect($connection->sentPackets)->toHaveCount(3);
+    foreach ($connection->sentPackets as $packet) {
+        expect($packet->getNumChunks())->toBe(1);
+    }
+    expect($connection->sequence)->toBe(1);
+});
+
+test('acknowledgment cleanup preserves pending sequences across wraparound', function () {
+    $connection           = new RecordingConnection(new TickHandler);
+    $connection->sequence = 1022;
+    for ($i = 0; $i < 3; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
+    }
+    $connection->chunks()->send();
+    $connection->chunks()->flushSentList(0);
+    $connection->chunks()->resend();
+
+    expect($connection->sentPackets)->toHaveCount(2);
+    $packet = $connection->sentPackets[1];
+    assert($packet instanceof DefaultPacket);
+    expect($packet->getNumChunks())->toBe(1);
+    expect($packet->getChunks()[0]->getSequence())->toBe(1);
+    expect($connection->sequence)->toBe(1);
+});
+
+test('empty queues and cleared retransmission lists do not emit empty packets', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    $connection->chunks()->send();
+    $connection->chunks()->resend();
+    expect($connection->sentPackets)->toBeEmpty();
+
+    $connection->chunks()->add(new QueueEncodingTestChunk(vital: true))->send();
+    $connection->chunks()->reset();
+    $connection->chunks()->resend();
+    expect($connection->sentPackets)->toHaveCount(1);
+});
 
 test('queue size accounting does not repeatedly encode already queued chunks', function () {
     $connection = new RecordingConnection(new TickHandler);

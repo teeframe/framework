@@ -120,6 +120,21 @@ test('minimum non-vital chunks are decoded even at the end of a packet', functio
     expect($packet->getChunks())->toHaveCount(1);
 });
 
+test('decoded chunk flags preserve the wire header rather than constructor defaults', function (int $flags) {
+    $chunk  = (new ClSayChunk(false, 'Transport flags'))->setFlags($flags)->setSequence(23);
+    $packet = PacketDecoder::decodeFromRaw((new DefaultPacket([$chunk], ack: 0))->encodeToSend());
+
+    expect($packet)->toBeInstanceOf(DefaultPacket::class);
+    assert($packet instanceof DefaultPacket);
+    $decoded = $packet->getChunks()[0];
+    expect($decoded->getFlags())->toBe($flags);
+    expect($decoded->getSequence())->toBe(($flags & NetworkBase::CHUNK_FLAG_VITAL) ? 23 : -1);
+})->with([
+    'non-vital'            => 0,
+    'vital'                => NetworkBase::CHUNK_FLAG_VITAL,
+    'vital retransmission' => NetworkBase::CHUNK_FLAG_VITAL | NetworkBase::CHUNK_FLAG_RESEND,
+]);
+
 test('valid mixed chunks preserve messages and vital sequences', function (bool $compressed) {
     $chat    = (new ClSayChunk(false, 'Hello'))->setSequence(1023);
     $ready   = (new ReadyChunk)->setSequence(0);

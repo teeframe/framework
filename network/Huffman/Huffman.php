@@ -2,6 +2,8 @@
 
 namespace TeeFrame\Network\Huffman;
 
+use TeeFrame\Network\NetworkParams;
+
 class Huffman
 {
     /** @var int[] */
@@ -222,9 +224,14 @@ class Huffman
     /**
      * @param  int[]  $inputBuffer
      * @return int[]
+     *
+     * @throws \UnexpectedValueException
      */
-    public function decompress(array $inputBuffer, int $size = 0): array
-    {
+    public function decompress(
+        array $inputBuffer,
+        int $size = 0,
+        int $outputSize = NetworkParams::MAXIMUM_PACKET_SIZE - NetworkParams::PACKET_HEADER_SIZE_DEFAULT,
+    ): array {
         $bits     = 0;
         $bitCount = 0;
         $eof      = $this->nodes[self::HUFFMAN_EOF_SYMBOL];
@@ -234,8 +241,10 @@ class Huffman
         if ($size === 0) {
             $size = count($inputBuffer);
         }
-        $inputBuffer = array_slice($inputBuffer, 0, $size);
-        $srcIndex    = 0;
+        if ($size < 0 || $size > count($inputBuffer) || $outputSize < 0) {
+            throw new \UnexpectedValueException('Invalid Huffman buffer size');
+        }
+        $srcIndex = 0;
 
         while (true) {
             $nodeIndex = -1;
@@ -244,7 +253,7 @@ class Huffman
                 $nodeIndex = $this->decodeLut[$bits & self::HUFFMAN_LUTMASK];
             }
 
-            while ($bitCount < 24 && $srcIndex !== $size) {
+            while ($bitCount < 24 && $srcIndex < $size) {
                 $bits |= $inputBuffer[$srcIndex] << $bitCount;
                 $bitCount += 8;
                 $srcIndex++;
@@ -254,13 +263,22 @@ class Huffman
                 $nodeIndex = $this->decodeLut[$bits & self::HUFFMAN_LUTMASK];
             }
             if ($this->nodes[$nodeIndex]->numBits) {
+                if ($bitCount < $this->nodes[$nodeIndex]->numBits) {
+                    throw new \UnexpectedValueException('Truncated Huffman symbol or missing EOF');
+                }
                 $bits >>= $this->nodes[$nodeIndex]->numBits;
                 $bitCount -= $this->nodes[$nodeIndex]->numBits;
             } else {
+                if ($bitCount < self::HUFFMAN_LUTBITS) {
+                    throw new \UnexpectedValueException('Truncated Huffman symbol or missing EOF');
+                }
                 $bits >>= self::HUFFMAN_LUTBITS;
                 $bitCount -= self::HUFFMAN_LUTBITS;
 
                 while (true) {
+                    if ($bitCount === 0) {
+                        throw new \UnexpectedValueException('Truncated Huffman symbol or missing EOF');
+                    }
                     if ($bits & 1) {
                         $nodeIndex = $this->nodes[$nodeIndex]->right;
                     } else {
@@ -272,10 +290,6 @@ class Huffman
                     if ($this->nodes[$nodeIndex]->numBits) {
                         break;
                     }
-                    if ($bitCount === 0) {
-                        // throw new \Exception("No more bits, decoding error");
-                        break;
-                    } // No more bits, decoding error
                 }
             }
 
@@ -283,6 +297,9 @@ class Huffman
                 break;
             }
 
+            if (count($output) >= $outputSize) {
+                throw new \UnexpectedValueException('Huffman output exceeds the size limit');
+            }
             $output[] = $this->nodes[$nodeIndex]->symbol;
         }
 
