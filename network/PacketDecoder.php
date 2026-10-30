@@ -74,6 +74,10 @@ class PacketDecoder
 
         // Control Message
         if ($flags & NetworkBase::PACKET_FLAG_TYPE_CONTROL) {
+            if (! isset($data[3])) {
+                return false;
+            }
+
             return new ControlMessage(message: $data[3], extra: NetworkBase::packBuffer(array_slice($data, 4)), ack: $ack, resend: $isResend);
         }
 
@@ -84,7 +88,15 @@ class PacketDecoder
         }
 
         // Default Packet
-        $chunks = static::decodeChunksFromPayload($payload);
+        try {
+            $chunks = static::decodeChunksFromPayload($payload);
+        } catch (\UnexpectedValueException) {
+            return false;
+        }
+
+        if (count($chunks) !== $numChunks) {
+            return false;
+        }
 
         return new DefaultPacket(chunks: $chunks, ack: $ack, resend: $isResend);
     }
@@ -92,18 +104,27 @@ class PacketDecoder
     /**
      * @param  int[]  $payload
      * @return AbstractChunk[]
+     *
+     * @throws \UnexpectedValueException
      */
     public static function decodeChunksFromPayload(array $payload): array
     {
-        $pointer = 0;
-        $chunks  = [];
+        $pointer     = 0;
+        $chunks      = [];
+        $payloadSize = count($payload);
 
-        // TODO: Refactor this
-        while (count($payload) > $pointer + NetworkParams::MINIMUM_PACKET_CHUNK_SIZE) {
-            $flags = ($payload[$pointer + 0] >> 6) & 3;
-            $size  = (($payload[$pointer + 0] & 0x3F) << 4) | ($payload[$pointer + 1] & 0xF);
+        while ($pointer < $payloadSize) {
+            if ($payloadSize - $pointer < 2) {
+                throw new \UnexpectedValueException('Truncated chunk header');
+            }
+
+            $flags = ($payload[$pointer] >> 6) & 3;
+            $size  = (($payload[$pointer] & 0x3F) << 4) | ($payload[$pointer + 1] & 0xF);
 
             $headerSize = ($flags & NetworkBase::CHUNK_FLAG_VITAL) ? 3 : 2;
+            if ($size === 0 || $headerSize + $size > $payloadSize - $pointer) {
+                throw new \UnexpectedValueException('Invalid chunk size or truncated payload');
+            }
 
             $sequence = ($headerSize === 3)
                 ? (($payload[$pointer + 1] & 0xF0) << 2) | $payload[$pointer + 2]
@@ -151,28 +172,28 @@ class PacketDecoder
         }
 
         return match ($message) {
-            NetworkMessages::SV_CHAT             => SvChatChunk::class,
-            NetworkMessages::SV_KILLMSG          => SvKillMsgChunk::class,
-            NetworkMessages::SV_MOTD             => SvMotdChunk::class,
-            NetworkMessages::SV_BROADCAST        => SvBroadcastChunk::class,
-            NetworkMessages::SV_TUNEPARAMS       => SvTuneParamsChunk::class,
-            NetworkMessages::SV_READYTOENTER     => SvReadyToEnterChunk::class,
-            NetworkMessages::SV_EMOTICON         => SvEmoticonChunk::class,
-            NetworkMessages::SV_VOTECLEAROPTIONS => SvVoteClearOptionsChunk::class,
-            NetworkMessages::SV_VOTEOPTIONLISTADD => SvVoteOptionListAddChunk::class,
-            NetworkMessages::SV_VOTEOPTIONADD    => SvVoteOptionAddChunk::class,
-            NetworkMessages::SV_VOTEOPTIONREMOVE => SvVoteOptionRemoveChunk::class,
-            NetworkMessages::SV_VOTESET          => SvVoteSetChunk::class,
-            NetworkMessages::SV_VOTESTATUS       => SvVoteStatusChunk::class,
-            NetworkMessages::CL_SAY              => ClSayChunk::class,
-            NetworkMessages::CL_SET_TEAM         => ClSetTeamChunk::class,
+            NetworkMessages::SV_CHAT               => SvChatChunk::class,
+            NetworkMessages::SV_KILLMSG            => SvKillMsgChunk::class,
+            NetworkMessages::SV_MOTD               => SvMotdChunk::class,
+            NetworkMessages::SV_BROADCAST          => SvBroadcastChunk::class,
+            NetworkMessages::SV_TUNEPARAMS         => SvTuneParamsChunk::class,
+            NetworkMessages::SV_READYTOENTER       => SvReadyToEnterChunk::class,
+            NetworkMessages::SV_EMOTICON           => SvEmoticonChunk::class,
+            NetworkMessages::SV_VOTECLEAROPTIONS   => SvVoteClearOptionsChunk::class,
+            NetworkMessages::SV_VOTEOPTIONLISTADD  => SvVoteOptionListAddChunk::class,
+            NetworkMessages::SV_VOTEOPTIONADD      => SvVoteOptionAddChunk::class,
+            NetworkMessages::SV_VOTEOPTIONREMOVE   => SvVoteOptionRemoveChunk::class,
+            NetworkMessages::SV_VOTESET            => SvVoteSetChunk::class,
+            NetworkMessages::SV_VOTESTATUS         => SvVoteStatusChunk::class,
+            NetworkMessages::CL_SAY                => ClSayChunk::class,
+            NetworkMessages::CL_SET_TEAM           => ClSetTeamChunk::class,
             NetworkMessages::CL_SET_SPECTATOR_MODE => ClSetSpectatorModeChunk::class,
-            NetworkMessages::CL_START_INFO       => ClStartInfoChunk::class,
-            NetworkMessages::CL_KILL             => ClKillChunk::class,
-            NetworkMessages::CL_EMOTICON         => ClEmoticonChunk::class,
-            NetworkMessages::CL_VOTE             => ClVoteChunk::class,
-            NetworkMessages::CL_CALLVOTE         => ClCallVoteChunk::class,
-            default                              => new UnsupportedChunk($message, $flags, false),
+            NetworkMessages::CL_START_INFO         => ClStartInfoChunk::class,
+            NetworkMessages::CL_KILL               => ClKillChunk::class,
+            NetworkMessages::CL_EMOTICON           => ClEmoticonChunk::class,
+            NetworkMessages::CL_VOTE               => ClVoteChunk::class,
+            NetworkMessages::CL_CALLVOTE           => ClCallVoteChunk::class,
+            default                                => new UnsupportedChunk($message, $flags, false),
         };
     }
 }

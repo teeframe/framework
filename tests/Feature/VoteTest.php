@@ -54,7 +54,6 @@ test('ClCallVoteChunk encodes and decodes correctly', function () {
         type: 'option',
         value: 'map dm1',
         reason: 'because',
-        force: 0,
     );
 
     $encoded = $chunk->encode();
@@ -65,7 +64,6 @@ test('ClCallVoteChunk encodes and decodes correctly', function () {
     expect($decoded->type)->toBe('option');
     expect($decoded->value)->toBe('map dm1');
     expect($decoded->reason)->toBe('because');
-    expect($decoded->force)->toBe(0);
 });
 
 test('SvVoteSetChunk encodes and decodes correctly', function () {
@@ -124,7 +122,6 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
         type: 'option',
         value: 'Change map to dm1',
         reason: '',
-        force: 0,
     ));
 
     // Should have sent SvVoteSet to both tees
@@ -168,7 +165,7 @@ test('vote passes when majority votes yes', function () use ($mapPath, $mapExist
     $world->getVoteController()->addVoteOption('option1', 'command1');
 
     // Start the vote (caller auto-votes yes)
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
 
     // tee2 votes yes (now 2/3 = majority)
     $world->onMessage($tee2, new ClVoteChunk(1));
@@ -211,7 +208,7 @@ test('vote fails when majority votes no', function () use ($mapPath, $mapExists)
     $world->getVoteController()->addVoteOption('option1', 'command1');
 
     // Start the vote (caller auto-votes yes)
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
 
     // tee2 and tee3 vote no (2 no >= (3+1)/2 = 2)
     $world->onMessage($tee2, new ClVoteChunk(-1));
@@ -248,7 +245,7 @@ test('vote fails on timeout', function () use ($mapPath, $mapExists) {
     $world->getVoteController()->addVoteOption('option1', 'command1');
 
     // Start the vote (caller auto-votes yes, 1/2 is not a majority)
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
 
     // Advance past the vote duration (25 seconds = 1250 ticks)
     setVoteTick($tickHandler, 100 + 1251);
@@ -280,11 +277,11 @@ test('cannot call a vote while another is running', function () use ($mapPath, $
     $world->getVoteController()->addVoteOption('option2', 'command2');
 
     // Start first vote
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
     expect($world->getVoteController()->isVoteRunning())->toBeTrue();
 
     // Try to start a second vote
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option2', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option2', ''));
 
     // The second vote should not have started — description should still be option1
     $runningVote = $world->getVoteController()->getRunningVote($tee1);
@@ -313,7 +310,7 @@ test('player cannot vote twice', function () use ($mapPath, $mapExists) {
 
     $world->getVoteController()->addVoteOption('option1', 'command1');
 
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
 
     // tee2 votes yes
     $world->onMessage($tee2, new ClVoteChunk(1));
@@ -344,7 +341,7 @@ test('vote option lookup is case insensitive', function () use ($mapPath, $mapEx
     $world->getVoteController()->addVoteOption('Change Map', 'change_map');
 
     // Call with different case
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'change map', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'change map', ''));
 
     $runningVote = $world->getVoteController()->getRunningVote($tee1);
     assert($runningVote instanceof SvVoteSetChunk);
@@ -366,7 +363,7 @@ test('calling a non-existent option is rejected', function () use ($mapPath, $ma
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'nonexistent', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'nonexistent', ''));
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
@@ -397,7 +394,7 @@ test('vote status is broadcast after a vote', function () use ($mapPath, $mapExi
     $world->getVoteController()->addVoteOption('option1', 'command1');
 
     // Start vote (caller auto-votes yes)
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
 
     // tee2 votes no
     $world->onMessage($tee2, new ClVoteChunk(-1));
@@ -439,7 +436,7 @@ test('kick vote kicks the target when it passes', function () use ($mapPath, $ma
     $world->addTee($tee3);
 
     // Start a kick vote against tee2
-    $world->onMessage($tee1, new ClCallVoteChunk('kick', (string) $tee2->teeIndex, 'griefing', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('kick', (string) $tee2->teeIndex, 'griefing'));
 
     // tee3 votes yes (2/3 = majority)
     $world->onMessage($tee3, new ClVoteChunk(1));
@@ -466,7 +463,7 @@ test('cannot kick yourself', function () use ($mapPath, $mapExists) {
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $world->onMessage($tee1, new ClCallVoteChunk('kick', (string) $tee1->teeIndex, '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('kick', (string) $tee1->teeIndex, ''));
 
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
@@ -511,7 +508,7 @@ test('spectate vote kills the target character when it passes', function () use 
     expect($character->alive)->toBeTrue();
 
     // Start a spectate vote against tee2
-    $world->onMessage($tee1, new ClCallVoteChunk('spectate', (string) $tee2->teeIndex, 'afk', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('spectate', (string) $tee2->teeIndex, 'afk'));
 
     // tee3 votes yes (2/3 = majority)
     $world->onMessage($tee3, new ClVoteChunk(1));
@@ -555,7 +552,7 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
     $world->addTee($tee2);
 
     // Start the vote using the command string
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'change_map dm1', '', 0));
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'change_map dm1', ''));
 
     // The vote description should match the command's description
     $runningVote = $world->getVoteController()->getRunningVote($tee1);

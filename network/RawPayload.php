@@ -56,11 +56,11 @@ class RawPayload
         return (bool) $this->extractInt();
     }
 
-    public function extractInt(bool $throw = false): int
+    public function extractInt(bool $throw = true): int
     {
         if (count($this->payload) < 1) {
             if ($throw) {
-                throw new \RuntimeException('Not enough data to extract int');
+                throw new \UnexpectedValueException('Not enough data to extract int');
             }
 
             return 0;

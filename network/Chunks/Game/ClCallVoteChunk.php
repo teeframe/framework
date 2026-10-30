@@ -13,7 +13,6 @@ class ClCallVoteChunk extends AbstractChunk
         public string $type,
         public string $value,
         public string $reason,
-        public int $force = 0,
     ) {
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::CL_CALLVOTE);
     }
@@ -24,7 +23,6 @@ class ClCallVoteChunk extends AbstractChunk
             $payload->extractString(),
             $payload->extractString(),
             $payload->extractString(),
-            $payload->extractInt(),
         );
     }
 
@@ -33,7 +31,6 @@ class ClCallVoteChunk extends AbstractChunk
         return (new RawPayload)
             ->addString($this->type)
             ->addString($this->value)
-            ->addString($this->reason)
-            ->addInt($this->force);
+            ->addString($this->reason);
     }
 }

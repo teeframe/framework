@@ -135,45 +135,35 @@ class NetworkBase
     /**
      * @param  int[]  $data
      * @return array{int, int}
+     *
+     * @throws \UnexpectedValueException
      */
     public static function unpackInt(array $data): array
     {
-        // TODO: Refactor this
+        if (! isset($data[0])) {
+            throw new \UnexpectedValueException('Truncated packed integer');
+        }
 
         $pointer = 0;
+        $shift   = 6;
+        $sign    = ($data[0] >> 6) & 1;
+        $result  = $data[0]        & 0x3F;
 
-        $sign   = ($data[$pointer] >> 6) & 1;
-        $result = $data[$pointer]        & 0x3F;
-
-        do {
-            if (! ($data[$pointer] & 0x80)) {
-                break;
-            }
+        while ($data[$pointer] & 0x80) {
             $pointer++;
-            $result |= ($data[$pointer] & 0x7F) << 6;
-
-            if (! ($data[$pointer] & 0x80)) {
-                break;
+            if (! isset($data[$pointer])) {
+                throw new \UnexpectedValueException('Truncated packed integer');
             }
-            $pointer++;
-            $result |= ($data[$pointer] & 0x7F) << (6 + 7);
 
-            if (! ($data[$pointer] & 0x80)) {
-                break;
+            // Four bits remain after the first 27 magnitude bits; no sixth byte is valid.
+            if ($pointer === 4 && ($data[$pointer] & 0xF0)) {
+                throw new \UnexpectedValueException('Packed integer exceeds the signed 32-bit format');
             }
-            $pointer++;
-            $result |= ($data[$pointer] & 0x7F) << (6 + 7 + 7);
 
-            if (! ($data[$pointer] & 0x80)) {
-                break;
-            }
-            $pointer++;
-            $result |= ($data[$pointer] & 0x7F) << (6 + 7 + 7 + 7);
-        } while (0);
+            $result |= ($data[$pointer] & 0x7F) << $shift;
+            $shift += 7;
+        }
 
-        $pointer++;
-        $result ^= -$sign; // if(sign) *i = ~(*i)
-
-        return [$result, $pointer];
+        return [$result ^ -$sign, $pointer + 1];
     }
 }

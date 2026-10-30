@@ -632,7 +632,7 @@ test('a passed map vote reloads only its world and restarts map loading without 
     $command = new ChangeMapCommand($mapName, 'A different arena');
     $server->dm->registerCommand($command);
     $server->dm->getVoteController()->addVoteOption($command->getDescription(), $command->getCommand());
-    $server->send($slot, new ClCallVoteChunk('option', $command->getDescription(), '', 0));
+    $server->send($slot, new ClCallVoteChunk('option', $command->getDescription(), ''));
     expect($server->dm->getVoteController()->isVoteRunning())->toBeTrue();
     $sequence = $slot->sequence;
     $ack = $slot->ack;
@@ -769,7 +769,7 @@ test('a failed map vote reports the load failure and leaves players on the curre
     $map = $server->dm->getMap();
     $command = new ChangeMapCommand('missing-map');
     $server->dm->registerCommand($command);
-    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), '', 0));
+    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), ''));
     $server->socket->packets = [];
     $server->advance();
 
@@ -824,7 +824,7 @@ test('gamemode votes reset only their world and players rejoin with the new team
         $oldTee->score = 15;
         $oldTee->inputs[2000] = input(['direction' => 1]);
         $oldController = $server->dm->getGameController();
-        $server->send($first, new ClCallVoteChunk('option', $command->getDescription(), '', 0));
+        $server->send($first, new ClCallVoteChunk('option', $command->getDescription(), ''));
         $server->send($second, new ClVoteChunk(1));
         $sequence = $first->sequence;
         $ack = $first->ack;
@@ -909,7 +909,7 @@ test('failed gamemode votes keep the active match and report the failure', funct
     $controller = $server->dm->getGameController();
     $command = new ChangeGameModeCommand($mode, mapName: $mapName);
     $server->dm->registerCommand($command);
-    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), '', 0));
+    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), ''));
     $server->socket->packets = [];
     $server->advance();
 
@@ -997,7 +997,7 @@ test('reload votes finish before reloading and cannot be executed through chat',
     expect($server->dm->getMap())->toBe($map);
     expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
 
-    $server->send($slot, new ClCallVoteChunk('option', 'Reload', '', 0));
+    $server->send($slot, new ClCallVoteChunk('option', 'Reload', ''));
     expect($votes->isVoteRunning())->toBeTrue();
     expect($server->dm->getMap())->toBe($map);
     $sequence = $slot->sequence;
