@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Network\SnapItems;
 
+use TeeFrame\Core\Utf8;
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkMessages;
 
@@ -40,7 +41,7 @@ class ObjClientInfoItem extends AbstractSnapItem
     protected function convertStringToIntArray(string $string, int $num): array
     {
         $integers = array_fill(0, $num, 0);
-        $bytes    = unpack('c*', $string);
+        $bytes    = unpack('c*', Utf8::truncateBytes($string, $num * 4 - 1));
 
         if ($bytes === false) {
             return $integers;

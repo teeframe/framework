@@ -20,9 +20,10 @@ class ChunkHandler
     /** @var list<array{chunk: AbstractChunk, firstSendTime: int, lastSendTime: int}> */
     protected array $sentList;
 
-    /** @var array<int, int> Encoded sizes of queued and sent vital chunks, keyed by sequence. */
+    /** @var array<int, int> Encoded sizes of queued and sent vital chunks, keyed by sequence. This is not calculated dynamically as re-encoding chunks every time may consume too much CPU */
     protected array $pendingSizes;
-    protected int $pendingSize;
+
+    // A rejected vital chunk must remain fatal even if a later ACK frees buffer space.
     protected bool $bufferFull;
 
     public function __construct(
@@ -38,7 +39,6 @@ class ChunkHandler
         $this->queue        = [];
         $this->queueSize    = NetworkParams::PACKET_HEADER_SIZE_DEFAULT;
         $this->pendingSizes = [];
-        $this->pendingSize  = 0;
         $this->bufferFull   = false;
     }
 
@@ -56,10 +56,12 @@ class ChunkHandler
         $newVital = ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL)
             && ! ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_RESEND);
 
+        $nextSequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
+
         // Reserve queued data too, before flushing or allocating a sequence.
-        // Staying below half the sequence space keeps old ACKs unambiguous.
-        if ($newVital && ($this->pendingSize + $chunkSize > NetworkParams::MAXIMUM_RESEND_BUFFER_SIZE
-            || count($this->pendingSizes) >= intdiv(NetworkParams::MAXIMUM_ACK_NUMBER, 2) - 1)) {
+        if ($newVital && ($this->getPendingSize() + $chunkSize > NetworkParams::MAXIMUM_RESEND_BUFFER_SIZE
+            || $nextSequence === $this->connection->peerAck
+            || ! NetworkBase::isSequenceInBackroom($this->connection->peerAck, $nextSequence))) {
             $this->bufferFull = true;
 
             return $this;
@@ -75,11 +77,10 @@ class ChunkHandler
         $this->queueSize += $chunkSize;
 
         if ($newVital) {
-            $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
+            $this->connection->sequence = $nextSequence;
 
-            $chunk->setSequence($this->connection->sequence);
-            $this->pendingSizes[$this->connection->sequence] = $chunkSize;
-            $this->pendingSize += $chunkSize;
+            $chunk->setSequence($nextSequence);
+            $this->pendingSizes[$nextSequence] = $chunkSize;
         }
 
         return $this;
@@ -158,17 +159,25 @@ class ChunkHandler
 
     public function flushSentList(int $sequence): void
     {
-        $pending = [];
+        $acknowledged = 0;
         foreach ($this->sentList as $entry) {
             $chunkSequence = $entry['chunk']->getSequence();
-            if (NetworkBase::isSequenceInBackroom($chunkSequence, $sequence)) {
-                $this->pendingSize -= $this->pendingSizes[$chunkSequence];
-                unset($this->pendingSizes[$chunkSequence]);
-            } else {
-                $pending[] = $entry;
+            if (! NetworkBase::isSequenceInBackroom($chunkSequence, $sequence)) {
+                break;
             }
+
+            unset($this->pendingSizes[$chunkSequence]);
+            $acknowledged++;
         }
-        $this->sentList = $pending;
+
+        if ($acknowledged > 0) {
+            $this->sentList = array_slice($this->sentList, $acknowledged);
+        }
+    }
+
+    protected function getPendingSize(): int
+    {
+        return (int) array_sum($this->pendingSizes);
     }
 
     protected function getQueueSize(): int

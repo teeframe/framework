@@ -15,6 +15,18 @@ function createClientInfoItem(string $name): ObjClientInfoItem
     return (new ObjClientInfoItem($name, $clan, $country, $skinName, $useCustomColor, $colorBody, $colorFeet))->setId(0);
 }
 
+test('client info snapshot strings never split UTF-8 characters at their byte limits', function (string $character) {
+    $item               = createClientInfoItem(str_repeat('n', 14).$character);
+    $item->clan         = str_repeat('c', 10).$character;
+    $item->skinName     = str_repeat('s', 22).$character;
+    $expected           = clone $item;
+    $expected->name     = str_repeat('n', 14);
+    $expected->clan     = str_repeat('c', 10);
+    $expected->skinName = str_repeat('s', 22);
+
+    expect($item->getInts())->toBe($expected->getInts());
+})->with(['é', '中', '🎮']);
+
 test('can encode client info name to correct integers "wL7SHc4Ipa1prqHE"', function () {
     $snapInts = createClientInfoItem('wL7SHc4Ipa1prqHE')->getInts();
 

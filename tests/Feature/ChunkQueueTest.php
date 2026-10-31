@@ -7,6 +7,7 @@ use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
+use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\RawPayload;
 use Tests\Support\RecordingConnection;
@@ -105,6 +106,7 @@ test('repeated resends do not duplicate retained entries and acknowledged chunks
 test('acknowledgment cleanup preserves pending sequences across wraparound', function () {
     $connection           = new RecordingConnection(new TickHandler);
     $connection->sequence = 1022;
+    $connection->peerAck  = 1022;
     for ($i = 0; $i < 3; $i++) {
         $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
     }
@@ -118,6 +120,70 @@ test('acknowledgment cleanup preserves pending sequences across wraparound', fun
     expect($packet->getNumChunks())->toBe(1);
     expect($packet->getChunks()[0]->getSequence())->toBe(1);
     expect($connection->sequence)->toBe(1);
+});
+
+test('ACK cleanup stops at the first unacknowledged chunk even if later numbers match the backroom', function (int $previousSequence, int $ack) {
+    $connection           = new RecordingConnection(new TickHandler);
+    $connection->sequence = $previousSequence;
+    $connection->peerAck  = $previousSequence;
+    $expected             = [];
+    for ($i = 0; $i < 4; $i++) {
+        $chunk = new QueueEncodingTestChunk(vital: true);
+        $connection->chunks()->add($chunk);
+        $expected[] = $chunk->getSequence();
+    }
+    $connection->chunks()->send();
+    expect(NetworkBase::isSequenceInBackroom($expected[0], $ack))->toBeFalse();
+    expect(NetworkBase::isSequenceInBackroom($expected[3], $ack))->toBeTrue();
+
+    // Exercise cleanup directly; transport validation rejects these out-of-range ACKs.
+    $connection->chunks()->flushSentList($ack);
+    $connection->sentPackets = [];
+    $connection->chunks()->resend();
+
+    /** @var list<AbstractPacket> $packets */
+    $packets = $connection->sentPackets;
+    expect($packets)->toHaveCount(1);
+    $packet = $packets[0];
+    assert($packet instanceof DefaultPacket);
+    expect(array_map(fn ($chunk) => $chunk->getSequence(), $packet->getChunks()))->toBe($expected);
+})->with([
+    'half-range boundary' => [509, 0],
+    'sequence rollover'   => [1020, 510],
+]);
+
+test('ACK cleanup releases only the acknowledged prefix and preserves queued vital data', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    for ($i = 0; $i < 3; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    }
+    $connection->chunks()->send();
+    $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    $connection->chunks()->flushSentList(2);
+    $connection->peerAck = 2;
+    $connection->chunks()->send();
+    $connection->sentPackets = [];
+    $connection->chunks()->resend();
+
+    /** @var list<AbstractPacket> $packets */
+    $packets = $connection->sentPackets;
+    expect($packets)->toHaveCount(2);
+    foreach ($packets as $index => $packet) {
+        assert($packet instanceof DefaultPacket);
+        expect($packet->getChunks()[0]->getSequence())->toBe($index + 3);
+    }
+
+    $connection->chunks()->flushSentList(4);
+    $connection->peerAck     = 4;
+    $connection->sentPackets = [];
+    $connection->chunks()->resend();
+    expect($connection->sentPackets)->toBeEmpty();
+
+    for ($i = 0; $i < 32; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    }
+    expect($connection->chunks()->send())->toBeTrue();
+    expect($connection->chunks()->update())->toBeNull();
 });
 
 test('empty queues and cleared retransmission lists do not emit empty packets', function () {
@@ -223,20 +289,57 @@ test('the maximum chunk body fits its length field and survives sending and retr
     }
 })->with([false, true]);
 
-test('pending vital chunks cannot enter the ambiguous half of the sequence space', function () {
-    $connection = new RecordingConnection(new TickHandler);
-    for ($i = 0; $i < 511; $i++) {
-        $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
+test('new vital sequences stay within the peer ACK range while resends and non-vital data remain sendable', function (int $previousSequence, int $payloadSize) {
+    $connection           = new RecordingConnection(new TickHandler);
+    $connection->sequence = $previousSequence;
+    $connection->peerAck  = $previousSequence;
+    $windowSize           = intdiv(NetworkParams::MAXIMUM_ACK_NUMBER, 2) - 1;
+    for ($i = 0; $i < $windowSize; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk($payloadSize, vital: true));
     }
-    $connection->chunks()->send();
-    $connection->chunks()->flushSentList(0);
-    $connection->sentPackets = [];
-    $connection->chunks()->resend();
-    expect(array_sum(array_map(fn ($packet) => $packet->getNumChunks(), $connection->sentPackets)))->toBe(511);
+    expect($connection->chunks()->send())->toBeTrue();
+    expect($connection->chunks()->update())->toBeNull();
+    $nextSequence = ($connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
+    expect(NetworkBase::isSequenceInBackroom($connection->peerAck, $nextSequence))->toBeFalse();
 
+    $connection->chunks()->flushSentList($previousSequence);
     $connection->sentPackets = [];
-    $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
-    expect($connection->sequence)->toBe(511);
+    expect($connection->chunks()->resend())->toBeTrue();
+    expect(array_sum(array_map(fn ($packet) => $packet->getNumChunks(), $connection->sentPackets)))->toBe($windowSize);
+    $connection->chunks()->add(new QueueEncodingTestChunk)->send();
+    expect($connection->chunks()->update())->toBeNull();
+
+    $released = intdiv($windowSize, 2);
+    $ack      = ($previousSequence + $released) % NetworkParams::MAXIMUM_ACK_NUMBER;
+    $connection->chunks()->flushSentList($ack);
+    $connection->peerAck = $ack;
+    for ($i = 0; $i < $released; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk($payloadSize, vital: true));
+    }
+    expect($connection->chunks()->send())->toBeTrue();
+    expect($connection->chunks()->update())->toBeNull();
+
+    $lastSequence            = $connection->sequence;
+    $connection->sentPackets = [];
+    $rejected                = new QueueEncodingTestChunk($payloadSize, vital: true);
+    $connection->chunks()->add($rejected);
+    expect($rejected->getSequence())->toBe(-1);
+    expect($connection->sequence)->toBe($lastSequence);
+    expect($connection->chunks()->send())->toBeFalse();
+    expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
+    expect($connection->sentPackets)->toBeEmpty();
+})->with([0, 300, 1022, 1023])->with([0, 60]);
+
+test('a new vital sequence cannot reuse the peer ACK value', function () {
+    $connection           = new RecordingConnection(new TickHandler);
+    $connection->sequence = NetworkParams::MAXIMUM_ACK_NUMBER - 1;
+    $connection->peerAck  = 0;
+    $chunk                = new QueueEncodingTestChunk(vital: true);
+
+    $connection->chunks()->add($chunk);
+
+    expect($chunk->getSequence())->toBe(-1);
+    expect($connection->sequence)->toBe(NetworkParams::MAXIMUM_ACK_NUMBER - 1);
     expect($connection->chunks()->send())->toBeFalse();
     expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
     expect($connection->sentPackets)->toBeEmpty();
@@ -276,8 +379,9 @@ test('resend exhaustion is detected before flushing the last reserved queued chu
 
 test('acknowledgments release resend capacity across sequence wraparound', function () {
     $connection = new RecordingConnection(new TickHandler);
+    $windowSize = intdiv(NetworkParams::MAXIMUM_ACK_NUMBER, 2) - 1;
     for ($i = 0; $i < 3; $i++) {
-        for ($j = 0; $j < 500; $j++) {
+        for ($j = 0; $j < $windowSize; $j++) {
             $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
         }
         expect($connection->chunks()->send())->toBeTrue();
@@ -285,7 +389,7 @@ test('acknowledgments release resend capacity across sequence wraparound', funct
         $connection->peerAck = $connection->sequence;
         expect($connection->chunks()->update())->toBeNull();
     }
-    expect($connection->sequence)->toBe(476);
+    expect($connection->sequence)->toBe((3 * $windowSize) % NetworkParams::MAXIMUM_ACK_NUMBER);
     $connection->sentPackets = [];
     $connection->chunks()->resend();
     expect($connection->sentPackets)->toBeEmpty();
@@ -318,12 +422,37 @@ test('reset clears resend exhaustion and queued reservations', function () {
     $connection->reset();
     expect($connection->chunks()->update())->toBeNull();
     $connection->sentPackets = [];
-    for ($i = 0; $i < 511; $i++) {
+    $windowSize              = intdiv(NetworkParams::MAXIMUM_ACK_NUMBER, 2) - 1;
+    for ($i = 0; $i < $windowSize; $i++) {
         $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
     }
     expect($connection->chunks()->send())->toBeTrue();
-    expect($connection->sequence)->toBe(511);
+    expect($connection->sequence)->toBe($windowSize);
 });
+
+test('overflow remains a failure after later ACKs free the pending data', function (bool $byteLimit) {
+    $connection  = new RecordingConnection(new TickHandler);
+    $count       = $byteLimit ? 32 : intdiv(NetworkParams::MAXIMUM_ACK_NUMBER, 2) - 1;
+    $payloadSize = $byteLimit ? 1020 : 0;
+    for ($i = 0; $i < $count; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk($payloadSize, vital: true));
+    }
+    $connection->chunks()->send();
+    $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
+    expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
+
+    $connection->chunks()->flushSentList($connection->sequence);
+    $connection->peerAck     = $connection->sequence;
+    $connection->sentPackets = [];
+    $rejected                = new QueueEncodingTestChunk(vital: true);
+    $connection->chunks()->add($rejected);
+
+    expect($rejected->getSequence())->toBe(-1);
+    expect($connection->chunks()->send())->toBeFalse();
+    expect($connection->chunks()->resend())->toBeFalse();
+    expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
+    expect($connection->sentPackets)->toBeEmpty();
+})->with([false, true]);
 
 test('direct chunk encoding rejects bodies larger than 1023 bytes', function (bool $vital, int $payloadSize) {
     $chunk = new QueueEncodingTestChunk($payloadSize, vital: $vital);

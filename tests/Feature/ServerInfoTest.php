@@ -525,6 +525,50 @@ test('server info limits strings and prevents embedded nulls from adding fields'
     expect($fields[14])->toBe(str_repeat('C', 12));
 });
 
+test('server info byte limits never split UTF-8 characters', function (string $character) {
+    $clock  = new TickHandler;
+    $server = new ServerInfoTestServer;
+    $map    = new class($character) extends Map
+    {
+        public function __construct(private string $character) {}
+
+        public function getName(): string
+        {
+            return str_repeat('m', 31).$this->character;
+        }
+    };
+    $controller = new class($clock, $character) extends TestGameController
+    {
+        public function __construct(TickHandler $clock, private string $character)
+        {
+            parent::__construct($clock);
+        }
+
+        public function getGameType(): string
+        {
+            return str_repeat('g', 15).$this->character;
+        }
+    };
+    $world                   = new TestWorldWithController($clock, $map, $controller, $server);
+    $slot                    = new ConnectionSlot(new ServerInfoTestSocket, $world, $clock);
+    $slot->state             = ConnectionSlot::STATE_INGAME;
+    $slot->playerTee()->name = str_repeat('n', 15).$character;
+    $slot->playerTee()->clan = str_repeat('c', 11).$character;
+
+    $packets = (new ServerInfoPacketBuilder)->build([$world], [$slot], str_repeat('s', 255).$character, false, 42);
+    expect($packets)->toHaveCount(1);
+    $fields = explode("\0", substr($packets[0]->getData(), strlen(NetworkMessages::SERVERBROWSE_INFO_EXTENDED), -1));
+
+    expect($fields[2])->toBe(str_repeat('s', 255));
+    expect($fields[3])->toBe(str_repeat('m', 31));
+    expect($fields[6])->toBe(str_repeat('g', 15));
+    expect($fields[13])->toBe(str_repeat('n', 15));
+    expect($fields[14])->toBe(str_repeat('c', 11));
+    foreach ($fields as $field) {
+        expect(mb_check_encoding($field, 'UTF-8'))->toBeTrue();
+    }
+})->with(['é', '中', '🎮']);
+
 test('unknown and malformed connectionless requests are ignored without allocating connections', function (string $payload) {
     $server = new ServerInfoTestServer;
     $server->addWorld();

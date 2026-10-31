@@ -45,6 +45,7 @@ class ClientMessageHandler
 
     protected function handleChatMessage(AbstractTee $tee, ClSayChunk $chunk): void
     {
+        // Teeworlds 0.6 limits chat to Unicode characters, not bytes.
         $message = trim(mb_substr(trim($chunk->text), 0, 127, 'UTF-8'));
         if ($message === '') {
             return;

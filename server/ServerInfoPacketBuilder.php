@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Server;
 
+use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Network\NetworkMessages;
@@ -52,11 +53,11 @@ class ServerInfoPacketBuilder
         $payload = NetworkMessages::SERVERBROWSE_INFO_EXTENDED.$this->encodeFields([
             $token,
             '0.6 TeeFrame',
-            substr($name, 0, 256),
-            $multiWorld ? 'MultiWorld' : substr($world->getMap()->getName(), 0, 32),
+            Utf8::truncateBytes($name, 256),
+            $multiWorld ? 'MultiWorld' : Utf8::truncateBytes($world->getMap()->getName(), 32),
             $multiWorld ? 0 : $world->getMap()->getCrc(),
             $multiWorld ? 0 : $world->getMap()->getSize(),
-            $multiWorld ? 'MW' : substr($world->getGameController()->getGameType(), 0, 16),
+            $multiWorld ? 'MW' : Utf8::truncateBytes($world->getGameController()->getGameType(), 16),
             (int) $passwordProtected,
             $numPlayers,
             max($numPlayers, $maxPlayers),
@@ -70,8 +71,8 @@ class ServerInfoPacketBuilder
             $inGame = $slot->state === ConnectionSlot::STATE_INGAME;
 
             $clientPayload = $this->encodeFields([
-                $inGame ? substr($tee->name, 0, NetworkParams::MAX_NAME_LENGTH) : '(connecting)',
-                $inGame ? substr($tee->clan, 0, NetworkParams::MAX_CLAN_LENGTH) : '',
+                $inGame ? Utf8::truncateBytes($tee->name, NetworkParams::MAX_NAME_LENGTH) : '(connecting)',
+                $inGame ? Utf8::truncateBytes($tee->clan, NetworkParams::MAX_CLAN_LENGTH) : '',
                 $tee->country,
                 $tee->score,
                 (int) ($tee->team !== GameConstants::TEAM_SPECTATORS),
