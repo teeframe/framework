@@ -2,9 +2,6 @@
 
 namespace TeeFrame\Server\Ban;
 
-/**
- * A ban entry for a client address.
- */
 class Ban
 {
     public function __construct(

@@ -122,7 +122,5 @@ test('InputChunk encode output contains expected bytes', function () {
 
     $encoded = $chunk->encode();
 
-    // All zero input should produce a compact payload (each int = 1 byte for value 0)
-    // But we need at least the header bytes
     expect($encoded)->not->toBeEmpty();
 });

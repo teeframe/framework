@@ -65,10 +65,8 @@ test('loads dm1 map and computes correct crc', function () use ($mapPath, $mapEx
     $expectedCrc = -233464210;
     expect($map->getCrc())->toBe($expectedCrc);
 
-    // Map name should be extracted from filename
     expect($map->getName())->toBe('dm1');
 
-    // Map size should match the file size
     expect($map->getSize())->toBe(filesize($mapPath));
 });
 
@@ -115,7 +113,6 @@ test('dm1 map has a game layer with correct dimensions', function () use ($mapPa
         throw new RuntimeException('Required map fixture has no game layer');
     }
 
-    // dm1.map game layer dimensions
     expect($gameLayer->width)->toBe(60);
     expect($gameLayer->height)->toBe(50);
 });
@@ -134,7 +131,6 @@ test('dm1 map collision is initialized', function () use ($mapPath, $mapExists) 
         throw new RuntimeException('Required map fixture has no collision layer');
     }
 
-    // Collision dimensions should match game layer
     expect($collision->getWidth())->toBe(60);
     expect($collision->getHeight())->toBe(50);
 });
@@ -149,7 +145,6 @@ test('dm1 map raw data is available for download', function () use ($mapPath, $m
     $rawData = $map->getRawData();
     expect($rawData)->not->toBeEmpty();
 
-    // Raw data length should match file size
     expect(count($rawData))->toBe($map->getSize());
 });
 
@@ -175,11 +170,9 @@ test('dm1 map crc round-trips correctly through packInt', function () use ($mapP
     $map = new Map($mapPath);
     $crc = $map->getCrc();
 
-    // The CRC should be a valid signed 32-bit integer
     expect($crc)->toBeInt();
     expect($crc)->toBeLessThan(0); // dm1 CRC has bit 31 set, so it's negative as signed 32-bit
 
-    // Pack and unpack through Teeworlds' variable-length int encoding
     $packed     = NetworkBase::packInt($crc);
     [$unpacked] = NetworkBase::unpackInt($packed);
 
@@ -202,10 +195,8 @@ test('dm1 map has spawn tiles', function () use ($mapPath, $mapExists) {
 
     $entities = $gameLayer->getEntityPositions();
 
-    // dm1.map should have spawn points
     expect($entities)->not->toBeEmpty();
 
-    // Check that spawn entities have valid positions within the map bounds
     foreach ($entities as $entity) {
         expect($entity['x'])->toBeGreaterThan(0);
         expect($entity['y'])->toBeGreaterThan(0);
@@ -213,7 +204,6 @@ test('dm1 map has spawn tiles', function () use ($mapPath, $mapExists) {
         expect($entity['y'])->toBeLessThan($gameLayer->height * 32);
     }
 
-    // Verify at least one ENTITY_SPAWN (192) exists
     $spawnPoints = array_filter($entities, fn (array $e) => $e['type'] === GameLayer::ENTITY_SPAWN);
     expect($spawnPoints)->not->toBeEmpty();
 });

@@ -2,17 +2,11 @@
 
 namespace TeeFrame\Server\Ban;
 
-/**
- * Holds banned client addresses and their expiry times.
- */
 class BanList
 {
     /** @var array<string, Ban> keyed by address */
     protected array $bans = [];
 
-    /**
-     * Bans an address for the given duration (in seconds).
-     */
     public function ban(string $address, int $durationSeconds, string $reason): void
     {
         $this->bans[$address] = new Ban(

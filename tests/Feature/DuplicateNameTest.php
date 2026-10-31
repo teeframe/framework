@@ -82,8 +82,6 @@ test('setClientName rejects empty name and keeps it empty', function () use ($ma
     $tee = new PlayerTee;
     $world->getServer()->setClientName($world, $tee, '   ');
 
-    // Empty after trim: trySetClientName returns false, auto-rename loop also
-    // fails because "(1)" + "" = "(1)" which is non-empty, so it should resolve.
     expect($tee->name)->toBe('(1)');
 });
 

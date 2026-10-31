@@ -73,7 +73,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             return;
         }
 
-        // Update visual position to current
         $this->position->x = $curPos->x;
         $this->position->y = $curPos->y;
     }
@@ -95,7 +94,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
                 continue;
             }
 
-            // Skip owner
             if ($entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
                 continue;
             }
@@ -124,7 +122,6 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             y: (int) round($pos->y),
         ));
 
-        // Explosion sound
         $this->world->addEvent(new ObjEventSoundWorldItem(
             x: (int) round($pos->x),
             y: (int) round($pos->y),

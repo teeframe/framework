@@ -63,12 +63,10 @@ class PickupEntity extends AbstractEntity
     {
         $currentTick = $this->world->getCurrentTick();
 
-        // Wait for spawn delay
         if ($this->spawnTick > 0 && $currentTick <= $this->spawnTick) {
             return;
         }
 
-        // Check if a character is close enough to pick us up
         foreach ($this->world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
                 continue;
@@ -149,7 +147,6 @@ class PickupEntity extends AbstractEntity
      */
     public function doSnap(AbstractTee $requestingTee): array
     {
-        // Don't snap if in spawn delay
         if ($this->spawnTick > 0 && $this->world->getCurrentTick() <= $this->spawnTick) {
             return [];
         }

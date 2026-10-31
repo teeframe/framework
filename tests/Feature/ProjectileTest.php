@@ -57,7 +57,6 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     $proj = $world->getEntities()[1]; // [0] is the character
     assert($proj instanceof PvpProjectileEntity);
 
-    // Instead, test that getPos produces finite values
     $p0 = getProjectilePos($proj, -0.02);
     $p1 = getProjectilePos($proj, 0.0);
     $p2 = getProjectilePos($proj, 1.0);
@@ -67,7 +66,6 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     expect(is_finite($p2->x))->toBeTrue();
     expect(is_finite($p2->y))->toBeTrue();
 
-    // Position should change over time
     expect($p2->x)->not->toEqual($p1->x);
 });
 
@@ -114,11 +112,9 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     $character->move($collision, $tune);
 
     // Now shoot — this would normally be called from doTick
-    // Use reflection to call private method
     $ref    = new ReflectionClass($character);
     $method = $ref->getMethod('shootGun');
 
-    // Should not throw
     $method->invoke($character);
 })->throwsNoExceptions();
 

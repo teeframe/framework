@@ -88,7 +88,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $this->lastActionTick = $this->world->getCurrentTick();
         }
 
-        // Copy new input
         $this->input = $newInput;
         $this->numInputs++;
 
@@ -146,7 +145,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             return;
         }
 
-        // Update tee's viewPosition to follow the character.
         if ($this->tee !== null) {
             $this->tee->viewPosition = new Vector2(
                 (int) round($this->position->x),
@@ -159,7 +157,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $this->handleWeaponSwitch();
         }
 
-        // Build other characters array keyed by tee index
         $otherCharacters = [];
         foreach ($this->world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {

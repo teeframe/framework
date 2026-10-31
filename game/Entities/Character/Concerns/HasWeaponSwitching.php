@@ -14,7 +14,7 @@ trait HasWeaponSwitching
         }
 
         $this->lastWeapon   = $this->activeWeapon;
-        $this->queuedWeapon = -1;
+        $this->queuedWeapon = GameConstants::NO_WEAPON;
         $this->activeWeapon = $weapon;
 
         $this->createSound(GameConstants::SOUND_WEAPON_SWITCH);
@@ -64,11 +64,10 @@ trait HasWeaponSwitching
         }
 
         $wantedWeapon = $this->activeWeapon;
-        if ($this->queuedWeapon !== -1) {
+        if ($this->queuedWeapon !== GameConstants::NO_WEAPON) {
             $wantedWeapon = $this->queuedWeapon;
         }
 
-        // Next / Prev weapon selection
         $next = $this->countInput($this->latestPrevInput->nextWeapon, $this->latestInput->nextWeapon);
         $prev = $this->countInput($this->latestPrevInput->prevWeapon, $this->latestInput->prevWeapon);
 
@@ -95,7 +94,6 @@ trait HasWeaponSwitching
             $wantedWeapon = $this->latestInput->wantedWeapon - 1;
         }
 
-        // Queue the switch if valid
         if ($wantedWeapon >= 0 && $wantedWeapon < GameConstants::NUM_WEAPONS
             && $wantedWeapon !== $this->activeWeapon
             && $this->weapons[$wantedWeapon]->got
@@ -108,8 +106,7 @@ trait HasWeaponSwitching
 
     protected function doWeaponSwitch(): void
     {
-        // Can't switch while reloading, no weapon queued, or holding ninja
-        if ($this->reloadTimer !== 0 || $this->queuedWeapon === -1 || $this->weapons[GameConstants::WEAPON_NINJA]->got) {
+        if ($this->reloadTimer !== 0 || $this->queuedWeapon === GameConstants::NO_WEAPON || $this->weapons[GameConstants::WEAPON_NINJA]->got) {
             return;
         }
 

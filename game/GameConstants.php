@@ -8,6 +8,7 @@ class GameConstants
     public const INPUT_STATE_MASK = 0x3F;
 
     // Weapon constants (Teeworlds 0.6)
+    public const NO_WEAPON      = -1;
     public const WEAPON_HAMMER  = 0;
     public const WEAPON_GUN     = 1;
     public const WEAPON_SHOTGUN = 2;

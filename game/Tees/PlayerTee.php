@@ -9,6 +9,8 @@ use TeeFrame\Network\NetworkParams;
 
 class PlayerTee extends AbstractTee
 {
+    protected const INPUT_BUFFER_SIZE = 200;
+
     public int $score = 0;
 
     // Tick when the current score run started
@@ -31,7 +33,7 @@ class PlayerTee extends AbstractTee
     public int $lastSetSpectatorMode = 0;
 
     /**
-     * Buffered client inputs keyed by prediction tick (m_aInputs).
+     * Buffered client inputs keyed by scheduled server tick (m_aInputs).
      *
      * @var array<int, PlayerInput>
      */
@@ -48,6 +50,35 @@ class PlayerTee extends AbstractTee
     public int $votePos      = 0;
     public int $lastVoteTry  = 0;
     public int $lastVoteCall = 0;
+
+    public function bufferInput(int $tick, PlayerInput $input): void
+    {
+        // Replacing a tick also refreshes its arrival order for capacity eviction.
+        unset($this->inputs[$tick]);
+        $this->inputs[$tick] = $input;
+        while (count($this->inputs) > self::INPUT_BUFFER_SIZE) {
+            unset($this->inputs[array_key_first($this->inputs)]);
+        }
+    }
+
+    public function consumeInput(int $currentTick): ?PlayerInput
+    {
+        $input     = null;
+        $inputTick = null;
+        // After a skipped tick, use the newest due frame instead of replaying a backlog.
+        foreach ($this->inputs as $tick => $bufferedInput) {
+            if ($tick > $currentTick) {
+                continue;
+            }
+            if ($inputTick === null || $tick > $inputTick) {
+                $input     = $bufferedInput;
+                $inputTick = $tick;
+            }
+            unset($this->inputs[$tick]);
+        }
+
+        return $input;
+    }
 
     protected function getSnapScore(): int
     {

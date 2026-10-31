@@ -79,7 +79,6 @@ class PvpLaserEntity extends AbstractLaserEntity
         if ($hit) {
             // Check if a character was hit before the wall
             if (! $this->hitCharacter($this->position, $colPos)) {
-                // Bounce off wall
                 $this->from     = clone $this->position;
                 $this->position = $colPos;
 
@@ -120,7 +119,6 @@ class PvpLaserEntity extends AbstractLaserEntity
                 continue;
             }
 
-            // Check intersection with character hitbox
             $radius    = $entity->getHitBoxRadius();
             $projected = $this->closestPointOnLine($from, $to, $entity->getPosition());
 

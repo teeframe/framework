@@ -191,8 +191,9 @@ class ConnectionSlot extends AbstractConnection
 
                 $this->lastInputTick = $chunk->predictionTick;
 
-                // Buffer the input on the tee, keyed by prediction tick
-                $this->playerTee()->inputs[$chunk->predictionTick] = new PlayerInput(
+                // Between callbacks, the clock already points to the next unprocessed tick.
+                // Keep the client's original tick in INPUTTIMING.
+                $this->playerTee()->bufferInput(max($chunk->predictionTick, $this->tickHandler->get()), new PlayerInput(
                     direction: $chunk->inputDirection,
                     targetX: $chunk->inputTargetX,
                     targetY: $chunk->inputTargetY,
@@ -203,7 +204,7 @@ class ConnectionSlot extends AbstractConnection
                     wantedWeapon: $chunk->inputWantedWeapon,
                     nextWeapon: $chunk->inputNextWeapon,
                     prevWeapon: $chunk->inputPrevWeapon,
-                );
+                ));
 
                 // Track activity for the inactive-kick check (CPlayer::OnDirectInput)
                 if ($chunk->inputDirection !== 0

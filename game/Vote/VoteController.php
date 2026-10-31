@@ -137,7 +137,6 @@ class VoteController
         $this->voteReason      = $reason !== '' ? $reason : 'No reason given';
         $this->voteUpdate      = true;
 
-        // Reset all players' votes
         foreach ($world->getTees() as $tee) {
             if ($tee instanceof PlayerTee) {
                 $tee->vote    = 0;
@@ -174,7 +173,6 @@ class VoteController
 
         $currentTick = $world->getCurrentTick();
 
-        // A vote is already running
         if ($this->voteCloseTime !== 0) {
             $this->sendChat($world, $tee, 'Wait for current vote to end before calling a new one.');
 
@@ -297,7 +295,6 @@ class VoteController
             return;
         }
 
-        // Player already voted
         if ($tee->vote !== 0) {
             return;
         }
@@ -377,7 +374,6 @@ class VoteController
             return;
         }
 
-        // Check if the vote command targets this tee index
         if (str_starts_with($this->voteCommand, 'kick ') && (int) substr($this->voteCommand, 5) === $teeIndex) {
             $this->voteEnforce = VoteEnforce::ABORT;
         } elseif (str_starts_with($this->voteCommand, 'set_team ') && (int) substr($this->voteCommand, 9) === $teeIndex) {
@@ -385,9 +381,6 @@ class VoteController
         }
     }
 
-    /**
-     * Called when the vote creator leaves — cancels the vote.
-     */
     public function cancelVoteOnCreatorLeave(int $teeIndex): void
     {
         if ($this->voteCloseTime !== 0 && $this->voteCreator === $teeIndex) {

@@ -566,18 +566,23 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 continue;
             }
 
-            $character = $tee->character;
-            // Fire-to-respawn: a dead tee pressing fire requests a spawn.
-            if ($character === null && isset($tee->inputs[$currentTick]) && ($tee->inputs[$currentTick]->fire & 1)) {
-                $tee->spawning = true;
-            }
-            if ($character === null) {
+            $input = $tee->consumeInput($currentTick);
+            if ($tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
 
-            if (isset($tee->inputs[$currentTick])) {
-                $character->onPredictedInput($tee->inputs[$currentTick]);
-                unset($tee->inputs[$currentTick]);
+            $character = $tee->character;
+            // Fire-to-respawn: consume the input even while no character exists.
+            if ($character === null) {
+                if ($input !== null && ($input->fire & 1)) {
+                    $tee->spawning = true;
+                }
+
+                continue;
+            }
+
+            if ($input !== null) {
+                $character->onPredictedInput($input);
             }
             $character->applyInput();
         }

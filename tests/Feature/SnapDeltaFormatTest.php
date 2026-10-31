@@ -5,8 +5,6 @@ use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjProjectileItem;
 use TeeFrame\Network\SnapshotEncoder;
 
-// --- Test: encode() produces packed type and id ---
-
 test('snap item encode produces packed type and id', function () {
     $item = new ObjProjectileItem(
         x: 1744,
@@ -37,8 +35,6 @@ test('snap item encode produces packed type and id', function () {
     expect($decompressed[6])->toBe(0);    // type (projectile type)
     expect($decompressed[7])->toBe(0);    // startTick
 });
-
-// --- Test: removed items use item keys (single packed int) ---
 
 test('delta payload uses item keys for removed items', function () {
     $handler = new SnapshotEncoder;
@@ -75,8 +71,6 @@ test('delta payload uses item keys for removed items', function () {
     expect($decompressed)->toHaveCount(1);
     expect($decompressed[0])->toBe($expectedKey);
 });
-
-// --- Test: diffItem produces packed type and id ---
 
 test('diffItem produces packed type and id', function () {
     $handler = new SnapshotEncoder;

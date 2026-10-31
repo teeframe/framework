@@ -71,7 +71,6 @@ trait HasCharacterLifecycle
         );
         $this->world->broadcast($killMsg);
 
-        // Player die sound
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 
         // Death event (bursting tee death effect)
@@ -81,7 +80,6 @@ trait HasCharacterLifecycle
             clientId: $victimTeeIndex,
         ));
 
-        // Set respawn on the tee
         if ($this->tee instanceof PlayerTee) {
             // Self-kill (WEAPON_SELF) applies a 3s respawn penalty; otherwise 0.5s
             $respawnDelay           = $weapon === GameConstants::WEAPON_SELF ? 150 : 25;
@@ -158,7 +156,6 @@ trait HasCharacterLifecycle
 
         $this->health -= $damage;
 
-        // Player pain sound
         if ($damage > 0) {
             $this->createSound($damage > 2 ? GameConstants::SOUND_PLAYER_PAIN_LONG : GameConstants::SOUND_PLAYER_PAIN_SHORT);
         }
