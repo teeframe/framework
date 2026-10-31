@@ -80,6 +80,15 @@ class PlayerTee extends AbstractTee
         return $input;
     }
 
+    public function tickPaused(): void
+    {
+        $this->respawnTick++;
+        $this->dieTick++;
+        $this->scoreStartTick++;
+        $this->lastActionTick++;
+        $this->teamChangeTick++;
+    }
+
     protected function getSnapScore(): int
     {
         return $this->score;

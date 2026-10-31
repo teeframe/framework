@@ -93,11 +93,11 @@ class Map
             if ($group->startLayer < 0 || $group->numLayers < 0
                 || $group->startLayer + $group->numLayers > count($layers)
             ) {
-                throw new \RuntimeException('Invalid group layer range');
+                throw new \UnexpectedValueException('Invalid group layer range');
             }
             for ($i = $group->startLayer; $i < $group->startLayer + $group->numLayers; $i++) {
                 if (isset($usedLayers[$i])) {
-                    throw new \RuntimeException('Overlapping group layer ranges');
+                    throw new \UnexpectedValueException('Overlapping group layer ranges');
                 }
                 $usedLayers[$i] = true;
             }
@@ -123,7 +123,7 @@ class Map
                 ) {
                     $rawData = $reader->getDataBlock($layer->data);
                     if ($rawData === null) {
-                        throw new \RuntimeException('Game layer references a missing data block');
+                        throw new \UnexpectedValueException('Game layer references a missing data block');
                     }
 
                     return new GameLayer(

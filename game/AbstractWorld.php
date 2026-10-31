@@ -182,7 +182,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $path = $mapName === null ? $map->getPath() : dirname($map->getPath()).'/'.$mapName.'.map';
             $map  = new Map($path);
             if ($map->getGameLayer() === null) {
-                throw new \RuntimeException('Map has no game layer');
+                throw new \UnexpectedValueException('Map has no game layer');
             }
         }
 
@@ -550,6 +550,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         if ($this->paused) {
             $this->tickPausedEntities();
+
+            foreach ($this->tees as $tee) {
+                if ($tee instanceof PlayerTee) {
+                    $tee->tickPaused();
+                }
+            }
 
             return;
         }

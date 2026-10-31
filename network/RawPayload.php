@@ -81,13 +81,13 @@ class RawPayload
             $char = array_shift($this->payload);
 
             if ($char === 0) {
-                break;
+                return $string;
             }
 
             $string .= chr($char & 0xFF); // & 0xFF for strict typing
         }
 
-        return $string;
+        throw new \UnexpectedValueException('Unterminated string in payload');
     }
 
     /**

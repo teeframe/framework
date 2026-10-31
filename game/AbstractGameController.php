@@ -85,7 +85,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     public function doTick(): void
     {
-        if ($this->inactiveKickTime > 0 && $this->world !== null) {
+        if ($this->inactiveKickTime > 0 && $this->world !== null && ! $this->world->isPaused()) {
             $this->checkInactivePlayers();
         }
     }

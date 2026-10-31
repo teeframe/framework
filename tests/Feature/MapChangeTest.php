@@ -3,6 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\ChangeGameModeCommand;
 use TeeFrame\Game\Commands\ChangeMapCommand;
 use TeeFrame\Game\Commands\ReloadCommand;
 use TeeFrame\Game\Entities\PickupEntity;
@@ -145,7 +146,7 @@ test('corrupt maps and datafiles without a game layer leave the running map inta
         $map      = $world->getMap();
         $entities = $world->getEntities();
 
-        expect(fn () => $world->changeMap('invalid'))->toThrow(RuntimeException::class);
+        expect(fn () => $world->changeMap('invalid'))->toThrow(UnexpectedValueException::class);
         $world->doTick();
         expect($world->getMap())->toBe($map);
         expect($world->getEntities())->toBe($entities);
@@ -199,7 +200,7 @@ test('a plain reload re-reads the current map file and a failed reload keeps the
 
         $entities = $world->getEntities();
         file_put_contents($path, 'invalid map');
-        expect(fn () => $world->reload())->toThrow(RuntimeException::class);
+        expect(fn () => $world->reload())->toThrow(UnexpectedValueException::class);
         $world->doTick();
         expect($world->getMap())->toBe($map);
         expect($world->getEntities())->toBe($entities);
@@ -218,6 +219,39 @@ test('reload commands are vote-only and expose the reload vote option', function
     expect($command->getDescription())->toBe('Reload');
     expect($command->getType())->toBe(AbstractCommand::TYPE_VOTE);
 });
+
+test('map commands handle malformed map data without resetting the running world', function (AbstractCommand $command, string $message) {
+    $directory = sys_get_temp_dir().'/teeframe-map-exception-'.bin2hex(random_bytes(8));
+    mkdir($directory);
+    $path = $directory.'/current.map';
+    copy(__DIR__.'/../dm1.map', $path);
+
+    try {
+        $map        = new Map($path);
+        $world      = new TestWorld(new TickHandler(1000), $map);
+        $controller = $world->getGameController();
+        $tee        = new PlayerTee;
+        $world->addTee($tee);
+        recordingServer($world)->clear();
+        file_put_contents($path, 'invalid map');
+
+        $command->execute($world, $tee, []);
+        $world->doTick();
+
+        expect($world->getMap())->toBe($map);
+        expect($world->getGameController())->toBe($controller);
+        expect($world->getTees())->toBe([$tee]);
+        $chats = array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+        expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain($message);
+    } finally {
+        unlink($path);
+        rmdir($directory);
+    }
+})->with([
+    'map change'      => [new ChangeMapCommand('current'), 'Unable to change map to current'],
+    'gamemode change' => [new ChangeGameModeCommand('ctf', mapName: 'current'), 'Unable to change gamemode to CTF'],
+    'reload'          => [new ReloadCommand, 'Unable to reload world'],
+]);
 
 test('reload commands report a missing map without resetting the running world', function () {
     $path = tempnam(sys_get_temp_dir(), 'teeframe-reload-');

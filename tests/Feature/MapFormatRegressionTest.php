@@ -127,8 +127,16 @@ test('failed map reads throw without warnings and restore the previous error han
         return true;
     });
     try {
-        expect(fn () => (new MapReader($path))->read())
-            ->toThrow(RuntimeException::class, "{$path} : Failed to read file");
+        $exception = null;
+        try {
+            (new MapReader($path))->read();
+        } catch (Throwable $caught) {
+            $exception = $caught;
+        }
+        expect($exception)->toBeInstanceOf(RuntimeException::class);
+        assert($exception instanceof Throwable);
+        expect($exception::class)->toBe(RuntimeException::class);
+        expect($exception->getMessage())->toBe("{$path} : Failed to read file");
         expect($warnings)->toBe([]);
         trigger_error('restored handler', E_USER_WARNING);
         expect($warnings)->toBe(['restored handler']);
@@ -154,7 +162,7 @@ test('failed reader reloads preserve the last validated content and parsed secti
         $invalid[strlen($invalid) - 1] = chr((ord($invalid[strlen($invalid) - 1]) ^ 0xFF) & 0xFF);
         file_put_contents($path, $invalid);
 
-        expect(fn () => $reader->read())->toThrow(RuntimeException::class);
+        expect(fn () => $reader->read())->toThrow(UnexpectedValueException::class);
         expect($reader->getRawContent())->toBe($content);
         expect($reader->getItems())->toBe($items);
         expect($reader->getItemTypes())->toBe($itemTypes);
@@ -207,7 +215,7 @@ test('failed map loads preserve the complete previously published state and allo
         if ($failure === 'file read') {
             unlink($path);
         }
-        expect(fn () => $map->load($path))->toThrow(RuntimeException::class);
+        expect(fn () => $map->load($path))->toThrow($failure === 'file read' ? RuntimeException::class : UnexpectedValueException::class);
         expect(mapRegressionState($map))->toBe($before);
 
         $valid = mapRegressionGameFile(str_repeat("\0", 36));
@@ -276,13 +284,23 @@ test('map integers retain signed 32 bit values', function () {
     expect($reader->readInts(5))->toBe([0, 2147483647, -1, -2147483648, -256]);
 });
 
-test('map buffer rejects truncated and negative reads', function () {
-    expect(fn () => (new MapBufferReader("\0\0"))->readInt())->toThrow(RuntimeException::class);
-    expect(fn () => (new MapBufferReader('abc'))->readBytes(-1))->toThrow(RuntimeException::class);
-    expect(fn () => (new MapBufferReader('abc'))->readInts(1))->toThrow(RuntimeException::class);
-    expect(fn () => (new MapBufferReader('abc'))->readInts(-1))->toThrow(RuntimeException::class);
-    expect(fn () => (new MapBufferReader('abc'))->readString())->toThrow(RuntimeException::class);
+test('map buffer rejects truncated reads as unexpected data', function () {
+    expect(fn () => (new MapBufferReader("\0\0"))->readInt())->toThrow(UnexpectedValueException::class);
+    expect(fn () => (new MapBufferReader('abc'))->readMagic())->toThrow(UnexpectedValueException::class);
+    expect(fn () => (new MapBufferReader('abc'))->readInts(1))->toThrow(UnexpectedValueException::class);
+    expect(fn () => (new MapBufferReader('abc'))->readString())->toThrow(UnexpectedValueException::class);
     expect((new MapBufferReader("abc\0"))->readString())->toBe('abc');
+    $reader = new MapBufferReader('abc');
+    expect(fn () => $reader->readBytes(4))->toThrow(UnexpectedValueException::class);
+    expect($reader->readBytes(3))->toBe('abc');
+});
+
+test('negative map read counts are invalid arguments and leave the buffer intact', function () {
+    $reader = new MapBufferReader('abc');
+
+    expect(fn () => $reader->readBytes(-1))->toThrow(InvalidArgumentException::class);
+    expect(fn () => $reader->readInts(-1))->toThrow(InvalidArgumentException::class);
+    expect($reader->readBytes(3))->toBe('abc');
 });
 
 test('packed map names decode byte order padding and final terminator', function () {
@@ -344,8 +362,10 @@ test('invalid datafile tables and headers are rejected', function (int $offset, 
         ['type' => 0, 'id' => 0, 'data' => mapRegressionInts([1])],
     ], ["hello\0"]);
     $bytes = substr_replace($bytes, mapRegressionInts([$value]), $offset, 4);
-    expect(fn () => mapRegressionRead($bytes))->toThrow(RuntimeException::class);
+    expect(fn () => mapRegressionRead($bytes))->toThrow(UnexpectedValueException::class);
 })->with([
+    'invalid magic'              => [0, 0],
+    'unsupported version'        => [4, 5],
     'negative count'             => [16, -1],
     'incorrect file size'        => [8, 0],
     'incorrect swap length'      => [12, 0],
@@ -360,9 +380,9 @@ test('invalid datafile tables and headers are rejected', function (int $offset, 
 
 test('truncated and invalid zlib data are rejected', function () {
     $bytes = mapRegressionDatafile(4, [], ['hello']);
-    expect(fn () => mapRegressionRead(substr($bytes, 0, -1)))->toThrow(RuntimeException::class);
+    expect(fn () => mapRegressionRead(substr($bytes, 0, -1)))->toThrow(UnexpectedValueException::class);
     $bytes[strlen($bytes) - 1] = chr((ord($bytes[strlen($bytes) - 1]) ^ 0xFF) & 0xFF);
-    expect(fn () => mapRegressionRead($bytes))->toThrow(RuntimeException::class);
+    expect(fn () => mapRegressionRead($bytes))->toThrow(UnexpectedValueException::class);
 });
 
 test('duplicate item ids and overlapping offsets are rejected', function () {
@@ -370,21 +390,21 @@ test('duplicate item ids and overlapping offsets are rejected', function () {
         ['type' => 0, 'id' => 0, 'data' => mapRegressionInts([1])],
         ['type' => 0, 'id' => 0, 'data' => mapRegressionInts([1])],
     ];
-    expect(fn () => mapRegressionRead(mapRegressionDatafile(4, $items, [])))->toThrow(RuntimeException::class);
+    expect(fn () => mapRegressionRead(mapRegressionDatafile(4, $items, [])))->toThrow(UnexpectedValueException::class);
     $items[1]['id'] = 1;
     $bytes          = mapRegressionDatafile(4, $items, []);
     $bytes          = substr_replace($bytes, mapRegressionInts([0]), 52, 4);
-    expect(fn () => mapRegressionRead($bytes))->toThrow(RuntimeException::class);
+    expect(fn () => mapRegressionRead($bytes))->toThrow(UnexpectedValueException::class);
 });
 
 test('tile grids reject invalid dimensions counts and incomplete records', function () {
-    expect(fn () => new TileLayer(0, 1, ''))->toThrow(RuntimeException::class);
-    expect(fn () => new TileLayer(-1, 1, ''))->toThrow(RuntimeException::class);
-    expect(fn () => new TileLayer(1, 1, "\0\0\0"))->toThrow(RuntimeException::class);
-    expect(fn () => new TileLayer(2, 1, str_repeat("\0", 4)))->toThrow(RuntimeException::class);
-    expect(fn () => new TileLayer(1, 1, str_repeat("\0", 8)))->toThrow(RuntimeException::class);
-    expect(fn () => new TileLayer(1, 1, "\0\0\x02\0", 4))->toThrow(RuntimeException::class);
-    expect(fn () => new TileLayer(2, 1, str_repeat("\0", 4), 4))->toThrow(RuntimeException::class);
+    expect(fn () => new TileLayer(0, 1, ''))->toThrow(UnexpectedValueException::class);
+    expect(fn () => new TileLayer(-1, 1, ''))->toThrow(UnexpectedValueException::class);
+    expect(fn () => new TileLayer(1, 1, "\0\0\0"))->toThrow(UnexpectedValueException::class);
+    expect(fn () => new TileLayer(2, 1, str_repeat("\0", 4)))->toThrow(UnexpectedValueException::class);
+    expect(fn () => new TileLayer(1, 1, str_repeat("\0", 8)))->toThrow(UnexpectedValueException::class);
+    expect(fn () => new TileLayer(1, 1, "\0\0\x02\0", 4))->toThrow(UnexpectedValueException::class);
+    expect(fn () => new TileLayer(2, 1, str_repeat("\0", 4), 4))->toThrow(UnexpectedValueException::class);
 });
 
 test('version three tiles do not expand rendering skip counts', function () {

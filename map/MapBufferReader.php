@@ -25,7 +25,7 @@ class MapBufferReader
             $string .= $char;
         }
 
-        throw new \RuntimeException('Unterminated map string');
+        throw new \UnexpectedValueException('Unterminated map string');
     }
 
     public function readMagic(): string
@@ -47,8 +47,11 @@ class MapBufferReader
      */
     public function readInts(int $count): array
     {
-        if ($count < 0 || $count > intdiv($this->remaining(), 4)) {
-            throw new \RuntimeException('Invalid map integer count or truncated buffer');
+        if ($count < 0) {
+            throw new \InvalidArgumentException('Negative map integer count');
+        }
+        if ($count > intdiv($this->remaining(), 4)) {
+            throw new \UnexpectedValueException('Truncated map integer buffer');
         }
 
         $ints = [];
@@ -66,8 +69,11 @@ class MapBufferReader
 
     protected function extractFromBuffer(int $length): string
     {
-        if ($length < 0 || $length > $this->remaining()) {
-            throw new \RuntimeException('Invalid map read length or truncated buffer');
+        if ($length < 0) {
+            throw new \InvalidArgumentException('Negative map read length');
+        }
+        if ($length > $this->remaining()) {
+            throw new \UnexpectedValueException('Truncated map buffer');
         }
 
         $data         = substr($this->buffer, 0, $length);

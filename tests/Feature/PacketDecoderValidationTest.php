@@ -1,6 +1,8 @@
 <?php
 
+use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
+use TeeFrame\Network\Chunks\System\InfoChunk;
 use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\NetworkBase;
@@ -8,6 +10,7 @@ use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
+use TeeFrame\Network\RawPayload;
 
 /** @param int[] $payload */
 function decoderValidationPacket(array $payload, int $numChunks = 1, bool $compressed = false): string
@@ -45,6 +48,68 @@ test('truncated integer fields reject packets instead of fabricating input', fun
     'integer overflow'               => [[0x80, 0x80, 0x80, 0x80, 0x10]],
     'unterminated integer'           => [[0x80, 0x80, 0x80, 0x80, 0x80]],
 ])->with([false, true]);
+
+test('unterminated string fields reject packets', function (array $bytes, bool $compressed) {
+    $size    = count($bytes);
+    $payload = [0x40 | ($size >> 4), $size & 0xF, 1, ...$bytes];
+
+    expect(PacketDecoder::decodeFromRaw(decoderValidationPacket($payload, compressed: $compressed)))->toBeFalse();
+    expect(fn () => PacketDecoder::decodeChunksFromPayload($payload))->toThrow(UnexpectedValueException::class, 'Unterminated string');
+})->with([
+    'missing chat text'               => [[NetworkMessages::CL_SAY << 1, 0]],
+    'unterminated chat text'          => [[NetworkMessages::CL_SAY << 1, 0, 104, 105]],
+    'missing vote reason'             => [[NetworkMessages::CL_CALLVOTE << 1, 111, 0, 118, 0]],
+    'unterminated vote reason'        => [[NetworkMessages::CL_CALLVOTE << 1, 111, 0, 118, 0, 114]],
+    'missing handshake password'      => [[(NetworkMessages::INFO << 1) | 1, 118, 0]],
+    'unterminated handshake password' => [[(NetworkMessages::INFO << 1) | 1, 118, 0, 112]],
+])->with([false, true]);
+
+test('string terminators cannot be read from the next chunk', function (bool $compressed) {
+    $malformed = [0x40, 4, 1, NetworkMessages::CL_SAY << 1, 0, 104, 105];
+    $ready     = (new ReadyChunk)->setSequence(2)->encode();
+
+    expect(PacketDecoder::decodeFromRaw(decoderValidationPacket([...$malformed, ...$ready], 2, $compressed)))->toBeFalse();
+})->with([false, true]);
+
+test('a malformed string in a later chunk rejects the whole packet', function (bool $compressed) {
+    $ready     = (new ReadyChunk)->setSequence(1)->encode();
+    $malformed = [0x40, 4, 2, NetworkMessages::CL_SAY << 1, 0, 104, 105];
+
+    expect(PacketDecoder::decodeFromRaw(decoderValidationPacket([...$ready, ...$malformed], 2, $compressed)))->toBeFalse();
+})->with([false, true]);
+
+test('terminated empty strings remain valid in decoded messages', function (bool $compressed) {
+    $chat   = (new ClSayChunk(false, ''))->setSequence(1)->encode();
+    $vote   = (new ClCallVoteChunk('option', 'Reload', ''))->setSequence(2)->encode();
+    $info   = (new InfoChunk('0.6 626fce9a778df4d4', ''))->setSequence(3)->encode();
+    $packet = PacketDecoder::decodeFromRaw(decoderValidationPacket([...$chat, ...$vote, ...$info], 3, $compressed));
+
+    expect($packet)->toBeInstanceOf(DefaultPacket::class);
+    assert($packet instanceof DefaultPacket);
+    [$decodedChat, $decodedVote, $decodedInfo] = $packet->getChunks();
+    assert($decodedChat instanceof ClSayChunk);
+    assert($decodedVote instanceof ClCallVoteChunk);
+    assert($decodedInfo instanceof InfoChunk);
+    expect($decodedChat->text)->toBe('');
+    expect($decodedVote->reason)->toBe('');
+    expect($decodedInfo->password)->toBe('');
+})->with([false, true]);
+
+test('raw string extraction requires a zero terminator', function (array $bytes) {
+    expect(fn () => (new RawPayload($bytes))->extractString())->toThrow(UnexpectedValueException::class, 'Unterminated string');
+})->with([
+    'missing string'      => [[]],
+    'unterminated string' => [[104, 105]],
+]);
+
+test('raw string extraction leaves subsequent fields intact', function () {
+    $payload = new RawPayload([0, 104, 105, 0, 42]);
+
+    expect($payload->extractString())->toBe('');
+    expect($payload->extractString())->toBe('hi');
+    expect($payload->extractInt())->toBe(42);
+    expect($payload->encode())->toBeEmpty();
+});
 
 test('a malformed later chunk cannot produce a partially decoded packet', function () {
     $ready     = (new ReadyChunk)->setSequence(1)->encode();

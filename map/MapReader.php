@@ -54,7 +54,7 @@ class MapReader
             restore_error_handler();
         }
         if ($buffer === false) {
-            $this->throwException('Failed to read file');
+            throw new \RuntimeException("$this->path : Failed to read file");
         }
 
         return $buffer;
@@ -307,6 +307,6 @@ class MapReader
 
     protected function throwException(string $message): never
     {
-        throw new \RuntimeException("$this->path : {$message}");
+        throw new \UnexpectedValueException("$this->path : {$message}");
     }
 }
