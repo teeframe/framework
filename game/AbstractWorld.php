@@ -460,6 +460,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
 
         $this->tees[$index] = $tee;
+        $this->voteController->requestUpdate();
 
         if ($tee instanceof PlayerTee) {
             $tee->spawning       = $tee->team !== GameConstants::TEAM_SPECTATORS;
@@ -517,6 +518,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
             $this->releasedTeeIndexes[] = $index;
             unset($this->tees[$index]);
+            $this->voteController->requestUpdate();
 
             $this->getGameController()->checkTeamBalance();
         }

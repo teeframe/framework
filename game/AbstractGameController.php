@@ -242,12 +242,6 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             }
         }
 
-        foreach ($spawnOrder as $type) {
-            if (! empty($this->spawnPoints[$type])) {
-                return $this->spawnPoints[$type][0];
-            }
-        }
-
         return null;
     }
 
@@ -266,7 +260,12 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         $bestPos   = null;
         $bestScore = 0.0;
 
-        foreach ($this->spawnPoints[$type] as $pos) {
+        foreach ($this->spawnPoints[$type] as $spawnPoint) {
+            $pos = $this->findSpawnPosition($world, $spawnPoint);
+            if ($pos === null) {
+                continue;
+            }
+
             $score = $this->evaluateSpawnPos($world, $pos);
 
             if ($bestPos === null || $score > $bestScore) {
@@ -276,6 +275,29 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
 
         return $bestPos;
+    }
+
+    protected function findSpawnPosition(AbstractWorld $world, Vector2 $spawnPoint): ?Vector2
+    {
+        $collision = $world->getMap()->getCollision();
+
+        // Teeworlds 0.6: center, left, up, right, down.
+        foreach ([[0, 0], [-32, 0], [0, -32], [32, 0], [0, 32]] as [$dx, $dy]) {
+            $pos = new Vector2($spawnPoint->x + $dx, $spawnPoint->y + $dy);
+            if ($collision !== null && $collision->checkPoint($pos->x, $pos->y)) {
+                continue;
+            }
+
+            $occupied = array_any($world->getEntities(), fn ($entity) => $entity instanceof AbstractCharacterEntity
+                && $entity->alive
+                && ! $entity->isToDestroy()
+                && $pos->distance($entity->getPosition()) <= $entity->getHitBoxRadius());
+            if (! $occupied) {
+                return $pos;
+            }
+        }
+
+        return null;
     }
 
     protected function evaluateSpawnPos(AbstractWorld $world, Vector2 $pos): float

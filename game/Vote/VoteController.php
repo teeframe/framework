@@ -395,6 +395,11 @@ class VoteController
      */
     public function onTeamChange(PlayerTee $tee): void
     {
+        $this->requestUpdate();
+    }
+
+    public function requestUpdate(): void
+    {
         if ($this->voteCloseTime !== 0) {
             $this->voteUpdate = true;
         }
