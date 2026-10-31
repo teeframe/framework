@@ -3,6 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -109,6 +110,311 @@ function sendCharacterPredictionInput(ConnectionSlot $slot, int $tick, PlayerInp
     ], ack: $slot->sequence));
 }
 
+/** @return list<PlayerInput> */
+function characterPredictionInputStates(PvpCharacterEntity $character): array
+{
+    return array_map(function (string $property) use ($character): PlayerInput {
+        $input = (new ReflectionProperty($character, $property))->getValue($character);
+        assert($input instanceof PlayerInput);
+
+        return $input;
+    }, ['input', 'latestInput', 'latestPrevInput']);
+}
+
+test('gun fire uses the packet arrival tick and latest aim while movement waits for its prediction tick', function (int $offset) {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input(['targetX' => 100, 'targetY' => 0]));
+        $server->advance($world);
+    }
+    $arrivalTick    = $clock->get();
+    $predictionTick = $arrivalTick + $offset;
+    sendCharacterPredictionInput($slot, $predictionTick, input([
+        'direction' => 1,
+        'targetX'   => 3,
+        'targetY'   => -4,
+        'fire'      => 1,
+    ]));
+
+    expect($character->attackTick)->toBe($arrivalTick);
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+    expect($character->getPosition())->toEqual(new Vector2(128, 128));
+    $projectiles = array_values(array_filter($world->getEntities(), fn ($entity) => $entity instanceof PvpProjectileEntity));
+    expect($projectiles)->toHaveCount(1);
+    expect($projectiles[0]->direction->x)->toEqualWithDelta(0.6, 0.000000001);
+    expect($projectiles[0]->direction->y)->toEqualWithDelta(-0.8, 0.000000001);
+    expect($projectiles[0]->getPosition()->x)->toEqualWithDelta(128 + 0.6 * 21, 0.000000001);
+    expect($projectiles[0]->getPosition()->y)->toEqualWithDelta(128 - 0.8 * 21, 0.000000001);
+    expect($projectiles[0]->doSnap($slot->playerTee())[0]->getInts()[5])->toBe($arrivalTick);
+
+    $server->advance($world);
+    expect(characterPredictionSnapshot($character)->direction)->toBe($offset > 0 ? 0 : 1);
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+})->with(['late' => -10, 'current tick' => 0, 'future tick' => 10]);
+
+test('direct gun fire waits for three predicted inputs and consumes earlier presses', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input(['fire' => 1 + $i * 2]));
+        $server->advance($world);
+        expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(10);
+    }
+    sendCharacterPredictionInput($slot, $clock->get(), input(['fire' => 5]));
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(10);
+    sendCharacterPredictionInput($slot, $clock->get(), input(['fire' => 7]));
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+});
+
+test('direct fire normalizes a zero aim target before the next physics tick', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input(['targetX' => 100, 'targetY' => 0]));
+        $server->advance($world);
+    }
+    sendCharacterPredictionInput($slot, $clock->get() + 10, input(['targetX' => 0, 'targetY' => 0, 'fire' => 1]));
+
+    $projectiles = array_values(array_filter($world->getEntities(), fn ($entity) => $entity instanceof PvpProjectileEntity));
+    expect($projectiles)->toHaveCount(1);
+    expect($projectiles[0]->direction)->toEqual(new Vector2(0, -1));
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+});
+
+test('one direct input can switch weapons and hit with the hammer before the next tick', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input());
+        $server->advance($world);
+    }
+    $victimTee = new PlayerTee;
+    $world->addTee($victimTee);
+    $victim = new PvpCharacterEntity($world, new Vector2(160, 128));
+    $victim->spawn(new Vector2(160, 128), $victimTee);
+    $world->addEntity($victim);
+
+    sendCharacterPredictionInput($slot, $clock->get() + 10, input(['targetX' => 100, 'targetY' => 0, 'wantedWeapon' => 1, 'fire' => 1]));
+
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
+    expect($character->attackTick)->toBe($clock->get());
+    expect($victim->health)->toBe(7);
+});
+
+test('weapon switching happens on receipt and buffered wheel counters are not replayed', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    $character->giveWeapon(GameConstants::WEAPON_SHOTGUN, 10);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input());
+        $server->advance($world);
+    }
+    $predictionTick = $clock->get() + 10;
+    sendCharacterPredictionInput($slot, $predictionTick, input(['nextWeapon' => 1]));
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_SHOTGUN);
+    for ($i = 0; $i < 15; $i++) {
+        $server->advance($world);
+        expect($character->activeWeapon)->toBe(GameConstants::WEAPON_SHOTGUN);
+    }
+
+    sendCharacterPredictionInput($slot, $clock->get() + 10, input(['nextWeapon' => 1, 'prevWeapon' => 1]));
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
+    sendCharacterPredictionInput($slot, $clock->get() + 10, input(['nextWeapon' => 1, 'prevWeapon' => 1, 'wantedWeapon' => 1]));
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_HAMMER);
+});
+
+test('a gun fire press is not replayed by ticks repeated packets or its buffered input', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input());
+        $server->advance($world);
+    }
+    $arrivalTick = $clock->get();
+    $fire        = input(['fire' => 1]);
+    sendCharacterPredictionInput($slot, $arrivalTick + 10, $fire);
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+    $reloadTimer = $character->reloadTimer;
+    for ($i = 0; $i < 5; $i++) {
+        sendCharacterPredictionInput($slot, $arrivalTick + 10, $fire);
+        expect($character->reloadTimer)->toBe($reloadTimer);
+    }
+    for ($i = 0; $i < 15; $i++) {
+        $server->advance($world);
+        expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+        expect($character->attackTick)->toBe($arrivalTick);
+    }
+    sendCharacterPredictionInput($slot, $clock->get() + 10, $fire);
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+
+    sendCharacterPredictionInput($slot, $clock->get() + 10, input(['fire' => 2]));
+    sendCharacterPredictionInput($slot, $clock->get() + 10, input(['fire' => 3]));
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(8);
+    expect($character->attackTick)->toBe($clock->get());
+});
+
+test('a fire press received during cooldown is consumed instead of firing later', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input());
+        $server->advance($world);
+    }
+    sendCharacterPredictionInput($slot, $clock->get() + 10, input(['fire' => 1]));
+    sendCharacterPredictionInput($slot, $clock->get() + 11, input(['fire' => 3]));
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+    for ($i = 0; $i < 15; $i++) {
+        $server->advance($world);
+        expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
+    }
+});
+
+test('automatic fire continues from direct input and an older buffered hold cannot undo a release', function (int $weapon, int $cooldown) {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    $character->giveWeapon($weapon, 10);
+    $character->setWeapon($weapon);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input());
+        $server->advance($world);
+    }
+    sendCharacterPredictionInput($slot, $clock->get() + 100, input(['fire' => 1]));
+    expect($character->weapons[$weapon]->ammo)->toBe(9);
+    for ($i = 0; $i < $cooldown; $i++) {
+        $server->advance($world);
+        expect($character->weapons[$weapon]->ammo)->toBe(9);
+    }
+    $server->advance($world);
+    expect($character->weapons[$weapon]->ammo)->toBe(8);
+
+    sendCharacterPredictionInput($slot, $clock->get() + 1, input(['fire' => 2]));
+    for ($i = 0; $i < 110; $i++) {
+        $server->advance($world);
+        expect($character->weapons[$weapon]->ammo)->toBe(8);
+    }
+})->with([
+    'shotgun' => [GameConstants::WEAPON_SHOTGUN, 25],
+    'grenade' => [GameConstants::WEAPON_GRENADE, 25],
+    'rifle'   => [GameConstants::WEAPON_RIFLE, 40],
+]);
+
+test('direct weapon input does not act while the world is paused', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input());
+        $server->advance($world);
+    }
+    $world->setPaused(true);
+    sendCharacterPredictionInput($slot, $clock->get(), input(['wantedWeapon' => 1, 'fire' => 1]));
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
+    expect($character->attackTick)->toBe(0);
+    expect($character->reloadTimer)->toBe(0);
+});
+
+test('received player flags appear in character snapshots before their prediction tick', function (int $flags) {
+    [, $world, , $slot, $character] = createCharacterPredictionWorld(100);
+
+    sendCharacterPredictionInput($slot, 150, input(['playerFlags' => $flags]));
+
+    expect(characterPredictionSnapshot($character)->playerFlags)->toBe($flags);
+    expect(array_keys($slot->playerTee()->inputs))->toBe([150]);
+    $character->die();
+    $replacement = new PvpCharacterEntity($world, new Vector2(128, 128));
+    $replacement->spawn(new Vector2(128, 128), $slot->playerTee());
+    expect(characterPredictionSnapshot($replacement)->playerFlags)->toBe($flags);
+})->with([
+    'playing'    => GameConstants::PLAYERFLAG_PLAYING,
+    'menu'       => GameConstants::PLAYERFLAG_IN_MENU,
+    'scoreboard' => GameConstants::PLAYERFLAG_PLAYING | GameConstants::PLAYERFLAG_SCOREBOARD,
+    'chatting'   => GameConstants::PLAYERFLAG_CHATTING,
+]);
+
+test('opening chat releases controls and continuing chat input is ignored', function (int $fire, int $releasedFire) {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input());
+        $server->advance($world);
+    }
+    $held = input([
+        'direction'    => 1,
+        'targetX'      => 100,
+        'targetY'      => 0,
+        'jump'         => true,
+        'fire'         => $fire,
+        'hook'         => true,
+        'playerFlags'  => GameConstants::PLAYERFLAG_PLAYING,
+        'wantedWeapon' => 2,
+    ]);
+    sendCharacterPredictionInput($slot, $clock->get(), $held);
+    $server->advance($world);
+    $ammo           = $character->weapons[GameConstants::WEAPON_GUN]->ammo;
+    $lastActionTick = $slot->playerTee()->lastActionTick;
+    $reset          = input([
+        'targetX'      => 100,
+        'targetY'      => 0,
+        'fire'         => $releasedFire,
+        'playerFlags'  => GameConstants::PLAYERFLAG_PLAYING,
+        'wantedWeapon' => 2,
+    ]);
+    $chat = input([
+        'direction'    => -1,
+        'targetX'      => -50,
+        'targetY'      => 17,
+        'jump'         => true,
+        'fire'         => 1,
+        'hook'         => true,
+        'playerFlags'  => GameConstants::PLAYERFLAG_CHATTING,
+        'wantedWeapon' => 1,
+        'nextWeapon'   => 1,
+    ]);
+
+    sendCharacterPredictionInput($slot, $clock->get(), $chat);
+
+    expect(characterPredictionInputStates($character))->toEqual([$reset, $reset, $reset]);
+    expect(characterPredictionSnapshot($character)->playerFlags)->toBe(GameConstants::PLAYERFLAG_CHATTING);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input([
+            'direction'    => -1,
+            'jump'         => true,
+            'fire'         => 3,
+            'hook'         => true,
+            'playerFlags'  => GameConstants::PLAYERFLAG_CHATTING | GameConstants::PLAYERFLAG_SCOREBOARD,
+            'wantedWeapon' => 1,
+            'nextWeapon'   => 3,
+        ]));
+        $server->advance($world);
+        expect(characterPredictionInputStates($character))->toEqual([$reset, $reset, $reset]);
+        expect(characterPredictionSnapshot($character)->playerFlags)->toBe(GameConstants::PLAYERFLAG_CHATTING);
+        expect(characterPredictionSnapshot($character)->direction)->toBe(0);
+        expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
+        expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe($ammo);
+        expect($slot->playerTee()->lastActionTick)->toBe($lastActionTick);
+    }
+
+    $resumed = input(['direction' => -1, 'targetX' => 100, 'targetY' => 0, 'fire' => $releasedFire, 'playerFlags' => GameConstants::PLAYERFLAG_PLAYING]);
+    sendCharacterPredictionInput($slot, $clock->get(), $resumed);
+    $server->advance($world);
+    expect(characterPredictionInputStates($character)[0])->toEqual($resumed);
+    expect(characterPredictionSnapshot($character)->direction)->toBe(-1);
+    expect(characterPredictionSnapshot($character)->playerFlags)->toBe(GameConstants::PLAYERFLAG_PLAYING);
+    expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe($ammo);
+    expect($slot->playerTee()->lastActionTick)->toBeGreaterThan($lastActionTick);
+})->with(['pressed' => [1, 2], 'pressed at rollover' => [63, 0], 'released' => [0, 0], 'released near rollover' => [62, 62]]);
+
+test('chatting fire input does not request a dead player respawn', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    $character->die();
+    $tee              = $slot->playerTee();
+    $tee->spawning    = false;
+    $tee->respawnTick = 500;
+    $lastActionTick   = $tee->lastActionTick;
+
+    sendCharacterPredictionInput($slot, $clock->get(), input(['fire' => 1, 'playerFlags' => GameConstants::PLAYERFLAG_CHATTING]));
+    $server->advance($world);
+
+    expect($tee->spawning)->toBeFalse();
+    expect($tee->character)->toBeNull();
+    expect($tee->inputs)->toBeEmpty();
+    expect($tee->lastActionTick)->toBe($lastActionTick);
+
+    sendCharacterPredictionInput($slot, $clock->get(), input(['fire' => 1, 'playerFlags' => GameConstants::PLAYERFLAG_PLAYING]));
+    $server->advance($world);
+    expect($tee->spawning)->toBeTrue();
+});
+
 test('jump inputs use the next unprocessed tick without moving future inputs earlier', function (int $offset) {
     [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
     $server->advance($world);
@@ -166,7 +472,7 @@ test('an on time air jump is not replayed as a second client effect after the ne
     expect($character->triggeredEvents & GameConstants::COREEVENT_AIR_JUMP)->toBe(0);
 })->with([100, 1_000_000]);
 
-test('ninja activation uses the scheduled input tick without replaying a held fire press', function (int $offset) {
+test('ninja activates on receipt regardless of the prediction tick without replaying held fire', function (int $offset) {
     [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
     $character->giveNinja();
     $idle = input(['targetX' => 100, 'targetY' => 0]);
@@ -175,17 +481,19 @@ test('ninja activation uses the scheduled input tick without replaying a held fi
         $server->advance($world);
     }
     $requestedTick = $clock->get() + $offset;
-    $attackTick    = max($requestedTick, $clock->get());
+    $attackTick    = $clock->get();
     $fire          = input(['targetX' => 100, 'targetY' => 0, 'fire' => 1]);
     sendCharacterPredictionInput($slot, $requestedTick, $fire);
-    for ($tick = $clock->get(); $tick <= $attackTick; $tick++) {
-        $server->advance($world);
-        $snapshot = characterPredictionSnapshot($character);
-        expect($snapshot->attackTick)->toBe($tick === $attackTick ? $attackTick : 0);
-    }
+    expect(characterPredictionSnapshot($character)->attackTick)->toBe($attackTick);
     expect($character->ninjaCurrentMoveTime)->toBe(10);
     expect($character->getPosition()->x)->toEqualWithDelta(128.0, 0.00000001);
     expect(characterPredictionSnapshot($character)->weapon)->toBe(GameConstants::WEAPON_NINJA);
+    for ($i = 0; $i < 5; $i++) {
+        sendCharacterPredictionInput($slot, $requestedTick, $fire);
+        expect($character->ninjaCurrentMoveTime)->toBe(10);
+        expect($character->reloadTimer)->toBe(40);
+        expect($character->getPosition())->toEqual(new Vector2(128, 128));
+    }
 
     // Keep holding beyond the 40-tick cooldown: ninja must not auto-fire again.
     for ($i = 0; $i < 45; $i++) {
@@ -210,7 +518,6 @@ test('ninja dash snapshots do not make core prediction extrapolate the server dr
     }
     $attackTick = $clock->get();
     sendCharacterPredictionInput($slot, $attackTick, $fire);
-    $server->advance($world);
 
     // HandleNinja decrements the ten-tick timer before moving (0.6 character.cpp).
     for ($moveTime = 9; $moveTime > 0; $moveTime--) {
@@ -255,7 +562,6 @@ test('normal core prediction resumes from the speed restored after a ninja dash'
     }
     $character->vel = new Vector2(3, 4);
     sendCharacterPredictionInput($slot, $clock->get(), $fire);
-    $server->advance($world);
     expect($character->ninjaOldVelAmount)->toBe(5.0);
     for ($i = 0; $i < 10; $i++) {
         sendCharacterPredictionInput($slot, $clock->get(), $fire);

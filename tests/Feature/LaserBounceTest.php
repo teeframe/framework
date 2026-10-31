@@ -127,6 +127,32 @@ test('a paused laser preserves the remaining bounce delay', function () {
     expect([$snap->fromX, $snap->x, $snap->startTick])->toBe([255, -354, 128]);
 });
 
+test('a reflected laser skips its owner and uses the projected endpoint for another character', function (bool $withVictim) {
+    [$world, $clock, $owner] = createLaserBounceWorld();
+    $character               = new PvpCharacterEntity($world, new Vector2(64, 64));
+    $character->spawn(new Vector2(64, 64), $owner);
+    $world->addEntity($character);
+    $victim = null;
+    if ($withVictim) {
+        $victimTee = new PlayerTee;
+        $world->addTee($victimTee);
+        $victim = new PvpCharacterEntity($world, new Vector2(32, 80));
+        $victim->spawn(new Vector2(32, 80), $victimTee);
+        $world->addEntity($victim);
+    }
+    $laser = new PvpLaserEntity($world, new Vector2(64, 64), new Vector2(1, 0), 800, $owner->teeIndex);
+    for ($i = 0; $i < 8; $i++) {
+        $clock->next();
+        $laser->doTick();
+    }
+
+    expect($character->health)->toBe(10);
+    expect($victim?->health)->toBe($withVictim ? 5 : null);
+    $snap = $laser->doSnap($owner)[0];
+    assert($snap instanceof ObjLaserItem);
+    expect([$snap->fromX, $snap->fromY, $snap->x, $snap->y])->toBe([255, 64, $withVictim ? 32 : -354, 64]);
+})->with([false, true]);
+
 test('a reflected laser damages a character only when the reflected segment is evaluated', function () {
     [$world, $clock, $owner] = createLaserBounceWorld();
     $victimTee               = new PlayerTee;

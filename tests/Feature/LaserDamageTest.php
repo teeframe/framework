@@ -10,6 +10,7 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
+use TeeFrame\Network\SnapItems\ObjLaserItem;
 
 /** @return array{TestWorldWithController, PvpCharacterEntity, PvpCharacterEntity, PlayerTee, PlayerTee} */
 function createLaserDamageWorld(string $gameMode = 'DM'): array
@@ -75,6 +76,22 @@ test('laser deals full damage and sends the hit sound only to its owner', functi
     expect(soundsSentToTee($world, $attackerTee->teeIndex))->toBe([GameConstants::SOUND_HIT]);
     expect(soundsSentToTee($world, $victimTee->teeIndex))->toBe([]);
 })->with(['DM', 'TDM', 'CTF']);
+
+test('laser ends at the closest character projection instead of its center', function () {
+    [$world, $attacker, $victim, $owner] = createLaserDamageWorld();
+    $victim->setPosition(new Vector2(192, 80));
+    $farther = new PvpCharacterEntity($world, new Vector2(320, 48));
+    $farther->spawn(new Vector2(320, 48));
+    $world->addEntity($farther);
+
+    $laser = new PvpLaserEntity($world, clone $attacker->getPosition(), new Vector2(1, 0), 800, $owner->teeIndex);
+
+    expect($victim->health)->toBe(5);
+    expect($farther->health)->toBe(10);
+    $snap = $laser->doSnap($owner)[0];
+    assert($snap instanceof ObjLaserItem);
+    expect([$snap->fromX, $snap->fromY, $snap->x, $snap->y])->toBe([64, 64, 192, 64]);
+});
 
 test('laser obeys friendly fire protection', function (string $gameMode) {
     [$world, $attacker, $victim, $attackerTee, $victimTee] = createLaserDamageWorld($gameMode);

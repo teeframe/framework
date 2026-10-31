@@ -17,19 +17,12 @@ use TeeFrame\Server\Sockets\AbstractSocket;
 class InputBufferTestCharacter extends PvpCharacterEntity
 {
     /** @var list<PlayerInput> */
-    public array $receivedInputs  = [];
-    public int $inputApplications = 0;
+    public array $receivedInputs = [];
 
     public function onPredictedInput(PlayerInput $newInput): void
     {
         $this->receivedInputs[] = $newInput;
         parent::onPredictedInput($newInput);
-    }
-
-    public function applyInput(): void
-    {
-        $this->inputApplications++;
-        parent::applyInput();
     }
 }
 

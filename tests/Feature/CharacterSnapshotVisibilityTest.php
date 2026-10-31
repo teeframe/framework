@@ -9,6 +9,41 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 
+test('character snapshots read current flags from player and custom tees', function (bool $player) {
+    $world = new TestWorld(new TickHandler(100), new Map);
+    $tee   = $player ? new PlayerTee : new class extends AbstractTee {};
+    $world->addTee($tee);
+    $character = new PvpCharacterEntity($world, new Vector2(128, 96));
+    $character->spawn(new Vector2(128, 96), $tee);
+
+    $tee->playerFlags = GameConstants::PLAYERFLAG_CHATTING;
+    $snap             = $character->doSnap($tee)[0];
+    assert($snap instanceof ObjCharacterItem);
+    expect($snap->playerFlags)->toBe(GameConstants::PLAYERFLAG_CHATTING);
+
+    $tee->playerFlags = GameConstants::PLAYERFLAG_PLAYING | GameConstants::PLAYERFLAG_SCOREBOARD;
+    $snap             = $character->doSnap($tee)[0];
+    assert($snap instanceof ObjCharacterItem);
+    expect($snap->playerFlags)->toBe($tee->playerFlags);
+
+    $tee->reset();
+    $snap = $character->doSnap($tee)[0];
+    assert($snap instanceof ObjCharacterItem);
+    expect($tee->playerFlags)->toBe(0);
+    expect($snap->playerFlags)->toBe(0);
+})->with(['player tee' => true, 'custom tee' => false]);
+
+test('character snapshots use zero flags when no tee is attached', function () {
+    $world     = new TestWorld(new TickHandler(100), new Map);
+    $character = new PvpCharacterEntity($world, new Vector2(128, 96));
+    $character->spawn(new Vector2(128, 96));
+
+    $snap = $character->doSnap(new PlayerTee)[0];
+
+    assert($snap instanceof ObjCharacterItem);
+    expect($snap->playerFlags)->toBe(0);
+});
+
 test('character combat stats are visible only to the owner and following spectators by default', function (string $recipient, bool $visible) {
     $world  = new TestWorld(new TickHandler(100), new Map);
     $owner  = new PlayerTee;

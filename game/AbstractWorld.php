@@ -583,7 +583,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $character = $tee->character;
             // Fire-to-respawn: consume the input even while no character exists.
             if ($character === null) {
-                if ($input !== null && ($input->fire & 1)) {
+                if ($input !== null && ! ($input->playerFlags & GameConstants::PLAYERFLAG_CHATTING) && ($input->fire & 1)) {
                     $tee->spawning = true;
                 }
 
@@ -593,7 +593,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if ($input !== null) {
                 $character->onPredictedInput($input);
             }
-            $character->applyInput();
+
         }
     }
 

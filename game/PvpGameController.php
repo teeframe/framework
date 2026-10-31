@@ -752,9 +752,9 @@ class PvpGameController extends AbstractGameController
                 }
             } else {
                 $this->onFlagGrab($flag, $entity, $currentTick);
-            }
 
-            break;
+                break;
+            }
         }
 
         if ($flag->carryingCharacter === null && ! $flag->atStand) {

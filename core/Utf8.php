@@ -4,6 +4,20 @@ namespace TeeFrame\Core;
 
 class Utf8
 {
+    public static function length(string $text): int
+    {
+        return mb_strlen($text, 'UTF-8');
+    }
+
+    public static function truncateCharacters(string $text, int $maxCharacters): string
+    {
+        if ($maxCharacters < 0) {
+            throw new \InvalidArgumentException('The character limit must not be negative');
+        }
+
+        return mb_substr($text, 0, $maxCharacters, 'UTF-8');
+    }
+
     public static function truncateBytes(string $text, int $maxBytes): string
     {
         if ($maxBytes < 0) {

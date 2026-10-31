@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Game\World;
 
+use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\GameConstants;
@@ -46,7 +47,7 @@ class ClientMessageHandler
     protected function handleChatMessage(AbstractTee $tee, ClSayChunk $chunk): void
     {
         // Teeworlds 0.6 limits chat to Unicode characters, not bytes.
-        $message = trim(mb_substr(trim($chunk->text), 0, 127, 'UTF-8'));
+        $message = trim(Utf8::truncateCharacters(trim($chunk->text), 127));
         if ($message === '') {
             return;
         }
@@ -54,7 +55,7 @@ class ClientMessageHandler
         // Spam protection: max ~16 characters per second (CPlayer::m_LastChat).
         if ($tee instanceof PlayerTee) {
             $currentTick = $this->world->getCurrentTick();
-            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * ((15 + mb_strlen($message, 'UTF-8')) / 16)) > $currentTick) {
+            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * ((15 + Utf8::length($message)) / 16)) > $currentTick) {
                 return;
             }
             $tee->lastChatTick = $currentTick;
@@ -102,7 +103,7 @@ class ClientMessageHandler
 
     protected function handleKillMessage(AbstractTee $tee, ClKillChunk $chunk): void
     {
-        if (! $tee instanceof PlayerTee) {
+        if (! $tee instanceof PlayerTee || $this->world->isPaused()) {
             return;
         }
 

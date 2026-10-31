@@ -112,16 +112,16 @@ class PvpLaserEntity extends AbstractLaserEntity
 
     protected function hitCharacter(Vector2 $from, Vector2 $to): bool
     {
-        $closestDist   = PHP_FLOAT_MAX;
-        $closestEntity = null;
+        $closestDist     = PHP_FLOAT_MAX;
+        $closestEntity   = null;
+        $closestPosition = $to;
 
         foreach ($this->world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
                 continue;
             }
 
-            // Skip owner unless the laser has bounced
-            if ($entity->tee !== null && $entity->tee->teeIndex === $this->owner && $this->bounces === 0) {
+            if ($entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
                 continue;
             }
 
@@ -132,19 +132,17 @@ class PvpLaserEntity extends AbstractLaserEntity
             if ($dist <= $radius) {
                 $lineDist = $projected->distance($from);
                 if ($lineDist < $closestDist) {
-                    $closestDist   = $lineDist;
-                    $closestEntity = $entity;
+                    $closestDist     = $lineDist;
+                    $closestEntity   = $entity;
+                    $closestPosition = $projected;
                 }
             }
         }
 
         if ($closestEntity !== null) {
             $this->from     = clone $from;
-            $this->position = new Vector2(
-                $closestEntity->getPosition()->x,
-                $closestEntity->getPosition()->y,
-            );
-            $this->energy = -1;
+            $this->position = $closestPosition;
+            $this->energy   = -1;
             $closestEntity->takeDamage(new Vector2(0, 0), $this->damage, $this->owner, GameConstants::WEAPON_RIFLE);
 
             return true;

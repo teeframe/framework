@@ -4,6 +4,7 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
@@ -64,6 +65,41 @@ test('onMessage handles ClKillChunk by killing the character', function () use (
     expect($tee->lastKillTick)->toBe(100);
     expect($tee->spawning)->toBeTrue();
 });
+
+test('ClKill is ignored while paused without changing score or consuming its cooldown', function (bool $gameOver) use ($mapPath) {
+    $clock      = new TickHandler(100);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map($mapPath), $controller);
+    $tee        = new PlayerTee;
+    $world->addTee($tee);
+    $world->doTick();
+    $character = $tee->character;
+    assert($character instanceof PvpCharacterEntity);
+    $tee->score  = 3;
+    $respawnTick = $tee->respawnTick;
+    $dieTick     = $tee->dieTick;
+    if ($gameOver) {
+        $controller->endRound();
+    } else {
+        $world->setPaused(true);
+    }
+    recordingServer($world)->clear();
+
+    $world->onMessage($tee, new ClKillChunk);
+
+    expect($world->isPaused())->toBeTrue();
+    expect($tee->character)->toBe($character);
+    expect($character->alive)->toBeTrue();
+    expect($tee->score)->toBe(3);
+    expect([$tee->lastKillTick, $tee->respawnTick, $tee->dieTick])->toBe([0, $respawnTick, $dieTick]);
+    expect(recordingServer($world)->sentChunks)->toBeEmpty();
+
+    $world->setPaused(false);
+    $world->onMessage($tee, new ClKillChunk);
+    expect($character->alive)->toBeFalse();
+    expect($tee->score)->toBe(2);
+    expect($tee->lastKillTick)->toBe(100);
+})->with(['manual pause' => false, 'post-match freeze' => true]);
 
 test('ClKill is ignored during the 3 second cooldown', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {

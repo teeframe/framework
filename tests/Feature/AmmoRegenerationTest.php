@@ -21,7 +21,8 @@ function createAmmoRegenerationWorld(): array
     assert($tee->character instanceof PvpCharacterEntity);
     $character = $tee->character;
 
-    // Pass the initial input guard using the same buffered-input path as the server.
+    // Direct weapon input starts after three predicted inputs (CCharacter::OnDirectInput).
+    advanceAmmoRegenerationTick($world, $tickHandler, $tee, input());
     advanceAmmoRegenerationTick($world, $tickHandler, $tee, input());
     advanceAmmoRegenerationTick($world, $tickHandler, $tee, input());
 
@@ -31,7 +32,8 @@ function createAmmoRegenerationWorld(): array
 /** @return int[] Sound IDs in this tick's player snapshot. */
 function advanceAmmoRegenerationTick(TestWorld $world, TickHandler $tickHandler, PlayerTee $tee, PlayerInput $input): array
 {
-    $tee->inputs[$tickHandler->get()] = $input;
+    $tee->onDirectInput($input, $tickHandler->get());
+    $tee->bufferInput($tickHandler->get(), $input);
     $world->doTick();
     $sounds = [];
     foreach ($world->doSnap($tee) as $item) {

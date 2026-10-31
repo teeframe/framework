@@ -28,7 +28,8 @@ abstract class AbstractTee implements SnapableObject
     // Tee On World
     public Vector2 $viewPosition;
     public int $teeIndex;
-    public int $latency = 0;
+    public int $latency     = 0;
+    public int $playerFlags = 0;
 
     public function __construct()
     {
@@ -50,6 +51,7 @@ abstract class AbstractTee implements SnapableObject
         $this->viewPosition = new Vector2(0, 0);
         $this->teeIndex     = -1;
         $this->latency      = 0;
+        $this->playerFlags  = 0;
     }
 
     public function setInfo(string $name, string $clan, int $country, string $skinName, bool $useCustomColor, int $colorBody, int $colorFeet): void

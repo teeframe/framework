@@ -35,6 +35,15 @@ function createWeaponHelpersWorld(): array
     return [$world, $character, $tee];
 }
 
+function setWeaponTestAim(PvpCharacterEntity $character, int $angle): Vector2
+{
+    $targetX = (int) round(cos($angle / 256.0) * 10000);
+    $targetY = (int) round(sin($angle / 256.0) * 10000);
+    $character->onDirectInput(input(['targetX' => $targetX, 'targetY' => $targetY]));
+
+    return (new Vector2($targetX, $targetY))->normalize();
+}
+
 test('weapon firing preserves aim muzzle positions sounds and cooldowns', function (
     string $method,
     int $entityCount,
@@ -43,9 +52,8 @@ test('weapon firing preserves aim muzzle positions sounds and cooldowns', functi
     int $angle,
 ) {
     [$world, $character, $tee] = createWeaponHelpersWorld();
-    $character->angle          = $angle;
+    $direction                 = setWeaponTestAim($character, $angle);
     $start                     = clone $character->getPosition();
-    $direction                 = new Vector2(cos($angle / 256.0), sin($angle / 256.0));
 
     expect((new ReflectionMethod($character, $method))->invoke($character))->toBe($cooldown);
     expect($character->getPosition())->toEqual($start);
@@ -126,7 +134,7 @@ test('shotgun pellet snapshots and physics use the same tuned trajectories', fun
     $tune->shotgunSpeeddiff    = $speedDiff;
     $tune->shotgunSpeed        = 300000;
     $tune->shotgunCurvature    = 200;
-    $character->angle          = $angle;
+    $direction                 = setWeaponTestAim($character, $angle);
     (new ReflectionMethod($character, 'shootShotgun'))->invoke($character);
     $pellets = array_values(array_filter($world->getEntities(), fn ($entity) => $entity instanceof PvpProjectileEntity));
     expect($pellets)->toHaveCount(5);
@@ -136,7 +144,7 @@ test('shotgun pellet snapshots and physics use the same tuned trajectories', fun
     $distance     = $tune->shotgunSpeed / 100 * $time;
 
     foreach ($pellets as $index => $pellet) {
-        $pelletAngle = $angle / 256 + $spread[$index];
+        $pelletAngle = atan2($direction->y, $direction->x) + $spread[$index];
         $dx          = cos($pelletAngle) * $speedFactors[$index];
         $dy          = sin($pelletAngle) * $speedFactors[$index];
         $start       = $pellet->getPosition();
@@ -163,7 +171,7 @@ test('ninja hits each target once per dash and emits the hit sound at the target
     $victim->spawn(new Vector2(228.25, 96.75), $victimTee);
     $world->addEntity($victim);
     $character->giveNinja();
-    $character->angle = 0;
+    setWeaponTestAim($character, 0);
     (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
     $world->clearEvents();
     $handle = new ReflectionMethod($character, 'handleNinja');
@@ -193,8 +201,8 @@ test('ninja hits each target once per dash and emits the hit sound at the target
 test('ninja restores the original speed along the dash direction when movement ends', function () {
     [, $character] = createWeaponHelpersWorld();
     $character->giveNinja();
-    $character->angle = 402;
-    $character->vel   = new Vector2(3, 4);
+    $direction      = setWeaponTestAim($character, 402);
+    $character->vel = new Vector2(3, 4);
     (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
     $handle = new ReflectionMethod($character, 'handleNinja');
     for ($i = 0; $i < 10; $i++) {
@@ -202,6 +210,6 @@ test('ninja restores the original speed along the dash direction when movement e
     }
 
     expect($character->ninjaCurrentMoveTime)->toBe(0);
-    expect($character->vel->x)->toEqualWithDelta(cos(402 / 256.0) * 5, 0.000000001);
-    expect($character->vel->y)->toEqualWithDelta(sin(402 / 256.0) * 5, 0.000000001);
+    expect($character->vel->x)->toEqualWithDelta($direction->x * 5, 0.000000001);
+    expect($character->vel->y)->toEqualWithDelta($direction->y * 5, 0.000000001);
 });

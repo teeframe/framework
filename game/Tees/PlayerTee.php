@@ -51,6 +51,28 @@ class PlayerTee extends AbstractTee
     public int $lastVoteTry  = 0;
     public int $lastVoteCall = 0;
 
+    public function onDirectInput(PlayerInput $input, int $currentTick): void
+    {
+        if ($input->playerFlags & GameConstants::PLAYERFLAG_CHATTING) {
+            if ($this->playerFlags & GameConstants::PLAYERFLAG_CHATTING) {
+                return;
+            }
+
+            $this->character?->resetInput();
+            $this->playerFlags = $input->playerFlags;
+
+            return;
+        }
+
+        $this->playerFlags = $input->playerFlags;
+        $this->character?->onDirectInput($input);
+
+        // Track activity for the inactive-kick check (CPlayer::OnDirectInput).
+        if ($input->direction !== 0 || $input->jump || ($input->fire & 1) || $input->hook) {
+            $this->lastActionTick = $currentTick;
+        }
+    }
+
     public function bufferInput(int $tick, PlayerInput $input): void
     {
         // Replacing a tick also refreshes its arrival order for capacity eviction.

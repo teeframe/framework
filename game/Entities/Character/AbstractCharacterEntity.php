@@ -34,10 +34,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     public bool $alive = false;
 
-    public int $tick        = 0;
-    public int $attackTick  = 0;
-    public int $emote       = GameConstants::EMOTE_NORMAL;
-    public int $playerFlags = 0;
+    public int $tick       = 0;
+    public int $attackTick = 0;
+    public int $emote      = GameConstants::EMOTE_NORMAL;
+
     public int $reloadTimer = 0;
 
     /**
@@ -83,42 +83,67 @@ abstract class AbstractCharacterEntity extends AbstractEntity
      */
     public function onPredictedInput(PlayerInput $newInput): void
     {
+        if ($this->tee instanceof PlayerTee
+            && ($this->tee->playerFlags & GameConstants::PLAYERFLAG_CHATTING)
+            && ($newInput->playerFlags & GameConstants::PLAYERFLAG_CHATTING)
+        ) {
+            return;
+        }
+
         // Check for changes (mem_comp)
         if ($this->input != $newInput) {
             $this->lastActionTick = $this->world->getCurrentTick();
         }
 
-        $this->input = $newInput;
+        $this->input = $this->normalizeInputTarget($newInput);
         $this->numInputs++;
-
-        // It is not allowed to aim in the center
-        if ($this->input->targetX === 0 && $this->input->targetY === 0) {
-            $this->input = new PlayerInput(
-                direction: $newInput->direction,
-                targetX: 0,
-                targetY: -1,
-                jump: $newInput->jump,
-                fire: $newInput->fire,
-                hook: $newInput->hook,
-                playerFlags: $newInput->playerFlags,
-                wantedWeapon: $newInput->wantedWeapon,
-                nextWeapon: $newInput->nextWeapon,
-                prevWeapon: $newInput->prevWeapon,
-            );
-        }
     }
 
-    /**
-     * Apply the buffered input for the current tick to latestInput (CCharacter::OnDirectInput subset).
-     * Called by AbstractWorld::doTick() before ticking entities.
-     */
-    public function applyInput(): void
+    public function onDirectInput(PlayerInput $newInput): void
     {
+        if (! $this->alive || $this->world->isPaused()) {
+            return;
+        }
+
         $this->latestPrevInput = $this->latestInput;
-        $this->latestInput     = $this->input;
+        $this->latestInput     = $this->normalizeInputTarget($newInput);
+
+        if ($this->numInputs > 2 && $this->tee instanceof PlayerTee && $this->tee->team !== GameConstants::TEAM_SPECTATORS) {
+            $this->handleWeaponSwitch();
+            $this->fireWeapon();
+        }
+
+        // Consume presses even when a cooldown prevented the action (CCharacter::OnDirectInput).
+        $this->latestPrevInput = $this->latestInput;
     }
 
-    abstract protected function handleWeapons(bool $firePressed): void;
+    public function resetInput(): void
+    {
+        // Release fire without generating another press (CCharacter::ResetInput).
+        $fire = $this->input->fire;
+        if ($fire & 1) {
+            $fire++;
+        }
+
+        $this->input = new PlayerInput(
+            direction: 0,
+            targetX: $this->input->targetX,
+            targetY: $this->input->targetY,
+            jump: false,
+            fire: $fire & self::INPUT_STATE_MASK,
+            hook: false,
+            playerFlags: $this->input->playerFlags,
+            wantedWeapon: $this->input->wantedWeapon,
+            nextWeapon: $this->input->nextWeapon,
+            prevWeapon: $this->input->prevWeapon,
+        );
+        $this->latestInput     = $this->input;
+        $this->latestPrevInput = $this->input;
+    }
+
+    abstract protected function handleWeapons(): void;
+
+    abstract protected function fireWeapon(): void;
 
     public function getFixedSnapId(): ?int
     {
@@ -150,11 +175,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 (int) round($this->position->x),
                 (int) round($this->position->y),
             );
-        }
-
-        // Handle weapon switch from latest input (only after enough inputs received)
-        if ($this->tee instanceof PlayerTee && $this->numInputs > 2) {
-            $this->handleWeaponSwitch();
         }
 
         $otherCharacters = [];
@@ -209,31 +229,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $this->createSound(GameConstants::SOUND_HOOK_NOATTACH, $excludedTeeIndex);
         }
 
-        // Handle shooting (only after enough inputs received)
-        $firePressed = false;
-        if ($this->tee instanceof PlayerTee && $this->numInputs > 2) {
-            $firePresses = $this->countInput($this->latestPrevInput->fire, $this->latestInput->fire);
-            $firePressed = $firePresses > 0 && $firePresses < 128;
-
-            // Full-auto weapons (grenade, shotgun, rifle) keep firing while the
-            // fire button is held and there's ammo (mirrors CCharacter::FireWeapon
-            // in teeworlds 0.6).
-            if (! $firePressed
-                && ($this->activeWeapon === GameConstants::WEAPON_GRENADE
-                    || $this->activeWeapon === GameConstants::WEAPON_SHOTGUN
-                    || $this->activeWeapon === GameConstants::WEAPON_RIFLE)
-                && ($this->latestInput->fire & 1)
-                && $this->weapons[$this->activeWeapon]->ammo
-            ) {
-                $firePressed = true;
-            }
-        }
-
-        $this->handleWeapons($firePressed);
-
-        if ($this->reloadTimer > 0) {
-            $this->reloadTimer--;
-        }
+        $this->handleWeapons();
     }
 
     public function tickPaused(): void
@@ -270,7 +266,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 hookY: (int) round($this->hookPos->y),
                 hookDx: (int) round($this->hookDir->x * 256.0),
                 hookDy: (int) round($this->hookDir->y * 256.0),
-                playerFlags: $this->playerFlags,
+                playerFlags: $this->tee->playerFlags ?? 0,
                 health: $canViewStats ? $this->health : 0,
                 armor: $canViewStats ? $this->armor : 0,
                 ammoCount: $canViewStats ? max(0, $this->weapons[$this->activeWeapon]->ammo) : 0,
@@ -292,6 +288,27 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             && $requestingTee instanceof PlayerTee
             && $requestingTee->team === GameConstants::TEAM_SPECTATORS
             && $requestingTee->spectatorId === $this->tee->teeIndex;
+    }
+
+    protected function normalizeInputTarget(PlayerInput $input): PlayerInput
+    {
+        if ($input->targetX !== 0 || $input->targetY !== 0) {
+            return $input;
+        }
+
+        // It is not allowed to aim in the center.
+        return new PlayerInput(
+            direction: $input->direction,
+            targetX: 0,
+            targetY: -1,
+            jump: $input->jump,
+            fire: $input->fire,
+            hook: $input->hook,
+            playerFlags: $input->playerFlags,
+            wantedWeapon: $input->wantedWeapon,
+            nextWeapon: $input->nextWeapon,
+            prevWeapon: $input->prevWeapon,
+        );
     }
 
     protected function makeIdleInput(): PlayerInput

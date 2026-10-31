@@ -142,6 +142,6 @@ function input(array $overrides = []): PlayerInput
 function feedInput(AbstractCharacterEntity $character, PlayerInput $input): void
 {
     $character->onPredictedInput($input);
-    $character->applyInput();
+    $character->onDirectInput($input);
     $character->doTick();
 }

@@ -204,23 +204,53 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         return intdiv(800 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 
-    protected function handleWeapons(bool $firePressed): void
+    protected function handleWeapons(): void
     {
-        // Ninja handling runs every tick (duration, dash, hits)
+        // Ninja handling runs every tick (duration, dash, hits).
         $this->handleNinja();
-
-        // A dry-fire cooldown must not starve regeneration when every ready tick
-        // has a new fire press. Successful shots still reset the timer below.
         $this->tickAmmoRegen();
 
-        if (! $firePressed || $this->reloadTimer > 0) {
+        if ($this->reloadTimer > 0) {
+            $this->reloadTimer--;
+
+            return;
+        }
+
+        $this->fireWeapon();
+    }
+
+    protected function fireWeapon(): void
+    {
+        if ($this->reloadTimer > 0) {
             return;
         }
 
         $this->doWeaponSwitch();
 
-        $weaponAmmo = $this->weapons[$this->activeWeapon]->ammo;
+        $firePressed = $this->countInput($this->latestPrevInput->fire, $this->latestInput->fire) > 0;
+        $weaponAmmo  = $this->weapons[$this->activeWeapon]->ammo;
+
+        // Full-auto weapons keep firing while held and there is ammo,
+        // even without another packet (CCharacter::FireWeapon in Teeworlds 0.6).
+        if (($this->activeWeapon === GameConstants::WEAPON_GRENADE
+                || $this->activeWeapon === GameConstants::WEAPON_SHOTGUN
+                || $this->activeWeapon === GameConstants::WEAPON_RIFLE)
+            && ($this->latestInput->fire & 1)
+            && $weaponAmmo !== 0
+        ) {
+            $firePressed = true;
+        }
+
+        if (! $firePressed) {
+            return;
+        }
+
         if ($weaponAmmo === 0) {
+            // Repeated dry fires must not prevent the gun's regeneration window from starting.
+            if ($this->activeWeapon === GameConstants::WEAPON_GUN && $this->ammoRegenStart < 0) {
+                $this->ammoRegenStart = $this->world->getCurrentTick();
+            }
+
             $this->reloadTimer = (int) round(125 * NetworkParams::TICKS_PER_SECOND / 1000);
 
             $this->createSound(GameConstants::SOUND_WEAPON_NOAMMO);
@@ -249,7 +279,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 break;
         }
 
-        $this->attackTick = $this->tick;
+        $this->attackTick = $this->world->getCurrentTick();
 
         if ($this->weapons[$this->activeWeapon]->ammo > 0) {
             $this->weapons[$this->activeWeapon]->ammo--;
@@ -267,8 +297,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return;
         }
 
-        // Pause during reload — don't reset, just wait
-        if ($this->reloadTimer > 0) {
+        // A successful shot clears the window; a dry-fire cooldown keeps it running.
+        if ($this->reloadTimer > 0 && $this->ammoRegenStart < 0) {
             return;
         }
 
@@ -374,9 +404,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function getAimDirection(): Vector2
     {
-        $angle = $this->angle / 256.0;
-
-        return new Vector2(cos($angle), sin($angle));
+        return (new Vector2($this->latestInput->targetX, $this->latestInput->targetY))->normalize();
     }
 
     protected function getProjectileStartPosition(Vector2 $direction): Vector2

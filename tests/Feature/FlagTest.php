@@ -233,6 +233,40 @@ test('enemy player can grab a flag from the stand', function () use ($ctfMapPath
     expect([$data->teamScoreRed, $data->teamScoreBlue])->toBe([0, 1]);
 });
 
+test('a defender does not prevent a later enemy from grabbing a flag', function (int $flagTeam, bool $dropped) use ($ctfMapPath) {
+    $clock      = new TickHandler(100);
+    $controller = makeCtfGameController($clock);
+    $world      = createCtfWorld(new Map($ctfMapPath), $clock, $controller);
+    $flag       = $controller->getFlag($flagTeam);
+    assert($flag !== null);
+    $flag->atStand  = ! $dropped;
+    $flag->dropTick = 100;
+
+    $defender = new PlayerTee;
+    $world->addTee($defender);
+    $defender->team     = $flagTeam;
+    $defendingCharacter = new PvpCharacterEntity($world, clone $flag->getPosition());
+    $defendingCharacter->spawn(clone $flag->getPosition(), $defender);
+    $world->addEntity($defendingCharacter);
+
+    $attacker = new PlayerTee;
+    $world->addTee($attacker);
+    $attacker->team     = $flagTeam ^ 1;
+    $attackingCharacter = new PvpCharacterEntity($world, clone $flag->getPosition());
+    $attackingCharacter->spawn(clone $flag->getPosition(), $attacker);
+    $world->addEntity($attackingCharacter);
+
+    $controller->doTick();
+
+    expect($flag->atStand)->toBeFalse();
+    expect($flag->carryingCharacter)->toBe($attackingCharacter);
+    expect($defender->score)->toBe($dropped ? 1 : 0);
+    expect($attacker->score)->toBe(1);
+    $snap = $controller->doSnap($attacker)[1];
+    assert($snap instanceof ObjGameDataItem);
+    expect([$snap->teamScoreRed, $snap->teamScoreBlue])->toBe($flagTeam === GameConstants::TEAM_RED ? [0, 1] : [1, 0]);
+})->with([GameConstants::TEAM_RED, GameConstants::TEAM_BLUE])->with([false, true]);
+
 test('same-team player cannot grab their own flag from the stand', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
         throw new RuntimeException('Required CTF map fixture is missing');

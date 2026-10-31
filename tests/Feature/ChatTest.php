@@ -63,6 +63,21 @@ test('SvChatChunk server message encodes and decodes correctly', function () {
     expect($decoded->text)->toBe('Server message');
 });
 
+test('chat trims whitespace and truncates to 127 characters rather than bytes', function (string $character) {
+    $world = new TestWorld(new TickHandler(100), new Map);
+    $tee   = new PlayerTee;
+    $world->addTee($tee);
+    recordingServer($world)->clear();
+
+    $world->onMessage($tee, new ClSayChunk(false, " \t".str_repeat($character, 128)." \n"));
+
+    $chunks = recordingServer($world)->sentChunks;
+    expect($chunks)->toHaveCount(1);
+    $chat = $chunks[0];
+    assert($chat instanceof SvChatChunk);
+    expect($chat->text)->toBe(str_repeat($character, 127));
+})->with(['a', 'é', '中', '🎮']);
+
 test('chat throttling counts UTF-8 characters instead of their encoded bytes', function () {
     $clock = new TickHandler(100);
     $world = new TestWorld($clock, new Map);

@@ -35,6 +35,7 @@ function setupCharacter(Map $map): array
 
     $world->addEntity($character);
     $tune = $world->getTuneController();
+    $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
     $character->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
@@ -133,6 +134,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
+    $attacker->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
     $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->move($collision, $tune);
 
@@ -180,6 +182,7 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
+    $attacker->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
     $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->move($collision, $tune);
 
@@ -225,6 +228,7 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $attacker->spawn($spawnPos, $attackerTee);
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
+    $attacker->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
     $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->move($collision, $tune);
 
@@ -369,6 +373,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
 
     // Tick once to set up angle, then shoot through the character
     $tune = $world->getTuneController();
+    $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
     $character->tick(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
