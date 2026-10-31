@@ -67,23 +67,30 @@ class PickupEntity extends AbstractEntity
             return;
         }
 
+        $closest         = null;
+        $closestDistance = PHP_FLOAT_MAX;
         foreach ($this->world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
                 continue;
             }
 
             $dist = $this->position->distance($entity->getPosition());
-            if ($dist > self::PICKUP_PHYS_SIZE + $entity->getHitBoxRadius()) {
+            if ($dist > self::PICKUP_PHYS_SIZE + $entity->getHitBoxRadius() || $dist >= $closestDistance) {
                 continue;
             }
 
-            $respawnTime = $this->onPickup($entity);
+            $closest         = $entity;
+            $closestDistance = $dist;
+        }
 
-            if ($respawnTime >= 0) {
-                $this->spawnTick = $currentTick + $respawnTime;
-            }
+        if ($closest === null) {
+            return;
+        }
 
-            break; // Only one pickup per tick
+        // Only the nearest character can take the pickup (CPickup::Tick).
+        $respawnTime = $this->onPickup($closest);
+        if ($respawnTime >= 0) {
+            $this->spawnTick = $currentTick + $respawnTime;
         }
     }
 

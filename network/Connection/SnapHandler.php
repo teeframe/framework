@@ -9,10 +9,9 @@ use TeeFrame\Network\SnapshotEncoder;
 
 class SnapHandler
 {
-    const STATE_INIT    = 0;
-    const STATE_FULL    = 1;
-    const STATE_RECOVER = 2;
-
+    const STATE_INIT              = 0;
+    const STATE_FULL              = 1;
+    const STATE_RECOVER           = 2;
     protected const HISTORY_TICKS = 3 * NetworkParams::TICKS_PER_SECOND;
 
     protected int $state;
@@ -24,8 +23,6 @@ class SnapHandler
     protected int $minimumLatency;
 
     protected float $latencyWindowStart;
-
-    protected ?ConnectionSnap $deltaSnap;
 
     protected SnapshotEncoder $encoder;
 
@@ -49,15 +46,22 @@ class SnapHandler
         $this->latency            = 0;
         $this->minimumLatency     = 1000;
         $this->latencyWindowStart = $this->tickHandler->getTime() / 1_000_000_000;
-        $this->deltaSnap          = null;
 
         $this->flushSentList();
     }
 
     public function flushSentList(): void
     {
-        $this->sentList  = [];
-        $this->deltaSnap = null;
+        $this->sentList = [];
+    }
+
+    public function shouldSend(int $currentTick): bool
+    {
+        return match ($this->state) {
+            self::STATE_INIT    => $currentTick % intdiv(NetworkParams::TICKS_PER_SECOND, 5) === 0,
+            self::STATE_RECOVER => $currentTick % NetworkParams::TICKS_PER_SECOND === 0,
+            default             => true,
+        };
     }
 
     /** The minimum observed RTT published once per second. */
@@ -69,18 +73,18 @@ class SnapHandler
     public function setLastAckedTick(int $tick): void
     {
         $this->lastAckedTick = $tick;
-        $this->deltaSnap     = $this->sentList[$tick] ?? null;
-
         if ($tick > 0) {
             $this->state = self::STATE_FULL;
         }
-        if ($this->deltaSnap === null) {
+
+        $snap = $this->sentList[$tick] ?? null;
+        if ($snap === null) {
             return;
         }
 
         // Teeworlds 0.6: (time_get() - TagTime) * 1000 / time_freq().
         $now                  = $this->tickHandler->getTime() / 1_000_000_000;
-        $sample               = (int) (($now - $this->deltaSnap->getSendTime()) * 1000);
+        $sample               = (int) (($now - $snap->getSendTime()) * 1000);
         $this->minimumLatency = min($this->minimumLatency, $sample);
 
         // Publish the one-second minimum here, alongside the RTT measurement.
@@ -97,18 +101,18 @@ class SnapHandler
         $indexedItems = $this->encoder->indexItems($rawItems);
 
         // Bound history by age, not ACK progress, including the selected base.
-        $oldestTick      = $currentTick - self::HISTORY_TICKS;
-        $this->sentList  = array_filter($this->sentList, fn (ConnectionSnap $snap): bool => $snap->getTick() >= $oldestTick);
-        $this->deltaSnap = $this->sentList[$this->lastAckedTick] ?? null;
-        if ($this->deltaSnap === null && $this->state === self::STATE_FULL) {
+        $oldestTick     = $currentTick - self::HISTORY_TICKS;
+        $this->sentList = array_filter($this->sentList, fn (ConnectionSnap $snap): bool => $snap->getTick() >= $oldestTick);
+        $deltaSnap      = $this->sentList[$this->lastAckedTick] ?? null;
+        if ($deltaSnap === null && $this->state === self::STATE_FULL) {
             $this->state = self::STATE_RECOVER;
         }
 
         $chunks = $this->encoder->encode(
             currentTick: $currentTick,
-            deltaTick: $currentTick - ($this->deltaSnap?->getTick() ?? -1),
+            deltaTick: $currentTick - ($deltaSnap?->getTick() ?? -1),
             items: $indexedItems,
-            deltaItems: $this->deltaSnap?->getSnapItems() ?? [],
+            deltaItems: $deltaSnap?->getSnapItems() ?? [],
         );
         foreach ($chunks as $chunk) {
             $this->connection->chunks()->add($chunk)->send();

@@ -38,6 +38,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public int $attackTick = 0;
     public int $emote      = GameConstants::EMOTE_NORMAL;
 
+    protected int $emoteStopTick = -1;
+
     public int $reloadTimer = 0;
 
     /**
@@ -50,10 +52,9 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public Vector2 $ninjaActivationDir;
     public int $ninjaCurrentMoveTime = 0;
     public float $ninjaOldVelAmount  = 0.0;
-    public int $ninjaNumObjectsHit   = 0;
 
     /**
-     * @var array<int, AbstractCharacterEntity|null>
+     * @var list<AbstractCharacterEntity>
      */
     public array $ninjaHitObjects = [];
 
@@ -236,6 +237,9 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         $this->attackTick++;
         $this->ninjaActivationTick++;
+        if ($this->emoteStopTick >= 0) {
+            $this->emoteStopTick++;
+        }
         if ($this->lastActionTick !== 0) {
             $this->lastActionTick++;
         }
@@ -245,6 +249,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         if (! $this->alive) {
             return [];
+        }
+
+        if ($this->emoteStopTick >= 0 && $this->emoteStopTick < $this->world->getCurrentTick()) {
+            $this->emote         = GameConstants::EMOTE_NORMAL;
+            $this->emoteStopTick = -1;
         }
 
         $canViewStats = $this->canViewStats($requestingTee);

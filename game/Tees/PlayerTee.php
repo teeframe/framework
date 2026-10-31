@@ -11,6 +11,9 @@ class PlayerTee extends AbstractTee
 {
     protected const INPUT_BUFFER_SIZE = 200;
 
+    protected int $lastTargetX = 0;
+    protected int $lastTargetY = 0;
+
     public int $score = 0;
 
     // Tick when the current score run started
@@ -68,7 +71,15 @@ class PlayerTee extends AbstractTee
         $this->character?->onDirectInput($input);
 
         // Track activity for the inactive-kick check (CPlayer::OnDirectInput).
-        if ($input->direction !== 0 || $input->jump || ($input->fire & 1) || $input->hook) {
+        if ($input->direction !== 0
+            || $input->targetX !== $this->lastTargetX
+            || $input->targetY !== $this->lastTargetY
+            || $input->jump
+            || ($input->fire & 1)
+            || $input->hook
+        ) {
+            $this->lastTargetX    = $input->targetX;
+            $this->lastTargetY    = $input->targetY;
             $this->lastActionTick = $currentTick;
         }
     }

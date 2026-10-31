@@ -16,12 +16,14 @@ trait HasCharacterLifecycle
 {
     public function spawn(Vector2 $pos, ?AbstractTee $tee = null): void
     {
-        $this->health    = 10;
-        $this->armor     = 0;
-        $this->alive     = true;
-        $this->toDestroy = false;
-        $this->tee       = $tee;
-        $this->tick      = 0;
+        $this->health        = 10;
+        $this->armor         = 0;
+        $this->alive         = true;
+        $this->toDestroy     = false;
+        $this->tee           = $tee;
+        $this->tick          = 0;
+        $this->emote         = GameConstants::EMOTE_NORMAL;
+        $this->emoteStopTick = -1;
 
         if ($tee !== null) {
             $tee->character = $this;
@@ -32,8 +34,7 @@ trait HasCharacterLifecycle
         $this->initCore($pos);
         $this->direction = 1;
 
-        $this->ninjaNumObjectsHit = 0;
-        $this->ninjaHitObjects    = [];
+        $this->ninjaHitObjects = [];
 
         // Initialize weapons: hammer + gun
         $this->weapons = [];
@@ -116,7 +117,6 @@ trait HasCharacterLifecycle
     {
         $this->ninjaActivationTick  = $this->world->getCurrentTick();
         $this->ninjaCurrentMoveTime = 0;
-        $this->ninjaNumObjectsHit   = 0;
         $this->ninjaHitObjects      = [];
 
         $this->weapons[GameConstants::WEAPON_NINJA]->got  = true;
@@ -129,7 +129,8 @@ trait HasCharacterLifecycle
 
     public function setEmote(int $emote, int $tick): void
     {
-        $this->emote = $emote;
+        $this->emote         = $emote;
+        $this->emoteStopTick = $tick;
     }
 
     public function takeDamage(Vector2 $force, int $damage, int $attackerTeeIndex, int $weapon): void

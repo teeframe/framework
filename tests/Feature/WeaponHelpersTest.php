@@ -178,7 +178,6 @@ test('ninja hits each target once per dash and emits the hit sound at the target
 
     $handle->invoke($character);
     expect($victim->health)->toBe(1);
-    expect($character->ninjaNumObjectsHit)->toBe(1);
     expect($character->ninjaHitObjects)->toBe([$victim]);
 
     $sounds = array_values(array_filter(
@@ -191,11 +190,47 @@ test('ninja hits each target once per dash and emits the hit sound at the target
     $handle->invoke($character);
 
     expect($victim->health)->toBe(1);
-    expect($character->ninjaNumObjectsHit)->toBe(1);
+    expect($character->ninjaHitObjects)->toHaveCount(1);
     expect(array_filter(
         $world->doSnap($tee),
         fn ($item) => $item instanceof ObjEventSoundWorldItem && $item->soundId === GameConstants::SOUND_NINJA_HIT,
     ))->toBe([]);
+});
+
+test('ninja hit tracking keeps its ten-target limit and resets for another dash', function () {
+    [$world, $character] = createWeaponHelpersWorld();
+    $victims             = [];
+    for ($i = 0; $i < 11; $i++) {
+        $victim = new class($world, clone $character->getPosition()) extends PvpCharacterEntity
+        {
+            public int $hits = 0;
+
+            public function takeDamage(Vector2 $force, int $damage, int $attackerTeeIndex, int $weapon): void
+            {
+                $this->hits++;
+            }
+        };
+        $victim->spawn(clone $character->getPosition());
+        $world->addEntity($victim);
+        $victims[] = $victim;
+    }
+    $character->giveNinja();
+    $hit = new ReflectionMethod($character, 'hitNinjaTargets');
+    $hit->invoke($character);
+    expect($character->ninjaHitObjects)->toBe(array_slice($victims, 0, 10));
+    $hit->invoke($character);
+    foreach (array_slice($victims, 0, 10) as $victim) {
+        expect($victim->hits)->toBe(1);
+    }
+    expect($character->ninjaHitObjects)->toHaveCount(10);
+
+    (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
+    expect($character->ninjaHitObjects)->toBeEmpty();
+    $hit->invoke($character);
+    expect($character->ninjaHitObjects)->toBe(array_slice($victims, 0, 10));
+    foreach (array_slice($victims, 0, 10) as $victim) {
+        expect($victim->hits)->toBe(2);
+    }
 });
 
 test('ninja restores the original speed along the dash direction when movement ends', function () {

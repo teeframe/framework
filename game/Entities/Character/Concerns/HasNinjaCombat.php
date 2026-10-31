@@ -72,8 +72,8 @@ trait HasNinjaCombat
 
             $this->createSound(GameConstants::SOUND_NINJA_HIT, position: $entity->getPosition());
 
-            if ($this->ninjaNumObjectsHit < 10) {
-                $this->ninjaHitObjects[$this->ninjaNumObjectsHit++] = $entity;
+            if (count($this->ninjaHitObjects) < 10) {
+                $this->ninjaHitObjects[] = $entity;
             }
 
             $entity->takeDamage(new Vector2(0, -10.0), 9, $this->tee->teeIndex ?? -1, GameConstants::WEAPON_NINJA);
@@ -85,7 +85,6 @@ trait HasNinjaCombat
         $this->ninjaActivationDir   = $this->getAimDirection();
         $this->ninjaCurrentMoveTime = intdiv(200 * NetworkParams::TICKS_PER_SECOND, 1000);
         $this->ninjaOldVelAmount    = $this->vel->length();
-        $this->ninjaNumObjectsHit   = 0;
         $this->ninjaHitObjects      = [];
 
         $this->createSound(GameConstants::SOUND_NINJA_FIRE);

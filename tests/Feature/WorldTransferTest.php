@@ -296,7 +296,6 @@ test('a chat command transfers a player without resetting the transport or leaki
     expect($tee->lastChatTick)->toBe($oldTee->lastChatTick);
     $snapReflection = new ReflectionClass($slot->snaps());
     expect($snapReflection->getProperty('sentList')->getValue($slot->snaps()))->toBeEmpty();
-    expect($snapReflection->getProperty('deltaSnap')->getValue($slot->snaps()))->toBeNull();
     expect($snapReflection->getProperty('lastAckedTick')->getValue($slot->snaps()))->toBe(-1);
 
     $changes = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk));
@@ -328,7 +327,7 @@ test('map transfers repeat ready start-info and enter-game then start with fresh
     expect($server->ctf->getTees())->toHaveCount(1);
 
     $server->socket->packets = [];
-    $server->advance();
+    $server->advance(10);
     expect($slot->playerTee()->character?->alive)->toBeTrue();
     $snapshots = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof SnapSingleChunk));
     expect($snapshots)->toHaveCount(1);
@@ -690,7 +689,6 @@ test('a passed map vote reloads only its world and restarts map loading without 
     expect($slot->playerTee()->score)->toBe(0);
     $snapReflection = new ReflectionClass($slot->snaps());
     expect($snapReflection->getProperty('sentList')->getValue($slot->snaps()))->toBeEmpty();
-    expect($snapReflection->getProperty('deltaSnap')->getValue($slot->snaps()))->toBeNull();
     expect($snapReflection->getProperty('lastAckedTick')->getValue($slot->snaps()))->toBe(-1);
 
     expect($other->state)->toBe(ConnectionSlot::STATE_INGAME);
@@ -734,14 +732,14 @@ test('a passed map vote reloads only its world and restarts map loading without 
     expect($slot->playerTee()->inputs)->toBeEmpty();
     $server->enter($slot);
     $server->socket->packets = [];
-    $server->advance();
+    $server->advance(10);
     expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
     expect($slot->playerTee()->character?->alive)->toBeTrue();
     expect($slot->playerTee()->teeIndex)->toBe(0);
     $snapshots = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof SnapSingleChunk));
     expect($snapshots[0]->deltaTick)->toBe($snapshots[0]->currentTick + 1);
     $server->advance();
-    $server->send($slot, worldTransferInput(2001, $server->dm->getCurrentTick() - 1));
+    $server->send($slot, worldTransferInput(2001, $snapshots[0]->currentTick));
     expect(worldTransferInfoFields($server->socket, 8300)[3])->toBe($mapName);
 })->with(['ctf1', 'dm1']);
 

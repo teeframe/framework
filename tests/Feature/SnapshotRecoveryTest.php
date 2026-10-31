@@ -32,6 +32,35 @@ function recoverySnapshotHistory(SnapHandler $snaps): array
     return (new ReflectionProperty(SnapHandler::class, 'sentList'))->getValue($snaps);
 }
 
+test('explicit snapshot sends preserve baseline selection across consecutive ticks', function () {
+    $connection = new RecordingConnection(new TickHandler(10));
+    $snaps      = $connection->snaps();
+    $item       = (new ObjProjectileItem(100, 200, 1, 2, 1, 10))->setId(0);
+    foreach (range(10, 14) as $tick) {
+        $snaps->sendItems($tick, [$item]);
+        $chunk = lastRecoverySnapshot($connection);
+        expect($chunk->currentTick)->toBe($tick);
+        expect($chunk->currentTick - $chunk->deltaTick)->toBe(-1);
+    }
+    $snaps->setLastAckedTick(14);
+    $snaps->sendItems(15, [$item]);
+    expect(lastRecoverySnapshot($connection))->toBeInstanceOf(SnapEmptyChunk::class);
+
+    $snaps->setLastAckedTick(999);
+    foreach (range(16, 20) as $tick) {
+        $snaps->sendItems($tick, [$item]);
+        $chunk = lastRecoverySnapshot($connection);
+        expect($chunk->currentTick)->toBe($tick);
+        expect($chunk->currentTick - $chunk->deltaTick)->toBe(-1);
+    }
+    $snaps->setLastAckedTick(20);
+    $snaps->sendItems(21, [$item]);
+    $chunk = lastRecoverySnapshot($connection);
+    expect($chunk)->toBeInstanceOf(SnapEmptyChunk::class);
+    expect($chunk->currentTick - $chunk->deltaTick)->toBe(20);
+    expect($connection->sentPackets)->toHaveCount(12);
+});
+
 test('missing snapshot ACKs clear the old base and recover from a full snapshot', function (int $missingTick) {
     $connection = new RecordingConnection(new TickHandler(10));
     $snaps      = $connection->snaps();

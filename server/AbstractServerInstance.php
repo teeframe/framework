@@ -104,13 +104,15 @@ abstract class AbstractServerInstance
 
     protected function doSnap(): void
     {
+        $currentTick = $this->tickHandler->get();
+
         foreach ($this->connectionHandler->getConnections() as $connection) {
-            if ($connection->state !== ConnectionSlot::STATE_INGAME) {
+            if ($connection->state !== ConnectionSlot::STATE_INGAME || ! $connection->snaps()->shouldSend($currentTick)) {
                 continue;
             }
 
             $connection->snaps()->sendItems(
-                currentTick: $this->tickHandler->get(),
+                currentTick: $currentTick,
                 rawItems: $connection->world()->doSnap($connection->playerTee()),
             );
         }
