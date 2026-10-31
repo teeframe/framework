@@ -23,9 +23,10 @@ class NetworkParams
     const MAX_CLAN_LENGTH = 12;
 
     // Ack & Chunk
-    const MAXIMUM_ACK_NUMBER        = 1024;
-    const MAXIMUM_CHUNKS_PER_PACKET = 255;
-    const MAXIMUM_CHUNK_SIZE        = 1023; // Message ID and payload, excluding the chunk header.
+    const MAXIMUM_ACK_NUMBER         = 1024;
+    const MAXIMUM_CHUNKS_PER_PACKET  = 255;
+    const MAXIMUM_CHUNK_SIZE         = 1023; // Message ID and payload, excluding the chunk header.
+    const MAXIMUM_RESEND_BUFFER_SIZE = 32 * 1024;
 
     // Snap
     const MAXIMUM_SNAP_SLICES       = 64;

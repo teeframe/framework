@@ -62,14 +62,14 @@ trait HasHandshakeHandler
             }
 
             // Step 3
-            if ($chunk instanceof ClStartInfoChunk && $connection->state === ConnectionSlot::STATE_READY) {
+            if ($chunk instanceof ClStartInfoChunk && $connection->state === ConnectionSlot::STATE_READY && ! $connection->readyToEnter) {
                 $connection->consoleInfo('player sent start info');
 
                 $this->handleClStartInfoChunk($connection, $chunk);
             }
 
             // Step 4
-            if ($chunk instanceof EnterGameChunk && $connection->state === ConnectionSlot::STATE_READY) {
+            if ($chunk instanceof EnterGameChunk && $connection->state === ConnectionSlot::STATE_READY && $connection->readyToEnter) {
                 $connection->consoleInfo('player has entered the game');
 
                 $this->handleEnterGameChunk($connection, $chunk);
@@ -174,6 +174,8 @@ trait HasHandshakeHandler
         foreach ($voteChunks as $voteChunk) {
             $connection->chunks()->add($voteChunk);
         }
+
+        $connection->readyToEnter = true;
 
         $connection->chunks()->add(
             $connection->world()->getTuneController()->getTuneParamsChunk()

@@ -45,7 +45,7 @@ class ClientMessageHandler
 
     protected function handleChatMessage(AbstractTee $tee, ClSayChunk $chunk): void
     {
-        $message = trim($chunk->text);
+        $message = trim(mb_substr(trim($chunk->text), 0, 127, 'UTF-8'));
         if ($message === '') {
             return;
         }
@@ -53,7 +53,7 @@ class ClientMessageHandler
         // Spam protection: max ~16 characters per second (CPlayer::m_LastChat).
         if ($tee instanceof PlayerTee) {
             $currentTick = $this->world->getCurrentTick();
-            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * ((15 + strlen($message)) / 16)) > $currentTick) {
+            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * ((15 + mb_strlen($message, 'UTF-8')) / 16)) > $currentTick) {
                 return;
             }
             $tee->lastChatTick = $currentTick;

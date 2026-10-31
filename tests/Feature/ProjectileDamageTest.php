@@ -130,6 +130,31 @@ test('projectiles still obey team damage protection after their owner dies', fun
     expect($victim->vel->length())->toBeGreaterThan(0);
 })->with([GameConstants::WEAPON_GUN, GameConstants::WEAPON_SHOTGUN, GameConstants::WEAPON_GRENADE])->with(['TDM', 'CTF']);
 
+test('projectile character collisions use the full proximity radius and a strict boundary', function (int $weapon, float $distance, bool $hit) {
+    [$world, $clock, , $victim, $owner] = createProjectileDamageWorld();
+    $victim->setPosition(new Vector2(192, 64 + $distance));
+    $projectile = new PvpProjectileEntity($world, new Vector2(160, 64), new Vector2(1, 0), $weapon, $owner->teeIndex);
+    $projectile->setTuning(1600, 0, 100);
+
+    $clock->next();
+    $projectile->doTick();
+
+    expect($projectile->isToDestroy())->toBe($hit);
+    expect($victim->health < 10)->toBe($hit);
+    expect($projectile->getPosition()->x)->toBe(192.0);
+    expect($projectile->getPosition()->y)->toBe(64.0);
+})->with([
+    'gun'     => GameConstants::WEAPON_GUN,
+    'shotgun' => GameConstants::WEAPON_SHOTGUN,
+    'grenade' => GameConstants::WEAPON_GRENADE,
+])->with([
+    'old boundary'     => [20.0, true],
+    'glancing hit'     => [25.0, true],
+    'inside boundary'  => [33.99, true],
+    'at boundary'      => [34.0, false],
+    'outside boundary' => [34.01, false],
+]);
+
 test('a grenade recognizes its respawned owner for self damage', function (bool $lethal) {
     [$world, $clock, $attacker, $victim, $owner] = createProjectileDamageWorld();
     $victim->setPosition(new Vector2(1024, 64));

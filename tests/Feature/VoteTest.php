@@ -84,6 +84,19 @@ test('SvVoteSetChunk encodes and decodes correctly', function () {
     expect($decoded->reason)->toBe('No reason given');
 });
 
+test('running vote text fits the 0.6 client buffers without splitting UTF-8 characters', function () {
+    $world = createVoteWorld(new Map, new TickHandler(100));
+    $votes = $world->getVoteController();
+    $votes->startVote($world, str_repeat('🎮', 30), 'example', str_repeat('🎮', 30));
+
+    $running = $votes->getRunningVote($world);
+    expect($running)->toBeInstanceOf(SvVoteSetChunk::class);
+    assert($running instanceof SvVoteSetChunk);
+    expect($running->description)->toBe(str_repeat('🎮', 15));
+    expect($running->reason)->toBe(str_repeat('🎮', 3));
+    expect($running->encode())->not->toBeEmpty();
+});
+
 test('SvVoteStatusChunk encodes and decodes correctly', function () {
     $chunk = new SvVoteStatusChunk(yes: 3, no: 1, pass: 1, total: 5);
 

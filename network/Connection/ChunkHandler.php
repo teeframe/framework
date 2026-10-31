@@ -20,6 +20,11 @@ class ChunkHandler
     /** @var list<array{chunk: AbstractChunk, firstSendTime: int, lastSendTime: int}> */
     protected array $sentList;
 
+    /** @var array<int, int> Encoded sizes of queued and sent vital chunks, keyed by sequence. */
+    protected array $pendingSizes;
+    protected int $pendingSize;
+    protected bool $bufferFull;
+
     public function __construct(
         protected AbstractConnection $connection,
         protected TickHandler $tickHandler,
@@ -29,16 +34,35 @@ class ChunkHandler
 
     public function reset(): void
     {
-        $this->sentList  = [];
-        $this->queue     = [];
-        $this->queueSize = NetworkParams::PACKET_HEADER_SIZE_DEFAULT;
+        $this->sentList     = [];
+        $this->queue        = [];
+        $this->queueSize    = NetworkParams::PACKET_HEADER_SIZE_DEFAULT;
+        $this->pendingSizes = [];
+        $this->pendingSize  = 0;
+        $this->bufferFull   = false;
     }
 
     public function add(AbstractChunk $chunk): static
     {
+        if ($this->bufferFull) {
+            return $this;
+        }
+
         $chunkSize = count($chunk->encode());
         if ($chunkSize + NetworkParams::PACKET_HEADER_SIZE_DEFAULT > NetworkParams::MAXIMUM_PACKET_SIZE) {
             throw new \RuntimeException('Chunk exceeds the packet size limit');
+        }
+
+        $newVital = ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL)
+            && ! ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_RESEND);
+
+        // Reserve queued data too, before flushing or allocating a sequence.
+        // Staying below half the sequence space keeps old ACKs unambiguous.
+        if ($newVital && ($this->pendingSize + $chunkSize > NetworkParams::MAXIMUM_RESEND_BUFFER_SIZE
+            || count($this->pendingSizes) >= intdiv(NetworkParams::MAXIMUM_ACK_NUMBER, 2) - 1)) {
+            $this->bufferFull = true;
+
+            return $this;
         }
 
         if ($this->getQueueSize() + $chunkSize > NetworkParams::MAXIMUM_PACKET_SIZE
@@ -50,12 +74,12 @@ class ChunkHandler
         $this->queue[] = $chunk;
         $this->queueSize += $chunkSize;
 
-        if (($chunk->getFlags() & NetworkBase::CHUNK_FLAG_VITAL)
-            && ! ($chunk->getFlags() & NetworkBase::CHUNK_FLAG_RESEND)
-        ) {
+        if ($newVital) {
             $this->connection->sequence = ($this->connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
 
             $chunk->setSequence($this->connection->sequence);
+            $this->pendingSizes[$this->connection->sequence] = $chunkSize;
+            $this->pendingSize += $chunkSize;
         }
 
         return $this;
@@ -63,6 +87,10 @@ class ChunkHandler
 
     public function send(): bool
     {
+        if ($this->bufferFull) {
+            return false;
+        }
+
         if ($this->queue === []) {
             return true;
         }
@@ -87,6 +115,10 @@ class ChunkHandler
     /** Resend all pending vital chunks, or just the selected sequence. */
     public function resend(?int $sequence = null): bool
     {
+        if ($this->bufferFull) {
+            return false;
+        }
+
         $now = $this->tickHandler->getTime();
 
         foreach ($this->sentList as $i => $entry) {
@@ -104,6 +136,10 @@ class ChunkHandler
 
     public function update(): ?string
     {
+        if ($this->bufferFull) {
+            return 'Too weak connection (out of buffer)';
+        }
+
         $oldest = $this->sentList[0] ?? null;
         if ($oldest === null) {
             return null;
@@ -122,10 +158,17 @@ class ChunkHandler
 
     public function flushSentList(int $sequence): void
     {
-        $this->sentList = array_values(array_filter(
-            $this->sentList,
-            fn (array $entry): bool => ! NetworkBase::isSequenceInBackroom($entry['chunk']->getSequence(), $sequence),
-        ));
+        $pending = [];
+        foreach ($this->sentList as $entry) {
+            $chunkSequence = $entry['chunk']->getSequence();
+            if (NetworkBase::isSequenceInBackroom($chunkSequence, $sequence)) {
+                $this->pendingSize -= $this->pendingSizes[$chunkSequence];
+                unset($this->pendingSizes[$chunkSequence]);
+            } else {
+                $pending[] = $entry;
+            }
+        }
+        $this->sentList = $pending;
     }
 
     protected function getQueueSize(): int

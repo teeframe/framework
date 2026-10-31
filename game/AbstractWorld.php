@@ -5,6 +5,7 @@ namespace TeeFrame\Game;
 use TeeFrame\Core\SnapableObject;
 use TeeFrame\Core\TickableObject;
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Core\Utf8;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\PingCommand;
 use TeeFrame\Game\Commands\WhisperCommand;
@@ -254,7 +255,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function trySetTeeName(AbstractTee $tee, string $name): bool
     {
-        $trimmed = trim($name);
+        $trimmed = trim(Utf8::truncateBytes(trim($name), NetworkParams::MAX_NAME_LENGTH - 1));
         if ($trimmed === '') {
             return false;
         }

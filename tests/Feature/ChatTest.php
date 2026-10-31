@@ -63,6 +63,23 @@ test('SvChatChunk server message encodes and decodes correctly', function () {
     expect($decoded->text)->toBe('Server message');
 });
 
+test('chat throttling counts UTF-8 characters instead of their encoded bytes', function () {
+    $clock = new TickHandler(100);
+    $world = new TestWorld($clock, new Map);
+    $tee   = new PlayerTee;
+    $world->addTee($tee);
+    $world->onMessage($tee, new ClSayChunk(false, str_repeat('é', 16)));
+    recordingServer($world)->clear();
+    for ($i = 0; $i < 100; $i++) {
+        $clock->next();
+    }
+
+    $world->onMessage($tee, new ClSayChunk(false, str_repeat('é', 16)));
+
+    expect(recordingServer($world)->sentChunks)->toHaveCount(1);
+    expect($tee->lastChatTick)->toBe(200);
+});
+
 test('chat broadcast calls sendToTee for each tee', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');

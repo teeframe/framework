@@ -3,6 +3,7 @@
 namespace TeeFrame\Server;
 
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -31,6 +32,7 @@ class ConnectionSlot extends AbstractConnection
     protected PlayerTee $playerTee;
 
     public int $state;
+    public bool $readyToEnter;
 
     protected int $lastInputTick;
 
@@ -48,8 +50,9 @@ class ConnectionSlot extends AbstractConnection
     {
         parent::reset();
 
-        $this->playerTee = new PlayerTee;
-        $this->state     = static::STATE_WAITING_INIT;
+        $this->playerTee    = new PlayerTee;
+        $this->state        = static::STATE_WAITING_INIT;
+        $this->readyToEnter = false;
 
         $this->lastInputTick       = -1;
         $this->worldInfoUpdateTick = null;
@@ -85,7 +88,8 @@ class ConnectionSlot extends AbstractConnection
         $this->playerTee->latency      = $previousTee->latency;
         $this->playerTee->lastChatTick = $previousTee->lastChatTick;
 
-        $this->state = static::STATE_LOADING;
+        $this->state        = static::STATE_LOADING;
+        $this->readyToEnter = false;
         $this->snaps()->reset();
 
         $this->lastInputTick       = -1;
@@ -143,9 +147,10 @@ class ConnectionSlot extends AbstractConnection
         }
 
         if ($message === NetworkMessages::CONTROL_CLOSE) {
-            $this->consoleInfo('Closed reason='.$packet->getControlMessageExtra());
+            $reason = Utf8::truncateBytes(explode("\0", $packet->getControlMessageExtra(), 2)[0], 127);
+            $this->consoleInfo('Closed reason='.$reason);
 
-            $this->world()->removeTee($this->playerTee, $packet->getControlMessageExtra());
+            $this->world()->removeTee($this->playerTee, $reason);
 
             $this->reset();
             $this->state = static::STATE_CLOSED;

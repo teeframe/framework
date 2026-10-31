@@ -43,6 +43,24 @@ test('world name validation preserves case sensitivity and replaces embedded con
     expect($second->name)->toBe('(1)');
 });
 
+test('name uniqueness checks the bounded UTF-8 name including generated prefixes', function () {
+    $world  = createWorld(new Map);
+    $first  = new PlayerTee;
+    $second = new PlayerTee;
+    $third  = new PlayerTee;
+    $world->setTeeName($first, str_repeat('é', 20).'first');
+    $world->addTee($first);
+    $world->setTeeName($second, str_repeat('é', 20).'second');
+    $world->addTee($second);
+
+    expect($first->name)->toBe(str_repeat('é', 7));
+    expect($second->name)->toBe('(1)'.str_repeat('é', 6));
+    expect($world->trySetTeeName($third, str_repeat('é', 20).'third'))->toBeFalse();
+    expect($third->name)->toBe('');
+    $world->setTeeName($third, str_repeat('é', 20).'third');
+    expect($third->name)->toBe('(2)'.str_repeat('é', 6));
+});
+
 test('setClientName sets the name when no collision', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');

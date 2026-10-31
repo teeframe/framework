@@ -4,10 +4,15 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
+use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
+use TeeFrame\Network\Chunks\System\EnterGameChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
 use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
@@ -431,6 +436,125 @@ test('repeated CONNECT retries the accept without allocating a second handshake 
     $controls = $server->socket->controls();
     expect($controls)->toHaveCount(1);
     expect($controls[0]->getControlMessage())->toBe(NetworkMessages::CONTROL_CONNECT_ACCEPT);
+});
+
+test('chat limits client text before broadcasting without splitting UTF-8 characters', function (string $character, int $length, bool $team) {
+    $server                  = new TransportTestServer;
+    $slot                    = $server->addPlayer();
+    $server->socket->packets = [];
+    $server->receive(new DefaultPacket([
+        (new ClSayChunk($team, str_repeat($character, $length)))->setSequence(1),
+    ], ack: $slot->sequence));
+
+    $chunks = $server->socket->chunks();
+    expect($chunks)->toHaveCount(1);
+    expect($chunks[0])->toBeInstanceOf(SvChatChunk::class);
+    assert($chunks[0] instanceof SvChatChunk);
+    expect($chunks[0]->text)->toBe(str_repeat($character, 127));
+    expect($chunks[0]->team)->toBe($team ? 1 : 0);
+})->with([
+    'maximum ASCII input'   => ['x', 1020],
+    'four-byte UTF-8 input' => ['🎮', 255],
+])->with([false, true]);
+
+test('client vote text remains encodable in announcements and vote state', function (bool $validOption) {
+    $server = new TransportTestServer;
+    $slot   = $server->addPlayer();
+    $option = str_repeat('o', 50);
+    $server->entryWorld->getVoteController()->addVoteOption($option, 'example');
+    $server->socket->packets = [];
+    $server->receive(new DefaultPacket([
+        (new ClCallVoteChunk('option', $validOption ? $option : str_repeat('v', 1000), $validOption ? str_repeat('r', 960) : ''))->setSequence(1),
+    ], ack: $slot->sequence));
+
+    $chunks = $server->socket->chunks();
+    expect($chunks)->not->toBeEmpty();
+    foreach ($chunks as $chunk) {
+        if ($chunk instanceof SvChatChunk) {
+            expect(strlen($chunk->text))->toBeLessThanOrEqual(511);
+        }
+        if ($chunk instanceof SvVoteSetChunk) {
+            expect($chunk->description)->toBe($option);
+            expect($chunk->reason)->toBe(str_repeat('r', 15));
+        }
+    }
+    expect($server->entryWorld->getVoteController()->isVoteRunning())->toBe($validOption);
+})->with([false, true]);
+
+test('client disconnect reasons cannot overflow leave messages sent to another player', function () {
+    $server                  = new TransportTestServer;
+    $leaving                 = $server->addPlayer();
+    $remaining               = $server->addPlayer(port: 8301);
+    $server->socket->packets = [];
+    $server->receive(new ControlMessage(NetworkMessages::CONTROL_CLOSE, str_repeat('r', 1390), ack: $leaving->sequence));
+
+    expect($leaving->state)->toBe(ConnectionSlot::STATE_CLOSED);
+    expect($remaining->state)->toBe(ConnectionSlot::STATE_INGAME);
+    $chunks = $server->socket->chunks();
+    expect($chunks)->not->toBeEmpty();
+    foreach ($chunks as $chunk) {
+        if ($chunk instanceof SvChatChunk) {
+            expect(strlen($chunk->text))->toBeLessThanOrEqual(511);
+        }
+    }
+});
+
+test('enter game requires start information and ignores repeated initialization', function () {
+    $server = new TransportTestServer;
+    $slot   = $server->connect();
+    $server->receive(new DefaultPacket([
+        (new InfoChunk('0.6 626fce9a778df4d4'))->setSequence(1),
+        (new ReadyChunk)->setSequence(2),
+        (new EnterGameChunk)->setSequence(3),
+    ], ack: $slot->sequence));
+    expect($slot->state)->toBe(ConnectionSlot::STATE_READY);
+    expect($server->entryWorld->getTees())->toBeEmpty();
+
+    $server->receive(new DefaultPacket([
+        (new ClStartInfoChunk(str_repeat('n', 1000), '', 0, 'default', false, 0, 0))->setSequence(4),
+    ], ack: $slot->sequence));
+    expect($slot->playerTee()->name)->toBe(str_repeat('n', 15));
+    $server->socket->packets = [];
+    $server->receive(new DefaultPacket([
+        (new ClStartInfoChunk('Changed', '', 0, 'default', false, 0, 0))->setSequence(5),
+    ], ack: $slot->sequence));
+    expect($server->socket->packets)->toBeEmpty();
+    expect($slot->playerTee()->name)->toBe(str_repeat('n', 15));
+
+    $server->receive(new DefaultPacket([(new EnterGameChunk)->setSequence(6)], ack: $slot->sequence));
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($server->entryWorld->getTees())->toBe([$slot->playerTee()]);
+
+    $slot->changeWorld($server->entryWorld);
+    $server->receive(new DefaultPacket([
+        (new ReadyChunk)->setSequence(7),
+        (new EnterGameChunk)->setSequence(8),
+    ], ack: $slot->sequence));
+    expect($slot->state)->toBe(ConnectionSlot::STATE_READY);
+    expect($server->entryWorld->getTees())->toBeEmpty();
+    $server->receive(new DefaultPacket([
+        (new ClStartInfoChunk('Returned', '', 0, 'default', false, 0, 0))->setSequence(9),
+        (new EnterGameChunk)->setSequence(10),
+    ], ack: $slot->sequence));
+    expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($slot->playerTee()->name)->toBe('Returned');
+});
+
+test('resend capacity exhaustion closes only the affected connection during maintenance', function () {
+    $server    = new TransportTestServer;
+    $exhausted = $server->addPlayer();
+    $active    = $server->addPlayer(port: 8301);
+    for ($i = 0; $i < 600; $i++) {
+        $exhausted->chunks()->add(new SvMotdChunk('Pending'))->send();
+    }
+    $server->socket->packets = [];
+    $server->tick();
+
+    expect($exhausted->state)->toBe(ConnectionSlot::STATE_CLOSED);
+    expect($active->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($server->connectionCount())->toBe(1);
+    expect($server->socket->controls())->toHaveCount(1);
+    expect($server->socket->controls()[0]->getControlMessageExtra())->toBe("Too weak connection (out of buffer)\0");
 });
 
 test('CONNECT from an existing in-game endpoint cannot allocate or reject another slot', function () {

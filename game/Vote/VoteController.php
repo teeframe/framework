@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Game\Vote;
 
+use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\GameConstants;
@@ -132,9 +133,9 @@ class VoteController
 
         $this->voteEnforce     = VoteEnforce::UNKNOWN;
         $this->voteCloseTime   = $world->getCurrentTick() + $this->voteDurationTicks;
-        $this->voteDescription = $description;
+        $this->voteDescription = Utf8::truncateBytes($description, 63);
         $this->voteCommand     = $command;
-        $this->voteReason      = $reason !== '' ? $reason : 'No reason given';
+        $this->voteReason      = Utf8::truncateBytes($reason !== '' ? $reason : 'No reason given', 15);
         $this->voteUpdate      = true;
 
         foreach ($world->getTees() as $tee) {
@@ -195,6 +196,7 @@ class VoteController
             return;
         }
 
+        $reason = Utf8::truncateBytes($reason, 15);
         $reason = $reason !== '' ? $reason : 'No reason given';
 
         $type   = strtolower($type);
@@ -215,7 +217,7 @@ class VoteController
         $world->broadcast(new SvChatChunk(
             team: 0,
             clientId: -1,
-            text: $announcement,
+            text: Utf8::truncateBytes($announcement, 511),
         ));
 
         $this->startVote($world, $option->description, $option->command, $reason);
@@ -475,7 +477,7 @@ class VoteController
         $world->getServer()->sendToTee($world, $tee->teeIndex, new SvChatChunk(
             team: 0,
             clientId: -1,
-            text: $text,
+            text: Utf8::truncateBytes($text, 511),
         ));
     }
 }

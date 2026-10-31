@@ -223,6 +223,108 @@ test('the maximum chunk body fits its length field and survives sending and retr
     }
 })->with([false, true]);
 
+test('pending vital chunks cannot enter the ambiguous half of the sequence space', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    for ($i = 0; $i < 511; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
+    }
+    $connection->chunks()->send();
+    $connection->chunks()->flushSentList(0);
+    $connection->sentPackets = [];
+    $connection->chunks()->resend();
+    expect(array_sum(array_map(fn ($packet) => $packet->getNumChunks(), $connection->sentPackets)))->toBe(511);
+
+    $connection->sentPackets = [];
+    $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
+    expect($connection->sequence)->toBe(511);
+    expect($connection->chunks()->send())->toBeFalse();
+    expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
+    expect($connection->sentPackets)->toBeEmpty();
+});
+
+test('the resend byte budget includes queued vital chunks and accepts its exact limit', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    // Each vital chunk occupies 1024 encoded bytes.
+    for ($i = 0; $i < 32; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    }
+    expect($connection->chunks()->send())->toBeTrue();
+    expect($connection->chunks()->update())->toBeNull();
+    $connection->sentPackets = [];
+    expect($connection->chunks()->resend())->toBeTrue();
+    expect($connection->sentPackets)->toHaveCount(32);
+
+    $connection->sentPackets = [];
+    $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
+    expect($connection->sequence)->toBe(32);
+    expect($connection->chunks()->send())->toBeFalse();
+    expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
+    expect($connection->sentPackets)->toBeEmpty();
+});
+
+test('resend exhaustion is detected before flushing the last reserved queued chunk', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    for ($i = 0; $i < 32; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    }
+    expect($connection->sentPackets)->toHaveCount(31);
+    $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    expect($connection->sentPackets)->toHaveCount(31);
+    expect($connection->sequence)->toBe(32);
+    expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
+});
+
+test('acknowledgments release resend capacity across sequence wraparound', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    for ($i = 0; $i < 3; $i++) {
+        for ($j = 0; $j < 500; $j++) {
+            $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
+        }
+        expect($connection->chunks()->send())->toBeTrue();
+        $connection->chunks()->flushSentList($connection->sequence);
+        $connection->peerAck = $connection->sequence;
+        expect($connection->chunks()->update())->toBeNull();
+    }
+    expect($connection->sequence)->toBe(476);
+    $connection->sentPackets = [];
+    $connection->chunks()->resend();
+    expect($connection->sentPackets)->toBeEmpty();
+});
+
+test('acknowledgments release the byte budget and non-vital data does not consume it', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    for ($i = 0; $i < 32; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    }
+    $connection->chunks()->send();
+    $connection->chunks()->add(new QueueEncodingTestChunk(1020))->send();
+    expect($connection->chunks()->update())->toBeNull();
+    $connection->chunks()->flushSentList(16);
+    $connection->peerAck = 16;
+    for ($i = 0; $i < 16; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
+    }
+    expect($connection->chunks()->send())->toBeTrue();
+    expect($connection->chunks()->update())->toBeNull();
+    expect($connection->sequence)->toBe(48);
+});
+
+test('reset clears resend exhaustion and queued reservations', function () {
+    $connection = new RecordingConnection(new TickHandler);
+    for ($i = 0; $i < 600; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
+    }
+    expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
+    $connection->reset();
+    expect($connection->chunks()->update())->toBeNull();
+    $connection->sentPackets = [];
+    for ($i = 0; $i < 511; $i++) {
+        $connection->chunks()->add(new QueueEncodingTestChunk(0, vital: true));
+    }
+    expect($connection->chunks()->send())->toBeTrue();
+    expect($connection->sequence)->toBe(511);
+});
+
 test('direct chunk encoding rejects bodies larger than 1023 bytes', function (bool $vital, int $payloadSize) {
     $chunk = new QueueEncodingTestChunk($payloadSize, vital: $vital);
 

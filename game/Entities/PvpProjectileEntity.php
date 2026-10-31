@@ -102,7 +102,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             $intersectPos = $entity->getPosition()->closestPointOnLine($pos0, $pos1);
             $len          = $entity->getPosition()->distance($intersectPos);
 
-            if ($len < AbstractCharacterEntity::PHYS_SIZE * 0.5 + $this->getHitBoxRadius()) {
+            if ($len < $entity->getHitBoxRadius() + $this->getHitBoxRadius()) {
                 $lineDist = $pos0->distance($intersectPos);
                 if ($lineDist < $closestLen) {
                     $closestLen = $lineDist;
