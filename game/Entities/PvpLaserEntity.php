@@ -7,6 +7,8 @@ use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjLaserItem;
 
 class PvpLaserEntity extends AbstractLaserEntity
@@ -44,7 +46,7 @@ class PvpLaserEntity extends AbstractLaserEntity
     {
         $currentTick = $this->world->getCurrentTick();
 
-        if ($currentTick > $this->evalTick + (int) round(50 * $this->bounceDelay / 1000)) {
+        if ($currentTick > $this->evalTick + NetworkParams::TICKS_PER_SECOND * $this->bounceDelay / 1000) {
             $this->doBounce();
         }
     }
@@ -74,13 +76,13 @@ class PvpLaserEntity extends AbstractLaserEntity
             return;
         }
 
-        [$hit, $colPos] = $collision->intersectLine($this->position, $to);
+        [$hit, , $beforeCollision] = $collision->intersectLine($this->position, $to);
 
         if ($hit) {
             // Check if a character was hit before the wall
-            if (! $this->hitCharacter($this->position, $colPos)) {
+            if (! $this->hitCharacter($this->position, $beforeCollision)) {
                 $this->from     = clone $this->position;
-                $this->position = $colPos;
+                $this->position = $beforeCollision;
 
                 $tempPos = clone $this->position;
                 $tempDir = new Vector2($this->direction->x * 4, $this->direction->y * 4);
@@ -95,7 +97,11 @@ class PvpLaserEntity extends AbstractLaserEntity
                     $this->energy = -1;
                 }
 
-                $this->doBounce();
+                $this->world->addEvent(new ObjEventSoundWorldItem(
+                    x: (int) round($this->position->x),
+                    y: (int) round($this->position->y),
+                    soundId: GameConstants::SOUND_RIFLE_BOUNCE,
+                ));
             }
         } elseif (! $this->hitCharacter($this->position, $to)) {
             $this->from     = clone $this->position;

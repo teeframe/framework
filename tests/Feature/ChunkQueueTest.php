@@ -2,9 +2,11 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\RawPayload;
 use Tests\Support\RecordingConnection;
@@ -185,15 +187,44 @@ test('cached queue sizes are reset by sending and clearing queued chunks', funct
     expect($connection->sentPackets[1]->getNumChunks())->toBe(1);
 });
 
-test('a single oversized chunk is rejected without sending or discarding the existing queue', function () {
+test('a chunk exceeding its length field is rejected without changing the existing queue', function (bool $vital) {
     $connection = new RecordingConnection(new TickHandler);
-    $connection->chunks()->add(new QueueEncodingTestChunk);
+    $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
 
-    expect(fn () => $connection->chunks()->add(new QueueEncodingTestChunk(NetworkParams::MAXIMUM_PACKET_SIZE)))
-        ->toThrow(RuntimeException::class, 'Chunk exceeds the packet size limit');
+    expect(fn () => $connection->chunks()->add(new QueueEncodingTestChunk(1023, vital: $vital)))
+        ->toThrow(RuntimeException::class, 'Chunk exceeds the 10-bit size limit');
     expect($connection->sentPackets)->toBeEmpty();
+    expect($connection->sequence)->toBe(1);
 
     $connection->chunks()->send();
     expect($connection->sentPackets)->toHaveCount(1);
     expect($connection->sentPackets[0]->getNumChunks())->toBe(1);
-});
+})->with([false, true]);
+
+test('the maximum chunk body fits its length field and survives sending and retransmission', function (bool $vital) {
+    $connection = new RecordingConnection(new TickHandler);
+    $text       = str_repeat('x', 1021);
+    $chunk      = (new SvMotdChunk($text))->setFlags($vital ? NetworkBase::CHUNK_FLAG_VITAL : 0);
+    $connection->chunks()->add($chunk)->send();
+    $connection->chunks()->resend();
+
+    expect($connection->sentPackets)->toHaveCount($vital ? 2 : 1);
+    foreach ($connection->sentPackets as $packet) {
+        $decoded = PacketDecoder::decodeFromRaw($packet->encodeToSend());
+        expect($decoded)->toBeInstanceOf(DefaultPacket::class);
+        assert($decoded instanceof DefaultPacket);
+        $decodedChunk = $decoded->getChunks()[0];
+        expect($decodedChunk)->toBeInstanceOf(SvMotdChunk::class);
+        assert($decodedChunk instanceof SvMotdChunk);
+        expect($decodedChunk->text)->toBe($text);
+        $encoded = $decodedChunk->encode();
+        expect((($encoded[0] & 0x3F) << 4) | ($encoded[1] & 0xF))->toBe(1023);
+        expect(count($encoded))->toBe($vital ? 1026 : 1025);
+    }
+})->with([false, true]);
+
+test('direct chunk encoding rejects bodies larger than 1023 bytes', function (bool $vital, int $payloadSize) {
+    $chunk = new QueueEncodingTestChunk($payloadSize, vital: $vital);
+
+    expect(fn () => $chunk->encode())->toThrow(RuntimeException::class, 'Chunk exceeds the 10-bit size limit');
+})->with([false, true])->with([1023, 1100, 1400]);

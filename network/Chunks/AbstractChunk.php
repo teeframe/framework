@@ -3,6 +3,7 @@
 namespace TeeFrame\Network\Chunks;
 
 use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\RawPayload;
 
 abstract class AbstractChunk
@@ -58,6 +59,10 @@ abstract class AbstractChunk
     {
         $encodedPayload = $this->getPayload()->encode();
         $size           = count($encodedPayload) + 1; // +1 for the message byte
+
+        if ($size > NetworkParams::MAXIMUM_CHUNK_SIZE) {
+            throw new \RuntimeException('Chunk exceeds the 10-bit size limit');
+        }
 
         $header    = [];
         $header[0] = (($this->flags & 3) << 6) | (($size >> 4) & 0x3F);

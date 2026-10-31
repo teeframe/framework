@@ -6,6 +6,7 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
@@ -24,7 +25,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
     public function doTick(): void
     {
         $currentTick = $this->world->getCurrentTick();
-        $tickSpeed   = 50.0;
+        $tickSpeed   = NetworkParams::TICKS_PER_SECOND;
 
         $pt = ($currentTick - $this->startTick - 1) / $tickSpeed;
         $ct = ($currentTick - $this->startTick) / $tickSpeed;

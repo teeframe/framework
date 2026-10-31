@@ -11,6 +11,7 @@ use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjLaserItem;
+use TeeFrame\Network\SnapItems\ObjProjectileItem;
 
 /** @return array{AbstractWorld, PvpCharacterEntity, PlayerTee} */
 function createWeaponHelpersWorld(): array
@@ -58,8 +59,9 @@ test('weapon firing preserves aim muzzle positions sounds and cooldowns', functi
             expect($entity->getPosition())->not->toBe($character->getPosition());
             $spread      = $method === 'shootShotgun' ? [-0.185, -0.070, 0, 0.070, 0.185][$index] : 0;
             $bulletAngle = atan2($direction->y, $direction->x) + $spread;
-            expect($entity->direction->x)->toEqualWithDelta(cos($bulletAngle), 0.000000001);
-            expect($entity->direction->y)->toEqualWithDelta(sin($bulletAngle), 0.000000001);
+            $speedFactor = $method === 'shootShotgun' ? [0.8, 0.9, 1.0, 0.9, 0.8][$index] : 1.0;
+            expect($entity->direction->x)->toEqualWithDelta(cos($bulletAngle) * $speedFactor, 0.000000001);
+            expect($entity->direction->y)->toEqualWithDelta(sin($bulletAngle) * $speedFactor, 0.000000001);
         } elseif ($entity instanceof PvpLaserEntity) {
             $snap = $entity->doSnap($tee)[0];
             assert($snap instanceof ObjLaserItem);
@@ -88,6 +90,25 @@ test('weapon firing preserves aim muzzle positions sounds and cooldowns', functi
     'ninja'   => ['shootNinja', 0, GameConstants::SOUND_NINJA_FIRE, 40],
 ])->with([0, 402, -603]);
 
+test('projectile lifetimes convert tuned seconds to whole ticks without rounding up', function (string $method, int $lifetime, int $expectedTicks) {
+    [$world, $character]   = createWeaponHelpersWorld();
+    $tune                  = $world->getTuneController();
+    $tune->gunLifetime     = $lifetime;
+    $tune->shotgunLifetime = $lifetime;
+    $tune->grenadeLifetime = $lifetime;
+    (new ReflectionMethod($character, $method))->invoke($character);
+    $projectiles = array_filter($world->getEntities(), fn ($entity) => $entity instanceof PvpProjectileEntity);
+
+    expect($projectiles)->not->toBeEmpty();
+    foreach ($projectiles as $projectile) {
+        expect((new ReflectionProperty($projectile, 'lifeSpan'))->getValue($projectile))->toBe($expectedTicks);
+    }
+})->with(['shootGun', 'shootShotgun', 'shootGrenade'])->with([
+    'fractional tick'    => [201, 100],
+    'less than one tick' => [1, 0],
+    'zero lifetime'      => [0, 0],
+]);
+
 test('shotgun pellets keep independent position objects', function () {
     [$world, $character] = createWeaponHelpersWorld();
     (new ReflectionMethod($character, 'shootShotgun'))->invoke($character);
@@ -98,6 +119,41 @@ test('shotgun pellets keep independent position objects', function () {
 
     expect($pellets[1]->getPosition())->toEqual($position);
 });
+
+test('shotgun pellet snapshots and physics use the same tuned trajectories', function (int $speedDiff, int $angle) {
+    [$world, $character, $tee] = createWeaponHelpersWorld();
+    $tune                      = $world->getTuneController();
+    $tune->shotgunSpeeddiff    = $speedDiff;
+    $tune->shotgunSpeed        = 300000;
+    $tune->shotgunCurvature    = 200;
+    $character->angle          = $angle;
+    (new ReflectionMethod($character, 'shootShotgun'))->invoke($character);
+    $pellets = array_values(array_filter($world->getEntities(), fn ($entity) => $entity instanceof PvpProjectileEntity));
+    expect($pellets)->toHaveCount(5);
+    $spread       = [-0.185, -0.070, 0, 0.070, 0.185];
+    $speedFactors = [$speedDiff / 100, (1 + $speedDiff / 100) / 2, 1.0, (1 + $speedDiff / 100) / 2, $speedDiff / 100];
+    $time         = 0.1;
+    $distance     = $tune->shotgunSpeed / 100 * $time;
+
+    foreach ($pellets as $index => $pellet) {
+        $pelletAngle = $angle / 256 + $spread[$index];
+        $dx          = cos($pelletAngle) * $speedFactors[$index];
+        $dy          = sin($pelletAngle) * $speedFactors[$index];
+        $start       = $pellet->getPosition();
+        $position    = (new ReflectionMethod($pellet, 'getPos'))->invoke($pellet, $time);
+        assert($position instanceof Vector2);
+        $drop = ($tune->shotgunCurvature / 100 / 10000) * $distance ** 2;
+        expect($position->x)->toEqualWithDelta($start->x + $dx * $distance, 0.000000001);
+        expect($position->y)->toEqualWithDelta($start->y + $dy * $distance + $drop, 0.000000001);
+
+        $snap = $pellet->doSnap($tee)[0];
+        assert($snap instanceof ObjProjectileItem);
+        expect([$snap->velX, $snap->velY])->toBe([(int) ($dx * 100), (int) ($dy * 100)]);
+        $quantizationError = 1 + $distance / 100;
+        expect($position->x)->toEqualWithDelta($snap->x + $snap->velX / 100 * $distance, $quantizationError);
+        expect($position->y)->toEqualWithDelta($snap->y + $snap->velY / 100 * $distance + $drop, $quantizationError);
+    }
+})->with([80, 50, 100])->with([0, 402, -603]);
 
 test('ninja hits each target once per dash and emits the hit sound at the target', function () {
     [$world, $character, $tee] = createWeaponHelpersWorld();

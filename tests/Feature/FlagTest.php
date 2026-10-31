@@ -440,6 +440,38 @@ test('flag is dropped when the carrier dies', function () use ($ctfMapPath, $ctf
 |--------------------------------------------------------------------------
 */
 
+test('dropped flags apply gravity in world units', function (int $gravity) {
+    $map = new class extends Map
+    {
+        public function __construct()
+        {
+            $tiles           = str_repeat(pack('C4', GameLayer::TILE_AIR, 0, 0, 0), 64 * 16);
+            $tiles           = substr_replace($tiles, pack('C4', GameLayer::ENTITY_FLAGSTAND_RED, 0, 0, 0), (2 * 64 + 4) * 4, 4);
+            $this->gameLayer = new GameLayer(64, 16, $tiles);
+            $this->collision = $this->createCollision($this->gameLayer);
+        }
+    };
+    $clock                               = new TickHandler(100);
+    $controller                          = makeCtfGameController($clock);
+    $world                               = createCtfWorld($map, $clock, $controller);
+    $world->getTuneController()->gravity = $gravity;
+    $flag                                = $controller->getFlag(GameConstants::TEAM_RED);
+    assert($flag !== null);
+    $flag->atStand  = false;
+    $flag->dropTick = $clock->get();
+    $start          = clone $flag->getPosition();
+
+    $world->doTick();
+
+    expect($flag->vel->y)->toEqualWithDelta($gravity / 100, 0.000000001);
+    expect($flag->getPosition()->y)->toEqualWithDelta($start->y + $gravity / 100, 0.000000001);
+    $clock->next();
+    $world->doTick();
+    expect($flag->vel->y)->toEqualWithDelta(2 * $gravity / 100, 0.000000001);
+    expect($flag->getPosition()->y)->toEqualWithDelta($start->y + 3 * $gravity / 100, 0.000000001);
+    expect($flag->atStand)->toBeFalse();
+})->with([50, 125, 0]);
+
 test('dropped flag auto-returns after 30 seconds', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
         throw new RuntimeException('Required CTF map fixture is missing');

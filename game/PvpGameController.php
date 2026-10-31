@@ -762,7 +762,7 @@ class PvpGameController extends AbstractGameController
                 $world->createSoundGlobal(GameConstants::SOUND_CTF_RETURN);
                 $flag->reset();
             } elseif ($collision !== null) {
-                $flag->vel->y += $world->getTuneController()->gravity;
+                $flag->vel->y += $world->getTuneController()->gravity / 100.0;
                 $collision->moveBox(
                     $flag->getPosition(),
                     $flag->vel,

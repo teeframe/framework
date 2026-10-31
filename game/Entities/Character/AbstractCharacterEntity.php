@@ -251,6 +251,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             return [];
         }
 
+        $canViewStats = $this->canViewStats($requestingTee);
+
         return [
             new ObjCharacterItem(
                 tick: $this->world->isPaused() ? 0 : $this->tick, // Tick zero disables client dead reckoning while the world is paused (from 0.6 source).
@@ -269,14 +271,27 @@ abstract class AbstractCharacterEntity extends AbstractEntity
                 hookDx: (int) round($this->hookDir->x * 256.0),
                 hookDy: (int) round($this->hookDir->y * 256.0),
                 playerFlags: $this->playerFlags,
-                health: $this->health,
-                armor: $this->armor,
-                ammoCount: $this->weapons[$this->activeWeapon]->ammo,
+                health: $canViewStats ? $this->health : 0,
+                armor: $canViewStats ? $this->armor : 0,
+                ammoCount: $canViewStats ? max(0, $this->weapons[$this->activeWeapon]->ammo) : 0,
                 weapon: $this->activeWeapon,
                 emote: $this->emote,
                 attackTick: $this->attackTick,
             ),
         ];
+    }
+
+    protected function canViewStats(AbstractTee $requestingTee): bool
+    {
+        if ($requestingTee === $this->tee) {
+            return true;
+        }
+
+        return $this->tee !== null
+            && $this->tee->teeIndex >= 0
+            && $requestingTee instanceof PlayerTee
+            && $requestingTee->team === GameConstants::TEAM_SPECTATORS
+            && $requestingTee->spectatorId === $this->tee->teeIndex;
     }
 
     protected function makeIdleInput(): PlayerInput

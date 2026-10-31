@@ -7,6 +7,7 @@ use TeeFrame\Game\Entities\PvpLaserEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
 use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
 
@@ -75,10 +76,10 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
 
         if ($hits > 0) {
-            return 16;
+            return intdiv(NetworkParams::TICKS_PER_SECOND, 3);
         }
 
-        return 6;
+        return intdiv(125 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 
     protected function shootGun(): int
@@ -101,14 +102,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $proj->setTuning(
             $tune->gunSpeed / 100.0,
             $tune->gunCurvature / 100.0,
-            (int) ($tune->gunLifetime / 2),
+            intdiv($tune->gunLifetime * NetworkParams::TICKS_PER_SECOND, 100),
         );
 
         $this->world->addEntity($proj);
 
         $this->createSound(GameConstants::SOUND_GUN_FIRE);
 
-        return 6;
+        return intdiv(125 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 
     protected function shootShotgun(): int
@@ -122,14 +123,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $shotSpread = 2;
         $spreading  = [-0.185, -0.070, 0, 0.070, 0.185];
+        $tune       = $this->world->getTuneController();
+        $speedDiff  = $tune->shotgunSpeeddiff / 100.0;
 
         for ($i = -$shotSpread; $i <= $shotSpread; $i++) {
             $a         = atan2($dir->y, $dir->x) + $spreading[$i + 2];
             $v         = 1 - (abs($i) / $shotSpread);
-            $speed     = 0.8 + (1.0 - 0.8) * $v; // mix(speeddiff, 1.0, v)
-            $bulletDir = new Vector2(cos($a), sin($a));
-
-            $tune = $this->world->getTuneController();
+            $speed     = $speedDiff + (1.0 - $speedDiff) * $v; // mix(speeddiff, 1.0, v)
+            $bulletDir = new Vector2(cos($a) * $speed, sin($a) * $speed);
 
             $proj = new PvpProjectileEntity($this->world,
                 position: clone $projStartPos,
@@ -138,9 +139,9 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 owner: $this->tee->teeIndex,
             );
             $proj->setTuning(
-                ($tune->shotgunSpeed / 100.0) * $speed,
+                $tune->shotgunSpeed / 100.0,
                 $tune->shotgunCurvature / 100.0,
-                (int) ($tune->shotgunLifetime / 2),
+                intdiv($tune->shotgunLifetime * NetworkParams::TICKS_PER_SECOND, 100),
             );
 
             $this->world->addEntity($proj);
@@ -148,7 +149,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->createSound(GameConstants::SOUND_SHOTGUN_FIRE);
 
-        return 25; // 500ms at 50 tick/s
+        return intdiv(500 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 
     protected function shootGrenade(): int
@@ -170,14 +171,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $proj->setTuning(
             $tune->grenadeSpeed / 100.0,
             $tune->grenadeCurvature / 100.0,
-            (int) ($tune->grenadeLifetime / 2),
+            intdiv($tune->grenadeLifetime * NetworkParams::TICKS_PER_SECOND, 100),
         );
 
         $this->world->addEntity($proj);
 
         $this->createSound(GameConstants::SOUND_GRENADE_FIRE);
 
-        return 25; // 500ms at 50 tick/s
+        return intdiv(500 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 
     protected function shootRifle(): int
@@ -200,7 +201,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->createSound(GameConstants::SOUND_RIFLE_FIRE);
 
-        return 40; // 800ms at 50 tick/s
+        return intdiv(800 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 
     protected function handleWeapons(bool $firePressed): void
@@ -220,7 +221,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $weaponAmmo = $this->weapons[$this->activeWeapon]->ammo;
         if ($weaponAmmo === 0) {
-            $this->reloadTimer = (int) round(125 * 50 / 1000);
+            $this->reloadTimer = (int) round(125 * NetworkParams::TICKS_PER_SECOND / 1000);
 
             $this->createSound(GameConstants::SOUND_WEAPON_NOAMMO);
 
@@ -284,8 +285,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             $this->ammoRegenStart = $this->tick;
         }
 
-        // 500ms at 50 tick/s = 25 ticks
-        if (($this->tick - $this->ammoRegenStart) >= 25) {
+        // Regenerate one bullet every 500ms.
+        if (($this->tick - $this->ammoRegenStart) >= intdiv(NetworkParams::TICKS_PER_SECOND, 2)) {
             $this->weapons[$this->activeWeapon]->ammo = min(10, $weaponAmmo + 1);
             $this->ammoRegenStart                     = -1;
         }
@@ -333,7 +334,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $currentTick = $this->world->getCurrentTick();
 
-        if ($currentTick < $this->damageTakenTick + 25) {
+        if ($currentTick < $this->damageTakenTick + intdiv(NetworkParams::TICKS_PER_SECOND, 2)) {
             // make sure that the damage indicators don't group together
             $this->createDamageInd($this->damageTaken * 0.25, $damage);
         } else {

@@ -8,6 +8,7 @@ use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjEventDeathItem;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 
@@ -82,7 +83,9 @@ trait HasCharacterLifecycle
 
         if ($this->tee instanceof PlayerTee) {
             // Self-kill (WEAPON_SELF) applies a 3s respawn penalty; otherwise 0.5s
-            $respawnDelay           = $weapon === GameConstants::WEAPON_SELF ? 150 : 25;
+            $respawnDelay = $weapon === GameConstants::WEAPON_SELF
+                ? 3 * NetworkParams::TICKS_PER_SECOND
+                : intdiv(NetworkParams::TICKS_PER_SECOND, 2);
             $this->tee->respawnTick = $this->world->getCurrentTick() + $respawnDelay;
             $this->tee->dieTick     = $this->world->getCurrentTick();
             $this->tee->spawning    = true;

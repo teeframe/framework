@@ -53,7 +53,7 @@ class ClientMessageHandler
         // Spam protection: max ~16 characters per second (CPlayer::m_LastChat).
         if ($tee instanceof PlayerTee) {
             $currentTick = $this->world->getCurrentTick();
-            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (50 * ((15 + strlen($message)) / 16)) > $currentTick) {
+            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * ((15 + strlen($message)) / 16)) > $currentTick) {
                 return;
             }
             $tee->lastChatTick = $currentTick;

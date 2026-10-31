@@ -25,6 +25,7 @@ class NetworkParams
     // Ack & Chunk
     const MAXIMUM_ACK_NUMBER        = 1024;
     const MAXIMUM_CHUNKS_PER_PACKET = 255;
+    const MAXIMUM_CHUNK_SIZE        = 1023; // Message ID and payload, excluding the chunk header.
 
     // Snap
     const MAXIMUM_SNAP_SLICES       = 64;

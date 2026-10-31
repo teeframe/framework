@@ -7,6 +7,7 @@ use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\TuneController;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Collision;
+use TeeFrame\Network\NetworkParams;
 
 /**
  * Character physics core — pure physics, no game logic.
@@ -204,7 +205,7 @@ trait HasCharacterCore
     {
         $speed = $this->vel->length();
 
-        $rampValue = self::velocityRamp($speed * 50, $tune->velrampStart / 100.0, $tune->velrampRange / 100.0, $tune->velrampCurvature / 100.0);
+        $rampValue = self::velocityRamp($speed * NetworkParams::TICKS_PER_SECOND, $tune->velrampStart / 100.0, $tune->velrampRange / 100.0, $tune->velrampCurvature / 100.0);
 
         $this->vel->x *= $rampValue;
 
@@ -330,7 +331,7 @@ trait HasCharacterCore
             }
 
             $this->hookTick++;
-            if ($this->hookedPlayer >= 0 && $this->hookTick > 50 + 10) {
+            if ($this->hookedPlayer >= 0 && $this->hookTick > NetworkParams::TICKS_PER_SECOND + intdiv(NetworkParams::TICKS_PER_SECOND, 5)) {
                 $this->hookedPlayer = -1;
                 $this->hookState    = GameConstants::HOOK_RETRACTED;
                 $this->hookPos      = $this->position;

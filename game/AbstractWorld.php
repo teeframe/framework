@@ -613,7 +613,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             }
 
             // CPlayer::Tick automatically requests a respawn after three seconds.
-            if (! $tee->spawning && $tee->dieTick > 0 && $tee->dieTick + 3 * 50 <= $currentTick) {
+            if (! $tee->spawning && $tee->dieTick > 0 && $tee->dieTick + 3 * NetworkParams::TICKS_PER_SECOND <= $currentTick) {
                 $tee->spawning = true;
             }
             if ($tee->spawning && $tee->respawnTick <= $currentTick) {

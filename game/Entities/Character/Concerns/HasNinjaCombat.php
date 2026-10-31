@@ -5,6 +5,7 @@ namespace TeeFrame\Game\Entities\Character\Concerns;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
+use TeeFrame\Network\NetworkParams;
 
 trait HasNinjaCombat
 {
@@ -17,7 +18,7 @@ trait HasNinjaCombat
         $currentTick = $this->world->getCurrentTick();
 
         // Ninja duration: 15 seconds.
-        if (($currentTick - $this->ninjaActivationTick) > (int) (15 * 50)) {
+        if (($currentTick - $this->ninjaActivationTick) > 15 * NetworkParams::TICKS_PER_SECOND) {
             $this->weapons[GameConstants::WEAPON_NINJA]->got = false;
             $this->activeWeapon                              = $this->lastWeapon;
             $this->setWeapon($this->activeWeapon);
@@ -82,13 +83,13 @@ trait HasNinjaCombat
     protected function shootNinja(): int
     {
         $this->ninjaActivationDir   = $this->getAimDirection();
-        $this->ninjaCurrentMoveTime = 10; // 200ms at 50 tick/s
+        $this->ninjaCurrentMoveTime = intdiv(200 * NetworkParams::TICKS_PER_SECOND, 1000);
         $this->ninjaOldVelAmount    = $this->vel->length();
         $this->ninjaNumObjectsHit   = 0;
         $this->ninjaHitObjects      = [];
 
         $this->createSound(GameConstants::SOUND_NINJA_FIRE);
 
-        return 40; // 800ms at 50 tick/s
+        return intdiv(800 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 }
