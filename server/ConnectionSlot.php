@@ -66,6 +66,11 @@ class ConnectionSlot extends AbstractConnection
         return $this->world;
     }
 
+    public function socket(): AbstractSocket
+    {
+        return $this->socket;
+    }
+
     public function changeWorld(AbstractWorld $world): void
     {
         $previousTee = $this->playerTee;
@@ -131,6 +136,7 @@ class ConnectionSlot extends AbstractConnection
         $this->sendControlMessage(NetworkMessages::CONTROL_CLOSE, $reason);
 
         $this->world()->removeTee($this->playerTee, $reason);
+        $this->socket->disconnect($this->destinationAddress, $this->destinationPort);
 
         $this->reset();
         $this->state = static::STATE_CLOSED;
@@ -149,6 +155,7 @@ class ConnectionSlot extends AbstractConnection
             $this->consoleInfo('Closed reason='.$reason);
 
             $this->world()->removeTee($this->playerTee, $reason);
+            $this->socket->disconnect($this->destinationAddress, $this->destinationPort);
 
             $this->reset();
             $this->state = static::STATE_CLOSED;

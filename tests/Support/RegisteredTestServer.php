@@ -33,11 +33,18 @@ class RegisteredTestServer extends AbstractServerInstance
         $this->worlds[]  = new TestWorld($this->tickHandler, new Map(__DIR__.'/../dm1.map'), $this);
         $this->sockets[] = new UdpSocket($_SERVER['argv'][3] ?? '127.0.0.1', 0);
 
+    }
+
+    protected function doTick(): void
+    {
+        parent::doTick();
+
         // Bound the subprocess even if the test master never accepts registration.
-        swoole_timer_after(($_SERVER['argv'][2] ?? '') === 'signal' ? 3000 : 1000, function (): void {
+        $limit = ($_SERVER['argv'][2] ?? '') === 'signal' ? 150 : 50;
+        if (! $this->shuttingDown && $this->tickHandler->get() >= $limit) {
             echo 'registration-test-ticks='.$this->tickHandler->get().PHP_EOL;
             $this->shutdown();
-        });
+        }
     }
 
     protected function selectWorldForNewConnection(): AbstractWorld

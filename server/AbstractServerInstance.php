@@ -16,6 +16,8 @@ use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Server\Ban\BanList;
 use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Sockets\AbstractSocket;
+use TeeFrame\Server\Sockets\SocketServer;
+use TeeFrame\Server\Sockets\UdpSocket;
 
 abstract class AbstractServerInstance
 {
@@ -64,6 +66,7 @@ abstract class AbstractServerInstance
             throw new \RuntimeException('No sockets were booted');
         }
 
+        $socketServer = new SocketServer($this->sockets);
         $this->bootMasterServerRegistration();
 
         swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
@@ -71,7 +74,7 @@ abstract class AbstractServerInstance
         });
 
         foreach ($this->sockets as $socket) {
-            $socket->on('packet', function (mixed $server, string $data, array $clientInfo) use ($socket): void {
+            $socket->onPacket(function (string $data, array $clientInfo) use ($socket): void {
                 $packet = PacketDecoder::decodeFromRaw($data);
                 if ($packet === false) {
                     return;
@@ -81,12 +84,21 @@ abstract class AbstractServerInstance
                 $this->onPacket($packet, $clientInfo, $socket);
             });
 
-            $socket->on('workerStop', function () use ($socket): void {
-                $this->masterServer?->onWorkerStop($socket);
+            $socket->onClose(function (array $clientInfo) use ($socket): void {
+                if ($connection = $this->connectionHandler->tryToMatch($clientInfo, $socket)) {
+                    $connection->closeConnection('Connection closed');
+                }
             });
-
-            $socket->start();
         }
+
+        $socketServer->on('workerStop', function (): void {
+            foreach ($this->sockets as $socket) {
+                if ($socket instanceof UdpSocket) {
+                    $this->masterServer?->onWorkerStop($socket);
+                }
+            }
+        });
+        $socketServer->start();
     }
 
     public function shutdown(): void
@@ -119,7 +131,7 @@ abstract class AbstractServerInstance
         }
 
         $this->masterServer = $this->createMasterServer();
-        $this->masterServer->start($this->sockets);
+        $this->masterServer->start(array_filter($this->sockets, fn (AbstractSocket $socket): bool => $socket instanceof UdpSocket));
     }
 
     protected function createMasterServer(): MasterServer
@@ -261,7 +273,7 @@ abstract class AbstractServerInstance
             return;
         }
 
-        if ($connectionSlot = $this->connectionHandler->tryToMatch($clientInfo)) {
+        if ($connectionSlot = $this->connectionHandler->tryToMatch($clientInfo, $socket)) {
             if ($connectionSlot->state !== ConnectionSlot::STATE_INGAME) {
                 $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet, $this->password);
 
@@ -296,6 +308,7 @@ abstract class AbstractServerInstance
                 $clientInfo['port'],
                 (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'You are banned for '.$minutesLeft.' more minute(s): '.($ban->reason ?? 'Kicked by vote')))->encodeToSend()
             );
+            $socket->disconnect($clientInfo['address'], $clientInfo['port']);
 
             return;
         }
@@ -312,6 +325,7 @@ abstract class AbstractServerInstance
                 $clientInfo['port'],
                 (new ControlMessage(NetworkMessages::CONTROL_CLOSE, $reason))->encodeToSend()
             );
+            $socket->disconnect($clientInfo['address'], $clientInfo['port']);
 
             return;
         }
@@ -332,7 +346,7 @@ abstract class AbstractServerInstance
             return;
         }
 
-        $connection = $this->connectionHandler->tryToMatch($clientInfo);
+        $connection = $this->connectionHandler->tryToMatch($clientInfo, $socket);
         $worlds     = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
             ? [$connection->world()]
             : $this->worlds;

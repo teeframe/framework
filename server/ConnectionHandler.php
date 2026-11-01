@@ -44,10 +44,11 @@ class ConnectionHandler
     /**
      * @param  array{address: string, port: int}  $clientInfo
      */
-    public function tryToMatch(array $clientInfo): ConnectionSlot|false
+    public function tryToMatch(array $clientInfo, AbstractSocket $socket): ConnectionSlot|false
     {
         foreach ($this->slots as $connection) {
             if ($connection->state === ConnectionSlot::STATE_CLOSED
+                || $connection->socket() !== $socket
                 || $connection->destinationAddress !== $clientInfo['address']
                 || $connection->destinationPort !== $clientInfo['port']
             ) {

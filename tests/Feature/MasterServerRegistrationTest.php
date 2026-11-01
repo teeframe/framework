@@ -16,7 +16,7 @@ use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Master\MasterServerHttpClient;
 use TeeFrame\Server\Master\MasterServerRegistration;
 use TeeFrame\Server\ServerInfoPacketBuilder;
-use TeeFrame\Server\Sockets\AbstractSocket;
+use TeeFrame\Server\Sockets\UdpSocket;
 
 class RegistrationTestClock extends TickHandler
 {
@@ -48,7 +48,7 @@ class RegistrationTestHttpClient extends MasterServerHttpClient
     }
 }
 
-class RegistrationTestSocket extends AbstractSocket
+class RegistrationTestSocket extends UdpSocket
 {
     public int $shutdowns = 0;
 
