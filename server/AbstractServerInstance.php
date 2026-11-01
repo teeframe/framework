@@ -80,12 +80,20 @@ abstract class AbstractServerInstance
         });
 
         foreach ($this->sockets as $socket) {
-            $socket->on('start', function () use ($socket): void {
-                Console::info('Server is listening on '.$socket->host.' port '.$socket->port);
+            $socketType = match ($socket->type & ~SWOOLE_SSL) {
+                SWOOLE_SOCK_TCP  => 'TCP/IPv4',
+                SWOOLE_SOCK_TCP6 => 'TCP/IPv6',
+                SWOOLE_SOCK_UDP  => 'UDP/IPv4',
+                SWOOLE_SOCK_UDP6 => 'UDP/IPv6',
+                default          => 'type '.$socket->type,
+            };
+
+            $socket->on('start', function () use ($socket, $socketType): void {
+                Console::info('Server is listening on '.$socket->host.' port '.$socket->port.' ('.$socketType.')');
             });
 
-            $socket->on('shutdown', function () use ($socket): void {
-                Console::info('Server stopped listening on '.$socket->host.' port '.$socket->port);
+            $socket->on('shutdown', function () use ($socket, $socketType): void {
+                Console::info('Server stopped listening on '.$socket->host.' port '.$socket->port.' ('.$socketType.')');
             });
 
             $socket->on('packet', function (mixed $server, string $data, array $clientInfo) use ($socket): void {

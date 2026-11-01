@@ -618,14 +618,15 @@ test('a real game socket registers through a UDP challenge and removes its listi
     $info = json_decode($requests[0]['body'], true, flags: JSON_THROW_ON_ERROR);
     expect($info['name'])->toBe('Registration integration test');
     expect($info['map']['name'])->toBe('dm1');
-    $host = $family === AF_INET6 ? '::1' : '127.0.0.1';
-    $port = (int) substr($requests[0]['headers']['address'], strrpos($requests[0]['headers']['address'], ':') + 1);
+    $host       = $family === AF_INET6 ? '::1' : '127.0.0.1';
+    $port       = (int) substr($requests[0]['headers']['address'], strrpos($requests[0]['headers']['address'], ':') + 1);
+    $socketType = $family === AF_INET6 ? 'UDP/IPv6' : 'UDP/IPv4';
     expect($output)->toContain(
         'Starting server "Registration integration test" ('.NetworkParams::TICKS_PER_SECOND.' ticks/s)',
         'World=test Map=dm1 Gametype=DM Slots=64',
         'Master server registration: enabled',
-        'Server is listening on '.$host.' port '.$port,
-        'Server stopped listening on '.$host.' port '.$port,
+        'Server is listening on '.$host.' port '.$port.' ('.$socketType.')',
+        'Server stopped listening on '.$host.' port '.$port.' ('.$socketType.')',
     );
     expect(substr_count($output, 'Server is listening on '))->toBe(1);
     expect(substr_count($output, 'Server stopped listening on '))->toBe(1);
