@@ -224,7 +224,7 @@ test('failed map loads preserve the complete previously published state and allo
         expect($map->getPath())->toBe(realpath($path));
         expect($map->getName())->toBe(basename($path, '.map'));
         expect($map->getSize())->toBe(strlen($valid));
-        expect($map->getRawData())->toBe(array_values(unpack('C*', $valid) ?: []));
+        expect($map->getRawData())->toBe($valid);
         $crc = crc32($valid);
         expect($map->getCrc())->toBe(($crc & 0x80000000) ? $crc - 0x100000000 : $crc);
         expect($map->getGameLayer()?->width)->toBe(3);
@@ -484,7 +484,8 @@ test('flags return when they leave the game layer clipping margin', function () 
 
 test('map downloads mark only the final data chunk as last', function (int $mapSize) {
     $headerSize = strlen(mapRegressionDatafile(3, [], ['']));
-    $bytes      = mapRegressionDatafile(3, [], [str_repeat("\xA5", $mapSize - $headerSize)]);
+    $pattern    = pack('C*', ...range(0, 255));
+    $bytes      = mapRegressionDatafile(3, [], [substr(str_repeat($pattern, intdiv($mapSize, 256) + 1), 0, $mapSize - $headerSize)]);
     $map        = mapRegressionLoad($bytes);
     expect($map->getSize())->toBe($mapSize);
 
@@ -512,7 +513,7 @@ test('map downloads mark only the final data chunk as last', function (int $mapS
     };
 
     $chunkCount = intdiv($mapSize + 895, 896);
-    $received   = [];
+    $received   = '';
     for ($index = 0; $index < $chunkCount; $index++) {
         expect($handler->requestMapData($connection, new RequestMapDataChunk($index)))->toBeTrue();
         expect($connection->sentPackets)->toHaveCount($index + 1);
@@ -528,10 +529,14 @@ test('map downloads mark only the final data chunk as last', function (int $mapS
         expect($chunk->crc)->toBe($map->getCrc());
         expect($chunk->chunk)->toBe($index);
         expect($chunk->chunkSize)->toBe(min(896, $mapSize - $index * 896));
-        expect($chunk->data)->toBe(array_slice($map->getRawData(), $index * 896, $chunk->chunkSize));
-        $received = [...$received, ...$chunk->data];
+        $decoded = MapDataChunk::make($chunk->getPayload());
+        $binary  = pack('C*', ...$decoded->data);
+        expect($binary)->toBe(substr($bytes, $index * 896, $chunk->chunkSize));
+        expect($decoded->data)->toBe($chunk->data);
+        $received .= $binary;
     }
-    expect($received)->toBe($map->getRawData());
+    expect($received)->toBe($bytes);
+    expect($map->getRawData())->toBe($bytes);
 })->with([
     'short final chunk'       => 895,
     'one exact chunk'         => 896,

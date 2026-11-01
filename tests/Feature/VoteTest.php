@@ -111,6 +111,40 @@ test('SvVoteStatusChunk encodes and decodes correctly', function () {
     expect($decoded->total)->toBe(5);
 });
 
+test('spectators cannot start votes and receive a private spam-protected rejection', function (string $type, bool $running) {
+    $world     = createVoteWorld(new Map, new TickHandler(100));
+    $spectator = new PlayerTee;
+    $target    = new PlayerTee;
+    $world->addTee($spectator);
+    $world->addTee($target);
+    $spectator->team = GameConstants::TEAM_SPECTATORS;
+    $votes           = $world->getVoteController();
+    $votes->addVoteOption('Reload', 'reload');
+    if ($running) {
+        $votes->startVote($world, 'Existing vote', 'reload', '');
+    }
+    recordingServer($world)->clear();
+
+    $request = new ClCallVoteChunk($type, $type === 'option' ? 'Reload' : (string) $target->teeIndex, '');
+    $world->onMessage($spectator, $request);
+    $world->onMessage($spectator, $request);
+    $world->doTick();
+
+    expect($votes->isVoteRunning())->toBe($running);
+    $vote = $votes->getRunningVote($world);
+    assert($vote === null || $vote instanceof SvVoteSetChunk);
+    expect($vote?->description)->toBe($running ? 'Existing vote' : null);
+    expect($spectator->vote)->toBe(0);
+    expect($spectator->votePos)->toBe(0);
+    expect($spectator->lastVoteCall)->toBe(0);
+    expect($spectator->lastVoteTry)->toBe(100);
+    $chats = array_values(array_filter(recordingServer($world)->sentPairs, fn ($pair) => $pair['chunk'] instanceof SvChatChunk));
+    expect($chats)->toHaveCount(1);
+    expect($chats[0]['teeIndex'])->toBe($spectator->teeIndex);
+    expect($chats[0]['chunk']->text)->toBe("Spectators aren't allowed to start a vote.");
+    expect(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk))->toBeEmpty();
+})->with(['option', 'kick', 'spectate'])->with([false, true]);
+
 test('callVote option starts a vote and broadcasts SvVoteSet', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');

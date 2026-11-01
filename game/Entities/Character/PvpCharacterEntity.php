@@ -6,6 +6,7 @@ use TeeFrame\Game\Entities\Character\Concerns\HasNinjaCombat;
 use TeeFrame\Game\Entities\PvpLaserEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
+use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjEventDamageIndItem;
@@ -374,14 +375,24 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->damageTakenTick = $currentTick;
 
+        // CCharacter::TakeDamage includes spectators following the attacker.
+        $attacker = $attackerTeeIndex >= 0 && $attackerTeeIndex !== $victimTeeIndex
+            ? $this->world->findTee($attackerTeeIndex)
+            : null;
+        if ($attacker !== null) {
+            $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $attackerTeeIndex);
+            foreach ($this->world->getTees() as $tee) {
+                if ($tee instanceof PlayerTee && $tee->team === GameConstants::TEAM_SPECTATORS && $tee->spectatorId === $attackerTeeIndex) {
+                    $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $tee->teeIndex);
+                }
+            }
+        }
+
         // Knockback already applied above; pass zero force to the parent.
         parent::takeDamage(new Vector2(0, 0), $damage, $attackerTeeIndex, $weapon);
 
-        // Hit sound: sent only to the attacker (mirrors CCharacter::TakeDamage
-        // ctf.cpp L746-756: CreateSound(attacker->m_ViewPos, SOUND_HIT, Mask)).
-        // Self-damage and world damage don't emit the hit sound.
-        if ($attackerTeeIndex >= 0 && $attackerTeeIndex !== $victimTeeIndex && $this->world->findTee($attackerTeeIndex) !== null) {
-            $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $attackerTeeIndex);
+        if (! $this->alive && $attacker?->character !== null) {
+            $attacker->character->setEmote(GameConstants::EMOTE_HAPPY, $currentTick + NetworkParams::TICKS_PER_SECOND);
         }
     }
 

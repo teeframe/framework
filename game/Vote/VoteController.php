@@ -174,17 +174,23 @@ class VoteController
 
         $currentTick = $world->getCurrentTick();
 
-        if ($this->voteCloseTime !== 0) {
-            $this->sendChat($world, $tee, 'Wait for current vote to end before calling a new one.');
-
-            return;
-        }
-
         // Spam protection
         if ($tee->lastVoteTry > 0 && $tee->lastVoteTry + $this->voteTrySpamTicks > $currentTick) {
             return;
         }
         $tee->lastVoteTry = $currentTick;
+
+        if ($tee->team === GameConstants::TEAM_SPECTATORS) {
+            $this->sendChat($world, $tee, "Spectators aren't allowed to start a vote.");
+
+            return;
+        }
+
+        if ($this->voteCloseTime !== 0) {
+            $this->sendChat($world, $tee, 'Wait for current vote to end before calling a new one.');
+
+            return;
+        }
 
         // Per-player call delay (m_LastVoteCall + 60s)
         $timeLeft = $tee->lastVoteCall > 0

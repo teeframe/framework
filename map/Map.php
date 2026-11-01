@@ -32,9 +32,6 @@ class Map
 
     protected int $size = 0;
 
-    /** @var int[] */
-    protected array $rawData = [];
-
     /**
      * @param  string  $mapPath  Path to the .map file (e.g., "maps/dm1.map")
      */
@@ -55,7 +52,6 @@ class Map
         $collision         = $this->createCollision($gameLayer);
         $rawContent        = $reader->getRawContent();
         $crc               = crc32($rawContent);
-        $rawData           = array_values(unpack('C*', $rawContent) ?: []);
         $path              = realpath($mapPath) ?: $mapPath;
 
         // Publish only after every parsing/validation stage succeeds.
@@ -65,11 +61,10 @@ class Map
         $this->gameLayer = $gameLayer;
         $this->collision = $collision;
         // Teeworlds packs the CRC as a signed 32-bit integer.
-        $this->crc     = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
-        $this->size    = strlen($rawContent);
-        $this->rawData = $rawData;
-        $this->name    = basename($mapPath, '.map');
-        $this->path    = $path;
+        $this->crc  = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
+        $this->size = strlen($rawContent);
+        $this->name = basename($mapPath, '.map');
+        $this->path = $path;
     }
 
     /** @return array{array<int, GroupItem>, array<int, LayerItem>} */
@@ -197,11 +192,8 @@ class Map
         return $this->size;
     }
 
-    /**
-     * @return int[]
-     */
-    public function getRawData(): array
+    public function getRawData(): string
     {
-        return $this->rawData;
+        return $this->reader?->getRawContent() ?? '';
     }
 }

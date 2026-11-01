@@ -1,6 +1,5 @@
 <?php
 
-use TeeFrame\Map\Collision;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\NetworkBase;
@@ -89,7 +88,7 @@ test('map parsing crc size and download data use a single file read', function (
         expect(SingleReadMapStream::$opens)->toBe(1);
         expect($map->getSize())->toBe(strlen($content));
         expect($map->getCrc())->toBe($crc);
-        expect($map->getRawData())->toBe(array_values(unpack('C*', $content) ?: []));
+        expect($map->getRawData())->toBe($content);
         expect($map->getGameLayer()?->width)->toBe(60);
         expect($map->getGameLayer()?->height)->toBe(50);
     } finally {
@@ -135,6 +134,10 @@ test('dm1 map collision is initialized', function () use ($mapPath, $mapExists) 
     expect($collision->getHeight())->toBe(50);
 });
 
+test('an unloaded map exposes empty binary download data', function () {
+    expect((new Map)->getRawData())->toBe('');
+});
+
 test('dm1 map raw data is available for download', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
@@ -145,7 +148,8 @@ test('dm1 map raw data is available for download', function () use ($mapPath, $m
     $rawData = $map->getRawData();
     expect($rawData)->not->toBeEmpty();
 
-    expect(count($rawData))->toBe($map->getSize());
+    expect($rawData)->toBeString();
+    expect(strlen($rawData))->toBe($map->getSize());
 });
 
 test('dm1 map has groups and layers', function () use ($mapPath, $mapExists) {

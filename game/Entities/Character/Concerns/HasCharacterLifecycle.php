@@ -142,8 +142,10 @@ trait HasCharacterLifecycle
         $this->vel->x += $force->x;
         $this->vel->y += $force->y;
 
+        $hasDamage = $damage > 0;
+
         // Armor absorption
-        if ($damage > 0 && $this->armor > 0) {
+        if ($hasDamage && $this->armor > 0) {
             if ($damage > 1) {
                 $this->health--;
                 $damage--;
@@ -160,12 +162,15 @@ trait HasCharacterLifecycle
 
         $this->health -= $damage;
 
-        if ($damage > 0) {
-            $this->createSound($damage > 2 ? GameConstants::SOUND_PLAYER_PAIN_LONG : GameConstants::SOUND_PLAYER_PAIN_SHORT);
-        }
-
         if ($this->health <= 0) {
             $this->die($attackerTeeIndex, $weapon);
+
+            return;
+        }
+
+        if ($hasDamage) {
+            $this->createSound($damage > 2 ? GameConstants::SOUND_PLAYER_PAIN_LONG : GameConstants::SOUND_PLAYER_PAIN_SHORT);
+            $this->setEmote(GameConstants::EMOTE_PAIN, $this->world->getCurrentTick() + intdiv(NetworkParams::TICKS_PER_SECOND, 2));
         }
     }
 

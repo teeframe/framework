@@ -381,9 +381,9 @@ test('map download requests after a transfer serve the destination map', functio
     expect($chunks)->toHaveCount(2);
 
     expect($chunks[0]->crc)->toBe($map->getCrc());
-    expect($chunks[0]->data)->toBe(array_slice($map->getRawData(), 0, 896));
+    expect(pack('C*', ...$chunks[0]->data))->toBe(substr($map->getRawData(), 0, 896));
     expect($chunks[1]->last)->toBe(1);
-    expect($chunks[1]->data)->toBe(array_slice($map->getRawData(), $lastChunk * 896));
+    expect(pack('C*', ...$chunks[1]->data))->toBe(substr($map->getRawData(), $lastChunk * 896));
     expect($chunks[1]->chunkSize)->toBe($map->getSize() - $lastChunk * 896);
 });
 
@@ -723,9 +723,9 @@ test('a passed map vote reloads only its world and restarts map loading without 
     $downloads = array_values(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapDataChunk));
     expect($downloads)->toHaveCount(2);
     expect($downloads[0]->crc)->toBe($map->getCrc());
-    expect($downloads[0]->data)->toBe(array_slice($map->getRawData(), 0, 896));
+    expect(pack('C*', ...$downloads[0]->data))->toBe(substr($map->getRawData(), 0, 896));
     expect($downloads[1]->last)->toBe(1);
-    expect($downloads[1]->data)->toBe(array_slice($map->getRawData(), $lastChunk * 896));
+    expect(pack('C*', ...$downloads[1]->data))->toBe(substr($map->getRawData(), $lastChunk * 896));
 
     $server->send($slot, worldTransferInput(2000), new EnterGameChunk);
     expect($slot->state)->toBe(ConnectionSlot::STATE_LOADING);

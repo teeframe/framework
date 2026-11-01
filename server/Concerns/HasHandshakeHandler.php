@@ -130,7 +130,7 @@ trait HasHandshakeHandler
             $last      = 1;
         }
 
-        $data = array_slice($mapData, $offset, $chunkSize);
+        $data = array_values(unpack('C*', substr($mapData, $offset, $chunkSize)) ?: []);
 
         $connection->chunks()->add(
             new MapDataChunk($last, $mapCrc, $chunk->chunk, $chunkSize, $data)
