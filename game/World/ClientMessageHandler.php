@@ -5,6 +5,7 @@ namespace TeeFrame\Game\World;
 use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\CommandLine;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -64,15 +65,36 @@ class ClientMessageHandler
             $tee->lastChatTick = $currentTick;
         }
 
-        foreach ($this->world->getCommands() as $command) {
-            if (! ($command->getType() & AbstractCommand::TYPE_CHAT)) {
-                continue;
-            }
-            if (preg_match($command->getPattern(), $message, $matches)) {
-                $command->execute($this->world, $tee, $matches);
+        if (str_starts_with($message, '/')) {
+            foreach ($this->world->getCommands() as $command) {
+                if (! ($command->getType() & AbstractCommand::TYPE_CHAT)) {
+                    continue;
+                }
+                try {
+                    $arguments = CommandLine::match($command, substr($message, 1));
+                } catch (\InvalidArgumentException) {
+                    $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvChatChunk(
+                        team: 0,
+                        clientId: -1,
+                        text: 'Usage: /'.$command->getName().($command->getParams() !== '' ? ' '.$command->getParams() : ''),
+                    ));
 
-                return;
+                    return;
+                }
+                if ($arguments !== null) {
+                    $command->execute($this->world, $tee, $arguments);
+
+                    return;
+                }
             }
+
+            $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: 'Command not found',
+            ));
+
+            return;
         }
 
         $chat = new SvChatChunk(

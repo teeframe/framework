@@ -112,13 +112,13 @@ class WorldHelpersTestServer extends AbstractServerInstance
 
 class WorldHelpersTestVoteCommand extends AbstractCommand
 {
-    /** @var list<array{world: AbstractWorld, tee: AbstractTee, matches: string[]}> */
+    /** @var list<array{world: AbstractWorld, tee: AbstractTee, arguments: list<string>}> */
     public array $executions = [];
 
     public function __construct(
         protected string $name = 'record_vote',
         protected string $description = 'Recorded vote',
-        protected int $type = self::TYPE_VOTE,
+        protected int $type = self::TYPE_SERVER,
     ) {}
 
     public function getName(): string
@@ -136,11 +136,28 @@ class WorldHelpersTestVoteCommand extends AbstractCommand
         return $this->type;
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
+    public function getParams(): string
     {
-        $this->executions[] = ['world' => $world, 'tee' => $tee, 'matches' => $matches];
+        return '';
+    }
+
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    {
+        $this->executions[] = ['world' => $world, 'tee' => $tee, 'arguments' => $arguments];
     }
 }
+
+test('worlds register framework chat and server commands once without adding vote menu presets', function () {
+    $server   = new WorldHelpersTestServer;
+    $world    = $server->addWorld();
+    $commands = $world->getCommands();
+
+    expect(array_map(fn (AbstractCommand $command): string => $command->getName(), $commands))
+        ->toBe(['whisper', 'ping', 'change_map', 'change_gamemode', 'reload']);
+    expect(array_map(fn (AbstractCommand $command): int => $command->getType(), $commands))
+        ->toBe([AbstractCommand::TYPE_CHAT, AbstractCommand::TYPE_CHAT, AbstractCommand::TYPE_SERVER, AbstractCommand::TYPE_SERVER, AbstractCommand::TYPE_SERVER]);
+    expect($world->getVoteController()->getVoteChunks(new PlayerTee))->toBeEmpty();
+});
 
 test('empty worlds have no lookup results or broadcast recipients', function () {
     $server = new WorldHelpersTestServer;
@@ -314,7 +331,7 @@ test('registered vote commands execute as the actual caller even without tee ind
     $votes->tick($world);
 
     expect($command->executions)->toBe([
-        ['world' => $world, 'tee' => $caller->playerTee(), 'matches' => []],
+        ['world' => $world, 'tee' => $caller->playerTee(), 'arguments' => []],
     ]);
     expect($otherCommand->executions)->toBeEmpty();
     expect(array_column($server->socket->sent, 'port'))->not->toContain(8400);
@@ -462,6 +479,6 @@ test('creator disconnects cancel execution and the next vote uses its own caller
     $votes->vote($world, $replacement, 1);
     $votes->tick($world);
     expect($command->executions)->toBe([
-        ['world' => $world, 'tee' => $first, 'matches' => []],
+        ['world' => $world, 'tee' => $first, 'arguments' => []],
     ]);
 });

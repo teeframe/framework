@@ -48,9 +48,8 @@ class NetworkMessages
     const PING       = 22;
     const PING_REPLY = 23;
 
-    // sent by server (todo: move it up)
-    // const RCON_CMD_ADD = 25;
-    // const RCON_CMD_REM = 26;
+    const RCON_CMD_ADD     = 25;
+    const RCON_CMD_REM     = 26;
 
     /*
      * Game Messages

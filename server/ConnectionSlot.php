@@ -7,15 +7,19 @@ use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\InputTimingChunk;
 use TeeFrame\Network\Chunks\System\MapChangeChunk;
+use TeeFrame\Network\Chunks\System\RconAuthChunk;
+use TeeFrame\Network\Chunks\System\RconCmdChunk;
 use TeeFrame\Network\Chunks\UnsupportedChunk;
 use TeeFrame\Network\Connection\AbstractConnection;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
+use TeeFrame\Server\Rcon\RconSession;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 class ConnectionSlot extends AbstractConnection
@@ -28,6 +32,8 @@ class ConnectionSlot extends AbstractConnection
     const STATE_CLOSED       = 5;
 
     protected PlayerTee $playerTee;
+
+    protected RconSession $rconSession;
 
     public int $state;
     public bool $readyToEnter;
@@ -48,6 +54,7 @@ class ConnectionSlot extends AbstractConnection
     {
         parent::reset();
 
+        $this->rconSession  = new RconSession;
         $this->playerTee    = new PlayerTee;
         $this->state        = static::STATE_WAITING_INIT;
         $this->readyToEnter = false;
@@ -59,6 +66,22 @@ class ConnectionSlot extends AbstractConnection
     public function playerTee(): PlayerTee
     {
         return $this->playerTee;
+    }
+
+    public function rcon(): RconSession
+    {
+        return $this->rconSession;
+    }
+
+    public function handleRconChunk(AbstractChunk $chunk): bool
+    {
+        if (! $chunk instanceof RconAuthChunk && ! $chunk instanceof RconCmdChunk) {
+            return false;
+        }
+
+        $this->world()->getServer()->getRcon()->handle($this, $chunk);
+
+        return true;
     }
 
     public function world(): AbstractWorld
@@ -164,6 +187,14 @@ class ConnectionSlot extends AbstractConnection
     protected function handleDefaultPacket(): bool
     {
         foreach ($this->getReceivedChunks() as $chunk) {
+            if ($this->handleRconChunk($chunk)) {
+                if ($this->state !== static::STATE_INGAME) {
+                    break;
+                }
+
+                continue;
+            }
+
             // GameServer()->OnMessage
             if (! $chunk->isSystem()) {
                 $this->world()->onMessage($this->playerTee(), $chunk);
@@ -218,10 +249,6 @@ class ConnectionSlot extends AbstractConnection
 
             // NOTE: NETMSG_PING chunk is only sent manually by the client
             // Therefore, is not implemented here
-
-            // TODO: Implement NETMSG_RCON_CMD
-
-            // TODO: Implement NETMSG_RCON_AUTH
         }
 
         return true;

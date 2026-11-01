@@ -3,9 +3,10 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\ChangeGameModeCommand;
-use TeeFrame\Game\Commands\ChangeMapCommand;
-use TeeFrame\Game\Commands\ReloadCommand;
+use TeeFrame\Game\Commands\CommandLine;
+use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
+use TeeFrame\Game\Commands\Server\ChangeMapCommand;
+use TeeFrame\Game\Commands\Server\ReloadCommand;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
@@ -54,9 +55,9 @@ test('map reload replaces entities spawns flags and round state while preserving
     $votes           = $world->getVoteController();
     $tuning          = $world->getTuneController();
     $tuning->gravity = 30;
-    $command         = new ChangeMapCommand('dm1');
+    $command         = new ChangeMapCommand;
     $world->registerCommand($command);
-    $votes->addVoteOption($command->getDescription(), $command->getCommand());
+    $votes->addVoteOption('Change map to dm1', 'change_map dm1');
     $oldMap      = $world->getMap();
     $oldEntities = $world->getEntities();
     $oldPool     = (new ReflectionClass($world))->getProperty('snapIdPool')->getValue($world);
@@ -211,16 +212,16 @@ test('a plain reload re-reads the current map file and a failed reload keeps the
     }
 });
 
-test('reload commands are vote-only and expose the reload vote option', function () {
+test('reload server commands expose the reload vote option', function () {
     $command = new ReloadCommand;
 
     expect($command->getName())->toBe('reload');
     expect($command->getCommand())->toBe('reload');
     expect($command->getDescription())->toBe('Reload');
-    expect($command->getType())->toBe(AbstractCommand::TYPE_VOTE);
+    expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
 });
 
-test('map commands handle malformed map data without resetting the running world', function (AbstractCommand $command, string $message) {
+test('map commands handle malformed map data without resetting the running world', function (AbstractCommand $command, string $line, string $message) {
     $directory = sys_get_temp_dir().'/teeframe-map-exception-'.bin2hex(random_bytes(8));
     mkdir($directory);
     $path = $directory.'/current.map';
@@ -235,7 +236,10 @@ test('map commands handle malformed map data without resetting the running world
         recordingServer($world)->clear();
         file_put_contents($path, 'invalid map');
 
-        $command->execute($world, $tee, []);
+        $arguments = CommandLine::match($command, $line);
+        expect($arguments)->not->toBeNull();
+        assert($arguments !== null);
+        $command->execute($world, $tee, $arguments);
         $world->doTick();
 
         expect($world->getMap())->toBe($map);
@@ -248,9 +252,9 @@ test('map commands handle malformed map data without resetting the running world
         rmdir($directory);
     }
 })->with([
-    'map change'      => [new ChangeMapCommand('current'), 'Unable to change map to current'],
-    'gamemode change' => [new ChangeGameModeCommand('ctf', mapName: 'current'), 'Unable to change gamemode to CTF'],
-    'reload'          => [new ReloadCommand, 'Unable to reload world'],
+    'map change'      => [new ChangeMapCommand, 'change_map current', 'Unable to change map to current'],
+    'gamemode change' => [new ChangeGameModeCommand, 'change_gamemode ctf current', 'Unable to change gamemode to CTF'],
+    'reload'          => [new ReloadCommand, 'reload', 'Unable to reload world'],
 ]);
 
 test('reload commands report a missing map without resetting the running world', function () {

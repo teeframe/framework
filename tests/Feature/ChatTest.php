@@ -1,7 +1,8 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
-use TeeFrame\Game\Commands\WhisperCommand;
+use TeeFrame\Game\Commands\Chat\WhisperCommand;
+use TeeFrame\Game\Commands\CommandLine;
 use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
@@ -244,7 +245,7 @@ test('WhisperCommand finds target by name case-insensitively', function () use (
     $prop->setValue($world, [$from, $target]);
 
     $command = new WhisperCommand;
-    $command->execute($world, $from, ['', '', 'targetplayer', 'secret']);
+    $command->execute($world, $from, ['targetplayer', 'secret']);
 
     expect(recordingServer($world)->sentTeeIndexes)->toBe([1, 0]);
 });
@@ -339,54 +340,54 @@ test('WhisperCommand notifies sender when target not found', function () use ($m
     $prop->setValue($world, [$from]);
 
     $command = new WhisperCommand;
-    $command->execute($world, $from, ['', '', 'NonExistent', 'secret']);
+    $command->execute($world, $from, ['NonExistent', 'secret']);
 
     expect(recordingServer($world)->sentTeeIndexes)->toBe([0]);
 });
 
-test('whisper regex parses quoted name with spaces', function () {
-    $message = '/w "[D] abidi" hello';
+test('whisper parameters parse names and messages through both command names', function (string $line, array $arguments) {
+    expect(CommandLine::match(new WhisperCommand, $line))->toBe($arguments);
+})->with([
+    ['w "[D] abidi" hello', ['[D] abidi', 'hello']],
+    ['w PlayerName hello world', ['PlayerName', 'hello world']],
+    ['WHISPER "Someone" secret message here', ['Someone', 'secret message here']],
+]);
 
-    preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches);
-    assert(isset($matches[1], $matches[2], $matches[3]));
-
-    $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
-    $whisperMsg = $matches[3];
-
-    expect($targetName)->toBe('[D] abidi');
-    expect($whisperMsg)->toBe('hello');
+test('regular chat is not matched as a whisper command', function () {
+    expect(CommandLine::match(new WhisperCommand, 'hello everyone'))->toBeNull();
 });
 
-test('whisper regex parses unquoted single-word name', function () {
-    $message = '/w PlayerName hello world';
+test('unknown chat commands receive a private error instead of being broadcast', function (string $message, bool $teamChat) {
+    $world  = createWorld(new Map);
+    $sender = new PlayerTee;
+    $other  = new PlayerTee;
+    $world->addTee($other);
+    $world->addTee($sender);
+    recordingServer($world)->clear();
 
-    preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches);
-    assert(isset($matches[1], $matches[2], $matches[3]));
+    $world->onMessage($sender, new ClSayChunk($teamChat, $message));
 
-    $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
-    $whisperMsg = $matches[3];
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([$sender->teeIndex]);
+    $chunk = recordingServer($world)->sentChunks[0];
+    assert($chunk instanceof SvChatChunk);
+    expect($chunk->team)->toBe(0);
+    expect($chunk->clientId)->toBe(-1);
+    expect($chunk->text)->toBe('Command not found');
+})->with(['/unknown private text', '/', '/change_map dm1', '/reload'])->with([false, true]);
 
-    expect($targetName)->toBe('PlayerName');
-    expect($whisperMsg)->toBe('hello world');
-});
+test('invalid chat commands receive private usage errors instead of broadcasting their arguments', function (string $message) {
+    $world  = createWorld(new Map);
+    $sender = new PlayerTee;
+    $other  = new PlayerTee;
+    $world->addTee($sender);
+    $world->addTee($other);
+    recordingServer($world)->clear();
 
-test('/whisper command works with quoted name', function () {
-    $message = '/whisper "Someone" secret message here';
+    $world->onMessage($sender, new ClSayChunk(false, $message));
 
-    preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches);
-    assert(isset($matches[1], $matches[2], $matches[3]));
-
-    $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
-    $whisperMsg = $matches[3];
-
-    expect($targetName)->toBe('Someone');
-    expect($whisperMsg)->toBe('secret message here');
-});
-
-test('regular chat without slash is not matched as whisper', function () {
-    $message = 'hello everyone';
-
-    $isWhisper = preg_match('/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s', $message, $matches);
-
-    expect($isWhisper)->toBe(0);
-});
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([$sender->teeIndex]);
+    $chunk = recordingServer($world)->sentChunks[0];
+    assert($chunk instanceof SvChatChunk);
+    expect($chunk->text)->toStartWith('Usage: /');
+    expect($chunk->text)->not->toContain('private text');
+})->with(['/w Receiver', '/w "Receiver', '/whisper Receiver "private text" extra', '/ping extra']);

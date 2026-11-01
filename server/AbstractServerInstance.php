@@ -15,6 +15,7 @@ use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Server\Ban\BanList;
 use TeeFrame\Server\Master\MasterServer;
+use TeeFrame\Server\Rcon\Rcon;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 abstract class AbstractServerInstance
@@ -33,6 +34,8 @@ abstract class AbstractServerInstance
 
     protected BanList $banList;
 
+    protected Rcon $rcon;
+
     protected ?MasterServer $masterServer = null;
 
     protected int|false $tickTimer = false;
@@ -45,14 +48,29 @@ abstract class AbstractServerInstance
         protected string $password = '',
         protected int $kickBanDuration = 600,
         protected bool $registerOnMasterServer = false,
+        #[\SensitiveParameter] string $rconPassword = '',
+        int $rconMaxTries = 10,
+        int $rconBanDuration = 300,
     ) {
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
         $this->banList           = new BanList;
+        $this->rcon              = new Rcon($this->connectionHandler, $this->banList, $rconPassword, $rconMaxTries, $rconBanDuration);
     }
 
     abstract protected function boot(): void;
 
     abstract protected function selectWorldForNewConnection(): AbstractWorld;
+
+    public function getRcon(): Rcon
+    {
+        return $this->rcon;
+    }
+
+    /** @return AbstractWorld[] */
+    public function getWorlds(): array
+    {
+        return $this->worlds;
+    }
 
     public function start(): void
     {
@@ -111,6 +129,7 @@ abstract class AbstractServerInstance
             $socket->on('workerExit', function (): void {
                 $this->shuttingDown = true;
                 $this->stopTicking();
+                $this->rcon->stop();
             });
 
             $socket->on('workerStop', function () use ($socket): void {
@@ -130,6 +149,8 @@ abstract class AbstractServerInstance
         $this->shuttingDown = true;
         $this->stopTicking();
         Console::info('Shutting down server "'.$this->name.'"');
+        $this->rcon->update();
+        $this->rcon->stop();
 
         $shutdown = function (): void {
             $this->masterServer?->shutdown();
@@ -179,6 +200,7 @@ abstract class AbstractServerInstance
 
         $this->tickHandler->startTick();
         $this->connectionHandler->update();
+        $this->rcon->update();
 
         foreach ($this->worlds as $world) {
             $world->doTick();

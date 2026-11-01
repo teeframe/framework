@@ -16,6 +16,19 @@ class BanList
         );
     }
 
+    public function unban(string $address): void
+    {
+        unset($this->bans[$address]);
+    }
+
+    /** @return array<string, Ban> */
+    public function getBans(): array
+    {
+        $this->cleanup();
+
+        return $this->bans;
+    }
+
     public function isBanned(string $address): bool
     {
         $this->cleanup();

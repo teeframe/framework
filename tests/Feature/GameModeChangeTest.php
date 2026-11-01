@@ -3,7 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\ChangeGameModeCommand;
+use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -28,13 +28,13 @@ function createGameModeChangeWorld(): TestPvpWorldWithController
     return new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12);
 }
 
-test('gamemode commands are vote-only and identify their target mode consistently', function () {
-    $command = new ChangeGameModeCommand('CtF');
+test('gamemode commands register the command name separately from runtime parameters', function () {
+    $command = new ChangeGameModeCommand;
 
-    expect($command->getType())->toBe(AbstractCommand::TYPE_VOTE);
-    expect($command->getName())->toBe('change_gamemode ctf');
-    expect($command->getCommand())->toBe('change_gamemode ctf');
-    expect($command->getDescription())->toBe('Change gamemode to CTF');
+    expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
+    expect($command->getName())->toBe('change_gamemode');
+    expect($command->getDescription())->toBe('Change gamemode');
+    expect($command->getParams())->toBe('s[mode] ?s[map] ?r[reason]');
 });
 
 test('gamemode changes are deferred and rebuild round and flag state without replacing the map or configuration', function () {
@@ -43,9 +43,9 @@ test('gamemode changes are deferred and rebuild round and flag state without rep
     $votes           = $world->getVoteController();
     $tuning          = $world->getTuneController();
     $tuning->gravity = 30;
-    $command         = new ChangeGameModeCommand('ctf');
+    $command         = new ChangeGameModeCommand;
     $world->registerCommand($command);
-    $votes->addVoteOption($command->getDescription(), $command->getCommand());
+    $votes->addVoteOption('Change gamemode to CTF', 'change_gamemode ctf');
 
     foreach (['ctf', 'tdm', 'dm', 'CTF'] as $mode) {
         $oldController = $world->getGameController();

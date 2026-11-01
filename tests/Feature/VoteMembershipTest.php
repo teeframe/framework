@@ -23,10 +23,15 @@ class MembershipVoteCommand extends AbstractCommand
 
     public function getType(): int
     {
-        return self::TYPE_VOTE;
+        return self::TYPE_SERVER;
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
+    public function getParams(): string
+    {
+        return '';
+    }
+
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
     {
         $this->executions++;
     }

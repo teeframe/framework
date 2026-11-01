@@ -1,30 +1,37 @@
 <?php
 
-namespace TeeFrame\Game\Commands;
+namespace TeeFrame\Game\Commands\Chat;
 
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 
 class WhisperCommand extends AbstractCommand
 {
+    public function getType(): int
+    {
+        return self::TYPE_CHAT;
+    }
+
     public function getName(): string
     {
         return 'whisper';
     }
 
-    public function getPattern(): string
+    public function getParams(): string
     {
-        return '/^\/(?:w|whisper)\s+(?:"([^"]+)"|(\S+))\s+(.+)$/s';
+        return 's[player] r[message]';
     }
 
-    /**
-     * @param  string[]  $matches
-     */
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
+    public function getAliases(): array
     {
-        $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
-        $whisperMsg = $matches[3];
+        return ['w'];
+    }
+
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    {
+        [$targetName, $whisperMsg] = $arguments;
 
         $candidates = array_filter(
             $world->getTees(),

@@ -7,26 +7,21 @@ use TeeFrame\Game\Tees\AbstractTee;
 
 abstract class AbstractCommand
 {
-    public const TYPE_CHAT = 1;
-    public const TYPE_VOTE = 2;
+    public const TYPE_CHAT   = 1;
+    public const TYPE_SERVER = 2;
+
+    /** Bitmask of TYPE_CHAT and/or TYPE_SERVER (passed votes and authenticated RCON) */
+    abstract public function getType(): int;
 
     abstract public function getName(): string;
 
-    /**
-     * Default pattern: matches "/<command>" case-insensitively.
-     * Override for commands with arguments.
-     */
-    public function getPattern(): string
-    {
-        return '/^\/'.preg_quote($this->getName(), '/').'$/i';
-    }
+    /** s: string, r: remaining text, i: integer, f: float; ? makes the remaining parameters optional. */
+    abstract public function getParams(): string;
 
-    /**
-     * Bitmask of TYPE_CHAT and/or TYPE_VOTE.
-     */
-    public function getType(): int
+    /** @return list<string> */
+    public function getAliases(): array
     {
-        return self::TYPE_CHAT;
+        return [];
     }
 
     /**
@@ -40,16 +35,14 @@ abstract class AbstractCommand
     }
 
     /**
-     * The command string used to identify this command when a vote passes.
-     * Defaults to the command name.
+     * Default invocation for argument-free vote options.
+     * Options with arguments supply their command string when registered.
      */
     public function getCommand(): string
     {
         return $this->getName();
     }
 
-    /**
-     * @param  string[]  $matches
-     */
-    abstract public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void;
+    /** @param list<string> $arguments */
+    abstract public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void;
 }

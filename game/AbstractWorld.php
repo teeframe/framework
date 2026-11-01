@@ -7,8 +7,11 @@ use TeeFrame\Core\TickableObject;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Core\Utf8;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\PingCommand;
-use TeeFrame\Game\Commands\WhisperCommand;
+use TeeFrame\Game\Commands\Chat\PingCommand;
+use TeeFrame\Game\Commands\Chat\WhisperCommand;
+use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
+use TeeFrame\Game\Commands\Server\ChangeMapCommand;
+use TeeFrame\Game\Commands\Server\ReloadCommand;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -107,8 +110,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected function bootCommands(): void
     {
+        // Chat
         $this->registerCommand(new WhisperCommand);
         $this->registerCommand(new PingCommand);
+
+        // Server
+        $this->registerCommand(new ChangeMapCommand);
+        $this->registerCommand(new ChangeGameModeCommand);
+        $this->registerCommand(new ReloadCommand);
     }
 
     public function registerCommand(AbstractCommand $command): void

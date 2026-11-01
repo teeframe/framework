@@ -30,6 +30,12 @@ use TeeFrame\Network\Chunks\System\EnterGameChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
 use TeeFrame\Network\Chunks\System\InputChunk;
 use TeeFrame\Network\Chunks\System\MapChangeChunk;
+use TeeFrame\Network\Chunks\System\RconAuthChunk;
+use TeeFrame\Network\Chunks\System\RconAuthStatusChunk;
+use TeeFrame\Network\Chunks\System\RconCmdAddChunk;
+use TeeFrame\Network\Chunks\System\RconCmdChunk;
+use TeeFrame\Network\Chunks\System\RconCmdRemChunk;
+use TeeFrame\Network\Chunks\System\RconLineChunk;
 use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
 use TeeFrame\Network\Chunks\System\SnapEmptyChunk;
@@ -161,8 +167,12 @@ class PacketDecoder
                 NetworkMessages::SNAPEMPTY  => SnapEmptyChunk::class,
                 NetworkMessages::SNAPSINGLE => SnapSingleChunk::class,
                 // NetworkMessages::INPUTTIMING => ,
-                // NetworkMessages::RCON_AUTH_STATUS => ,
-                // NetworkMessages::RCON_LINE => ,
+                NetworkMessages::RCON_AUTH_STATUS => RconAuthStatusChunk::class,
+                NetworkMessages::RCON_LINE        => RconLineChunk::class,
+                NetworkMessages::RCON_CMD         => RconCmdChunk::class,
+                NetworkMessages::RCON_AUTH        => RconAuthChunk::class,
+                NetworkMessages::RCON_CMD_ADD     => RconCmdAddChunk::class,
+                NetworkMessages::RCON_CMD_REM     => RconCmdRemChunk::class,
                 NetworkMessages::READY            => ReadyChunk::class,
                 NetworkMessages::ENTERGAME        => EnterGameChunk::class,
                 NetworkMessages::INPUT            => InputChunk::class,

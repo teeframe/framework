@@ -3,9 +3,9 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\ChangeGameModeCommand;
-use TeeFrame\Game\Commands\ChangeMapCommand;
-use TeeFrame\Game\Commands\ReloadCommand;
+use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
+use TeeFrame\Game\Commands\Server\ChangeMapCommand;
+use TeeFrame\Game\Commands\Server\ReloadCommand;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
@@ -94,12 +94,22 @@ class WorldTransferTestCommand extends AbstractCommand
 {
     public function __construct(private AbstractWorld $destination) {}
 
+    public function getType(): int
+    {
+        return self::TYPE_CHAT;
+    }
+
     public function getName(): string
     {
         return strtolower($this->destination->getGameController()->getGameType());
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
+    public function getParams(): string
+    {
+        return '';
+    }
+
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
     {
         $world->getServer()->changeWorld($tee, $this->destination);
     }
@@ -695,10 +705,10 @@ test('a passed map vote reloads only its world and restarts map loading without 
     $otherTee->score        = 20;
     $otherMap               = $server->ctf->getMap();
     $otherFlags             = $server->ctf->getGameController()->getFlags();
-    $command                = new ChangeMapCommand($mapName, 'A different arena');
-    $server->dm->registerCommand($command);
-    $server->dm->getVoteController()->addVoteOption($command->getDescription(), $command->getCommand());
-    $server->send($slot, new ClCallVoteChunk('option', $command->getDescription(), ''));
+    $server->dm->registerCommand(new ChangeMapCommand);
+    $description = 'Change map to '.$mapName;
+    $server->dm->getVoteController()->addVoteOption($description, 'change_map '.$mapName.' "A different arena"');
+    $server->send($slot, new ClCallVoteChunk('option', $description, ''));
     expect($server->dm->getVoteController()->isVoteRunning())->toBeTrue();
     $sequence                = $slot->sequence;
     $ack                     = $slot->ack;
@@ -832,9 +842,9 @@ test('a failed map vote reports the load failure and leaves players on the curre
     $tee       = $slot->playerTee();
     $character = $tee->character;
     $map       = $server->dm->getMap();
-    $command   = new ChangeMapCommand('missing-map');
-    $server->dm->registerCommand($command);
-    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), ''));
+    $server->dm->registerCommand(new ChangeMapCommand);
+    $server->dm->getVoteController()->addVoteOption('Missing map', 'change_map missing-map');
+    $server->send($slot, new ClCallVoteChunk('option', 'Missing map', ''));
     $server->socket->packets = [];
     $server->advance();
 
@@ -854,7 +864,7 @@ test('chat cannot execute a vote-only map command', function () {
     $slot   = $server->connect();
     $server->enter($slot);
     $map = $server->dm->getMap();
-    $server->dm->registerCommand(new ChangeMapCommand('ctf1'));
+    $server->dm->registerCommand(new ChangeMapCommand);
     $server->socket->packets = [];
     $server->send($slot, new ClSayChunk(false, '/change_map ctf1'));
     $server->advance();
@@ -880,16 +890,16 @@ test('gamemode votes reset only their world and players rejoin with the new team
     $otherController = $server->ctf->getGameController();
     $otherFlags      = $otherController->getFlags();
 
+    $server->dm->registerCommand(new ChangeGameModeCommand);
     foreach (['ctf', 'tdm', 'dm'] as $mode) {
-        $command = new ChangeGameModeCommand($mode, reason: 'Try another mode', mapName: $mode === 'ctf' ? 'ctf1' : null);
-        $server->dm->registerCommand($command);
-        $server->dm->getVoteController()->addVoteOption($command->getDescription(), $command->getCommand());
+        $description = 'Change gamemode to '.strtoupper($mode);
+        $server->dm->getVoteController()->addVoteOption($description, 'change_gamemode '.$mode.($mode === 'ctf' ? ' ctf1' : ' ""').' "Try another mode"');
         $oldTee               = $first->playerTee();
         $oldCharacter         = $oldTee->character;
         $oldTee->score        = 15;
         $oldTee->inputs[2000] = input(['direction' => 1]);
         $oldController        = $server->dm->getGameController();
-        $server->send($first, new ClCallVoteChunk('option', $command->getDescription(), ''));
+        $server->send($first, new ClCallVoteChunk('option', $description, ''));
         $server->send($second, new ClVoteChunk(1));
         $sequence                = $first->sequence;
         $ack                     = $first->ack;
@@ -972,9 +982,9 @@ test('failed gamemode votes keep the active match and report the failure', funct
     $character  = $tee->character;
     $map        = $server->dm->getMap();
     $controller = $server->dm->getGameController();
-    $command    = new ChangeGameModeCommand($mode, mapName: $mapName);
-    $server->dm->registerCommand($command);
-    $server->send($slot, new ClCallVoteChunk('option', $command->getCommand(), ''));
+    $server->dm->registerCommand(new ChangeGameModeCommand);
+    $server->dm->getVoteController()->addVoteOption('Invalid gamemode', 'change_gamemode '.$mode.($mapName !== null ? ' '.$mapName : ''));
+    $server->send($slot, new ClCallVoteChunk('option', 'Invalid gamemode', ''));
     $server->socket->packets = [];
     $server->advance();
 
@@ -999,7 +1009,7 @@ test('chat cannot execute a vote-only gamemode command', function () {
     $slot   = $server->connect();
     $server->enter($slot);
     $controller = $server->dm->getGameController();
-    $server->dm->registerCommand(new ChangeGameModeCommand('ctf', mapName: 'ctf1'));
+    $server->dm->registerCommand(new ChangeGameModeCommand);
     $server->socket->packets = [];
     $server->send($slot, new ClSayChunk(false, '/change_gamemode ctf'));
     $server->advance();

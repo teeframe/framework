@@ -3,7 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\ChangeMapCommand;
+use TeeFrame\Game\Commands\Server\ChangeMapCommand;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -260,10 +260,15 @@ test('votes resolve at the Teeworlds 0.6 integer thresholds', function (int $tot
 
         public function getType(): int
         {
-            return self::TYPE_VOTE;
+            return self::TYPE_SERVER;
         }
 
-        public function execute(AbstractWorld $world, AbstractTee $tee, array $matches): void
+        public function getParams(): string
+        {
+            return '';
+        }
+
+        public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
         {
             $this->executions++;
         }
@@ -691,13 +696,13 @@ test('spectate vote kills the target character when it passes', function () use 
     expect($tee2->character)->toBeNull();
 });
 
-test('ChangeMapCommand is vote-only', function () {
-    $command = new ChangeMapCommand('dm1');
+test('ChangeMapCommand is a server command', function () {
+    $command = new ChangeMapCommand;
 
-    expect($command->getType())->toBe(AbstractCommand::TYPE_VOTE);
-    expect($command->getName())->toBe('change_map dm1');
-    expect($command->getDescription())->toBe('Change map to dm1');
-    expect($command->getCommand())->toBe('change_map dm1');
+    expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
+    expect($command->getName())->toBe('change_map');
+    expect($command->getDescription())->toBe('Change map');
+    expect($command->getParams())->toBe('s[name] ?r[reason]');
 });
 
 test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists) {
@@ -710,7 +715,8 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
     $world       = createVoteWorld($map, $tickHandler);
 
     // Register the ChangeMapCommand as a vote command
-    $world->registerCommand(new ChangeMapCommand('dm1'));
+    $world->registerCommand(new ChangeMapCommand);
+    $world->getVoteController()->addVoteOption('Change map to dm1', 'change_map dm1');
 
     $tee1       = new PlayerTee;
     $tee1->name = 'Caller';
@@ -720,10 +726,10 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
     $tee2->name = 'Voter2';
     $world->addTee($tee2);
 
-    // Start the vote using the command string
-    $world->onMessage($tee1, new ClCallVoteChunk('option', 'change_map dm1', ''));
+    // Start the vote using the configured menu option
+    $world->onMessage($tee1, new ClCallVoteChunk('option', 'Change map to dm1', ''));
 
-    // The vote description should match the command's description
+    // The vote description should match the menu option
     $runningVote = $world->getVoteController()->getRunningVote($world);
     assert($runningVote instanceof SvVoteSetChunk);
     expect($runningVote->description)->toBe('Change map to dm1');

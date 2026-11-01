@@ -125,6 +125,14 @@ class ConnectionHandler
         }
 
         foreach ($connection->getReceivedChunks() as $chunk) {
+            if ($connection->handleRconChunk($chunk)) {
+                if ($connection->state === ConnectionSlot::STATE_CLOSED) {
+                    return false;
+                }
+
+                continue;
+            }
+
             // Step 1
             if ($chunk instanceof InfoChunk && $connection->state === ConnectionSlot::STATE_CONNECTING) {
                 $connection->consoleInfo('player sent info');

@@ -5,6 +5,7 @@ namespace TeeFrame\Game\Vote;
 use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\CommandLine;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
@@ -113,6 +114,11 @@ class VoteController
         }
 
         $this->voteOptions[$key] = new VoteOption($description, $command);
+    }
+
+    public function getVoteOption(string $description): ?VoteOption
+    {
+        return $this->voteOptions[strtolower($description)] ?? null;
     }
 
     public function removeVoteOption(string $description): void
@@ -279,7 +285,7 @@ class VoteController
     protected function findVoteCommand(AbstractWorld $world, string $value, bool $matchDescription = false): ?AbstractCommand
     {
         foreach ($world->getCommands() as $command) {
-            if (! ($command->getType() & AbstractCommand::TYPE_VOTE)) {
+            if (! ($command->getType() & AbstractCommand::TYPE_SERVER) || $command->getParams() !== '') {
                 continue;
             }
 
@@ -289,6 +295,41 @@ class VoteController
         }
 
         return null;
+    }
+
+    /** @return non-empty-list<array{command: AbstractCommand, arguments: list<string>}>|null */
+    public function resolveCommands(AbstractWorld $world, string $line): ?array
+    {
+        try {
+            $parts = CommandLine::split($line);
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+
+        $commands = [];
+        foreach ($parts as $part) {
+            $resolved = null;
+            foreach ($world->getCommands() as $command) {
+                if (! ($command->getType() & AbstractCommand::TYPE_SERVER)) {
+                    continue;
+                }
+                try {
+                    $arguments = CommandLine::match($command, $part);
+                } catch (\InvalidArgumentException) {
+                    return null;
+                }
+                if ($arguments !== null) {
+                    $resolved = ['command' => $command, 'arguments' => $arguments];
+                    break;
+                }
+            }
+            if ($resolved === null) {
+                return null;
+            }
+            $commands[] = $resolved;
+        }
+
+        return $commands === [] ? null : $commands;
     }
 
     /**
@@ -446,7 +487,7 @@ class VoteController
 
     /**
      * Executes the vote command. Handles built-in commands (kick, set_team)
-     * directly, and dispatches to registered vote-type commands otherwise.
+     * directly, and dispatches to registered server commands otherwise.
      */
     protected function executeVoteCommand(AbstractWorld $world): void
     {
@@ -471,11 +512,16 @@ class VoteController
             return;
         }
 
-        $command = $this->findVoteCommand($world, $this->voteCommand);
-        $caller  = $world->findTee($this->voteCreator);
+        $commands = $this->resolveCommands($world, $this->voteCommand);
+        $caller   = $world->findTee($this->voteCreator);
 
-        if ($command !== null && $caller instanceof PlayerTee) {
-            $command->execute($world, $caller, []);
+        if ($commands !== null && $caller instanceof PlayerTee) {
+            foreach ($commands as $resolved) {
+                $resolved['command']->execute($world, $caller, $resolved['arguments']);
+                if ($world->findTee($caller->teeIndex) !== $caller) {
+                    break;
+                }
+            }
         }
     }
 
