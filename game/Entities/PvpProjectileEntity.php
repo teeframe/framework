@@ -25,7 +25,12 @@ class PvpProjectileEntity extends AbstractProjectileEntity
     public function doTick(): void
     {
         $currentTick = $this->world->getCurrentTick();
-        $tickSpeed   = NetworkParams::TICKS_PER_SECOND;
+        // Direct input can create a projectile before this tick's world update.
+        if ($currentTick <= $this->startTick) {
+            return;
+        }
+
+        $tickSpeed = NetworkParams::TICKS_PER_SECOND;
 
         $pt = ($currentTick - $this->startTick - 1) / $tickSpeed;
         $ct = ($currentTick - $this->startTick) / $tickSpeed;

@@ -14,6 +14,30 @@ use TeeFrame\Network\SnapItems\ObjEventExplosionItem;
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
 
+test('projectile movement and lifetime start after the creation tick', function (int $weapon) {
+    $clock      = new TickHandler(100);
+    $world      = new TestWorld($clock, new Map);
+    $projectile = new PvpProjectileEntity($world, new Vector2(128, 128), new Vector2(1, 0), $weapon);
+    $projectile->setTuning(2200.0, 0.0, 1);
+
+    $projectile->doTick();
+    $projectile->doTick();
+    expect($projectile->getPosition())->toEqual(new Vector2(128, 128));
+    expect($projectile->isToDestroy())->toBeFalse();
+    $explosions = array_filter($world->doSnap(new PlayerTee), fn ($item) => $item instanceof ObjEventExplosionItem);
+    expect($explosions)->toBeEmpty();
+
+    $clock->next();
+    $projectile->doTick();
+    expect($projectile->getPosition())->toEqual(new Vector2(172, 128));
+    expect($projectile->isToDestroy())->toBeFalse();
+
+    $clock->next();
+    $projectile->doTick();
+    expect($projectile->getPosition())->toEqual(new Vector2(216, 128));
+    expect($projectile->isToDestroy())->toBeTrue();
+})->with([GameConstants::WEAPON_GUN, GameConstants::WEAPON_SHOTGUN, GameConstants::WEAPON_GRENADE]);
+
 test('projectile survives full lifecycle', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
@@ -270,9 +294,9 @@ test('projectile snap uses start position not current position', function () use
 
 // --- Grenade explosion tests ---
 
-function createTestWorld(Map $map): AbstractWorld
+function createTestWorld(Map $map, TickHandler $tickHandler): AbstractWorld
 {
-    return new class(new TickHandler, $map) extends TestWorld
+    return new class($tickHandler, $map) extends TestWorld
     {
         public function doTick(): void {}
     };
@@ -283,8 +307,9 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
         throw new RuntimeException('Required map fixture is missing');
     }
 
-    $map   = new Map($mapPath);
-    $world = createTestWorld($map);
+    $map         = new Map($mapPath);
+    $tickHandler = new TickHandler;
+    $world       = createTestWorld($map, $tickHandler);
 
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
@@ -300,9 +325,10 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
         world: $world,
         owner: $ownerTee->teeIndex,
     );
-    $proj->setTuning(1000.0, 7.0, 0); // lifespan = 0, expires immediately
+    $proj->setTuning(1000.0, 7.0, 0); // lifespan = 0, expires on its first simulation tick
     $world->addEntity($proj);
 
+    $tickHandler->next();
     $proj->doTick();
 
     // Check that an explosion event was added
@@ -319,8 +345,9 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
         throw new RuntimeException('Required map fixture is missing');
     }
 
-    $map   = new Map($mapPath);
-    $world = createTestWorld($map);
+    $map         = new Map($mapPath);
+    $tickHandler = new TickHandler;
+    $world       = createTestWorld($map, $tickHandler);
 
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
@@ -349,6 +376,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
     $proj->setTuning(1000.0, 7.0, 0);
     $world->addEntity($proj);
 
+    $tickHandler->next();
     $proj->doTick();
 
     // Target at distance 50: l = 1 - (50-48)/(135-48) = 1 - 2/87 ≈ 0.977
@@ -362,8 +390,9 @@ test('grenade explosion does not damage character outside radius', function () u
         throw new RuntimeException('Required map fixture is missing');
     }
 
-    $map   = new Map($mapPath);
-    $world = createTestWorld($map);
+    $map         = new Map($mapPath);
+    $tickHandler = new TickHandler;
+    $world       = createTestWorld($map, $tickHandler);
 
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
@@ -390,7 +419,9 @@ test('grenade explosion does not damage character outside radius', function () u
     $proj->setTuning(1000.0, 7.0, 0);
     $world->addEntity($proj);
 
+    $tickHandler->next();
     $proj->doTick();
+    expect($proj->isToDestroy())->toBeTrue();
 
     // Target outside radius should not take damage
     expect($targetChar->health)->toBe(10);
@@ -401,8 +432,9 @@ test('non-grenade projectile does not create explosion event', function () use (
         throw new RuntimeException('Required map fixture is missing');
     }
 
-    $map   = new Map($mapPath);
-    $world = createTestWorld($map);
+    $map         = new Map($mapPath);
+    $tickHandler = new TickHandler;
+    $world       = createTestWorld($map, $tickHandler);
 
     $ownerTee = new PlayerTee;
     $world->addTee($ownerTee);
@@ -422,7 +454,9 @@ test('non-grenade projectile does not create explosion event', function () use (
     $proj->setTuning(2200.0, 1.25, 0);
     $world->addEntity($proj);
 
+    $tickHandler->next();
     $proj->doTick();
+    expect($proj->isToDestroy())->toBeTrue();
 
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
@@ -535,7 +569,6 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
         throw new RuntimeException('Required map fixture has no entities');
     }
 
-    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Owner character at spawn
@@ -571,6 +604,7 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
 
     // Tick until projectile hits something or expires
     for ($i = 0; $i < 50; $i++) {
+        $tickHandler->next();
         $proj->doTick();
         if ($proj->isToDestroy()) {
             break;
@@ -607,7 +641,6 @@ test('projectile does not collide with owner character', function () use ($mapPa
         throw new RuntimeException('Required map fixture has no entities');
     }
 
-    $world    = createWorld($map);
     $spawnPos = new Vector2($entities[0]['x'], $entities[0]['y']);
 
     // Owner character at spawn position

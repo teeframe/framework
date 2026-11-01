@@ -513,16 +513,17 @@ test('enter game requires start information and ignores repeated initialization'
     $server->receive(new DefaultPacket([
         (new ClStartInfoChunk(str_repeat('n', 1000), '', 0, 'default', false, 0, 0))->setSequence(4),
     ], ack: $slot->sequence));
-    expect($slot->playerTee()->name)->toBe(str_repeat('n', 15));
+    expect($slot->playerTee()->name)->toBe(str_repeat('n', 1000));
     $server->socket->packets = [];
     $server->receive(new DefaultPacket([
         (new ClStartInfoChunk('Changed', '', 0, 'default', false, 0, 0))->setSequence(5),
     ], ack: $slot->sequence));
     expect($server->socket->packets)->toBeEmpty();
-    expect($slot->playerTee()->name)->toBe(str_repeat('n', 15));
+    expect($slot->playerTee()->name)->toBe(str_repeat('n', 1000));
 
     $server->receive(new DefaultPacket([(new EnterGameChunk)->setSequence(6)], ack: $slot->sequence));
     expect($slot->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($slot->playerTee()->name)->toBe(str_repeat('n', 15));
     expect($server->entryWorld->getTees())->toBe([$slot->playerTee()]);
 
     $slot->changeWorld($server->entryWorld);

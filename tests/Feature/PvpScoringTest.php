@@ -99,7 +99,7 @@ test('CTF flag rewards keep team and personal points separate', function (int $t
     assert($enemyFlag instanceof FlagEntity && $ownFlag instanceof FlagEntity);
 
     $carrier->setPosition(clone $enemyFlag->getPosition());
-    $controller->doTick();
+    $controller->tickDeferred();
     $scores        = [0, 0];
     $scores[$team] = 1;
     expect($enemyFlag->carryingCharacter)->toBe($carrier);
@@ -107,7 +107,7 @@ test('CTF flag rewards keep team and personal points separate', function (int $t
     expect(pvpSnapshotTeamScores($controller))->toBe($scores);
 
     $carrier->setPosition(clone $ownFlag->getPosition());
-    $controller->doTick();
+    $controller->tickDeferred();
     $scores[$team] = 101;
     expect($tee->score)->toBe(6);
     expect(pvpSnapshotTeamScores($controller))->toBe($scores);
@@ -122,7 +122,7 @@ test('picking up a dropped enemy flag grants only a personal point', function ()
     $flag->atStand = false;
     $flag->setPosition(clone $redCharacter->getPosition());
 
-    $controller->doTick();
+    $controller->tickDeferred();
 
     expect($flag->carryingCharacter)->toBe($redCharacter);
     expect($red->score)->toBe(1);
@@ -136,7 +136,7 @@ test('returning a dropped friendly flag grants only a personal point', function 
     $flag->atStand = false;
     $flag->setPosition(clone $redCharacter->getPosition());
 
-    $controller->doTick();
+    $controller->tickDeferred();
 
     expect($flag->atStand)->toBeTrue();
     expect($red->score)->toBe(1);
@@ -196,21 +196,21 @@ test('CTF sudden death requires a capture lead rather than another stand grab', 
     assert($redFlag instanceof FlagEntity && $blueFlag instanceof FlagEntity);
     $redCharacter->setPosition(clone $blueFlag->getPosition());
     $blueCharacter->setPosition(clone $redFlag->getPosition());
-    $controller->doTick();
+    $controller->tickDeferred();
     expect(pvpSnapshotTeamScores($controller))->toBe([1, 1]);
     $info = $controller->doSnap($red)[0];
     assert($info instanceof ObjGameInfoItem);
     expect($info->gameStateFlags & GameConstants::GAMESTATEFLAG_SUDDENDEATH)->not->toBe(0);
 
     $blueFlag->reset();
-    $controller->doTick();
+    $controller->tickDeferred();
     expect(pvpSnapshotTeamScores($controller))->toBe([2, 1]);
     expect($controller->isGameOver())->toBeFalse();
 
     $redFlag->reset();
     $blueCharacter->setPosition(new Vector2(192, 64));
     $redCharacter->setPosition(clone $redFlag->getPosition());
-    $controller->doTick();
+    $controller->tickDeferred();
     expect(pvpSnapshotTeamScores($controller))->toBe([102, 1]);
     expect($controller->isGameOver())->toBeTrue();
     expect($red->score)->toBe(7);

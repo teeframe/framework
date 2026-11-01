@@ -249,6 +249,79 @@ test('WhisperCommand finds target by name case-insensitively', function () use (
     expect(recordingServer($world)->sentTeeIndexes)->toBe([1, 0]);
 });
 
+test('whispers prefer an exact name even after multiple case-insensitive matches', function (string $targetName, bool $reverseOrder) {
+    $world        = new TestWorld(new TickHandler(100), new Map);
+    $sender       = new PlayerTee;
+    $sender->name = 'Sender';
+    $world->addTee($sender);
+    $names  = $reverseOrder ? ['alice', 'aLiCe', 'Alice'] : ['Alice', 'aLiCe', 'alice'];
+    $target = null;
+    foreach ($names as $name) {
+        $player       = new PlayerTee;
+        $player->name = $name;
+        $world->addTee($player);
+        if ($name === $targetName) {
+            $target = $player;
+        }
+    }
+    assert($target instanceof PlayerTee);
+    recordingServer($world)->clear();
+
+    $world->onMessage($sender, new ClSayChunk(false, '/w '.$targetName.' secret'));
+
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([$target->teeIndex, $sender->teeIndex]);
+    foreach (recordingServer($world)->sentChunks as $chunk) {
+        assert($chunk instanceof SvChatChunk);
+        expect($chunk->text)->toBe('secret');
+    }
+})->with(['Alice', 'alice'])->with([false, true]);
+
+test('ambiguous whisper names produce only a private error without sending the message', function (bool $reverseOrder, bool $quoted) {
+    $world        = new TestWorld(new TickHandler(100), new Map);
+    $sender       = new PlayerTee;
+    $sender->name = 'Sender';
+    $world->addTee($sender);
+    foreach ($reverseOrder ? ['alice', 'Alice'] : ['Alice', 'alice'] as $name) {
+        $player       = new PlayerTee;
+        $player->name = $name;
+        $world->addTee($player);
+    }
+    recordingServer($world)->clear();
+
+    $world->onMessage($sender, new ClSayChunk(false, $quoted ? '/w "ALICE" secret' : '/w ALICE secret'));
+
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([$sender->teeIndex]);
+    $chunk = recordingServer($world)->sentChunks[0];
+    assert($chunk instanceof SvChatChunk);
+    expect($chunk->team)->toBe(0);
+    expect($chunk->clientId)->toBe(-1);
+    expect($chunk->text)->toBe("Multiple players match 'ALICE'. Use the exact name.");
+})->with([false, true])->with([false, true]);
+
+test('case-insensitive whisper fallback considers only players in the same world', function () {
+    $clock        = new TickHandler(100);
+    $server       = new RecordingGameServer($clock);
+    $world        = new TestWorld($clock, new Map, $server);
+    $other        = new TestWorld($clock, new Map, $server);
+    $sender       = new PlayerTee;
+    $sender->name = 'Sender';
+    $world->addTee($sender);
+    $target       = new PlayerTee;
+    $target->name = 'Alice';
+    $world->addTee($target);
+    $outsider       = new PlayerTee;
+    $outsider->name = 'alice';
+    $other->addTee($outsider);
+    $server->clear();
+
+    $world->onMessage($sender, new ClSayChunk(false, '/w ALICE secret'));
+
+    expect($server->sentTeeIndexes)->toBe([$target->teeIndex, $sender->teeIndex]);
+    foreach ($server->sentPairs as $pair) {
+        expect($pair['world'])->toBe($world);
+    }
+});
+
 test('WhisperCommand notifies sender when target not found', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');

@@ -90,6 +90,9 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
     }
 
+    /** Runs after entity movement and before player respawns. */
+    public function tickDeferred(): void {}
+
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
     {
         return 0;

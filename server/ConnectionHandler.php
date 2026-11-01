@@ -245,12 +245,8 @@ class ConnectionHandler
 
     protected function handleClStartInfoChunk(ConnectionSlot $connection, ClStartInfoChunk $chunk): void
     {
-        $world = $connection->world();
-
-        $world->setTeeName($connection->playerTee(), $chunk->name);
-
         $connection->playerTee()->setInfo(
-            name: $connection->playerTee()->name,
+            name: $chunk->name,
             clan: $chunk->clan,
             country: $chunk->country,
             skinName: $chunk->skinName,

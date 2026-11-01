@@ -152,6 +152,64 @@ test('gun fire uses the packet arrival tick and latest aim while movement waits 
     expect($character->weapons[GameConstants::WEAPON_GUN]->ammo)->toBe(9);
 })->with(['late' => -10, 'current tick' => 0, 'future tick' => 10]);
 
+test('direct-fired bullets cannot hit behind the muzzle on their creation tick', function (int $weapon) {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input(['targetX' => 100, 'targetY' => 0]));
+        $server->advance($world);
+    }
+    $world->getTuneController()->playerCollision = 0;
+    $character->giveWeapon($weapon, 10);
+    $character->setWeapon($weapon);
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+    $target = new PvpCharacterEntity($world, new Vector2(80, 128));
+    $target->spawn(new Vector2(80, 128), $targetTee);
+    $world->addEntity($target);
+    $arrivalTick = $clock->get();
+
+    sendCharacterPredictionInput($slot, $arrivalTick, input(['targetX' => 100, 'targetY' => 0, 'fire' => 1]));
+    $projectiles = array_values(array_filter($world->getEntities(), fn ($entity) => $entity instanceof PvpProjectileEntity));
+    expect($projectiles)->toHaveCount($weapon === GameConstants::WEAPON_SHOTGUN ? 5 : 1);
+    foreach ($projectiles as $projectile) {
+        expect($projectile->getPosition()->x)->toBe(149.0);
+        expect($projectile->doSnap($slot->playerTee())[0]->getInts()[5])->toBe($arrivalTick);
+    }
+
+    $server->advance($world);
+    expect($target->health)->toBe(10);
+    foreach ($projectiles as $projectile) {
+        expect($projectile->isToDestroy())->toBeFalse();
+        expect($projectile->getPosition()->x)->toBe(149.0);
+    }
+
+    $server->advance($world);
+    expect($target->health)->toBe(10);
+    foreach ($projectiles as $projectile) {
+        expect($projectile->isToDestroy())->toBeFalse();
+        expect($projectile->getPosition()->x)->toBeGreaterThan(149.0);
+    }
+})->with([GameConstants::WEAPON_GUN, GameConstants::WEAPON_SHOTGUN]);
+
+test('a direct-fired bullet hits forward targets on its first nonnegative trajectory segment', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input(['targetX' => 100, 'targetY' => 0]));
+        $server->advance($world);
+    }
+    $targetTee = new PlayerTee;
+    $world->addTee($targetTee);
+    $target = new PvpCharacterEntity($world, new Vector2(190, 128));
+    $target->spawn(new Vector2(190, 128), $targetTee);
+    $world->addEntity($target);
+    sendCharacterPredictionInput($slot, $clock->get(), input(['targetX' => 100, 'targetY' => 0, 'fire' => 1]));
+
+    $server->advance($world);
+    expect($target->health)->toBe(10);
+    $server->advance($world);
+    expect($target->health)->toBe(9);
+});
+
 test('direct gun fire waits for three predicted inputs and consumes earlier presses', function () {
     [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
     for ($i = 0; $i < 3; $i++) {

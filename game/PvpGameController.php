@@ -114,7 +114,19 @@ class PvpGameController extends AbstractGameController
 
         parent::doTick();
 
-        if ($this->isCaptureTheFlag && $world !== null && ! $world->isResetRequested() && ! $world->isPaused()) {
+        if (! $this->isCaptureTheFlag && ! $this->isGameOver()) {
+            $this->doWincheck();
+        }
+    }
+
+    public function tickDeferred(): void
+    {
+        if (! $this->isCaptureTheFlag) {
+            return;
+        }
+
+        $world = $this->world;
+        if ($world !== null && ! $world->isResetRequested() && ! $world->isPaused()) {
             $this->tickFlags();
         }
 

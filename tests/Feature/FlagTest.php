@@ -256,7 +256,7 @@ test('a defender does not prevent a later enemy from grabbing a flag', function 
     $attackingCharacter->spawn(clone $flag->getPosition(), $attacker);
     $world->addEntity($attackingCharacter);
 
-    $controller->doTick();
+    $controller->tickDeferred();
 
     expect($flag->atStand)->toBeFalse();
     expect($flag->carryingCharacter)->toBe($attackingCharacter);

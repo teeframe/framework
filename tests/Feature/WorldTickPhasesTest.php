@@ -28,6 +28,12 @@ class WorldTickPhaseTestWorld extends TestWorld
                 $this->testWorld->onControllerTick();
                 parent::doTick();
             }
+
+            public function tickDeferred(): void
+            {
+                $this->testWorld->phases[] = 'controller-deferred';
+                parent::tickDeferred();
+            }
         };
     }
 
@@ -90,7 +96,7 @@ test('world ticks process inputs controller entities players and views in order'
 
     $world->doTick();
 
-    expect($world->phases)->toBe(['inputs', 'controller', 'entities', 'players', 'views']);
+    expect($world->phases)->toBe(['inputs', 'controller', 'entities', 'controller-deferred', 'players', 'views']);
 });
 
 test('paused ticks do not run player respawns or spectator following', function () {
@@ -112,7 +118,7 @@ test('controller pause changes take effect before ticking entities and players',
     expect($world->isPaused())->toBe($paused);
     expect($world->phases)->toBe($paused
         ? ['inputs', 'controller', 'paused-entities']
-        : ['inputs', 'controller', 'entities', 'players', 'views']);
+        : ['inputs', 'controller', 'entities', 'controller-deferred', 'players', 'views']);
 })->with([true, false]);
 
 test('pause changes during entity ticks do not switch the chosen tick phases midway', function (bool $paused) {
@@ -146,7 +152,7 @@ test('pause changes during entity ticks do not switch the chosen tick phases mid
     expect($world->isPaused())->toBe(! $paused);
     expect($world->phases)->toBe($paused
         ? ['inputs', 'controller', 'paused-entities']
-        : ['inputs', 'controller', 'entities', 'players', 'views']);
+        : ['inputs', 'controller', 'entities', 'controller-deferred', 'players', 'views']);
 })->with([true, false]);
 
 test('controller requested round resets happen before entity ticks', function () {
@@ -155,7 +161,7 @@ test('controller requested round resets happen before entity ticks', function ()
 
     $world->doTick();
 
-    expect($world->phases)->toBe(['inputs', 'controller', 'reset', 'entities', 'players', 'views']);
+    expect($world->phases)->toBe(['inputs', 'controller', 'reset', 'entities', 'controller-deferred', 'players', 'views']);
     expect($world->isResetRequested())->toBeFalse();
 });
 

@@ -4,6 +4,7 @@ namespace TeeFrame\Network;
 
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
+use TeeFrame\Network\Chunks\Game\ClChangeInfoChunk;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
@@ -190,6 +191,7 @@ class PacketDecoder
             NetworkMessages::CL_SET_TEAM           => ClSetTeamChunk::class,
             NetworkMessages::CL_SET_SPECTATOR_MODE => ClSetSpectatorModeChunk::class,
             NetworkMessages::CL_START_INFO         => ClStartInfoChunk::class,
+            NetworkMessages::CL_CHANGE_INFO        => ClChangeInfoChunk::class,
             NetworkMessages::CL_KILL               => ClKillChunk::class,
             NetworkMessages::CL_EMOTICON           => ClEmoticonChunk::class,
             NetworkMessages::CL_VOTE               => ClVoteChunk::class,

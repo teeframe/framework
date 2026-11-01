@@ -75,19 +75,18 @@ class RawPayload
 
     public function extractString(): string
     {
-        $string = '';
+        $length = array_search(0, $this->payload, true);
+        if ($length === false) {
+            $this->payload = [];
 
-        while (count($this->payload) > 0) {
-            $char = array_shift($this->payload);
-
-            if ($char === 0) {
-                return $string;
-            }
-
-            $string .= chr($char & 0xFF); // & 0xFF for strict typing
+            throw new \UnexpectedValueException('Unterminated string in payload');
         }
 
-        throw new \UnexpectedValueException('Unterminated string in payload');
+        $length        = (int) $length;
+        $string        = NetworkBase::packBuffer(array_slice($this->payload, 0, $length));
+        $this->payload = array_slice($this->payload, $length + 1);
+
+        return $string;
     }
 
     /**

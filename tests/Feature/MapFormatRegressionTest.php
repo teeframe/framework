@@ -460,9 +460,11 @@ test('game layer clipping uses rounded truncated tile coordinates and a 200 tile
 });
 
 test('projectiles are destroyed outside the game layer clipping margin', function () {
-    $world      = createWorld(mapRegressionLoad(mapRegressionGameFile(str_repeat("\0", 36))));
+    $clock      = new TickHandler;
+    $world      = new TestWorld($clock, mapRegressionLoad(mapRegressionGameFile(str_repeat("\0", 36))));
     $projectile = new PvpProjectileEntity($world, new Vector2(204 * 32, 48), new Vector2(1, 0), GameConstants::WEAPON_GUN);
     $projectile->setTuning(2200.0, 1.25, 100);
+    $clock->next();
     $projectile->doTick();
     expect($projectile->isToDestroy())->toBeTrue();
 });

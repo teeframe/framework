@@ -34,6 +34,7 @@ class PlayerTee extends AbstractTee
     public int $teamChangeTick       = 0;
     public int $lastSetTeam          = 0;
     public int $lastSetSpectatorMode = 0;
+    public int $lastChangeInfo       = -1;
 
     /**
      * Buffered client inputs keyed by scheduled server tick (m_aInputs).

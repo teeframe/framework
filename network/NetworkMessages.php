@@ -75,6 +75,7 @@ class NetworkMessages
     const CL_SET_TEAM           = 18;
     const CL_SET_SPECTATOR_MODE = 19;
     const CL_START_INFO         = 20;
+    const CL_CHANGE_INFO        = 21;
     const CL_KILL               = 22;
     const CL_EMOTICON           = 23;
     const CL_VOTE               = 24;

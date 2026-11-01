@@ -10,6 +10,7 @@ use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
+use TeeFrame\Network\Chunks\Game\ClChangeInfoChunk;
 use TeeFrame\Network\Chunks\Game\ClEmoticonChunk;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
@@ -29,6 +30,8 @@ class ClientMessageHandler
     {
         if ($chunk instanceof ClSayChunk) {
             $this->handleChatMessage($tee, $chunk);
+        } elseif ($chunk instanceof ClChangeInfoChunk) {
+            $this->handleChangeInfoMessage($tee, $chunk);
         } elseif ($chunk instanceof ClEmoticonChunk) {
             $this->handleEmoticonMessage($tee, $chunk);
         } elseif ($chunk instanceof ClKillChunk) {
@@ -90,6 +93,39 @@ class ClientMessageHandler
             if ($recipientTeam === $team) {
                 $this->world->getServer()->sendToTee($this->world, $recipient->teeIndex, clone $chat);
             }
+        }
+    }
+
+    protected function handleChangeInfoMessage(AbstractTee $tee, ClChangeInfoChunk $chunk): void
+    {
+        if (! $tee instanceof PlayerTee) {
+            return;
+        }
+
+        $currentTick = $this->world->getCurrentTick();
+        if ($tee->lastChangeInfo >= 0 && $tee->lastChangeInfo + 5 * NetworkParams::TICKS_PER_SECOND > $currentTick) {
+            return;
+        }
+        $tee->lastChangeInfo = $currentTick;
+
+        $previousName = $tee->name;
+        $this->world->setTeeName($tee, $chunk->name);
+        $tee->setInfo(
+            name: $tee->name,
+            clan: $chunk->clan,
+            country: $chunk->country,
+            skinName: $chunk->skinName,
+            useCustomColor: $chunk->useCustomColor,
+            colorBody: $chunk->colorBody,
+            colorFeet: $chunk->colorFeet,
+        );
+
+        if ($tee->name !== $previousName) {
+            $this->world->broadcast(new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: "'{$previousName}' changed name to '{$tee->name}'",
+            ));
         }
     }
 

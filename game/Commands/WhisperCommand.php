@@ -26,12 +26,13 @@ class WhisperCommand extends AbstractCommand
         $targetName = $matches[1] !== '' ? $matches[1] : $matches[2];
         $whisperMsg = $matches[3];
 
-        $targetTee = null;
-        foreach ($world->getTees() as $t) {
-            if (strcasecmp($t->name, $targetName) === 0) {
-                $targetTee = $t;
-                break;
-            }
+        $candidates = array_filter(
+            $world->getTees(),
+            fn (AbstractTee $candidate): bool => strcasecmp($candidate->name, $targetName) === 0,
+        );
+        $targetTee = array_find($candidates, fn (AbstractTee $candidate): bool => $candidate->name === $targetName);
+        if ($targetTee === null && count($candidates) === 1) {
+            $targetTee = reset($candidates);
         }
 
         $server = $world->getServer();
@@ -43,7 +44,9 @@ class WhisperCommand extends AbstractCommand
             $server->sendToTee($world, $tee->teeIndex, new SvChatChunk(
                 team: 0,
                 clientId: -1,
-                text: "Player '{$targetName}' not found",
+                text: count($candidates) > 1
+                    ? "Multiple players match '{$targetName}'. Use the exact name."
+                    : "Player '{$targetName}' not found",
             ));
 
             return;

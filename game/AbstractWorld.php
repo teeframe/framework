@@ -461,8 +461,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $tee->setWorld($this, $index);
 
-        // Select the initial team before registration so capacity checks see a new player.
         if ($tee instanceof PlayerTee) {
+            $this->setTeeName($tee, $tee->name);
+
+            // Select the initial team before registration so capacity checks see a new player.
             $controller = $this->getGameController();
             $tee->team  = $controller->clampTeam($controller->getAutoTeam($index));
         }
@@ -571,6 +573,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
 
         $this->tickEntities();
+        $this->getGameController()->tickDeferred();
         $this->tickPlayers($currentTick);
         $this->updateSpectatorViews();
     }
@@ -643,7 +646,15 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected function tickPlayers(int $currentTick): void
     {
         foreach ($this->tees as $tee) {
-            if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS || $tee->character !== null) {
+            if (! $tee instanceof PlayerTee) {
+                continue;
+            }
+            if ($this->paused) {
+                $tee->tickPaused();
+
+                continue;
+            }
+            if ($tee->team === GameConstants::TEAM_SPECTATORS || $tee->character !== null) {
                 continue;
             }
 
