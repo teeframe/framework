@@ -41,6 +41,9 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
         $this->markToDestroy();
     }
 
+    /** Called before a departing tee's index can be reused. */
+    public function onTeeLeave(int $teeIndex): void {}
+
     /** A fixed protocol ID, or null to use IDs allocated from the world pool. */
     public function getFixedSnapId(): ?int
     {

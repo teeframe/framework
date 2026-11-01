@@ -113,20 +113,12 @@ class PvpGameController extends AbstractGameController
         }
 
         parent::doTick();
-
-        if (! $this->isCaptureTheFlag && ! $this->isGameOver()) {
-            $this->doWincheck();
-        }
     }
 
     public function tickDeferred(): void
     {
-        if (! $this->isCaptureTheFlag) {
-            return;
-        }
-
         $world = $this->world;
-        if ($world !== null && ! $world->isResetRequested() && ! $world->isPaused()) {
+        if ($this->isCaptureTheFlag && $world !== null && ! $world->isResetRequested() && ! $world->isPaused()) {
             $this->tickFlags();
         }
 
@@ -196,15 +188,19 @@ class PvpGameController extends AbstractGameController
             $topScore      = 0;
             $topScoreCount = 0;
             foreach ($world->getTees() as $tee) {
-                if (! $tee instanceof PlayerTee) {
+                if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
                     continue;
                 }
-                if ($tee->score > $topScore) {
+                if ($topScoreCount === 0 || $tee->score > $topScore) {
                     $topScore      = $tee->score;
                     $topScoreCount = 1;
                 } elseif ($tee->score === $topScore) {
                     $topScoreCount++;
                 }
+            }
+
+            if ($topScoreCount === 0) {
+                return;
             }
 
             $scoreLimitReached = $this->scoreLimit > 0 && $topScore >= $this->scoreLimit;
@@ -503,6 +499,8 @@ class PvpGameController extends AbstractGameController
             $candidate->setTeam($M ^ 1);
             $candidate->lastActionTick = $lastAction;
             $candidate->forceBalanced  = true;
+            $aTScore[$M] -= $aPScore[$candidate->teeIndex];
+            $aTScore[$M ^ 1] += $aPScore[$candidate->teeIndex];
         } while (--$numBalance > 0);
 
         $this->forceBalanced = true;
@@ -796,6 +794,7 @@ class PvpGameController extends AbstractGameController
 
         $flag->atStand           = false;
         $flag->carryingCharacter = $carrier;
+        $flag->setPosition(clone $carrier->getPosition());
         if ($carrierTee instanceof PlayerTee) {
             $carrierTee->score += 1;
         }
@@ -836,6 +835,7 @@ class PvpGameController extends AbstractGameController
             }
 
             if ($flag->carryingCharacter === $victim) {
+                $flag->setPosition(clone $victim->getPosition());
                 $world->createSoundGlobal(GameConstants::SOUND_CTF_DROP);
                 $flag->dropTick          = $this->tickHandler->get();
                 $flag->carryingCharacter = null;

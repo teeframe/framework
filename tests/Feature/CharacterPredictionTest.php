@@ -11,6 +11,7 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\Chunks\System\InputChunk;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
@@ -630,6 +631,63 @@ test('ninja dash snapshots do not make core prediction extrapolate the server dr
     expect([$finished->x, $finished->y, $finished->velX, $finished->velY])
         ->toBe([$predicted->x, $predicted->y, $predicted->velX, $predicted->velY]);
 })->with(['right' => [100, 0], 'left' => [-100, 0], 'up' => [0, -100], 'diagonal' => [100, -100]]);
+
+test('upward ninja effect directions from consecutive snapshots stay correct with normal gravity', function (int $targetX, int $targetY, int $offset) {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    $world->getTuneController()->gravity         = 50;
+    $character->spawn(new Vector2(512, 768), $slot->playerTee());
+    $character->giveNinja();
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input(['targetX' => 0, 'targetY' => 100]));
+        $server->advance($world);
+    }
+    $previous   = characterPredictionSnapshot($character);
+    $attackTick = $clock->get();
+    $fire       = input(['targetX' => $targetX, 'targetY' => $targetY, 'fire' => 1]);
+    sendCharacterPredictionInput($slot, $attackTick + $offset, $fire);
+    $dashStep = (new Vector2($targetX, $targetY))->normalize()->mul(50);
+
+    // CPlayers::RenderPlayer derives the blue effect's direction from position
+    // differences, for the first SERVER_TICK_SPEED / 6 ticks after the attack.
+    for ($elapsed = 0; $elapsed <= intdiv(NetworkParams::TICKS_PER_SECOND, 6); $elapsed++) {
+        $server->advance($world);
+        $current = characterPredictionSnapshot($character);
+        expect($current->tick)->toBe($attackTick + $elapsed);
+        expect($current->attackTick)->toBe($attackTick);
+        expect([$current->x - $previous->x, $current->y - $previous->y])
+            ->toBe([(int) round($dashStep->x), (int) round($dashStep->y)]);
+        expect([$current->velX, $current->velY])->toBe([0, 0]);
+        $previous = $current;
+    }
+})->with(['up' => [0, -100], 'up right' => [100, -100]])
+    ->with(['late aim' => -10, 'current aim' => 0, 'future aim' => 10]);
+
+test('core-only extrapolation falls downward while server snapshots continue an upward ninja dash', function () {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    $world->getTuneController()->gravity         = 50;
+    $character->spawn(new Vector2(512, 768), $slot->playerTee());
+    $character->giveNinja();
+    $idle = input(['targetX' => 0, 'targetY' => -100]);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), $idle);
+        $server->advance($world);
+    }
+    $fire = input(['targetX' => 0, 'targetY' => -100, 'fire' => 1]);
+    sendCharacterPredictionInput($slot, $clock->get(), $fire);
+    $server->advance($world);
+    $snapshot          = characterPredictionSnapshot($character);
+    $predictedPrevious = predictCharacterCoreFrame($world, $snapshot, $fire);
+    $predictedCurrent  = predictCharacterCoreFrame($world, $predictedPrevious, $fire);
+
+    // Core prediction has no ninja dash state; gravity still advances it downward.
+    expect($predictedCurrent->x - $predictedPrevious->x)->toBe(0);
+    expect($predictedCurrent->y - $predictedPrevious->y)->toBeGreaterThan(0);
+
+    $server->advance($world);
+    $current = characterPredictionSnapshot($character);
+    expect([$current->x - $snapshot->x, $current->y - $snapshot->y])->toBe([0, -50]);
+    expect([$current->velX, $current->velY])->toBe([0, 0]);
+});
 
 test('normal core prediction resumes from the speed restored after a ninja dash', function () {
     [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);

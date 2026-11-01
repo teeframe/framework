@@ -497,6 +497,35 @@ test('team balancing moves a player from the larger team after the balance time 
     expect($blues)->toBe(2);
 });
 
+test('team balancing updates score totals after each move', function (int $largerTeam) {
+    $clock      = new TickHandler(100);
+    $controller = new PvpGameController($clock, isTeamMode: true, teamBalanceTime: 1);
+    $world      = new TestWorldWithController($clock, new Map, $controller);
+    foreach ([10, 9, 1, 0] as $score) {
+        $tee = new PlayerTee;
+        $world->addTee($tee);
+        $tee->team           = $largerTeam;
+        $tee->score          = $score;
+        $tee->scoreStartTick = 0;
+    }
+    expect($controller->checkTeamBalance())->toBeFalse();
+    setGameTick($clock, 100 + NetworkParams::TICKS_PER_SECOND * 60 + 1);
+
+    $world->doTick();
+
+    $teamScores = [[], []];
+    foreach ($world->getTees() as $tee) {
+        assert($tee instanceof PlayerTee);
+        $teamScores[$tee->team][] = $tee->score;
+        expect($tee->forceBalanced)->toBe($tee->team !== $largerTeam);
+        expect($tee->lastActionTick)->toBe(100);
+    }
+    expect($teamScores[$largerTeam])->toBe([9, 1]);
+    expect($teamScores[$largerTeam ^ 1])->toBe([10, 0]);
+    expect(array_sum($teamScores[GameConstants::TEAM_RED]))->toBe(10);
+    expect(array_sum($teamScores[GameConstants::TEAM_BLUE]))->toBe(10);
+})->with([GameConstants::TEAM_RED, GameConstants::TEAM_BLUE]);
+
 test('team balancing is disabled when teamBalanceTime is zero', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
@@ -739,6 +768,10 @@ test('paused character snapshots disable dead reckoning until play resumes', fun
         setGameTick($tickHandler, $tick);
         $world->doTick();
         expect($world->isPaused())->toBeTrue();
+        if ($endMatch && $tick === 102) {
+            // The winning tick finishes movement before its win check pauses the world.
+            $movingCore = array_slice($character->doSnap($tee)[0]->getInts(), 0, 15);
+        }
 
         foreach ([$tee, $observer] as $requester) {
             $snaps         = $world->doSnap($requester);
@@ -757,7 +790,7 @@ test('paused character snapshots disable dead reckoning until play resumes', fun
         }
     }
 
-    expect($character->tick)->toBe(101);
+    expect($character->tick)->toBe($endMatch ? 102 : 101);
 
     if ($endMatch) {
         $controller->startRound();

@@ -171,13 +171,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             return;
         }
 
-        if ($this->tee !== null) {
-            $this->tee->viewPosition = new Vector2(
-                (int) round($this->position->x),
-                (int) round($this->position->y),
-            );
-        }
-
         $tune = $this->world->getTuneController();
         $this->tick(
             $this->input->direction,
@@ -224,6 +217,10 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
         $this->move($collision, $tune, $this->getOtherCharacters());
         $this->quantize();
+
+        if ($this->tee !== null) {
+            $this->tee->viewPosition = clone $this->position;
+        }
 
         // The local client predicts ground-jump and ground/no-hook sounds, but
         // other clients need server events (CCharacter::TickDefered in 0.6).

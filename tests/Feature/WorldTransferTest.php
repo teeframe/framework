@@ -6,10 +6,12 @@ use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\ChangeGameModeCommand;
 use TeeFrame\Game\Commands\ChangeMapCommand;
 use TeeFrame\Game\Commands\ReloadCommand;
+use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
@@ -224,6 +226,40 @@ test('new clients enter DM through the normal map handshake and transport ACKs a
     expect($server->ctf->getGameController()->getFlag(GameConstants::TEAM_RED))->not()->toBeNull();
     expect($server->ctf->getGameController()->getFlag(GameConstants::TEAM_BLUE))->not()->toBeNull();
 });
+
+test('world transfers and disconnects detach shots before the departed tee index is reused', function (bool $transfer) {
+    $server  = new WorldTransferTestServer;
+    $leaving = $server->connect();
+    $server->enter($leaving);
+    $resident = $server->connect(8301);
+    $server->enter($resident);
+    $server->changeWorld($resident->playerTee(), $server->ctf);
+    $server->enter($resident);
+    $departedIndex = $leaving->playerTee()->teeIndex;
+    $shot          = new PvpProjectileEntity($server->dm, new Vector2(160, 64), new Vector2(1, 0), GameConstants::WEAPON_GUN, $departedIndex);
+    $shot->setTuning(1600, 0, 50);
+    $server->dm->addEntity($shot);
+    $otherShot = new PvpProjectileEntity($server->ctf, new Vector2(160, 64), new Vector2(1, 0), GameConstants::WEAPON_GUN, $resident->playerTee()->teeIndex);
+    $otherShot->setTuning(1600, 0, 50);
+    $server->ctf->addEntity($otherShot);
+
+    if ($transfer) {
+        expect($server->changeWorld($leaving->playerTee(), $server->ctf))->toBeTrue();
+        expect($leaving->state)->toBe(ConnectionSlot::STATE_LOADING);
+    } else {
+        $server->receive(new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'Leaving', ack: $leaving->sequence));
+        expect($leaving->state)->toBe(ConnectionSlot::STATE_CLOSED);
+    }
+    $replacement = $server->connect(8302);
+    $server->enter($replacement);
+
+    expect($replacement->playerTee()->teeIndex)->toBe($departedIndex);
+    expect($shot->owner)->toBe(-1);
+    expect($shot->isToDestroy())->toBeFalse();
+    expect($server->dm->getEntities())->toContain($shot);
+    expect($otherShot->owner)->toBe($resident->playerTee()->teeIndex);
+    expect($otherShot->isToDestroy())->toBeFalse();
+})->with([false, true]);
 
 test('the ready handshake sends only the destination worlds vote with its remaining timeout', function (bool $transfer) {
     $server = new WorldTransferTestServer;

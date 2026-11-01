@@ -43,6 +43,13 @@ abstract class AbstractProjectileEntity extends AbstractEntity
         return 6;
     }
 
+    public function onTeeLeave(int $teeIndex): void
+    {
+        if ($this->owner === $teeIndex) {
+            $this->owner = -1;
+        }
+    }
+
     abstract public function doTick(): void;
 
     public function tickPaused(): void

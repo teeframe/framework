@@ -24,6 +24,13 @@ abstract class AbstractLaserEntity extends AbstractEntity
         return 0;
     }
 
+    public function onTeeLeave(int $teeIndex): void
+    {
+        if ($this->owner === $teeIndex) {
+            $this->owner = -1;
+        }
+    }
+
     abstract public function doTick(): void;
 
     /**

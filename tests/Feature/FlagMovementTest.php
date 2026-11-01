@@ -2,12 +2,14 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjFlagItem;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 
@@ -106,8 +108,49 @@ test('moving into enemy flag range grabs it in the same tick', function (int $te
     expect($character->getPosition()->distance($flag->standPos))->toBe(40.0);
     expect($flag->carryingCharacter)->toBe($character);
     expect($flag->atStand)->toBeFalse();
+    expect($flag->getPosition())->toEqual($character->getPosition());
+    expect($flag->getPosition())->not->toBe($character->getPosition());
+    $snapshot = $flag->doSnap($tee)[0];
+    expect(array_slice($snapshot->getInts(), 0, 2))->toBe([(int) $character->getPosition()->x, (int) $character->getPosition()->y]);
     expect($tee->score)->toBe(1);
 })->with([GameConstants::TEAM_RED, GameConstants::TEAM_BLUE])->with([false, true]);
+
+test('a ninja carrier killed after moving drops the flag at its death position', function (int $team) {
+    [$world, $clock, $tee, $character] = flagMovementFixture($team);
+    $flag                              = $world->getGameController()->getFlag($team ^ 1);
+    assert($flag !== null);
+    $flag->atStand           = false;
+    $flag->carryingCharacter = $character;
+    $flag->setPosition(clone $character->getPosition());
+    $character->giveNinja();
+    for ($i = 0; $i < 3; $i++) {
+        $character->onPredictedInput(input(['targetX' => 100, 'targetY' => 0]));
+    }
+    $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0, 'fire' => 1]));
+    $character->health = 1;
+    $killer            = new PlayerTee;
+    $world->addTee($killer);
+    $killer->team = $team ^ 1;
+    $projectile   = new PvpProjectileEntity($world, new Vector2(432, 144), new Vector2(1, 0), GameConstants::WEAPON_GUN, $killer->teeIndex);
+    $projectile->setTuning(1600, 0, NetworkParams::TICKS_PER_SECOND);
+    $world->addEntity($projectile);
+    $clock->next();
+
+    $world->doTick();
+
+    expect($character->alive)->toBeFalse();
+    expect($character->getPosition()->x)->toEqualWithDelta(450.0, 0.000001);
+    expect($character->getPosition()->y)->toBe(144.0);
+    expect($flag->carryingCharacter)->toBeNull();
+    expect($flag->atStand)->toBeFalse();
+    expect($flag->dropTick)->toBe($clock->get());
+    expect($flag->vel)->toEqual(new Vector2(0, 0));
+    expect($flag->getPosition())->toEqual($character->getPosition());
+    expect($flag->getPosition())->not->toBe($character->getPosition());
+    $snapshot = $flag->doSnap($tee)[0];
+    expect(array_slice($snapshot->getInts(), 0, 2))->toBe([450, 144]);
+    expect($killer->score)->toBe(2);
+})->with([GameConstants::TEAM_RED, GameConstants::TEAM_BLUE]);
 
 test('moving into dropped friendly flag range returns it in the same tick', function () {
     [$world, $clock, $tee, $character] = flagMovementFixture(GameConstants::TEAM_RED);

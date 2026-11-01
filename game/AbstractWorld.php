@@ -526,6 +526,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
             $this->resetSpectatorsFollowing($index);
 
+            foreach ($this->entities as $entity) {
+                $entity->onTeeLeave($index);
+            }
+
             $this->releasedTeeIndexes[] = $index;
             unset($this->tees[$index]);
             $this->voteController->requestUpdate();

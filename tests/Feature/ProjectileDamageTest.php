@@ -85,7 +85,7 @@ test('projectiles retain attacker and weapon attribution independently of the ow
     $kills = array_values(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk));
     expect($kills)->toHaveCount($lethal ? ($ownerState === 'disconnected' ? 1 : 2) : 0);
     foreach ($kills as $kill) {
-        expect($kill->killer)->toBe($owner->teeIndex);
+        expect($kill->killer)->toBe($ownerState === 'disconnected' ? -1 : $owner->teeIndex);
         expect($kill->victim)->toBe($target->teeIndex);
         expect($kill->weapon)->toBe($weapon);
     }
@@ -94,6 +94,74 @@ test('projectiles retain attacker and weapon attribution independently of the ow
     'shotgun' => GameConstants::WEAPON_SHOTGUN,
     'grenade' => GameConstants::WEAPON_GRENADE,
 ])->with(['alive', 'dead', 'respawned', 'disconnected'])->with([false, true]);
+
+test('departed players projectiles cannot credit a replacement or use its team', function (int $weapon, string $mode) {
+    [$world, $clock, , $victim, $owner, $target] = createProjectileDamageWorld($mode);
+    $projectile                                  = damageTestProjectile($world, $weapon, $owner->teeIndex);
+    $world->removeTee($owner);
+    $replacement = new PlayerTee;
+    $world->addTee($replacement);
+    $replacement->team = $target->team;
+    expect($replacement->teeIndex)->toBe($owner->teeIndex);
+    $victim->health = 1;
+    recordingServer($world)->clear();
+    $clock->next();
+
+    $projectile->doTick();
+
+    expect($projectile->owner)->toBe(-1);
+    expect($projectile->isToDestroy())->toBeTrue();
+    expect($victim->alive)->toBeFalse();
+    expect($replacement->score)->toBe(0);
+    expect($owner->score)->toBe(0);
+    expect(soundsSentToTee($world, $replacement->teeIndex))->toBeEmpty();
+    $kills = array_values(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk));
+    expect($kills)->toHaveCount(2);
+    foreach ($kills as $kill) {
+        expect($kill->killer)->toBe(-1);
+        expect($kill->victim)->toBe($target->teeIndex);
+        expect($kill->weapon)->toBe($weapon);
+    }
+})->with([GameConstants::WEAPON_GUN, GameConstants::WEAPON_SHOTGUN, GameConstants::WEAPON_GRENADE])->with(['DM', 'TDM', 'CTF']);
+
+test('replacement players can be hit by the previous slot owners projectiles without self-damage reduction', function (int $weapon) {
+    [$world, $clock, , $victim, $owner] = createProjectileDamageWorld();
+    $projectile                         = damageTestProjectile($world, $weapon, $owner->teeIndex);
+    $victim->setPosition(new Vector2(1024, 64));
+    $world->removeTee($owner);
+    $replacement = new PlayerTee;
+    $world->addTee($replacement);
+    expect($replacement->teeIndex)->toBe($owner->teeIndex);
+    $character = new PvpCharacterEntity($world, new Vector2(192, 64));
+    $character->spawn(new Vector2(192, 64), $replacement);
+    $world->addEntity($character);
+    recordingServer($world)->clear();
+    $clock->next();
+
+    $projectile->doTick();
+
+    expect($projectile->isToDestroy())->toBeTrue();
+    expect($character->health)->toBe($weapon === GameConstants::WEAPON_GRENADE ? 4 : 9);
+    expect($replacement->score)->toBe(0);
+    expect(soundsSentToTee($world, $replacement->teeIndex))->toBeEmpty();
+})->with([GameConstants::WEAPON_GUN, GameConstants::WEAPON_SHOTGUN, GameConstants::WEAPON_GRENADE]);
+
+test('leaving clears only that players projectile ownership in that world', function () {
+    [$world, , , , $owner, $otherOwner]   = createProjectileDamageWorld();
+    [$otherWorld, , , , $otherWorldOwner] = createProjectileDamageWorld();
+    $departingShot                        = damageTestProjectile($world, GameConstants::WEAPON_GUN, $owner->teeIndex);
+    $remainingShot                        = damageTestProjectile($world, GameConstants::WEAPON_GUN, $otherOwner->teeIndex);
+    $otherWorldShot                       = damageTestProjectile($otherWorld, GameConstants::WEAPON_GUN, $otherWorldOwner->teeIndex);
+
+    $world->removeTee($owner);
+
+    expect($departingShot->owner)->toBe(-1);
+    expect($remainingShot->owner)->toBe($otherOwner->teeIndex);
+    expect($otherWorldShot->owner)->toBe($otherWorldOwner->teeIndex);
+    expect($departingShot->isToDestroy())->toBeFalse();
+    expect($remainingShot->isToDestroy())->toBeFalse();
+    expect($world->getEntities())->toContain($departingShot, $remainingShot);
+});
 
 test('ownerless projectiles deal damage without blaming the victim', function (int $weapon) {
     [$world, $clock, , $victim, $owner, $target] = createProjectileDamageWorld();

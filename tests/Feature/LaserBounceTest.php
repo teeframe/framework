@@ -8,6 +8,7 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
+use TeeFrame\Network\Chunks\Game\SvKillMsgChunk;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjLaserItem;
 
@@ -152,6 +153,44 @@ test('a reflected laser skips its owner and uses the projected endpoint for anot
     assert($snap instanceof ObjLaserItem);
     expect([$snap->fromX, $snap->fromY, $snap->x, $snap->y])->toBe([255, 64, $withVictim ? 32 : -354, 64]);
 })->with([false, true]);
+
+test('a reflected laser cannot inherit the replacement players identity or team', function (string $mode) {
+    [$world, $clock, $owner] = createLaserBounceWorld();
+    $world->getGameController()->setGameMode($mode);
+    $victimTee = new PlayerTee;
+    $world->addTee($victimTee);
+    $victimTee->team = $mode === 'DM' ? GameConstants::TEAM_RED : GameConstants::TEAM_BLUE;
+    $victim          = new PvpCharacterEntity($world, new Vector2(32, 64));
+    $victim->spawn(new Vector2(32, 64), $victimTee);
+    $victim->health = 2;
+    $world->addEntity($victim);
+    $laser = new PvpLaserEntity($world, new Vector2(64, 64), new Vector2(1, 0), 800, $owner->teeIndex);
+    $world->addEntity($laser);
+    expect($victim->health)->toBe(2);
+    $world->removeTee($owner);
+    $replacement = new PlayerTee;
+    $world->addTee($replacement);
+    $replacement->team = $victimTee->team;
+    expect($replacement->teeIndex)->toBe($owner->teeIndex);
+    expect($laser->isToDestroy())->toBeFalse();
+    recordingServer($world)->clear();
+
+    for ($i = 0; $i < 8; $i++) {
+        $clock->next();
+        $laser->doTick();
+    }
+
+    expect($victim->alive)->toBeFalse();
+    expect($replacement->score)->toBe(0);
+    expect(soundsSentToTee($world, $replacement->teeIndex))->toBeEmpty();
+    $kills = array_values(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk));
+    expect($kills)->toHaveCount(2);
+    foreach ($kills as $kill) {
+        expect($kill->killer)->toBe(-1);
+        expect($kill->victim)->toBe($victimTee->teeIndex);
+        expect($kill->weapon)->toBe(GameConstants::WEAPON_RIFLE);
+    }
+})->with(['DM', 'TDM', 'CTF']);
 
 test('a reflected laser damages a character only when the reflected segment is evaluated', function () {
     [$world, $clock, $owner] = createLaserBounceWorld();
