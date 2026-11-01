@@ -7,6 +7,7 @@ class NetworkMessages
     /*
      * Connectionless Messages
      */
+    const SERVERBROWSE_CHALLENGE          = "\xFF\xFF\xFF\xFFchal";
     const SERVERBROWSE_GETINFO            = "\xFF\xFF\xFF\xFFgie3";
     const SERVERBROWSE_INFO_EXTENDED      = "\xFF\xFF\xFF\xFFiext";
     const SERVERBROWSE_INFO_EXTENDED_MORE = "\xFF\xFF\xFF\xFFiex+";
@@ -54,12 +55,13 @@ class NetworkMessages
     /*
      * Game Messages
      */
-    const SV_MOTD         = 1;
-    const SV_BROADCAST    = 2;
-    const SV_CHAT         = 3;
-    const SV_KILLMSG      = 4;
-    const SV_SOUNDGLOBAL  = 5;
-    const SV_TUNEPARAMS   = 6;
+    const SV_MOTD        = 1;
+    const SV_BROADCAST   = 2;
+    const SV_CHAT        = 3;
+    const SV_KILLMSG     = 4;
+    const SV_SOUNDGLOBAL = 5;
+    const SV_TUNEPARAMS  = 6;
+
     // const SV_XXX          = 7;
     const SV_READYTOENTER = 8;
 

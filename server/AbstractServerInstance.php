@@ -2,6 +2,7 @@
 
 namespace TeeFrame\Server;
 
+use Swoole\Coroutine;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -13,6 +14,7 @@ use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Server\Ban\BanList;
+use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
 abstract class AbstractServerInstance
@@ -28,13 +30,19 @@ abstract class AbstractServerInstance
     protected array $sockets = [];
 
     protected ConnectionHandler $connectionHandler;
+
     protected BanList $banList;
+
+    protected ?MasterServer $masterServer = null;
+
+    protected bool $shuttingDown = false;
 
     public function __construct(
         protected TickHandler $tickHandler,
         protected string $name,
         protected string $password = '',
         protected int $kickBanDuration = 600,
+        protected bool $registerOnMasterServer = false,
     ) {
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
         $this->banList           = new BanList;
@@ -56,6 +64,8 @@ abstract class AbstractServerInstance
             throw new \RuntimeException('No sockets were booted');
         }
 
+        $this->bootMasterServerRegistration();
+
         swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
             $this->doTick();
         });
@@ -71,19 +81,58 @@ abstract class AbstractServerInstance
                 $this->onPacket($packet, $clientInfo, $socket);
             });
 
+            $socket->on('workerStop', function () use ($socket): void {
+                $this->masterServer?->onWorkerStop($socket);
+            });
+
             $socket->start();
         }
     }
 
     public function shutdown(): void
     {
-        foreach ($this->sockets as $socket) {
-            $socket->shutdown();
+        if ($this->shuttingDown) {
+            return;
         }
+
+        $this->shuttingDown = true;
+
+        $shutdown = function (): void {
+            $this->masterServer?->shutdown();
+
+            foreach ($this->sockets as $socket) {
+                $socket->shutdown();
+            }
+        };
+
+        if ($this->masterServer === null) {
+            $shutdown();
+        } else {
+            Coroutine::create($shutdown);
+        }
+    }
+
+    protected function bootMasterServerRegistration(): void
+    {
+        if (! $this->registerOnMasterServer) {
+            return;
+        }
+
+        $this->masterServer = $this->createMasterServer();
+        $this->masterServer->start($this->sockets);
+    }
+
+    protected function createMasterServer(): MasterServer
+    {
+        return new MasterServer($this->tickHandler);
     }
 
     protected function doTick(): void
     {
+        if ($this->shuttingDown) {
+            return;
+        }
+
         $this->tickHandler->startTick();
         $this->connectionHandler->update();
 
@@ -99,7 +148,14 @@ abstract class AbstractServerInstance
             $this->shutdown();
         }
 
-        // TODO: master server stuff
+        if (! $this->shuttingDown) {
+            $this->masterServer?->update(
+                $this->worlds,
+                $this->connectionHandler->getConnections(),
+                $this->name,
+                $this->password !== '',
+            );
+        }
     }
 
     protected function doSnap(): void
@@ -196,6 +252,10 @@ abstract class AbstractServerInstance
     protected function onPacket(AbstractPacket $packet, array $clientInfo, AbstractSocket $socket): void
     {
         if ($packet instanceof ConnectionlessPacket) {
+            if ($this->masterServer?->onPacket($packet, $socket)) {
+                return;
+            }
+
             $this->handleServerInfoRequest($packet, $clientInfo, $socket);
 
             return;
