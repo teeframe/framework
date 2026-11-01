@@ -2,13 +2,12 @@
 
 namespace TeeFrame\Server;
 
-use WeakMap;
-
 use Carbon\Carbon;
+use WeakMap;
 
 class Console
 {
-    /** @var \WeakMap<\Closure, true>|null */
+    /** @var WeakMap<\Closure, true>|null */
     protected static ?WeakMap $listeners = null;
 
     /** @param \Closure(string): void $listener */
