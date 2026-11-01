@@ -36,7 +36,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected array $commands = [];
 
     /**
-     * @var AbstractEntity[]
+     * @var array<int, AbstractEntity>
      */
     protected array $entities = [];
 
@@ -344,19 +344,18 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected function resetRound(int $currentTick): void
     {
-        $survivingEntities = [];
-
-        foreach ($this->entities as $entity) {
+        foreach ($this->getEntities() as $index => $entity) {
+            if (($this->entities[$index] ?? null) !== $entity) {
+                continue;
+            }
             $entity->reset();
 
             if ($entity->isToDestroy()) {
-                $this->removeEntity($entity);
-            } else {
-                $survivingEntities[] = $entity;
+                $this->removeEntityAt($index, $entity);
             }
         }
 
-        $this->entities = $survivingEntities;
+        $this->entities = array_values($this->entities);
 
         foreach ($this->tees as $tee) {
             if (! $tee instanceof PlayerTee) {
@@ -423,7 +422,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     }
 
     /**
-     * @return AbstractEntity[]
+     * @return array<int, AbstractEntity>
      */
     public function getEntities(): array
     {
@@ -432,16 +431,24 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function removeEntity(AbstractEntity $entity): void
     {
-        $allocatedSnapIds = $entity->getAllocatedSnapIds();
+        $index = array_search($entity, $this->entities, true);
 
-        foreach ($allocatedSnapIds as $id) {
+        if ($index !== false) {
+            $this->removeEntityAt($index, $entity);
+        }
+    }
+
+    protected function removeEntityAt(int $index, AbstractEntity $entity): void
+    {
+        if (($this->entities[$index] ?? null) !== $entity) {
+            return;
+        }
+
+        foreach ($entity->getAllocatedSnapIds() as $id) {
             $this->snapIdPool->freeId($id);
         }
 
-        $this->entities = array_filter(
-            $this->entities,
-            fn (AbstractEntity $e) => $e !== $entity
-        );
+        unset($this->entities[$index]);
     }
 
     public function addTee(AbstractTee $tee): void
@@ -606,10 +613,29 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected function tickEntities(): void
     {
-        foreach ($this->entities as $entity) {
+        $entities = $this->getEntities();
+        foreach ($entities as $index => $entity) {
+            if (($this->entities[$index] ?? null) !== $entity) {
+                continue;
+            }
+
             $entity->doTick();
+
             if ($entity->isToDestroy()) {
-                $this->removeEntity($entity);
+                $this->removeEntityAt($index, $entity);
+            }
+        }
+
+        // All cores tick before movement; hook forces must be applied before rounding.
+        foreach ($entities as $index => $entity) {
+            if (($this->entities[$index] ?? null) !== $entity) {
+                continue;
+            }
+            if (! $entity->isToDestroy()) {
+                $entity->tickDeferred();
+            }
+            if ($entity->isToDestroy()) {
+                $this->removeEntityAt($index, $entity);
             }
         }
     }

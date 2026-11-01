@@ -304,12 +304,12 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     {
         $score = 0.0;
 
-        foreach ($world->getTees() as $tee) {
-            if ($tee->teeIndex < 0) {
+        foreach ($world->getEntities() as $character) {
+            if (! $character instanceof AbstractCharacterEntity || ! $character->alive || $character->isToDestroy()) {
                 continue;
             }
 
-            $distance = $pos->distance($tee->viewPosition);
+            $distance = $pos->distance($character->getPosition());
 
             if ($distance < 100) {
                 $score -= 1.0;

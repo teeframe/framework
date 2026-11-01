@@ -22,7 +22,7 @@ use TeeFrame\Network\Chunks\System\MapDataChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
-use TeeFrame\Server\Concerns\HasHandshakeHandler;
+use TeeFrame\Server\ConnectionHandler;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -505,10 +505,11 @@ test('map downloads mark only the final data chunk as last', function (int $mapS
             return true;
         }
     };
-    $handler = new class
+    $handler = new class(new TickHandler) extends ConnectionHandler
     {
-        use HasHandshakeHandler {
-            handleRequestMapDataChunk as public requestMapData;
+        public function requestMapData(ConnectionSlot $connection, RequestMapDataChunk $chunk): bool
+        {
+            return $this->handleRequestMapDataChunk($connection, $chunk);
         }
     };
 

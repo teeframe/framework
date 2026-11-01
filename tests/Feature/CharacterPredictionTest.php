@@ -41,7 +41,7 @@ function createCharacterPredictionWorld(int $tick): array
         }
     };
     $world = new TestWorld($clock, $map, $server);
-    // Isolate input scheduling from rounding, ground contact and other physics differences.
+    // Keep input-scheduling tests airborne without vertical movement.
     $world->getTuneController()->gravity = 0;
     $socket                              = new class extends AbstractSocket
     {
@@ -84,7 +84,7 @@ function predictCharacterCoreFrame(AbstractWorld $world, ObjCharacterItem $snaps
     assert($collision !== null);
     // Client prediction replaces its own core; it must not collide with the server copy.
     $prediction->tick($input->direction, $input->targetX, $input->targetY, $input->jump, $input->hook, $collision, $world->getTuneController(), []);
-    $prediction->move($collision, $world->getTuneController());
+    $prediction->move($collision, $world->getTuneController(), []);
 
     return characterPredictionSnapshot($prediction);
 }
@@ -415,6 +415,24 @@ test('chatting fire input does not request a dead player respawn', function () {
     expect($tee->spawning)->toBeTrue();
 });
 
+test('successive server ticks match prediction from the rounded wire state', function (int $direction, bool $jump) {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    $world->getTuneController()->gravity         = 50;
+    $character->vel                              = new Vector2(0.3, 0.7);
+    $frame                                       = input(['direction' => $direction, 'targetX' => 100, 'targetY' => 0, 'jump' => $jump]);
+    $predicted                                   = characterPredictionSnapshot($character);
+    // Start the server and predictor from identical wire-representable velocities.
+    $character->vel = new Vector2($predicted->velX / 256.0, $predicted->velY / 256.0);
+    for ($i = 0; $i < 30; $i++) {
+        $predicted = predictCharacterCoreFrame($world, $predicted, $frame);
+        sendCharacterPredictionInput($slot, $clock->get(), $frame);
+        $server->advance($world);
+        $actual = characterPredictionSnapshot($character);
+        expect([$actual->x, $actual->y, $actual->velX, $actual->velY, $actual->jumped])
+            ->toBe([$predicted->x, $predicted->y, $predicted->velX, $predicted->velY, $predicted->jumped]);
+    }
+})->with(['idle' => [0, false], 'walking' => [1, false], 'air jump' => [-1, true]]);
+
 test('jump inputs use the next unprocessed tick without moving future inputs earlier', function (int $offset) {
     [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
     $server->advance($world);
@@ -519,6 +537,7 @@ test('ninja dash snapshots do not make core prediction extrapolate the server dr
     $attackTick = $clock->get();
     sendCharacterPredictionInput($slot, $attackTick, $fire);
 
+    $dashStep = (new Vector2($targetX, $targetY))->normalize()->mul(50);
     // HandleNinja decrements the ten-tick timer before moving (0.6 character.cpp).
     for ($moveTime = 9; $moveTime > 0; $moveTime--) {
         $previousPosition = clone $character->getPosition();
@@ -526,7 +545,11 @@ test('ninja dash snapshots do not make core prediction extrapolate the server dr
         $server->advance($world);
         $snapshot = characterPredictionSnapshot($character);
         expect($character->ninjaCurrentMoveTime)->toBe($moveTime);
-        expect($character->getPosition()->distance($previousPosition))->toEqualWithDelta(50.0, 0.00000001);
+        // The deferred pass rounds diagonal dash endpoints too.
+        expect($character->getPosition())->toEqual(new Vector2(
+            round($previousPosition->x + $dashStep->x),
+            round($previousPosition->y + $dashStep->y),
+        ));
         expect([$snapshot->velX, $snapshot->velY])->toBe([0, 0]);
         expect($snapshot->weapon)->toBe(GameConstants::WEAPON_NINJA);
         expect($snapshot->attackTick)->toBe($attackTick);

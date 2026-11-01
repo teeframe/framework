@@ -178,16 +178,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             );
         }
 
-        $otherCharacters = [];
-        foreach ($this->world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
-                continue;
-            }
-            if ($entity->tee !== null) {
-                $otherCharacters[$entity->tee->teeIndex] = $entity;
-            }
-        }
-
         $tune = $this->world->getTuneController();
         $this->tick(
             $this->input->direction,
@@ -197,7 +187,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $this->input->hook,
             $collision,
             $tune,
-            $otherCharacters,
+            $this->getOtherCharacters(),
         );
         $radius = self::PHYS_SIZE / 3;
         if (($collision->getCollisionAt($this->position->x + $radius, $this->position->y - $radius) & Collision::COLFLAG_DEATH)
@@ -211,7 +201,29 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             return;
         }
 
-        $this->move($collision, $tune);
+        $this->handleWeapons();
+    }
+
+    public function tickDeferred(): void
+    {
+        if (! $this->alive) {
+            return;
+        }
+
+        $collision = $this->world->getMap()->getCollision();
+        if ($collision === null) {
+            return;
+        }
+
+        $tune = $this->world->getTuneController();
+        // Ninja must not retain drag that would be applied after its dash.
+        if ($this->activeWeapon !== GameConstants::WEAPON_NINJA || $this->ninjaCurrentMoveTime < 0) {
+            $this->addDragVelocity($tune);
+        }
+        $this->resetDragVelocity();
+
+        $this->move($collision, $tune, $this->getOtherCharacters());
+        $this->quantize();
 
         // The local client predicts ground-jump and ground/no-hook sounds, but
         // other clients need server events (CCharacter::TickDefered in 0.6).
@@ -229,8 +241,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         if ($events & GameConstants::COREEVENT_HOOK_HIT_NOHOOK) {
             $this->createSound(GameConstants::SOUND_HOOK_NOATTACH, $excludedTeeIndex);
         }
-
-        $this->handleWeapons();
     }
 
     public function tickPaused(): void
@@ -297,6 +307,19 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             && $requestingTee instanceof PlayerTee
             && $requestingTee->team === GameConstants::TEAM_SPECTATORS
             && $requestingTee->spectatorId === $this->tee->teeIndex;
+    }
+
+    /** @return array<int, AbstractCharacterEntity> */
+    protected function getOtherCharacters(): array
+    {
+        $characters = [];
+        foreach ($this->world->getEntities() as $entity) {
+            if ($entity instanceof AbstractCharacterEntity && $entity !== $this && $entity->alive && ! $entity->isToDestroy() && $entity->tee !== null) {
+                $characters[$entity->tee->teeIndex] = $entity;
+            }
+        }
+
+        return $characters;
     }
 
     protected function normalizeInputTarget(PlayerInput $input): PlayerInput

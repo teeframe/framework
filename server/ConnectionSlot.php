@@ -20,8 +20,6 @@ use TeeFrame\Server\Sockets\AbstractSocket;
 
 class ConnectionSlot extends AbstractConnection
 {
-    use Concerns\HasConnectionConsole;
-
     const STATE_WAITING_INIT = 0;
     const STATE_CONNECTING   = 1;
     const STATE_LOADING      = 2;
@@ -227,6 +225,26 @@ class ConnectionSlot extends AbstractConnection
         }
 
         return true;
+    }
+
+    public function consoleError(string $message): void
+    {
+        Console::error($this->generateConsoleMessage($message));
+    }
+
+    public function consoleWarn(string $message): void
+    {
+        Console::warn($this->generateConsoleMessage($message));
+    }
+
+    public function consoleInfo(string $message): void
+    {
+        Console::info($this->generateConsoleMessage($message));
+    }
+
+    protected function generateConsoleMessage(string $message): string
+    {
+        return 'World='.$this->world()->identifier.' TeeIdx='.$this->playerTee()->teeIndex.', addr='.$this->destinationAddress.':'.$this->destinationPort.'. '.$message;
     }
 
     protected function handlePacketSending(AbstractPacket $packet): bool

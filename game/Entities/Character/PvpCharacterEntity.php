@@ -2,7 +2,6 @@
 
 namespace TeeFrame\Game\Entities\Character;
 
-use TeeFrame\Game\Entities\Character\Concerns\HasNinjaCombat;
 use TeeFrame\Game\Entities\PvpLaserEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
@@ -14,8 +13,6 @@ use TeeFrame\Network\SnapItems\ObjEventHammerHitItem;
 
 class PvpCharacterEntity extends AbstractCharacterEntity
 {
-    use HasNinjaCombat;
-
     public int $damageTaken     = 0;
     public int $damageTakenTick = 0;
     public int $ammoRegenStart  = -1;
@@ -411,6 +408,89 @@ class PvpCharacterEntity extends AbstractCharacterEntity
                 angle: (int) round($f * 256.0),
             ));
         }
+    }
+
+    protected function handleNinja(): void
+    {
+        if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
+            return;
+        }
+
+        $currentTick = $this->world->getCurrentTick();
+
+        // Ninja duration: 15 seconds.
+        if (($currentTick - $this->ninjaActivationTick) > 15 * NetworkParams::TICKS_PER_SECOND) {
+            $this->weapons[GameConstants::WEAPON_NINJA]->got = false;
+            $this->activeWeapon                              = $this->lastWeapon;
+            $this->setWeapon($this->activeWeapon);
+
+            return;
+        }
+
+        $this->setWeapon(GameConstants::WEAPON_NINJA);
+        $this->ninjaCurrentMoveTime--;
+
+        if ($this->ninjaCurrentMoveTime === 0) {
+            $this->vel->x = $this->ninjaActivationDir->x * $this->ninjaOldVelAmount;
+            $this->vel->y = $this->ninjaActivationDir->y * $this->ninjaOldVelAmount;
+        }
+
+        if ($this->ninjaCurrentMoveTime <= 0) {
+            return;
+        }
+
+        $this->moveNinja();
+        $this->hitNinjaTargets();
+    }
+
+    protected function moveNinja(): void
+    {
+        $this->vel->x = $this->ninjaActivationDir->x * 50;
+        $this->vel->y = $this->ninjaActivationDir->y * 50;
+
+        $collision = $this->world->getMap()->getCollision();
+        if ($collision !== null) {
+            $collision->moveBox($this->position, $this->vel, new Vector2(self::PHYS_SIZE, self::PHYS_SIZE), 0.0);
+        }
+
+        // The dash is server-driven; do not leave velocity for client prediction.
+        $this->vel->x = 0.0;
+        $this->vel->y = 0.0;
+    }
+
+    protected function hitNinjaTargets(): void
+    {
+        foreach ($this->world->getEntities() as $entity) {
+            if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
+                continue;
+            }
+            if (in_array($entity, $this->ninjaHitObjects, true)) {
+                continue;
+            }
+            if ($entity->getPosition()->distance($this->position) > self::PHYS_SIZE * 2.0) {
+                continue;
+            }
+
+            $this->createSound(GameConstants::SOUND_NINJA_HIT, position: $entity->getPosition());
+
+            if (count($this->ninjaHitObjects) < 10) {
+                $this->ninjaHitObjects[] = $entity;
+            }
+
+            $entity->takeDamage(new Vector2(0, -10.0), 9, $this->tee->teeIndex ?? -1, GameConstants::WEAPON_NINJA);
+        }
+    }
+
+    protected function shootNinja(): int
+    {
+        $this->ninjaActivationDir   = $this->getAimDirection();
+        $this->ninjaCurrentMoveTime = intdiv(200 * NetworkParams::TICKS_PER_SECOND, 1000);
+        $this->ninjaOldVelAmount    = $this->vel->length();
+        $this->ninjaHitObjects      = [];
+
+        $this->createSound(GameConstants::SOUND_NINJA_FIRE);
+
+        return intdiv(800 * NetworkParams::TICKS_PER_SECOND, 1000);
     }
 
     protected function getAimDirection(): Vector2

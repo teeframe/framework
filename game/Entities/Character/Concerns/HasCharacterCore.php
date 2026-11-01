@@ -19,6 +19,7 @@ use TeeFrame\Network\NetworkParams;
 trait HasCharacterCore
 {
     public Vector2 $vel;
+    public Vector2 $hookDragVelocity;
     public Vector2 $hookPos;
     public Vector2 $hookDir;
     public int $hookTick        = 0;
@@ -31,17 +32,18 @@ trait HasCharacterCore
 
     protected function initCore(Vector2 $position): void
     {
-        $this->position        = clone $position;
-        $this->vel             = new Vector2(0, 0);
-        $this->hookPos         = new Vector2(0, 0);
-        $this->hookDir         = new Vector2(0, 0);
-        $this->hookTick        = 0;
-        $this->hookState       = GameConstants::HOOK_IDLE;
-        $this->hookedPlayer    = -1;
-        $this->jumped          = 0;
-        $this->direction       = 0;
-        $this->angle           = 0;
-        $this->triggeredEvents = 0;
+        $this->position         = clone $position;
+        $this->vel              = new Vector2(0, 0);
+        $this->hookDragVelocity = new Vector2(0, 0);
+        $this->hookPos          = new Vector2(0, 0);
+        $this->hookDir          = new Vector2(0, 0);
+        $this->hookTick         = 0;
+        $this->hookState        = GameConstants::HOOK_IDLE;
+        $this->hookedPlayer     = -1;
+        $this->jumped           = 0;
+        $this->direction        = 0;
+        $this->angle            = 0;
+        $this->triggeredEvents  = 0;
     }
 
     /**
@@ -179,16 +181,15 @@ trait HasCharacterCore
             // Handle hook influence
             if ($this->hookedPlayer === $teeIndex && $tune->playerHooking / 100.0 > 0) {
                 if ($distance > $physSize * 1.50) {
-                    $hookAccel     = ($tune->hookDragAccel / 100.0) * ($distance / ($tune->hookLength / 100.0));
-                    $hookDragSpeed = $tune->hookDragSpeed / 100.0;
+                    $hookAccel = ($tune->hookDragAccel / 100.0) * ($distance / ($tune->hookLength / 100.0));
 
-                    // add force to the hooked player
-                    $otherCharacter->vel->x = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $otherCharacter->vel->x, $hookAccel * $dir->x * 1.5);
-                    $otherCharacter->vel->y = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $otherCharacter->vel->y, $hookAccel * $dir->y * 1.5);
+                    // Defer drag until every tee has processed friction and input (teeworlds/teeworlds#2478).
+                    $otherCharacter->hookDragVelocity->x += $hookAccel * $dir->x * 1.5;
+                    $otherCharacter->hookDragVelocity->y += $hookAccel * $dir->y * 1.5;
 
                     // add a little bit force to the guy who has the grip
-                    $this->vel->x = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $this->vel->x, -$hookAccel * $dir->x * 0.25);
-                    $this->vel->y = self::saturatedAdd(-$hookDragSpeed, $hookDragSpeed, $this->vel->y, -$hookAccel * $dir->y * 0.25);
+                    $this->hookDragVelocity->x -= $hookAccel * $dir->x * 0.25;
+                    $this->hookDragVelocity->y -= $hookAccel * $dir->y * 0.25;
                 }
             }
         }
@@ -201,7 +202,21 @@ trait HasCharacterCore
         }
     }
 
-    public function move(Collision $collision, TuneController $tune): void
+    public function addDragVelocity(TuneController $tune): void
+    {
+        $dragSpeed    = $tune->hookDragSpeed / 100.0;
+        $this->vel->x = self::saturatedAdd(-$dragSpeed, $dragSpeed, $this->vel->x, $this->hookDragVelocity->x);
+        $this->vel->y = self::saturatedAdd(-$dragSpeed, $dragSpeed, $this->vel->y, $this->hookDragVelocity->y);
+    }
+
+    public function resetDragVelocity(): void
+    {
+        $this->hookDragVelocity->x = 0.0;
+        $this->hookDragVelocity->y = 0.0;
+    }
+
+    /** @param array<int, AbstractCharacterEntity> $otherCharacters */
+    public function move(Collision $collision, TuneController $tune, array $otherCharacters = []): void
     {
         $speed = $this->vel->length();
 
@@ -214,8 +229,52 @@ trait HasCharacterCore
 
         $this->vel->x *= (1.0 / $rampValue);
 
+        $movement = $newPos->diff($this->position);
+        $distance = $movement->length();
+        if ($tune->playerCollision > 0 && $otherCharacters !== [] && $distance > 0.0) {
+            $end     = (int) ($distance + 1);
+            $lastPos = clone $this->position;
+            // CCharacterCore::Move samples the path after map collision has shortened it.
+            for ($i = 0; $i < $end; $i++) {
+                $fraction = $i / $distance;
+                $pos      = new Vector2(
+                    $this->position->x + $movement->x * $fraction,
+                    $this->position->y + $movement->y * $fraction,
+                );
+                foreach ($otherCharacters as $character) {
+                    if ($character === $this || ! $character->alive || $character->isToDestroy()) {
+                        continue;
+                    }
+                    $separation = $pos->distance($character->position);
+                    if ($separation < self::PHYS_SIZE && $separation > 0.0) {
+                        if ($i > 0) {
+                            $newPos = $lastPos;
+                        } elseif ($newPos->distance($character->position) <= $separation) {
+                            $newPos = clone $this->position;
+                        }
+
+                        break 2;
+                    }
+                }
+                $lastPos = $pos;
+            }
+        }
+
         $this->position->x = $newPos->x;
         $this->position->y = $newPos->y;
+    }
+
+    /** Match CCharacterCore::Quantize: the next tick starts from the encoded core state. */
+    public function quantize(): void
+    {
+        $this->position->x = round($this->position->x);
+        $this->position->y = round($this->position->y);
+        $this->vel->x      = round($this->vel->x * 256.0) / 256.0;
+        $this->vel->y      = round($this->vel->y * 256.0) / 256.0;
+        $this->hookPos->x  = round($this->hookPos->x);
+        $this->hookPos->y  = round($this->hookPos->y);
+        $this->hookDir->x  = round($this->hookDir->x * 256.0) / 256.0;
+        $this->hookDir->y  = round($this->hookDir->y * 256.0) / 256.0;
     }
 
     /**

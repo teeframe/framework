@@ -144,4 +144,5 @@ function feedInput(AbstractCharacterEntity $character, PlayerInput $input): void
     $character->onPredictedInput($input);
     $character->onDirectInput($input);
     $character->doTick();
+    $character->tickDeferred();
 }

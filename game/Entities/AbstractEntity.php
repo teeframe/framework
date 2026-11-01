@@ -32,6 +32,9 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
 
     abstract public function doTick(): void;
 
+    /* Used for characters */
+    public function tickDeferred(): void {}
+
     /** Transient entities are removed on round reset; persistent entities override this hook. */
     public function reset(): void
     {

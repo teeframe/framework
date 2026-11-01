@@ -121,7 +121,7 @@ class SnapshotEncoder
         $previousInts = $previous->getInts();
         $payload      = (new RawPayload)->addInt($item->getItemId())->addInt($item->getId());
         foreach ($item->getInts() as $i => $value) {
-            $payload->addInt($value - $previousInts[$i]);
+            $payload->addInt(NetworkBase::toInt32($value - $previousInts[$i]));
         }
 
         return $payload->encode();

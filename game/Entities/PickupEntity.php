@@ -15,11 +15,13 @@ class PickupEntity extends AbstractEntity
 {
     const PICKUP_PHYS_SIZE = 14;
 
-    protected int $spawnTick = -1;
+    /** -1 means available; null means consumed without respawning. */
+    protected ?int $spawnTick = -1;
 
     /**
      * @param  int  $respawnTime  Respawn time in ticks after being picked up (-1 = never respawn).
      * @param  int  $spawnDelay  Initial spawn delay in ticks before the pickup first appears (0 = immediately available).
+     * @param  bool  $alwaysAvailable  Keep the pickup available after collection, ignoring the respawn time.
      */
     public function __construct(
         AbstractWorld $world,
@@ -28,6 +30,7 @@ class PickupEntity extends AbstractEntity
         protected int $subType = 0,
         protected int $respawnTime = -1,
         protected int $spawnDelay = 0,
+        protected bool $alwaysAvailable = false,
     ) {
         parent::__construct(world: $world, position: $position);
 
@@ -54,7 +57,7 @@ class PickupEntity extends AbstractEntity
 
     public function tickPaused(): void
     {
-        if ($this->spawnTick !== -1) {
+        if ($this->spawnTick !== null && $this->spawnTick >= 0) {
             $this->spawnTick++;
         }
     }
@@ -63,7 +66,7 @@ class PickupEntity extends AbstractEntity
     {
         $currentTick = $this->world->getCurrentTick();
 
-        if ($this->spawnTick > 0 && $currentTick <= $this->spawnTick) {
+        if ($this->spawnTick === null || $currentTick <= $this->spawnTick) {
             return;
         }
 
@@ -89,19 +92,19 @@ class PickupEntity extends AbstractEntity
 
         // Only the nearest character can take the pickup (CPickup::Tick).
         $respawnTime = $this->onPickup($closest);
-        if ($respawnTime >= 0) {
-            $this->spawnTick = $currentTick + $respawnTime;
+        if ($respawnTime !== null && ! $this->alwaysAvailable) {
+            $this->spawnTick = $respawnTime < 0 ? null : $currentTick + $respawnTime;
         }
     }
 
     /**
      * Handle a character picking up this item.
-     * Returns respawn time in ticks, or -1 if not picked up.
+     * Returns respawn ticks (-1 = never respawn), or null if not picked up.
      */
-    protected function onPickup(AbstractCharacterEntity $character): int
+    protected function onPickup(AbstractCharacterEntity $character): ?int
     {
         $soundId     = -1;
-        $respawnTime = -1;
+        $respawnTime = null;
 
         switch ($this->type) {
             case GameConstants::POWERUP_HEALTH:
@@ -154,7 +157,7 @@ class PickupEntity extends AbstractEntity
      */
     public function doSnap(AbstractTee $requestingTee): array
     {
-        if ($this->spawnTick > 0 && $this->world->getCurrentTick() <= $this->spawnTick) {
+        if ($this->spawnTick === null || $this->world->getCurrentTick() <= $this->spawnTick) {
             return [];
         }
 

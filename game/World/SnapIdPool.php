@@ -5,7 +5,7 @@ namespace TeeFrame\Game\World;
 class SnapIdPool
 {
     /**
-     * @var int[]
+     * @var array<int, int> Released IDs keyed by ID, in release order.
      */
     protected array $releasedIds = [];
 
@@ -30,10 +30,10 @@ class SnapIdPool
 
     public function freeId(int $id): void
     {
-        if (in_array($id, $this->releasedIds, true) || $id > $this->lastAllocatedId) {
+        if (isset($this->releasedIds[$id]) || $id > $this->lastAllocatedId) {
             throw new \RuntimeException('Trying to free an unallocated snap id');
         }
 
-        $this->releasedIds[] = $id;
+        $this->releasedIds[$id] = $id;
     }
 }

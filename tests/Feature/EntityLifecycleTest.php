@@ -14,9 +14,19 @@ use TeeFrame\Network\SnapItems\ObjPickupItem;
 
 class LifecycleTestEntity extends AbstractEntity
 {
-    public int $resets      = 0;
-    public int $ticks       = 0;
-    public int $pausedTicks = 0;
+    public int $resets        = 0;
+    public int $ticks         = 0;
+    public int $pausedTicks   = 0;
+    public int $deferredTicks = 0;
+
+    /** @var (Closure(): void)|null */
+    public ?Closure $onTick = null;
+
+    /** @var (Closure(): void)|null */
+    public ?Closure $onReset = null;
+
+    /** @var (Closure(): void)|null */
+    public ?Closure $onDeferred = null;
 
     public function __construct(
         AbstractWorld $world,
@@ -33,6 +43,7 @@ class LifecycleTestEntity extends AbstractEntity
         if (! $this->persistent) {
             parent::reset();
         }
+        $this->onReset?->__invoke();
     }
 
     public function getFixedSnapId(): ?int
@@ -48,6 +59,13 @@ class LifecycleTestEntity extends AbstractEntity
     public function doTick(): void
     {
         $this->ticks++;
+        $this->onTick?->__invoke();
+    }
+
+    public function tickDeferred(): void
+    {
+        $this->deferredTicks++;
+        $this->onDeferred?->__invoke();
     }
 
     public function tickPaused(): void
@@ -107,6 +125,192 @@ test('custom entities can survive round resets through their reset hook', functi
     sort($reused);
     expect($reused)->toBe([0, 1]);
 });
+
+test('destroying many entities during a tick preserves survivor keys and releases every snapshot id', function () {
+    $world     = new TestWorld(new TickHandler(100), new Map);
+    $viewer    = new PlayerTee;
+    $survivors = [];
+    for ($i = 0; $i < 64; $i++) {
+        $entity = new LifecycleTestEntity($world);
+        $world->addEntity($entity);
+        if ($i % 2 === 0) {
+            $entity->onTick = $entity->markToDestroy(...);
+        } else {
+            $survivors[$i] = $entity;
+        }
+    }
+    expect(lifecycleSnapshotIds($world, $viewer))->toBe(range(0, 63));
+
+    $world->doTick();
+
+    expect($world->getEntities())->toBe($survivors);
+    expect(lifecycleSnapshotIds($world, $viewer))->toBe(range(1, 63, 2));
+    foreach ($survivors as $entity) {
+        expect($entity->ticks)->toBe(1);
+        $world->addEntity(new LifecycleTestEntity($world));
+    }
+    $ids = array_slice(lifecycleSnapshotIds($world, $viewer), 32);
+    sort($ids);
+    expect($ids)->toBe(range(0, 62, 2));
+});
+
+test('entities spawned during ticking survive cleanup and start ticking on the next pass', function () {
+    $world           = new TestWorld(new TickHandler(100), new Map);
+    $spawner         = new LifecycleTestEntity($world);
+    $survivor        = new LifecycleTestEntity($world);
+    $spawned         = new LifecycleTestEntity($world);
+    $spawner->onTick = function () use ($world, $spawner, $spawned): void {
+        $world->addEntity($spawned);
+        $spawner->markToDestroy();
+    };
+    $world->addEntity($spawner);
+    $world->addEntity($survivor);
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
+
+    $world->doTick();
+
+    expect($world->getEntities())->toBe([1 => $survivor, 2 => $spawned]);
+    expect($spawned->ticks)->toBe(0);
+    expect($spawned->deferredTicks)->toBe(0);
+    expect($survivor->ticks)->toBe(1);
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([1, 0]);
+    $world->doTick();
+    expect($spawned->ticks)->toBe(1);
+    expect($spawned->deferredTicks)->toBe(1);
+    expect($survivor->ticks)->toBe(2);
+});
+
+test('entities spawned by reset hooks are retained without resetting them in the same pass', function () {
+    $world            = new TestWorld(new TickHandler(100), new Map);
+    $spawner          = new LifecycleTestEntity($world);
+    $persistent       = new LifecycleTestEntity($world, persistent: true);
+    $spawned          = new LifecycleTestEntity($world);
+    $spawner->onReset = function () use ($world, $spawned): void {
+        $world->addEntity($spawned);
+    };
+    $world->addEntity($spawner);
+    $world->addEntity($persistent);
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
+
+    $world->resetGame();
+    $world->doTick();
+
+    expect($world->getEntities())->toBe([$persistent, $spawned]);
+    expect($spawner->resets)->toBe(1);
+    expect($spawner->ticks)->toBe(0);
+    expect($persistent->resets)->toBe(1);
+    expect($persistent->ticks)->toBe(1);
+    expect($spawned->resets)->toBe(0);
+    expect($spawned->ticks)->toBe(1);
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([1, 0]);
+});
+
+test('explicit removal during entity hooks does not free snapshot ids twice', function (bool $duringReset) {
+    $world    = new TestWorld(new TickHandler(100), new Map);
+    $entity   = new LifecycleTestEntity($world);
+    $survivor = new LifecycleTestEntity($world, persistent: true);
+    $remove   = function () use ($world, $entity): void {
+        $entity->markToDestroy();
+        $world->removeEntity($entity);
+    };
+    if ($duringReset) {
+        $entity->onReset = $remove;
+    } else {
+        $entity->onTick = $remove;
+    }
+    $world->addEntity($entity);
+    $world->addEntity($survivor);
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
+    if ($duringReset) {
+        $world->resetGame();
+    }
+
+    $world->doTick();
+    $world->removeEntity($entity);
+
+    expect(array_values($world->getEntities()))->toBe([$survivor]);
+    $world->addEntity(new LifecycleTestEntity($world));
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([1, 0]);
+})->with([false, true]);
+
+test('entities removed by another entity are not processed later in the same pass', function (bool $duringReset) {
+    $world   = new TestWorld(new TickHandler(100), new Map);
+    $remover = new LifecycleTestEntity($world, persistent: true);
+    $removed = new LifecycleTestEntity($world);
+    $remove  = function () use ($world, $removed): void {
+        $world->removeEntity($removed);
+    };
+    if ($duringReset) {
+        $remover->onReset = $remove;
+    } else {
+        $remover->onTick = $remove;
+    }
+    $world->addEntity($remover);
+    $world->addEntity($removed);
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
+    if ($duringReset) {
+        $world->resetGame();
+    }
+
+    $world->doTick();
+
+    expect($world->getEntities())->toBe([$remover]);
+    expect($removed->resets)->toBe(0);
+    expect($removed->ticks)->toBe(0);
+    $world->addEntity(new LifecycleTestEntity($world));
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
+})->with([false, true]);
+
+test('world entities complete their active ticks before the deferred pass', function () {
+    $world         = new TestWorld(new TickHandler(100), new Map);
+    $first         = new LifecycleTestEntity($world);
+    $second        = new LifecycleTestEntity($world);
+    $order         = [];
+    $first->onTick = function () use (&$order): void {
+        $order[] = 'first tick';
+    };
+    $second->onTick = function () use (&$order): void {
+        $order[] = 'second tick';
+    };
+    $first->onDeferred = function () use (&$order): void {
+        $order[] = 'first deferred';
+    };
+    $second->onDeferred = function () use (&$order): void {
+        $order[] = 'second deferred';
+    };
+    $world->addEntity($first);
+    $world->addEntity($second);
+
+    $world->doTick();
+
+    expect($order)->toBe(['first tick', 'second tick', 'first deferred', 'second deferred']);
+    $world->setPaused(true);
+    $world->doTick();
+    expect($first->deferredTicks)->toBe(1);
+    expect($second->deferredTicks)->toBe(1);
+});
+
+test('deferred cleanup frees snapshot ids once when hooks destroy or remove entities', function (bool $removeDirectly) {
+    $world              = new TestWorld(new TickHandler(100), new Map);
+    $entity             = new LifecycleTestEntity($world);
+    $survivor           = new LifecycleTestEntity($world);
+    $entity->onDeferred = function () use ($world, $entity, $removeDirectly): void {
+        $entity->markToDestroy();
+        if ($removeDirectly) {
+            $world->removeEntity($entity);
+        }
+    };
+    $world->addEntity($entity);
+    $world->addEntity($survivor);
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
+
+    $world->doTick();
+
+    expect(array_values($world->getEntities()))->toBe([$survivor]);
+    expect($entity->deferredTicks)->toBe(1);
+    $world->addEntity(new LifecycleTestEntity($world));
+    expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([1, 0]);
+})->with([false, true]);
 
 test('custom fixed snapshot ids including zero bypass the dynamic id pool', function (int $id) {
     $world = new TestWorld(new TickHandler(100), new Map);

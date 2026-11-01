@@ -1,6 +1,8 @@
 <?php
 
 use TeeFrame\Core\TickHandler;
+use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\System\SnapEmptyChunk;
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
 use TeeFrame\Network\Chunks\System\SnapSliceChunk;
@@ -10,6 +12,7 @@ use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\RawPayload;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
+use TeeFrame\Network\SnapItems\ObjClientInfoItem;
 use TeeFrame\Network\SnapItems\ObjProjectileItem;
 use TeeFrame\Network\SnapshotEncoder;
 use Tests\Support\RecordingConnection;
@@ -142,6 +145,63 @@ test('snapshot bookkeeping selects the acknowledged base and reset restores full
         }
     }
 });
+
+test('snapshot differences wrap to signed 32 bits before integer packing', function (int $before, int $after, int $difference) {
+    $encoder  = new SnapshotEncoder;
+    $previous = (new ObjProjectileItem($before, 200, 1, 2, 1, 100))->setId(0);
+    $current  = (new ObjProjectileItem($after, 200, 1, 2, 1, 100))->setId(0);
+    $chunk    = $encoder->encode(101, 1, $encoder->indexItems([$current]), $encoder->indexItems([$previous]))[0];
+    assert($chunk instanceof SnapSingleChunk);
+    $payload = new RawPayload($chunk->snapPayload);
+    expect([$payload->extractInt(), $payload->extractInt(), $payload->extractInt()])->toBe([0, 1, 0]);
+    expect([$payload->extractInt(), $payload->extractInt()])->toBe([$current->getItemId(), 0]);
+    $delta = $payload->extractInt();
+    expect($delta)->toBe($difference);
+    $reconstructed = [NetworkBase::toInt32($before + $delta)];
+    foreach (array_slice($previous->getInts(), 1) as $value) {
+        $reconstructed[] = NetworkBase::toInt32($value + $payload->extractInt());
+    }
+    expect($reconstructed)->toBe($current->getInts());
+    expect($payload->encode())->toBeEmpty();
+    expect($chunk->crc)->toBe($encoder->calculateCrc([$current]));
+})->with([
+    'positive overflow'   => [-2147483648, 2147483647, -1],
+    'negative overflow'   => [2147483647, -2147483648, 1],
+    'positive half-range' => [-1, 2147483647, -2147483648],
+    'negative half-range' => [2147483647, -1, -2147483648],
+]);
+
+test('client info deltas survive tee index reuse across ASCII and UTF-8 names', function (string $oldName, string $newName) {
+    $world       = new TestWorld(new TickHandler(100), new Map);
+    $viewer      = new PlayerTee;
+    $previousTee = new PlayerTee;
+    $world->addTee($viewer);
+    $world->addTee($previousTee);
+    $previousTee->name = $oldName;
+    $encoder           = new SnapshotEncoder;
+    $previous          = $encoder->indexItems($world->doSnap($viewer));
+    $world->removeTee($previousTee);
+    $replacement = new PlayerTee;
+    $world->addTee($replacement);
+    $replacement->name = $newName;
+    expect($replacement->teeIndex)->toBe($previousTee->teeIndex);
+    $current = $encoder->indexItems($world->doSnap($viewer));
+    $chunk   = $encoder->encode(101, 1, $current, $previous)[0];
+    assert($chunk instanceof SnapSingleChunk);
+    $payload = new RawPayload($chunk->snapPayload);
+    expect([$payload->extractInt(), $payload->extractInt(), $payload->extractInt()])->toBe([0, 1, 0]);
+    $type = $payload->extractInt();
+    $id   = $payload->extractInt();
+    $key  = ($type << 16) | $id;
+    expect($current[$key])->toBeInstanceOf(ObjClientInfoItem::class);
+    expect($id)->toBe($replacement->teeIndex);
+    $reconstructed = [];
+    foreach ($previous[$key]->getInts() as $value) {
+        $reconstructed[] = NetworkBase::toInt32($value + $payload->extractInt());
+    }
+    expect($reconstructed)->toBe($current[$key]->getInts());
+    expect($payload->encode())->toBeEmpty();
+})->with([['Alice', 'élice'], ['élice', 'Alice']]);
 
 test('snapshot checksums retain signed 32 bit wrapping', function () {
     $item = new class extends AbstractSnapItem
