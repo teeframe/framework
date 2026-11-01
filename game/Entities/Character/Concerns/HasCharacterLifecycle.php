@@ -115,14 +115,14 @@ trait HasCharacterLifecycle
 
     public function giveNinja(): void
     {
-        $this->ninjaActivationTick  = $this->world->getCurrentTick();
-        $this->ninjaCurrentMoveTime = 0;
-        $this->ninjaHitObjects      = [];
+        $this->ninjaActivationTick = $this->world->getCurrentTick();
 
         $this->weapons[GameConstants::WEAPON_NINJA]->got  = true;
         $this->weapons[GameConstants::WEAPON_NINJA]->ammo = -1;
         if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
-            $this->lastWeapon = $this->activeWeapon;
+            $this->lastWeapon           = $this->activeWeapon;
+            $this->ninjaCurrentMoveTime = 0;
+            $this->ninjaHitObjects      = [];
         }
         $this->activeWeapon = GameConstants::WEAPON_NINJA;
     }

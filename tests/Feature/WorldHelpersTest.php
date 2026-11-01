@@ -6,6 +6,7 @@ use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
@@ -173,6 +174,33 @@ test('tee lookups remain world scoped across sparse and reused indexes', functio
     $replacement = $server->addClient($firstWorld, 8302);
     expect($replacement->playerTee()->teeIndex)->toBe(0);
     expect($firstWorld->findTee(0))->toBe($replacement->playerTee());
+});
+
+test('tee removal ignores unregistered foreign and departed objects without releasing another tee index', function () {
+    $server      = new WorldHelpersTestServer;
+    $world       = $server->addWorld();
+    $otherWorld  = $server->addWorld();
+    $leaving     = $server->addClient($world, 8300);
+    $remaining   = $server->addClient($world, 8301);
+    $foreign     = $server->addClient($otherWorld, 8400);
+    $departedTee = $leaving->playerTee();
+    $leaving->closeConnection('Leaving');
+    $world->removeTee($departedTee);
+    $replacement = $server->addClient($world, 8302);
+    expect($replacement->playerTee()->teeIndex)->toBe(0);
+    $server->socket->sent = [];
+
+    foreach ([new PlayerTee, $foreign->playerTee(), $departedTee] as $tee) {
+        $world->removeTee($tee);
+    }
+
+    expect($world->findTee(0))->toBe($replacement->playerTee());
+    expect($world->findTee(1))->toBe($remaining->playerTee());
+    expect($otherWorld->findTee(0))->toBe($foreign->playerTee());
+    expect($server->socket->sent)->toBeEmpty();
+    $next = $server->addClient($world, 8303);
+    expect($next->playerTee()->teeIndex)->toBe(2);
+    expect($world->findTee(0))->toBe($replacement->playerTee());
 });
 
 test('character lookups only return live characters present in their own world', function () {

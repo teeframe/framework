@@ -105,7 +105,12 @@ class PvpGameController extends AbstractGameController
             $this->roundStartTick++;
         }
 
-        if ($this->isTeamMode && $this->teamBalanceTime > 0 && $this->unbalancedTick !== -1
+        // A round restart or unpause timer can resume the world during this tick.
+        if ($world !== null && $world->isPaused()) {
+            if ($this->unbalancedTick !== -1) {
+                $this->unbalancedTick++;
+            }
+        } elseif ($this->isTeamMode && $this->teamBalanceTime > 0 && $this->unbalancedTick !== -1
             && $this->tickHandler->get() > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
         ) {
             $this->balanceTeams();
@@ -167,51 +172,60 @@ class PvpGameController extends AbstractGameController
                 && ($teamScore[GameConstants::TEAM_RED] >= $this->scoreLimit
                     || $teamScore[GameConstants::TEAM_BLUE] >= $this->scoreLimit);
 
-            if ($scoreLimitReached || $timeLimitReached) {
-                if ($this->suddenDeath) {
-                    $red = $this->isCaptureTheFlag
-                        ? (int) ($teamScore[GameConstants::TEAM_RED] / 100)
-                        : $teamScore[GameConstants::TEAM_RED];
-                    $blue = $this->isCaptureTheFlag
-                        ? (int) ($teamScore[GameConstants::TEAM_BLUE] / 100)
-                        : $teamScore[GameConstants::TEAM_BLUE];
-                    if ($red !== $blue) {
-                        $this->endRound();
-                    }
-                } elseif ($teamScore[GameConstants::TEAM_RED] !== $teamScore[GameConstants::TEAM_BLUE]) {
-                    $this->endRound();
-                } else {
-                    $this->suddenDeath = 1;
-                }
-            }
-        } else {
-            $topScore      = 0;
-            $topScoreCount = 0;
-            foreach ($world->getTees() as $tee) {
-                if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
-                    continue;
-                }
-                if ($topScoreCount === 0 || $tee->score > $topScore) {
-                    $topScore      = $tee->score;
-                    $topScoreCount = 1;
-                } elseif ($tee->score === $topScore) {
-                    $topScoreCount++;
-                }
-            }
-
-            if ($topScoreCount === 0) {
+            if (! $scoreLimitReached && ! $timeLimitReached) {
                 return;
             }
 
-            $scoreLimitReached = $this->scoreLimit > 0 && $topScore >= $this->scoreLimit;
-
-            if ($scoreLimitReached || $timeLimitReached) {
-                if ($topScoreCount === 1) {
+            if ($this->suddenDeath) {
+                $red = $this->isCaptureTheFlag
+                    ? (int) ($teamScore[GameConstants::TEAM_RED] / 100)
+                    : $teamScore[GameConstants::TEAM_RED];
+                $blue = $this->isCaptureTheFlag
+                    ? (int) ($teamScore[GameConstants::TEAM_BLUE] / 100)
+                    : $teamScore[GameConstants::TEAM_BLUE];
+                if ($red !== $blue) {
                     $this->endRound();
-                } else {
-                    $this->suddenDeath = 1;
                 }
+
+                return;
             }
+
+            if ($teamScore[GameConstants::TEAM_RED] !== $teamScore[GameConstants::TEAM_BLUE]) {
+                $this->endRound();
+            } else {
+                $this->suddenDeath = 1;
+            }
+
+            return;
+        }
+
+        $topScore      = 0;
+        $topScoreCount = 0;
+        foreach ($world->getTees() as $tee) {
+            if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
+                continue;
+            }
+            if ($topScoreCount === 0 || $tee->score > $topScore) {
+                $topScore      = $tee->score;
+                $topScoreCount = 1;
+            } elseif ($tee->score === $topScore) {
+                $topScoreCount++;
+            }
+        }
+
+        if ($topScoreCount === 0) {
+            return;
+        }
+
+        $scoreLimitReached = $this->scoreLimit > 0 && $topScore >= $this->scoreLimit;
+        if (! $scoreLimitReached && ! $timeLimitReached) {
+            return;
+        }
+
+        if ($topScoreCount === 1) {
+            $this->endRound();
+        } else {
+            $this->suddenDeath = 1;
         }
     }
 
@@ -419,17 +433,15 @@ class PvpGameController extends AbstractGameController
             return true;
         }
 
-        $aT = [0, 0];
+        $teamSizes = [0, 0];
         foreach ($world->getTees() as $tee) {
-            if (! $tee instanceof PlayerTee) {
+            if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
-            if ($tee->team !== GameConstants::TEAM_SPECTATORS) {
-                $aT[$tee->team]++;
-            }
+            $teamSizes[$tee->team]++;
         }
 
-        if (abs($aT[0] - $aT[1]) >= 2) {
+        if (abs($teamSizes[0] - $teamSizes[1]) >= 2) {
             if ($this->unbalancedTick === -1) {
                 $this->unbalancedTick = $this->tickHandler->get();
             }
@@ -449,45 +461,48 @@ class PvpGameController extends AbstractGameController
             return;
         }
 
-        $aT      = [0, 0];
-        $aTScore = [0.0, 0.0];
-        $aPScore = [];
+        $teamSizes        = [0, 0];
+        $teamScoreRates   = [0.0, 0.0];
+        $playerScoreRates = [];
 
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
-            $aT[$tee->team]++;
-            $elapsed                 = $this->tickHandler->get() - $tee->scoreStartTick;
-            $aPScore[$tee->teeIndex] = $elapsed > 0
+            $teamSizes[$tee->team]++;
+            $elapsed                          = $this->tickHandler->get() - $tee->scoreStartTick;
+            $playerScoreRates[$tee->teeIndex] = $elapsed > 0
                 ? $tee->score * NetworkParams::TICKS_PER_SECOND * 60.0 / $elapsed
                 : 0.0;
-            $aTScore[$tee->team] += $aPScore[$tee->teeIndex];
+            $teamScoreRates[$tee->team] += $playerScoreRates[$tee->teeIndex];
         }
 
-        if (abs($aT[0] - $aT[1]) < 2) {
+        if (abs($teamSizes[0] - $teamSizes[1]) < 2) {
             return;
         }
 
-        $M          = $aT[0] > $aT[1] ? 0 : 1;
-        $numBalance = (int) (abs($aT[0] - $aT[1]) / 2);
+        $largerTeam  = $teamSizes[0] > $teamSizes[1] ? GameConstants::TEAM_RED : GameConstants::TEAM_BLUE;
+        $smallerTeam = $largerTeam ^ 1;
 
-        do {
-            $candidate = null;
-            $bestDiff  = $aTScore[$M];
+        for ($playersToMove = intdiv(abs($teamSizes[0] - $teamSizes[1]), 2); $playersToMove > 0; $playersToMove--) {
+            $candidate           = null;
+            $bestScoreDifference = $teamScoreRates[$largerTeam];
 
             foreach ($world->getTees() as $tee) {
-                if (! $tee instanceof PlayerTee || $tee->team !== $M) {
+                if (! $tee instanceof PlayerTee || $tee->team !== $largerTeam) {
                     continue;
                 }
                 if (! $this->canBeMovedOnBalance($tee->teeIndex)) {
                     continue;
                 }
 
-                $diff = abs(($aTScore[$M ^ 1] + $aPScore[$tee->teeIndex]) - ($aTScore[$M] - $aPScore[$tee->teeIndex]));
-                if ($candidate === null || $diff < $bestDiff) {
-                    $candidate = $tee;
-                    $bestDiff  = $diff;
+                $scoreDifference = abs(
+                    ($teamScoreRates[$smallerTeam] + $playerScoreRates[$tee->teeIndex])
+                    - ($teamScoreRates[$largerTeam] - $playerScoreRates[$tee->teeIndex])
+                );
+                if ($candidate === null || $scoreDifference < $bestScoreDifference) {
+                    $candidate           = $tee;
+                    $bestScoreDifference = $scoreDifference;
                 }
             }
 
@@ -495,13 +510,13 @@ class PvpGameController extends AbstractGameController
                 break;
             }
 
-            $lastAction = $candidate->lastActionTick;
-            $candidate->setTeam($M ^ 1);
-            $candidate->lastActionTick = $lastAction;
+            $lastActionTick = $candidate->lastActionTick;
+            $candidate->setTeam($smallerTeam);
+            $candidate->lastActionTick = $lastActionTick;
             $candidate->forceBalanced  = true;
-            $aTScore[$M] -= $aPScore[$candidate->teeIndex];
-            $aTScore[$M ^ 1] += $aPScore[$candidate->teeIndex];
-        } while (--$numBalance > 0);
+            $teamScoreRates[$largerTeam] -= $playerScoreRates[$candidate->teeIndex];
+            $teamScoreRates[$smallerTeam] += $playerScoreRates[$candidate->teeIndex];
+        }
 
         $this->forceBalanced = true;
     }

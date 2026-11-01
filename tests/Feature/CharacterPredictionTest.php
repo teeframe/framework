@@ -3,6 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PlayerInput;
@@ -583,6 +584,43 @@ test('ninja activates on receipt regardless of the prediction tick without repla
     expect($character->vel->x)->toBe(0.0);
     expect($character->vel->y)->toBe(0.0);
 })->with(['late fire input' => -1, 'on time fire input' => 0, 'future fire input' => 2]);
+
+test('ninja pickups cannot cancel a dash started while standing on them', function (bool $alwaysAvailable, int $respawnTime) {
+    [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);
+    $character->spawn(new Vector2(512, 512), $slot->playerTee());
+    $pickup = new PickupEntity($world, new Vector2(512, 512), GameConstants::POWERUP_NINJA, respawnTime: $respawnTime, alwaysAvailable: $alwaysAvailable);
+    // Map pickups are ticked before characters.
+    $world->removeEntity($character);
+    $world->addEntity($pickup);
+    $world->addEntity($character);
+    for ($i = 0; $i < 3; $i++) {
+        sendCharacterPredictionInput($slot, $clock->get(), input(['targetX' => 100, 'targetY' => 0]));
+        $server->advance($world);
+    }
+    expect($character->activeWeapon)->toBe(GameConstants::WEAPON_NINJA);
+    $character->vel = new Vector2(3, 4);
+    $attackTick     = $clock->get();
+    sendCharacterPredictionInput($slot, $attackTick, input(['targetX' => 100, 'targetY' => 0, 'fire' => 1]));
+    expect($character->ninjaCurrentMoveTime)->toBe(10);
+    expect($character->ninjaOldVelAmount)->toBe(5.0);
+
+    for ($step = 1; $step <= 9; $step++) {
+        $server->advance($world);
+        expect($character->ninjaCurrentMoveTime)->toBe(10 - $step);
+        expect($character->getPosition())->toEqual(new Vector2(512 + $step * 50, 512));
+        expect($character->attackTick)->toBe($attackTick);
+        if ($step === 1 && $alwaysAvailable) {
+            expect($character->ninjaActivationTick)->toBe($attackTick);
+            expect($pickup->doSnap($slot->playerTee()))->toHaveCount(1);
+        }
+    }
+    $server->advance($world);
+    expect($character->ninjaCurrentMoveTime)->toBe(0);
+    expect($character->vel)->toEqual(new Vector2(5, 0));
+    expect($character->getPosition())->toEqual(new Vector2(967, 512));
+    expect($character->reloadTimer)->toBe(30);
+    expect($character->lastWeapon)->toBe(GameConstants::WEAPON_GUN);
+})->with([false, true])->with([-1, 0, 10]);
 
 test('ninja dash snapshots do not make core prediction extrapolate the server driven dash', function (int $targetX, int $targetY) {
     [$server, $world, $clock, $slot, $character] = createCharacterPredictionWorld(100);

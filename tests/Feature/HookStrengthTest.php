@@ -7,6 +7,7 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
+use TeeFrame\Network\SnapItems\ObjCharacterItem;
 
 /**
  * @param  list<string>  $clientOrder
@@ -183,6 +184,88 @@ test('released hooks do not leave drag accumulated for the next tick', function 
     expect($characters['target']->vel->y)->toBe(round(($velocity->y + 0.5) * 256.0) / 256.0);
     expect($characters['target']->hookDragVelocity)->toEqual(new Vector2(0, 0));
 });
+
+test('departing tees release all attached hooks before their id can be reused even while paused', function (bool $paused) {
+    [$world, $clock, $characters]        = createHookStrengthWorld(['hooker', 'target', 'secondHooker']);
+    $world->getTuneController()->gravity = 0;
+    $targetTee                           = $characters['target']->tee;
+    assert($targetTee instanceof PlayerTee);
+    $hookers = [$characters['hooker'], $characters['secondHooker']];
+    foreach ($hookers as $i => $hooker) {
+        $hooker->onPredictedInput(input(['targetX' => $i === 0 ? 100 : -100, 'targetY' => 0, 'hook' => true]));
+    }
+    for ($i = 0; $i < 3; $i++) {
+        $world->doTick();
+        $clock->next();
+    }
+    foreach ($hookers as $hooker) {
+        expect($hooker->hookState)->toBe(GameConstants::HOOK_GRABBED);
+        expect($hooker->hookedPlayer)->toBe($targetTee->teeIndex);
+    }
+
+    $world->setPaused($paused);
+    $world->removeTee($targetTee);
+
+    foreach ($hookers as $hooker) {
+        expect($hooker->hookState)->toBe(GameConstants::HOOK_RETRACTED);
+        expect($hooker->hookedPlayer)->toBe(-1);
+        expect($hooker->hookPos)->toEqual($hooker->getPosition());
+    }
+    $replacement = new PlayerTee;
+    $world->addTee($replacement);
+    expect($replacement->teeIndex)->toBe($targetTee->teeIndex);
+    $position  = new Vector2(320, 256);
+    $character = new PvpCharacterEntity($world, $position);
+    $character->spawn($position, $replacement);
+    $world->addEntity($character);
+
+    if ($paused) {
+        for ($i = 0; $i < 100; $i++) {
+            $world->doTick();
+            $clock->next();
+        }
+    }
+    foreach ($hookers as $hooker) {
+        $snapshot = $hooker->doSnap($replacement)[0];
+        expect($snapshot)->toBeInstanceOf(ObjCharacterItem::class);
+        assert($snapshot instanceof ObjCharacterItem);
+        expect($snapshot->hookedPlayer)->toBe(-1);
+        expect($snapshot->hookState)->toBe(GameConstants::HOOK_RETRACTED);
+    }
+    $world->setPaused(false);
+    for ($i = 0; $i < 3; $i++) {
+        $world->doTick();
+        $clock->next();
+    }
+
+    expect($character->getPosition())->toEqual(new Vector2(320, 256));
+    expect($character->vel)->toEqual(new Vector2(0, 0));
+    foreach ($hookers as $hooker) {
+        expect($hooker->hookedPlayer)->toBe(-1);
+        expect($hooker->hookState)->toBe(GameConstants::HOOK_RETRACTED);
+    }
+})->with([false, true]);
+
+test('a departing tee does not release hooks flying attached to the ground or attached to another tee', function (int $state, int $targetIndex) {
+    [$world, , $characters] = createHookStrengthWorld(['hooker', 'target', 'secondHooker']);
+    $hooker                 = $characters['hooker'];
+    $hooker->hookState      = $state;
+    $hooker->hookedPlayer   = $targetIndex;
+    $position               = new Vector2(320, 64);
+    $hooker->hookPos        = clone $position;
+    $targetTee              = $characters['target']->tee;
+    assert($targetTee instanceof PlayerTee);
+
+    $world->removeTee($targetTee);
+
+    expect($hooker->hookState)->toBe($state);
+    expect($hooker->hookedPlayer)->toBe($targetIndex);
+    expect($hooker->hookPos)->toEqual($position);
+})->with([
+    'flying'    => [GameConstants::HOOK_FLYING, -1],
+    'ground'    => [GameConstants::HOOK_GRABBED, -1],
+    'other tee' => [GameConstants::HOOK_GRABBED, 2],
+]);
 
 test('ninja discards hook drag during the dash and its final movement tick', function (int $moveTime) {
     [$world, , $characters] = createHookStrengthWorld();

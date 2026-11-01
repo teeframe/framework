@@ -99,6 +99,28 @@ test('simultaneous projectile kills enter sudden death using both scores from th
     expect($info->gameStateFlags & GameConstants::GAMESTATEFLAG_SUDDENDEATH)->toBe(GameConstants::GAMESTATEFLAG_SUDDENDEATH);
 })->with(['DM', 'TDM']);
 
+test('team sudden death resolves by points in TDM and captures in CTF', function (string $mode, bool $pointEndsRound) {
+    [$world, , $requester] = winTimingFixture($mode, scoreLimit: 1000);
+    $controller            = $world->getGameController();
+    $scores                = new ReflectionProperty($controller, 'teamScores');
+    $scores->setValue($controller, [1000, 1000]);
+    $controller->doWincheck();
+    expect($controller->isGameOver())->toBeFalse();
+    $info = $controller->doSnap($requester)[0];
+    assert($info instanceof ObjGameInfoItem);
+    expect($info->gameStateFlags & GameConstants::GAMESTATEFLAG_SUDDENDEATH)->toBe(GameConstants::GAMESTATEFLAG_SUDDENDEATH);
+
+    $scores->setValue($controller, [1001, 1000]);
+    $controller->doWincheck();
+    expect($controller->isGameOver())->toBe($pointEndsRound);
+    expect($world->isPaused())->toBe($pointEndsRound);
+
+    $scores->setValue($controller, [1101, 1000]);
+    $controller->doWincheck();
+    expect($controller->isGameOver())->toBeTrue();
+    expect($world->isPaused())->toBeTrue();
+})->with(['TDM' => ['TDM', true], 'CTF' => ['CTF', false]]);
+
 test('a kill on the time-limit tick is included before resolving the round', function (string $mode) {
     [$world, $clock, $owner, $target] = winTimingFixture($mode, scoreLimit: 0, timeLimit: 1);
     for ($i = 0; $i < NetworkParams::TICKS_PER_SECOND * 60 - 1; $i++) {

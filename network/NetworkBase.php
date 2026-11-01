@@ -103,31 +103,24 @@ class NetworkBase
      */
     public static function packInt(int $value): array
     {
-        // TODO: Refactor this
+        $firstByte = ($value >> 25) & 0x40; // Set the sign bit for negative values.
+        $value ^= $value >> 31; // Invert negative values before packing their magnitude.
 
-        $pointer = 0;
-        $result  = [];
-
-        $result[$pointer] = ($value >> 25) & 0x40; // set sign bit if i<0
-        $value            = $value ^ ($value >> 31); // if(i<0) i = ~i
-
-        $result[$pointer] |= $value & 0x3F; // pack 6bit into dst
-        $value >>= 6; // discard 6 bits
-
-        if ($value) {
-            $result[$pointer] |= 0x80; // set extend bit
-            while (1) {
-                $pointer++;
-                $result[$pointer] = $value & (0x7F); // pack 7bit
-                $value >>= 7; // discard 7 bits
-                $result[$pointer] |= ((int) ($value !== 0)) << 7; // set extend bit (may branch)
-                if ($value === 0) {
-                    break;
-                }
-            }
+        $firstByte |= $value & 0x3F;
+        $value >>= 6;
+        if ($value !== 0) {
+            $firstByte |= 0x80;
         }
 
-        $pointer++;
+        $result = [$firstByte];
+        while ($value !== 0) {
+            $byte = $value & 0x7F;
+            $value >>= 7;
+            if ($value !== 0) {
+                $byte |= 0x80;
+            }
+            $result[] = $byte;
+        }
 
         return $result;
     }

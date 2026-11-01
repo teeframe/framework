@@ -162,6 +162,13 @@ class PvpLaserEntity extends AbstractLaserEntity
         return $point->closestPointOnLine($lineStart, $lineEnd);
     }
 
+    public function getSnapDistance(Vector2 $viewPosition): float
+    {
+        $closest = $viewPosition->closestPointOnLine($this->from, $this->position);
+
+        return $viewPosition->distance($closest);
+    }
+
     public function doSnap(AbstractTee $requestingTee): array
     {
         return [

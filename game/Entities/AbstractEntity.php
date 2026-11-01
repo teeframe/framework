@@ -28,6 +28,12 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
         $this->position = $position;
     }
 
+    /** Distance from the viewer to the entity's visible geometry for snapshot culling. */
+    public function getSnapDistance(Vector2 $viewPosition): float
+    {
+        return $viewPosition->distance($this->position);
+    }
+
     abstract public function getHitBoxRadius(): int;
 
     abstract public function doTick(): void;

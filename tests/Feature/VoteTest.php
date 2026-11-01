@@ -15,6 +15,7 @@ use TeeFrame\Network\Chunks\Game\ClVoteChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteStatusChunk;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\RawPayload;
 
 $mapPath   = __DIR__.'/../dm1.map';
@@ -184,6 +185,34 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
     expect($tee1->vote)->toBe(1);
     expect($tee1->votePos)->toBe(1);
 });
+
+test('vote call cooldown uses its configured duration independently of attempt spam protection', function (?int $delaySeconds, int $elapsedTicks, bool $allowed) {
+    $clock = new TickHandler(100);
+    $world = createVoteWorld(new Map, $clock);
+    $tee   = new PlayerTee;
+    $world->addTee($tee);
+    $votes = $world->getVoteController();
+    if ($delaySeconds !== null) {
+        (new ReflectionProperty($votes, 'voteCallDelayTicks'))->setValue($votes, $delaySeconds * NetworkParams::TICKS_PER_SECOND);
+    }
+    $votes->addVoteOption('Example', 'example');
+    $world->onMessage($tee, new ClCallVoteChunk('option', 'Example', ''));
+    expect($votes->isVoteRunning())->toBeTrue();
+    $votes->endVote($world);
+    setVoteTick($clock, 100 + $elapsedTicks);
+
+    $world->onMessage($tee, new ClCallVoteChunk('option', 'Example', ''));
+
+    expect($votes->isVoteRunning())->toBe($allowed);
+    expect($tee->lastVoteCall)->toBe($allowed ? $clock->get() : 100);
+})->with([
+    'default before deadline'                       => [null, 60 * NetworkParams::TICKS_PER_SECOND - 1, false],
+    'default at deadline'                           => [null, 60 * NetworkParams::TICKS_PER_SECOND, true],
+    'custom before deadline'                        => [10, 10 * NetworkParams::TICKS_PER_SECOND - 1, false],
+    'custom at deadline'                            => [10, 10 * NetworkParams::TICKS_PER_SECOND, true],
+    'short cooldown still respects spam protection' => [1, 3 * NetworkParams::TICKS_PER_SECOND - 1, false],
+    'short cooldown after spam protection'          => [1, 3 * NetworkParams::TICKS_PER_SECOND, true],
+]);
 
 test('running vote timeout reports remaining whole seconds independently of server uptime', function (int $elapsedTicks, int $expectedSeconds) {
     $clock = new TickHandler(100_000);

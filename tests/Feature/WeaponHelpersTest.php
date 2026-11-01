@@ -2,6 +2,7 @@
 
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
+use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\Entities\PvpLaserEntity;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
@@ -195,6 +196,51 @@ test('ninja hits each target once per dash and emits the hit sound at the target
         $world->doSnap($tee),
         fn ($item) => $item instanceof ObjEventSoundWorldItem && $item->soundId === GameConstants::SOUND_NINJA_HIT,
     ))->toBe([]);
+});
+
+test('collecting another ninja mid dash preserves movement and cannot hit the same target twice', function () {
+    [$world, $character, $tee] = createWeaponHelpersWorld();
+    $victimTee                 = new PlayerTee;
+    $world->addTee($victimTee);
+    $victim = new PvpCharacterEntity($world, new Vector2(228.25, 96.75));
+    $victim->spawn(new Vector2(228.25, 96.75), $victimTee);
+    $world->addEntity($victim);
+    $character->giveNinja();
+    setWeaponTestAim($character, 0);
+    $character->vel         = new Vector2(3, 4);
+    $character->reloadTimer = (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
+    $handle                 = new ReflectionMethod($character, 'handleNinja');
+    $handle->invoke($character);
+    expect($victim->health)->toBe(1);
+    expect($character->ninjaHitObjects)->toBe([$victim]);
+    $pickup = new PickupEntity($world, clone $character->getPosition(), GameConstants::POWERUP_NINJA);
+    $world->addEntity($pickup);
+    setWeaponTestAim($character, -402);
+
+    $pickup->doTick();
+
+    expect($pickup->doSnap($tee))->toBeEmpty();
+    expect($character->ninjaCurrentMoveTime)->toBe(9);
+    expect($character->ninjaActivationDir)->toEqual(new Vector2(1, 0));
+    expect($character->ninjaOldVelAmount)->toBe(5.0);
+    expect($character->ninjaHitObjects)->toBe([$victim]);
+    expect($character->reloadTimer)->toBe(40);
+    expect($character->lastWeapon)->toBe(GameConstants::WEAPON_GUN);
+    $handle->invoke($character);
+    expect($character->ninjaCurrentMoveTime)->toBe(8);
+    expect($character->getPosition()->x)->toEqualWithDelta(228.25, 0.000001);
+    expect($character->getPosition()->y)->toBe(96.75);
+    expect($victim->health)->toBe(1);
+    expect($character->ninjaHitObjects)->toBe([$victim]);
+
+    for ($i = 0; $i < 8; $i++) {
+        $handle->invoke($character);
+    }
+    expect($character->ninjaCurrentMoveTime)->toBe(0);
+    expect($character->vel)->toEqual(new Vector2(5, 0));
+    (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
+    expect($character->ninjaCurrentMoveTime)->toBe(10);
+    expect($character->ninjaHitObjects)->toBeEmpty();
 });
 
 test('ninja hit tracking keeps its ten-target limit and resets for another dash', function () {

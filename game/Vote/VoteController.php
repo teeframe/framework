@@ -35,11 +35,8 @@ class VoteController
      */
     protected int $voteDurationTicks = 25 * NetworkParams::TICKS_PER_SECOND;
 
-    /**
-     * Minimum delay between votes called by the same player, in ticks
-     * (mirrors g_Config.m_SvVoteDelay = 3 seconds).
-     */
-    protected int $voteCallDelayTicks = 3 * NetworkParams::TICKS_PER_SECOND;
+    /** Minimum delay between votes called by the same player, in ticks (60 seconds). */
+    protected int $voteCallDelayTicks = 60 * NetworkParams::TICKS_PER_SECOND;
 
     /**
      * Spam protection for voting, in ticks
@@ -196,9 +193,9 @@ class VoteController
             return;
         }
 
-        // Per-player call delay (m_LastVoteCall + 60s)
+        // Per-player call delay (m_LastVoteCall).
         $timeLeft = $tee->lastVoteCall > 0
-            ? $tee->lastVoteCall + 60 * NetworkParams::TICKS_PER_SECOND - $currentTick
+            ? $tee->lastVoteCall + $this->voteCallDelayTicks - $currentTick
             : 0;
         if ($timeLeft > 0) {
             $this->sendChat($world, $tee, sprintf('You must wait %d seconds before making another vote', (int) ($timeLeft / NetworkParams::TICKS_PER_SECOND) + 1));

@@ -146,6 +146,15 @@ abstract class AbstractCharacterEntity extends AbstractEntity
 
     abstract protected function fireWeapon(): void;
 
+    public function onTeeLeave(int $teeIndex): void
+    {
+        if ($this->hookedPlayer === $teeIndex) {
+            $this->hookedPlayer = -1;
+            $this->hookState    = GameConstants::HOOK_RETRACTED;
+            $this->hookPos      = $this->position;
+        }
+    }
+
     public function getFixedSnapId(): ?int
     {
         $teeIndex = $this->tee?->teeIndex;
@@ -156,6 +165,17 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public function getHitBoxRadius(): int
     {
         return self::PHYS_SIZE;
+    }
+
+    public function getSnapDistance(Vector2 $viewPosition): float
+    {
+        if ($this->hookState <= GameConstants::HOOK_IDLE) {
+            return parent::getSnapDistance($viewPosition);
+        }
+
+        $closest = $viewPosition->closestPointOnLine($this->position, $this->hookPos);
+
+        return $viewPosition->distance($closest);
     }
 
     public function doTick(): void

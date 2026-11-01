@@ -498,44 +498,43 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function removeTee(AbstractTee $tee, ?string $reason = null): void
     {
-        foreach ($this->tees as $index => $existingTee) {
-            if ($existingTee !== $tee) {
-                continue;
-            }
-
-            if ($existingTee->character !== null && $existingTee->character->alive) {
-                $existingTee->character->die();
-            }
-
-            if ($existingTee instanceof PlayerTee) {
-                $text = $reason !== null && $reason !== ''
-                    ? "'{$tee->name}' has left the game ({$reason})"
-                    : "'{$tee->name}' has left the game";
-
-                $chunk = new SvChatChunk(
-                    team: 0,
-                    clientId: -1,
-                    text: $text,
-                );
-
-                $this->broadcast($chunk);
-            }
-
-            $this->voteController->abortVoteOnDisconnect($index);
-            $this->voteController->cancelVoteOnCreatorLeave($index);
-
-            $this->resetSpectatorsFollowing($index);
-
-            foreach ($this->entities as $entity) {
-                $entity->onTeeLeave($index);
-            }
-
-            $this->releasedTeeIndexes[] = $index;
-            unset($this->tees[$index]);
-            $this->voteController->requestUpdate();
-
-            $this->getGameController()->checkTeamBalance();
+        $index = $tee->teeIndex;
+        if (($this->tees[$index] ?? null) !== $tee) {
+            return;
         }
+
+        if ($tee->character !== null && $tee->character->alive) {
+            $tee->character->die();
+        }
+
+        if ($tee instanceof PlayerTee) {
+            $text = $reason !== null && $reason !== ''
+                ? "'{$tee->name}' has left the game ({$reason})"
+                : "'{$tee->name}' has left the game";
+
+            $chunk = new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: $text,
+            );
+
+            $this->broadcast($chunk);
+        }
+
+        $this->voteController->abortVoteOnDisconnect($index);
+        $this->voteController->cancelVoteOnCreatorLeave($index);
+
+        $this->resetSpectatorsFollowing($index);
+
+        foreach ($this->entities as $entity) {
+            $entity->onTeeLeave($index);
+        }
+
+        $this->releasedTeeIndexes[] = $index;
+        unset($this->tees[$index]);
+        $this->voteController->requestUpdate();
+
+        $this->getGameController()->checkTeamBalance();
     }
 
     public function onMessage(AbstractTee $tee, AbstractChunk $chunk): void
@@ -774,7 +773,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 continue;
             }
 
-            if (! $isSpectator && $requestingTee->viewPosition->distance($entity->getPosition()) > 1100) {
+            if (! $isSpectator && $entity->getSnapDistance($requestingTee->viewPosition) > 1100) {
                 continue;
             }
 
