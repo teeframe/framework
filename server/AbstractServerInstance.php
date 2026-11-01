@@ -54,6 +54,8 @@ abstract class AbstractServerInstance
 
     public function start(): void
     {
+        Console::info('Starting server "'.$this->name.'" ('.NetworkParams::TICKS_PER_SECOND.' ticks/s)');
+
         $this->boot();
 
         if (empty($this->worlds)) {
@@ -64,6 +66,13 @@ abstract class AbstractServerInstance
             throw new \RuntimeException('No sockets were booted');
         }
 
+        foreach ($this->worlds as $world) {
+            Console::info('World='.$world->identifier
+                .' Map='.$world->getMap()->getName()
+                .' Gametype='.$world->getGameController()->getGameType()
+                .' Slots='.$world->getSlotsLimit());
+        }
+
         $this->bootMasterServerRegistration();
 
         swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
@@ -71,6 +80,14 @@ abstract class AbstractServerInstance
         });
 
         foreach ($this->sockets as $socket) {
+            $socket->on('start', function () use ($socket): void {
+                Console::info('Server is listening on '.$socket->host.' port '.$socket->port);
+            });
+
+            $socket->on('shutdown', function () use ($socket): void {
+                Console::info('Server stopped listening on '.$socket->host.' port '.$socket->port);
+            });
+
             $socket->on('packet', function (mixed $server, string $data, array $clientInfo) use ($socket): void {
                 $packet = PacketDecoder::decodeFromRaw($data);
                 if ($packet === false) {
@@ -96,6 +113,7 @@ abstract class AbstractServerInstance
         }
 
         $this->shuttingDown = true;
+        Console::info('Shutting down server "'.$this->name.'"');
 
         $shutdown = function (): void {
             $this->masterServer?->shutdown();
@@ -114,6 +132,8 @@ abstract class AbstractServerInstance
 
     protected function bootMasterServerRegistration(): void
     {
+        Console::info('Master server registration: '.($this->registerOnMasterServer ? 'enabled' : 'disabled'));
+
         if (! $this->registerOnMasterServer) {
             return;
         }

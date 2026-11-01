@@ -8,6 +8,7 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\NetworkMessages;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Server\AbstractServerInstance;
@@ -395,12 +396,23 @@ test('master registration is opt-in and absent registrations do not affect serve
     $server = new RegistrationTestServer;
     $server->addWorld();
     $socket = new RegistrationTestSocket;
-    $server->initialize($socket);
-    $server->tick();
+    ob_start();
+    try {
+        $server->initialize($socket);
+        $server->tick();
+        $server->shutdown();
+        $server->shutdown();
+    } finally {
+        $output = ob_get_clean();
+    }
+    assert(is_string($output));
+
     expect($server->clock->get())->toBe(1);
     expect($server->httpClient->requests)->toBe([]);
-    $server->shutdown();
     expect($socket->shutdowns)->toBe(1);
+    expect($output)->toContain('Master server registration: disabled');
+    expect(substr_count($output, 'Shutting down server "Public server"'))->toBe(1);
+    expect($output)->not->toContain('Server is listening on');
 });
 
 test('public registration merges all worlds and refreshes client state slots maps and gamemodes', function () {
@@ -606,7 +618,20 @@ test('a real game socket registers through a UDP challenge and removes its listi
     $info = json_decode($requests[0]['body'], true, flags: JSON_THROW_ON_ERROR);
     expect($info['name'])->toBe('Registration integration test');
     expect($info['map']['name'])->toBe('dm1');
+    $host = $family === AF_INET6 ? '::1' : '127.0.0.1';
+    $port = (int) substr($requests[0]['headers']['address'], strrpos($requests[0]['headers']['address'], ':') + 1);
+    expect($output)->toContain(
+        'Starting server "Registration integration test" ('.NetworkParams::TICKS_PER_SECOND.' ticks/s)',
+        'World=test Map=dm1 Gametype=DM Slots=64',
+        'Master server registration: enabled',
+        'Server is listening on '.$host.' port '.$port,
+        'Server stopped listening on '.$host.' port '.$port,
+    );
+    expect(substr_count($output, 'Server is listening on '))->toBe(1);
+    expect(substr_count($output, 'Server stopped listening on '))->toBe(1);
+    expect($output)->toMatch('~Server is listening on .*Master server tw0\.6/~s');
     if (! $signal) {
+        expect(substr_count($output, 'Shutting down server "Registration integration test"'))->toBe(1);
         preg_match('/registration-test-ticks=(\d+)/', $output, $ticks);
         expect((int) ($ticks[1] ?? 0))->toBeGreaterThanOrEqual(20);
     }
