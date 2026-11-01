@@ -23,6 +23,8 @@ class LocalMasterServerHttpClient extends MasterServerHttpClient
 
 class RegisteredTestServer extends AbstractServerInstance
 {
+    protected int|false $shutdownTimer = false;
+
     protected function createMasterServer(): MasterServer
     {
         return new MasterServer($this->tickHandler, new LocalMasterServerHttpClient($_SERVER['argv'][1]));
@@ -34,10 +36,20 @@ class RegisteredTestServer extends AbstractServerInstance
         $this->sockets[] = new UdpSocket($_SERVER['argv'][3] ?? '127.0.0.1', 0);
 
         // Bound the subprocess even if the test master never accepts registration.
-        swoole_timer_after(($_SERVER['argv'][2] ?? '') === 'signal' ? 3000 : 1000, function (): void {
+        $this->shutdownTimer = swoole_timer_after(($_SERVER['argv'][2] ?? '') === 'signal' ? 3000 : 1000, function (): void {
+            $this->shutdownTimer = false;
             echo 'registration-test-ticks='.$this->tickHandler->get().PHP_EOL;
             $this->shutdown();
         });
+    }
+
+    protected function stopTicking(): void
+    {
+        parent::stopTicking();
+        if ($this->shutdownTimer !== false) {
+            swoole_timer_clear($this->shutdownTimer);
+            $this->shutdownTimer = false;
+        }
     }
 
     protected function selectWorldForNewConnection(): AbstractWorld

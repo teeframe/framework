@@ -35,6 +35,8 @@ abstract class AbstractServerInstance
 
     protected ?MasterServer $masterServer = null;
 
+    protected int|false $tickTimer = false;
+
     protected bool $shuttingDown = false;
 
     public function __construct(
@@ -75,7 +77,7 @@ abstract class AbstractServerInstance
 
         $this->bootMasterServerRegistration();
 
-        swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
+        $this->tickTimer = swoole_timer_tick(1000 / NetworkParams::TICKS_PER_SECOND, function (): void {
             $this->doTick();
         });
 
@@ -106,6 +108,11 @@ abstract class AbstractServerInstance
                 $this->onPacket($packet, $clientInfo, $socket);
             });
 
+            $socket->on('workerExit', function (): void {
+                $this->shuttingDown = true;
+                $this->stopTicking();
+            });
+
             $socket->on('workerStop', function () use ($socket): void {
                 $this->masterServer?->onWorkerStop($socket);
             });
@@ -121,6 +128,7 @@ abstract class AbstractServerInstance
         }
 
         $this->shuttingDown = true;
+        $this->stopTicking();
         Console::info('Shutting down server "'.$this->name.'"');
 
         $shutdown = function (): void {
@@ -135,6 +143,14 @@ abstract class AbstractServerInstance
             $shutdown();
         } else {
             Coroutine::create($shutdown);
+        }
+    }
+
+    protected function stopTicking(): void
+    {
+        if ($this->tickTimer !== false) {
+            swoole_timer_clear($this->tickTimer);
+            $this->tickTimer = false;
         }
     }
 

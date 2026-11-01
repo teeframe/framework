@@ -3,6 +3,7 @@
 use Swoole\Coroutine;
 use Swoole\Coroutine\Channel;
 use Swoole\Coroutine\Socket;
+use Swoole\Coroutine\System;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\GameConstants;
@@ -510,11 +511,11 @@ test('registration uses each socket port and routes challenge packets to their o
 });
 
 test('a real game socket registers through a UDP challenge and removes its listing on shutdown', function (bool $signal, int $family) {
-    $requests = [];
-    $output   = '';
-    $error    = null;
-    $exitCode = null;
-    Coroutine\run(function () use ($signal, $family, &$requests, &$output, &$error, &$exitCode): void {
+    $requests   = [];
+    $output     = '';
+    $error      = null;
+    $exitStatus = null;
+    Coroutine\run(function () use ($signal, $family, &$requests, &$output, &$error, &$exitStatus): void {
         $host     = $family === AF_INET6 ? '::1' : '127.0.0.1';
         $listener = new Socket($family, SOCK_STREAM, 0);
         if (! $listener->bind($host, 0) || ! $listener->listen()) {
@@ -532,6 +533,7 @@ test('a real game socket registers through a UDP challenge and removes its listi
         if ($process === false) {
             throw new RuntimeException('Could not start the game server test process');
         }
+        $pid = proc_get_status($process)['pid'];
         fclose($pipes[0]);
         stream_set_blocking($pipes[1], false);
         stream_set_blocking($pipes[2], false);
@@ -582,20 +584,16 @@ test('a real game socket registers through a UDP challenge and removes its listi
                     $connection->close();
                 }
             }
-            $deadline = microtime(true) + 3;
-            do {
-                $status = proc_get_status($process);
-                if (! $status['running']) {
-                    $exitCode = $status['exitcode'];
-                    break;
-                }
-                Coroutine::sleep(0.01);
-            } while (microtime(true) < $deadline);
+            $exitStatus = System::waitPid($pid, 3.0);
+            if ($exitStatus === false) {
+                throw new RuntimeException('Could not wait for the game server to shut down');
+            }
         } catch (Throwable $exception) {
             $error = $exception;
         } finally {
-            if (proc_get_status($process)['running']) {
+            if ($exitStatus === null || $exitStatus === false) {
                 proc_terminate($process, 9);
+                System::waitPid($pid, 1.0);
             }
             $output .= stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);
             fclose($pipes[1]);
@@ -608,7 +606,9 @@ test('a real game socket registers through a UDP challenge and removes its listi
     if ($error !== null) {
         throw new RuntimeException($error->getMessage().PHP_EOL.$output, previous: $error);
     }
-    expect($exitCode)->toBe(0, $output);
+    expect($output)->not->toContain('worker exit timeout', 'forced termination');
+    expect($exitStatus['code'] ?? null)->toBe(0, $output);
+    expect($exitStatus['signal'] ?? null)->toBe(0, $output);
     expect($requests)->toHaveCount(3);
     expect($requests[0]['headers']['challenge-secret'])->toEndWith($family === AF_INET6 ? ':tw0.6/ipv6' : ':tw0.6/ipv4');
     expect($requests[1]['headers']['challenge-token'])->toBe('master-token');
