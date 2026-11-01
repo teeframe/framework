@@ -2,23 +2,31 @@
 
 namespace TeeFrame\Server\Ban;
 
+use TeeFrame\Core\IpAddress;
+
 class BanList
 {
     /** @var array<string, Ban> keyed by address */
     protected array $bans = [];
 
-    public function ban(string $address, int $durationSeconds, string $reason): void
+    public function ban(string $address, ?int $durationSeconds, string $reason): void
     {
+        $address              = IpAddress::normalize($address) ?? $address;
         $this->bans[$address] = new Ban(
             address: $address,
-            expiry: time() + $durationSeconds,
+            expiry: $durationSeconds === null ? null : time() + $durationSeconds,
             reason: $reason,
         );
     }
 
+    public function clear(): void
+    {
+        $this->bans = [];
+    }
+
     public function unban(string $address): void
     {
-        unset($this->bans[$address]);
+        unset($this->bans[IpAddress::normalize($address) ?? $address]);
     }
 
     /** @return array<string, Ban> */
@@ -33,14 +41,14 @@ class BanList
     {
         $this->cleanup();
 
-        return isset($this->bans[$address]);
+        return isset($this->bans[IpAddress::normalize($address) ?? $address]);
     }
 
     public function getBan(string $address): ?Ban
     {
         $this->cleanup();
 
-        return $this->bans[$address] ?? null;
+        return $this->bans[IpAddress::normalize($address) ?? $address] ?? null;
     }
 
     /**

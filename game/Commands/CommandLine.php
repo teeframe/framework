@@ -4,12 +4,19 @@ namespace TeeFrame\Game\Commands;
 
 class CommandLine
 {
+    public static function name(string $line): string
+    {
+        $line = ltrim($line);
+
+        return substr($line, 0, strcspn($line, " \t\r\n\v\f"));
+    }
+
     /** @return list<string>|null */
     public static function match(AbstractCommand $command, string $line): ?array
     {
         $line   = ltrim($line);
-        $length = strcspn($line, " \t\r\n\v\f");
-        $name   = substr($line, 0, $length);
+        $name   = self::name($line);
+        $length = strlen($name);
         if (strcasecmp($name, $command->getName()) !== 0
             && ! array_any($command->getAliases(), fn (string $alias): bool => strcasecmp($name, $alias) === 0)) {
             return null;

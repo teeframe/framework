@@ -56,6 +56,18 @@ class ClientMessageHandler
             return;
         }
 
+        $connection = $this->world->getServer()->getConnection($tee);
+        $mute       = $connection === null ? null : $this->world->getServer()->getChatMutes()->getMute($connection->destinationAddress);
+        if ($mute !== null) {
+            $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: 'You are muted for '.max(0, $mute['expiry'] - time()).' more second(s): '.$mute['reason'],
+            ));
+
+            return;
+        }
+
         // Spam protection: max ~16 characters per second (CPlayer::m_LastChat).
         if ($tee instanceof PlayerTee) {
             $currentTick = $this->world->getCurrentTick();
@@ -66,10 +78,8 @@ class ClientMessageHandler
         }
 
         if (str_starts_with($message, '/')) {
-            foreach ($this->world->getCommands() as $command) {
-                if (! ($command->getType() & AbstractCommand::TYPE_CHAT)) {
-                    continue;
-                }
+            $command = $this->world->findCommand(CommandLine::name(substr($message, 1)), AbstractCommand::TYPE_CHAT);
+            if ($command !== null) {
                 try {
                     $arguments = CommandLine::match($command, substr($message, 1));
                 } catch (\InvalidArgumentException) {
@@ -185,6 +195,12 @@ class ClientMessageHandler
         $team        = $controller->clampTeam($chunk->team);
         $currentTick = $this->world->getCurrentTick();
         if ($tee->team === $team || ($tee->lastSetTeam > 0 && $tee->lastSetTeam + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)) {
+            return;
+        }
+
+        if ($controller->teamsLocked && $team !== GameConstants::TEAM_SPECTATORS) {
+            $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvBroadcastChunk('Teams are locked'));
+
             return;
         }
 

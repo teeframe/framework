@@ -127,7 +127,7 @@ trait HasCharacterLifecycle
         $this->activeWeapon = GameConstants::WEAPON_NINJA;
     }
 
-    public function setEmote(int $emote, int $tick): void
+    public function setEmote(int $emote, int $tick = -1): void
     {
         $this->emote         = $emote;
         $this->emoteStopTick = $tick;

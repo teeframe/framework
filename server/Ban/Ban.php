@@ -6,12 +6,12 @@ class Ban
 {
     public function __construct(
         public string $address,
-        public int $expiry,
+        public ?int $expiry,
         public string $reason,
     ) {}
 
     public function isExpired(int $now): bool
     {
-        return $this->expiry <= $now;
+        return $this->expiry !== null && $this->expiry <= $now;
     }
 }

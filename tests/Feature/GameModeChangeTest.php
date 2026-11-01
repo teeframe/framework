@@ -33,7 +33,7 @@ test('gamemode commands register the command name separately from runtime parame
 
     expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
     expect($command->getName())->toBe('change_gamemode');
-    expect($command->getDescription())->toBe('Change gamemode');
+    expect($command->getDescription())->toBe('Change this world\'s gamemode, optionally loading another map');
     expect($command->getParams())->toBe('s[mode] ?s[map] ?r[reason]');
 });
 

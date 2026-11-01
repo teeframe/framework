@@ -217,7 +217,7 @@ test('reload server commands expose the reload vote option', function () {
 
     expect($command->getName())->toBe('reload');
     expect($command->getCommand())->toBe('reload');
-    expect($command->getDescription())->toBe('Reload');
+    expect($command->getDescription())->toBe('Reload the current map and restart this world');
     expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
 });
 

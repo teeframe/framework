@@ -22,7 +22,7 @@ class ChangeGameModeCommand extends AbstractCommand
 
     public function getDescription(): string
     {
-        return 'Change gamemode';
+        return 'Change this world\'s gamemode, optionally loading another map';
     }
 
     public function getParams(): string
@@ -30,7 +30,7 @@ class ChangeGameModeCommand extends AbstractCommand
         return 's[mode] ?s[map] ?r[reason]';
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $gameMode = $arguments[0];
         $mapName  = $arguments[1] ?? '';

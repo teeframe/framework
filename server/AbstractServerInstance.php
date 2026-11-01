@@ -3,6 +3,7 @@
 namespace TeeFrame\Server;
 
 use Swoole\Coroutine;
+use TeeFrame\Core\IpAddress;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -14,6 +15,7 @@ use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Server\Ban\BanList;
+use TeeFrame\Server\Chat\MuteList;
 use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Rcon\Rcon;
 use TeeFrame\Server\Sockets\AbstractSocket;
@@ -34,6 +36,8 @@ abstract class AbstractServerInstance
 
     protected BanList $banList;
 
+    protected MuteList $chatMutes;
+
     protected Rcon $rcon;
 
     protected ?MasterServer $masterServer = null;
@@ -41,6 +45,8 @@ abstract class AbstractServerInstance
     protected int|false $tickTimer = false;
 
     protected bool $shuttingDown = false;
+
+    protected int $startTime;
 
     public function __construct(
         protected TickHandler $tickHandler,
@@ -52,14 +58,61 @@ abstract class AbstractServerInstance
         int $rconMaxTries = 10,
         int $rconBanDuration = 300,
     ) {
+        $this->startTime         = $tickHandler->getTime();
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
         $this->banList           = new BanList;
+        $this->chatMutes         = new MuteList;
         $this->rcon              = new Rcon($this->connectionHandler, $this->banList, $rconPassword, $rconMaxTries, $rconBanDuration);
     }
 
     abstract protected function boot(): void;
 
     abstract protected function selectWorldForNewConnection(): AbstractWorld;
+
+    public function getUptime(): int
+    {
+        return intdiv($this->tickHandler->getTime() - $this->startTime, 1_000_000_000);
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getChatMutes(): MuteList
+    {
+        return $this->chatMutes;
+    }
+
+    public function getBanList(): BanList
+    {
+        return $this->banList;
+    }
+
+    /** @return list<ConnectionSlot> */
+    public function getConnections(): array
+    {
+        return array_values(array_filter($this->connectionHandler->getConnections(), fn (ConnectionSlot $connection): bool => $connection->state !== ConnectionSlot::STATE_WAITING_INIT && $connection->state !== ConnectionSlot::STATE_CLOSED));
+    }
+
+    public function getConnection(AbstractTee $tee): ?ConnectionSlot
+    {
+        return array_find($this->getConnections(), fn (ConnectionSlot $connection): bool => $connection->playerTee() === $tee);
+    }
+
+    public function resolveClientAddress(AbstractWorld $world, string $target): string
+    {
+        $address = IpAddress::normalize($target);
+        if ($address !== null) {
+            return $address;
+        }
+        $id         = filter_var($target, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+        $player     = $id === false ? null : $world->findTee($id);
+        $connection = $player === null ? null : $this->getConnection($player);
+        $address    = $connection === null ? null : IpAddress::normalize($connection->destinationAddress);
+
+        return $address ?? throw new \InvalidArgumentException('Expected an IP address or a player id in this world');
+    }
 
     public function getRcon(): Rcon
     {
@@ -250,6 +303,18 @@ abstract class AbstractServerInstance
         $connection?->chunks()->add($chunk)->send();
     }
 
+    public function sendToWorld(AbstractWorld $world, AbstractChunk $chunk, bool $includeReady = false): void
+    {
+        foreach ($this->getConnections() as $connection) {
+            if ($connection->world() === $world
+                && ($connection->state === ConnectionSlot::STATE_INGAME
+                    || ($includeReady && $connection->state === ConnectionSlot::STATE_READY && $connection->readyToEnter))
+            ) {
+                $connection->chunks()->add(clone $chunk)->send();
+            }
+        }
+    }
+
     public function changeWorld(AbstractTee $tee, AbstractWorld $world): bool
     {
         if (! in_array($world, $this->worlds, true)) {
@@ -356,11 +421,11 @@ abstract class AbstractServerInstance
                 return; // Impossible scenario, TODO: Refactor this to avoid this null check
             }
 
-            $minutesLeft = (int) ceil(($ban->expiry - time()) / 60);
+            $duration = $ban->expiry === null ? 'permanently' : 'for '.(int) ceil(($ban->expiry - time()) / 60).' more minute(s)';
             $socket->sendto(
                 $clientInfo['address'],
                 $clientInfo['port'],
-                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'You are banned for '.$minutesLeft.' more minute(s): '.($ban->reason ?? 'Kicked by vote')))->encodeToSend()
+                (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'You are banned '.$duration.': '.($ban->reason ?? 'Kicked by vote')))->encodeToSend()
             );
 
             return;

@@ -40,6 +40,27 @@ test('BanList removes expired bans on cleanup', function () {
     expect($banList->isBanned('10.0.0.2'))->toBeFalse();
 });
 
+test('permanent bans do not expire and IPv6 lookups use a canonical address', function () {
+    $banList = new BanList;
+    $banList->ban('2001:db8:0:0:0:0:0:1', null, 'Permanent');
+    expect($banList->isBanned('2001:db8::1'))->toBeTrue();
+    $ban = $banList->getBan('2001:db8::1');
+    assert($ban instanceof Ban);
+    expect($ban->expiry)->toBeNull();
+    expect($ban->isExpired(PHP_INT_MAX))->toBeFalse();
+    $banList->unban('2001:db8:0:0:0:0:0:1');
+    expect($banList->getBans())->toBeEmpty();
+});
+
+test('shared IP normalization preserves BanList handling of non-IP keys', function () {
+    $bans = new BanList;
+    $bans->ban('legacy-key', 60, 'Existing API behavior');
+    expect($bans->isBanned('legacy-key'))->toBeTrue();
+    expect($bans->getBan('legacy-key')?->address)->toBe('legacy-key');
+    $bans->unban('legacy-key');
+    expect($bans->isBanned('legacy-key'))->toBeFalse();
+});
+
 test('Ban isExpired returns true for past expiry', function () {
     $ban = new Ban('1.2.3.4', time() - 100, 'Past');
 

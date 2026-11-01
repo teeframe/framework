@@ -22,7 +22,7 @@ class ReloadCommand extends AbstractCommand
 
     public function getDescription(): string
     {
-        return 'Reload';
+        return 'Reload the current map and restart this world';
     }
 
     public function getParams(): string
@@ -30,7 +30,7 @@ class ReloadCommand extends AbstractCommand
         return '';
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         try {
             $world->reload();

@@ -141,7 +141,7 @@ class WorldHelpersTestVoteCommand extends AbstractCommand
         return '';
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?Closure $output = null): void
     {
         $this->executions[] = ['world' => $world, 'tee' => $tee, 'arguments' => $arguments];
     }
@@ -152,10 +152,11 @@ test('worlds register framework chat and server commands once without adding vot
     $world    = $server->addWorld();
     $commands = $world->getCommands();
 
-    expect(array_map(fn (AbstractCommand $command): string => $command->getName(), $commands))
-        ->toBe(['whisper', 'ping', 'change_map', 'change_gamemode', 'reload']);
-    expect(array_map(fn (AbstractCommand $command): int => $command->getType(), $commands))
-        ->toBe([AbstractCommand::TYPE_CHAT, AbstractCommand::TYPE_CHAT, AbstractCommand::TYPE_SERVER, AbstractCommand::TYPE_SERVER, AbstractCommand::TYPE_SERVER]);
+    foreach ([AbstractCommand::TYPE_CHAT, AbstractCommand::TYPE_SERVER] as $type) {
+        $names = array_map(fn (AbstractCommand $command): string => $command->getName(), array_values(array_filter($commands, fn (AbstractCommand $command): bool => (bool) ($command->getType() & $type))));
+        expect($names)->toBe(array_values(array_unique($names)));
+        expect($names)->toContain(...($type === AbstractCommand::TYPE_CHAT ? ['whisper', 'ping', 'help', 'list', 'converse', 'info', 'rules', 'settings', 'emote'] : ['change_map', 'change_gamemode', 'reload', 'pause', 'restart', 'tune', 'set_team', 'kick', 'ban', 'shutdown']));
+    }
     expect($world->getVoteController()->getVoteChunks(new PlayerTee))->toBeEmpty();
 });
 
@@ -324,6 +325,7 @@ test('registered vote commands execute as the actual caller even without tee ind
 
     $server->socket->sent = [];
     $votes                = $world->getVoteController();
+    $votes->addVoteOption($command->getCommand(), $command->getCommand());
     $votes->callVote($world, $caller->playerTee(), 'OPTION', $command->getCommand(), '');
     if (! $removeFirst) {
         $votes->vote($world, $first->playerTee(), 1);
@@ -338,7 +340,7 @@ test('registered vote commands execute as the actual caller even without tee ind
     expect($votes->isVoteRunning())->toBeFalse();
 })->with([false, true]);
 
-test('option votes resolve menu labels command names and descriptions', function (string $value, string $description) {
+test('option votes resolve registered menu labels case-insensitively', function (string $value, string $description) {
     $server  = new WorldHelpersTestServer;
     $world   = $server->addWorld();
     $caller  = $server->addClient($world, 8300)->playerTee();
@@ -355,9 +357,8 @@ test('option votes resolve menu labels command names and descriptions', function
     $votes->tick($world);
     expect($command->executions)->toHaveCount(1);
 })->with([
-    'menu label'          => ['FRIENDLY OPTION', 'Friendly option'],
-    'command name'        => ['record_vote', 'Recorded vote'],
-    'command description' => ['Recorded vote', 'Recorded vote'],
+    'menu label' => ['FRIENDLY OPTION', 'Friendly option'],
+
 ]);
 
 test('registered menu options take precedence over matching command descriptions', function () {
@@ -466,6 +467,7 @@ test('creator disconnects cancel execution and the next vote uses its own caller
     $command = new WorldHelpersTestVoteCommand;
     $world->registerCommand($command);
     $votes = $world->getVoteController();
+    $votes->addVoteOption($command->getCommand(), $command->getCommand());
     $votes->callVote($world, $caller->playerTee(), 'option', $command->getCommand(), '');
 
     $caller->closeConnection('Leaving');

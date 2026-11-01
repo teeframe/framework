@@ -34,6 +34,8 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     protected int $mapStartTick;
 
+    public bool $teamsLocked = false;
+
     protected ?AbstractWorld $world = null;
 
     public function __construct(

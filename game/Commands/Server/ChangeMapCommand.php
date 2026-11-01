@@ -22,7 +22,7 @@ class ChangeMapCommand extends AbstractCommand
 
     public function getDescription(): string
     {
-        return 'Change map';
+        return 'Load another map and restart this world';
     }
 
     public function getParams(): string
@@ -30,7 +30,7 @@ class ChangeMapCommand extends AbstractCommand
         return 's[name] ?r[reason]';
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $mapName = $arguments[0];
         $reason  = $arguments[1] ?? '';

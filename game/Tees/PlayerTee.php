@@ -14,6 +14,9 @@ class PlayerTee extends AbstractTee
     protected int $lastTargetX = 0;
     protected int $lastTargetY = 0;
 
+    /** @var \WeakReference<AbstractTee>|null */
+    public ?\WeakReference $lastWhisperTo = null;
+
     public int $score = 0;
 
     // Tick when the current score run started

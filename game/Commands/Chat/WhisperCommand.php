@@ -5,6 +5,7 @@ namespace TeeFrame\Game\Commands\Chat;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
+use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 
 class WhisperCommand extends AbstractCommand
@@ -19,6 +20,11 @@ class WhisperCommand extends AbstractCommand
         return 'whisper';
     }
 
+    public function getDescription(): string
+    {
+        return 'Send a private message to a player in this world';
+    }
+
     public function getParams(): string
     {
         return 's[player] r[message]';
@@ -29,7 +35,7 @@ class WhisperCommand extends AbstractCommand
         return ['w'];
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         [$targetName, $whisperMsg] = $arguments;
 
@@ -59,6 +65,15 @@ class WhisperCommand extends AbstractCommand
             return;
         }
 
+        $this->sendTo($world, $tee, $targetTee, $whisperMsg);
+    }
+
+    public function sendTo(AbstractWorld $world, AbstractTee $tee, AbstractTee $targetTee, string $whisperMsg): void
+    {
+        if ($tee instanceof PlayerTee) {
+            $tee->lastWhisperTo = \WeakReference::create($targetTee);
+        }
+        $server = $world->getServer();
         $server->sendToTee($world, $targetTee->teeIndex, new SvChatChunk(
             team: 2,
             clientId: $tee->teeIndex,

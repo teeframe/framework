@@ -268,7 +268,7 @@ test('votes resolve at the Teeworlds 0.6 integer thresholds', function (int $tot
             return '';
         }
 
-        public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+        public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?Closure $output = null): void
         {
             $this->executions++;
         }
@@ -354,7 +354,7 @@ test('vote passes when majority votes yes', function () use ($mapPath, $mapExist
     $tee3->name = 'Voter3';
     $world->addTee($tee3);
 
-    $world->getVoteController()->addVoteOption('option1', 'command1');
+    $world->getVoteController()->addVoteOption('option1', 'say Vote action executed');
 
     // Start the vote (caller auto-votes yes)
     $world->onMessage($tee1, new ClCallVoteChunk('option', 'option1', ''));
@@ -369,7 +369,8 @@ test('vote passes when majority votes yes', function () use ($mapPath, $mapExist
     expect($world->getVoteController()->isVoteRunning())->toBeFalse();
 
     // Should have sent "Vote passed" chat
-    $chats  = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    $chats = array_filter(recordingServer($world)->sentChunks, fn ($c) => $c instanceof SvChatChunk);
+    expect(array_map(fn ($chunk): string => $chunk->text, $chats))->toContain('Vote action executed');
     $passed = array_filter($chats, fn ($c) => $c->text === 'Vote passed');
     expect($passed)->not->toBeEmpty();
 });
@@ -701,7 +702,7 @@ test('ChangeMapCommand is a server command', function () {
 
     expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
     expect($command->getName())->toBe('change_map');
-    expect($command->getDescription())->toBe('Change map');
+    expect($command->getDescription())->toBe('Load another map and restart this world');
     expect($command->getParams())->toBe('s[name] ?r[reason]');
 });
 

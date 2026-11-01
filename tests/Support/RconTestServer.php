@@ -53,7 +53,7 @@ class RconTestCommand extends AbstractCommand
         return $this->params;
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $this->executions[] = ['world' => $world, 'tee' => $tee, 'arguments' => $arguments];
         if ($this->handler !== null) {

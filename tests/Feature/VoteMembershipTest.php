@@ -31,7 +31,7 @@ class MembershipVoteCommand extends AbstractCommand
         return '';
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?Closure $output = null): void
     {
         $this->executions++;
     }

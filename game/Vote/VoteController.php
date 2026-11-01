@@ -26,6 +26,7 @@ class VoteController
     protected int $voteCreator        = -1;
     protected string $voteDescription = '';
     protected string $voteCommand     = '';
+    protected string $voteType        = 'option';
     protected string $voteReason      = '';
     protected int $voteEnforce        = VoteEnforce::UNKNOWN;
     protected bool $voteUpdate        = false;
@@ -127,6 +128,27 @@ class VoteController
         unset($this->voteOptions[$key]);
     }
 
+    /** @return list<VoteOption> */
+    public function getVoteOptions(): array
+    {
+        return array_values($this->voteOptions);
+    }
+
+    public function clearVoteOptions(): void
+    {
+        $this->voteOptions = [];
+    }
+
+    public function forceResult(bool $yes): void
+    {
+        if (! $this->isVoteRunning() || in_array($this->voteEnforce, [VoteEnforce::ABORT, VoteEnforce::CANCEL], true)) {
+            throw new \InvalidArgumentException('No active vote to force');
+        }
+
+        $this->voteEnforce = $yes ? VoteEnforce::YES : VoteEnforce::NO;
+        $this->voteUpdate  = false;
+    }
+
     public function isVoteRunning(): bool
     {
         return $this->voteCloseTime !== 0;
@@ -138,6 +160,7 @@ class VoteController
             return;
         }
 
+        $this->voteType        = 'option';
         $this->voteEnforce     = VoteEnforce::UNKNOWN;
         $this->voteCloseTime   = $world->getCurrentTick() + $this->voteDurationTicks;
         $this->voteDescription = Utf8::truncateBytes($description, 63);
@@ -234,6 +257,7 @@ class VoteController
         ));
 
         $this->startVote($world, $option->description, $option->command, $reason);
+        $this->voteType = $type;
 
         // The caller automatically votes yes
         $tee->vote         = 1;
@@ -249,14 +273,9 @@ class VoteController
             return $option;
         }
 
-        $command = $this->findVoteCommand($world, $value, matchDescription: true);
-        if ($command === null) {
-            $this->sendChat($world, $tee, "'{$value}' isn't an option on this server");
+        $this->sendChat($world, $tee, "'{$value}' isn't an option on this server");
 
-            return null;
-        }
-
-        return new VoteOption($command->getDescription(), $command->getCommand());
+        return null;
     }
 
     protected function resolvePlayerVote(AbstractWorld $world, PlayerTee $tee, string $type, string $value): ?VoteOption
@@ -277,24 +296,15 @@ class VoteController
             return null;
         }
 
+        if ($type === 'kick' && $world->getServer()->getConnection($target)?->rcon()->authenticated) {
+            $this->sendChat($world, $tee, "You can't kick an authenticated administrator");
+
+            return null;
+        }
+
         return $type === 'kick'
             ? new VoteOption("Kick '{$target->name}'", "kick {$targetIndex} Kicked by vote")
             : new VoteOption("Move '{$target->name}' to spectators", "set_team {$targetIndex} -1 0");
-    }
-
-    protected function findVoteCommand(AbstractWorld $world, string $value, bool $matchDescription = false): ?AbstractCommand
-    {
-        foreach ($world->getCommands() as $command) {
-            if (! ($command->getType() & AbstractCommand::TYPE_SERVER) || $command->getParams() !== '') {
-                continue;
-            }
-
-            if ($command->getCommand() === $value || ($matchDescription && $command->getDescription() === $value)) {
-                return $command;
-            }
-        }
-
-        return null;
     }
 
     /** @return non-empty-list<array{command: AbstractCommand, arguments: list<string>}>|null */
@@ -308,25 +318,19 @@ class VoteController
 
         $commands = [];
         foreach ($parts as $part) {
-            $resolved = null;
-            foreach ($world->getCommands() as $command) {
-                if (! ($command->getType() & AbstractCommand::TYPE_SERVER)) {
-                    continue;
-                }
-                try {
-                    $arguments = CommandLine::match($command, $part);
-                } catch (\InvalidArgumentException) {
-                    return null;
-                }
-                if ($arguments !== null) {
-                    $resolved = ['command' => $command, 'arguments' => $arguments];
-                    break;
-                }
-            }
-            if ($resolved === null) {
+            $command = $world->findCommand(CommandLine::name($part), AbstractCommand::TYPE_SERVER);
+            if ($command === null) {
                 return null;
             }
-            $commands[] = $resolved;
+            try {
+                $arguments = CommandLine::match($command, $part);
+            } catch (\InvalidArgumentException) {
+                return null;
+            }
+            if ($arguments === null) {
+                return null;
+            }
+            $commands[] = ['command' => $command, 'arguments' => $arguments];
         }
 
         return $commands === [] ? null : $commands;
@@ -387,7 +391,7 @@ class VoteController
 
         [$total, $yes, $no] = $this->countVotes($world);
 
-        if ($this->voteUpdate) {
+        if ($this->voteUpdate && $this->voteEnforce === VoteEnforce::UNKNOWN) {
             // Majority check (teeworlds 0.6: Yes >= Total/2+1, No >= (Total+1)/2)
             if ($yes >= intdiv($total, 2) + 1) {
                 $this->voteEnforce = VoteEnforce::YES;
@@ -397,9 +401,14 @@ class VoteController
         }
 
         if ($this->voteEnforce === VoteEnforce::YES) {
-            $this->executeVoteCommand($world);
+            try {
+                $this->executeVoteCommand($world);
+                $message = 'Vote passed';
+            } catch (\InvalidArgumentException|\RuntimeException $exception) {
+                $message = Utf8::truncateBytes('Vote command failed: '.$exception->getMessage(), 511);
+            }
             $this->endVote($world);
-            $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote passed'));
+            $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: $message));
         } elseif ($this->voteEnforce === VoteEnforce::NO || $currentTick > $this->voteCloseTime) {
             $this->endVote($world);
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote failed'));
@@ -492,17 +501,21 @@ class VoteController
     protected function executeVoteCommand(AbstractWorld $world): void
     {
         // Built-in: kick <id> <reason>
-        if (str_starts_with($this->voteCommand, 'kick ')) {
+        if ($this->voteType === 'kick') {
             $parts  = explode(' ', $this->voteCommand, 3);
             $kickId = (int) ($parts[1] ?? -1);
             $reason = $parts[2] ?? 'Kicked by vote';
+            $target = $world->findTee($kickId);
+            if ($target !== null && $world->getServer()->getConnection($target)?->rcon()->authenticated) {
+                throw new \InvalidArgumentException('Authenticated administrators cannot be kicked by vote');
+            }
             $world->getServer()->kick($world, $kickId, $reason);
 
             return;
         }
 
         // Built-in: set_team <id> <team> <delay> (spectate vote)
-        if (str_starts_with($this->voteCommand, 'set_team ')) {
+        if ($this->voteType === 'spectate') {
             $parts = explode(' ', $this->voteCommand, 4);
             $tee   = $world->findTee((int) ($parts[1] ?? -1));
             if ($tee instanceof PlayerTee) {
@@ -512,10 +525,11 @@ class VoteController
             return;
         }
 
-        $commands = $this->resolveCommands($world, $this->voteCommand);
-        $caller   = $world->findTee($this->voteCreator);
+        $commands = $this->resolveCommands($world, $this->voteCommand)
+            ?? throw new \RuntimeException('Vote option does not resolve to valid server commands');
+        $caller = $world->findTee($this->voteCreator);
 
-        if ($commands !== null && $caller instanceof PlayerTee) {
+        if ($caller instanceof PlayerTee) {
             foreach ($commands as $resolved) {
                 $resolved['command']->execute($world, $caller, $resolved['arguments']);
                 if ($world->findTee($caller->teeIndex) !== $caller) {

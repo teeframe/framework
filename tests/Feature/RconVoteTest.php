@@ -141,14 +141,14 @@ test('vote commands preserve quoted arguments and execute registered command seq
     $server = new RconTestServer;
     $admin  = $server->addClient();
     $world  = $server->entryWorld;
-    $echo   = new RconTestCommand('echo', params: 's[value]');
+    $echo   = new RconTestCommand('quoted_echo', params: 's[value]');
     $record = new RconTestCommand;
     $world->registerCommand($echo);
     $world->registerCommand($record);
     $server->send($admin, new RconAuthChunk('', 'test-secret'));
 
-    $server->send($admin, new RconCmdChunk('add_vote "Quoted action" "echo \\"value; # text\\"; record"'));
-    expect($world->getVoteController()->getVoteOption('Quoted action')?->command)->toBe('echo "value; # text"; record');
+    $server->send($admin, new RconCmdChunk('add_vote "Quoted action" "quoted_echo \\"value; # text\\"; record"'));
+    expect($world->getVoteController()->getVoteOption('Quoted action')?->command)->toBe('quoted_echo "value; # text"; record');
     $server->send($admin, new RconCmdChunk('force_vote option "Quoted action" "Testing; # reason"'));
 
     expect($echo->executions)->toHaveCount(1);

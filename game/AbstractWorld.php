@@ -7,11 +7,50 @@ use TeeFrame\Core\TickableObject;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Core\Utf8;
 use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\Chat\CommandListCommand;
+use TeeFrame\Game\Commands\Chat\ConverseCommand;
+use TeeFrame\Game\Commands\Chat\EmoteCommand;
+use TeeFrame\Game\Commands\Chat\HelpCommand;
+use TeeFrame\Game\Commands\Chat\InfoCommand;
+use TeeFrame\Game\Commands\Chat\ListCommand;
 use TeeFrame\Game\Commands\Chat\PingCommand;
+use TeeFrame\Game\Commands\Chat\RulesCommand;
+use TeeFrame\Game\Commands\Chat\SettingsCommand;
 use TeeFrame\Game\Commands\Chat\WhisperCommand;
+use TeeFrame\Game\Commands\Server\AddMapVotesCommand;
+use TeeFrame\Game\Commands\Server\BanCommand;
+use TeeFrame\Game\Commands\Server\BansCommand;
+use TeeFrame\Game\Commands\Server\BroadcastCommand;
 use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
 use TeeFrame\Game\Commands\Server\ChangeMapCommand;
+use TeeFrame\Game\Commands\Server\ClearVotesCommand;
+use TeeFrame\Game\Commands\Server\EchoCommand;
+use TeeFrame\Game\Commands\Server\HelpCommand as ServerHelpCommand;
+use TeeFrame\Game\Commands\Server\KickCommand;
+use TeeFrame\Game\Commands\Server\KillPlayerCommand;
+use TeeFrame\Game\Commands\Server\LockTeamsCommand;
+use TeeFrame\Game\Commands\Server\MuteCommand;
+use TeeFrame\Game\Commands\Server\MutesCommand;
+use TeeFrame\Game\Commands\Server\PauseCommand;
 use TeeFrame\Game\Commands\Server\ReloadCommand;
+use TeeFrame\Game\Commands\Server\RestartCommand;
+use TeeFrame\Game\Commands\Server\SayCommand;
+use TeeFrame\Game\Commands\Server\SetTeamAllCommand;
+use TeeFrame\Game\Commands\Server\SetTeamCommand;
+use TeeFrame\Game\Commands\Server\ShuffleTeamsCommand;
+use TeeFrame\Game\Commands\Server\ShutdownCommand;
+use TeeFrame\Game\Commands\Server\StatusCommand;
+use TeeFrame\Game\Commands\Server\SwapTeamsCommand;
+use TeeFrame\Game\Commands\Server\ToggleTuneCommand;
+use TeeFrame\Game\Commands\Server\TuneCommand;
+use TeeFrame\Game\Commands\Server\TuneDumpCommand;
+use TeeFrame\Game\Commands\Server\TuneResetCommand;
+use TeeFrame\Game\Commands\Server\UnbanAllCommand;
+use TeeFrame\Game\Commands\Server\UnbanCommand;
+use TeeFrame\Game\Commands\Server\UnmuteCommand;
+use TeeFrame\Game\Commands\Server\UptimeCommand;
+use TeeFrame\Game\Commands\Server\VoteCommand;
+use TeeFrame\Game\Commands\Server\VotesCommand;
 use TeeFrame\Game\Entities\AbstractEntity;
 use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -106,6 +145,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     abstract public function getMotd(AbstractTee $requestingTee): string;
 
+    /** @return list<string> */
+    public function getRules(): array
+    {
+        return [];
+    }
+
     abstract protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity;
 
     protected function bootCommands(): void
@@ -113,11 +158,50 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         // Chat
         $this->registerCommand(new WhisperCommand);
         $this->registerCommand(new PingCommand);
+        $this->registerCommand(new ConverseCommand);
+        $this->registerCommand(new HelpCommand);
+        $this->registerCommand(new CommandListCommand);
+        $this->registerCommand(new InfoCommand);
+        $this->registerCommand(new ListCommand);
+        $this->registerCommand(new RulesCommand);
+        $this->registerCommand(new SettingsCommand);
+        $this->registerCommand(new EmoteCommand);
 
         // Server
         $this->registerCommand(new ChangeMapCommand);
         $this->registerCommand(new ChangeGameModeCommand);
         $this->registerCommand(new ReloadCommand);
+        $this->registerCommand(new ServerHelpCommand);
+        $this->registerCommand(new StatusCommand);
+        $this->registerCommand(new UptimeCommand);
+        $this->registerCommand(new KickCommand);
+        $this->registerCommand(new BanCommand);
+        $this->registerCommand(new UnbanCommand);
+        $this->registerCommand(new BansCommand);
+        $this->registerCommand(new UnbanAllCommand);
+        $this->registerCommand(new MuteCommand);
+        $this->registerCommand(new UnmuteCommand);
+        $this->registerCommand(new MutesCommand);
+        $this->registerCommand(new ShutdownCommand);
+        $this->registerCommand(new SayCommand);
+        $this->registerCommand(new BroadcastCommand);
+        $this->registerCommand(new PauseCommand);
+        $this->registerCommand(new RestartCommand);
+        $this->registerCommand(new TuneCommand);
+        $this->registerCommand(new ToggleTuneCommand);
+        $this->registerCommand(new TuneResetCommand);
+        $this->registerCommand(new TuneDumpCommand);
+        $this->registerCommand(new SetTeamCommand);
+        $this->registerCommand(new SetTeamAllCommand);
+        $this->registerCommand(new SwapTeamsCommand);
+        $this->registerCommand(new ShuffleTeamsCommand);
+        $this->registerCommand(new LockTeamsCommand);
+        $this->registerCommand(new KillPlayerCommand);
+        $this->registerCommand(new ClearVotesCommand);
+        $this->registerCommand(new VoteCommand);
+        $this->registerCommand(new VotesCommand);
+        $this->registerCommand(new AddMapVotesCommand);
+        $this->registerCommand(new EchoCommand);
     }
 
     public function registerCommand(AbstractCommand $command): void
@@ -324,6 +408,35 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getCommands(): array
     {
         return $this->commands;
+    }
+
+    /** @return array<string, AbstractCommand> */
+    public function getCommandMap(int $type): array
+    {
+        $commands = [];
+        foreach ($this->commands as $command) {
+            if ($command->getType() & $type) {
+                $commands[strtolower($command->getName())] = $command;
+            }
+        }
+
+        $aliases = [];
+        foreach ($this->commands as $command) {
+            if (($commands[strtolower($command->getName())] ?? null) !== $command) {
+                continue;
+            }
+            foreach ($command->getAliases() as $alias) {
+                $aliases[strtolower($alias)] = $command;
+            }
+        }
+
+        // Canonical names always take precedence over aliases.
+        return $commands + $aliases;
+    }
+
+    public function findCommand(string $name, int $type): ?AbstractCommand
+    {
+        return $this->getCommandMap($type)[strtolower($name)] ?? null;
     }
 
     public function getTuneController(): TuneController

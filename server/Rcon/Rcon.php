@@ -119,25 +119,26 @@ class Rcon
 
     protected function executeCommand(ConnectionSlot $connection, string $line): void
     {
-        if (strcasecmp($line, 'logout') === 0) {
+        $name = strtolower(CommandLine::name($line));
+        if ($name === 'logout' || $name === 'cmdlist') {
+            CommandLine::arguments(substr($line, strlen($name)), '');
+        }
+        if ($name === 'logout') {
             $connection->consoleInfo('RCON command=logout');
             $this->logout($connection);
 
             return;
         }
 
-        if (strcasecmp($line, 'cmdlist') === 0) {
+        if ($name === 'cmdlist') {
             $connection->consoleInfo('RCON command=cmdlist');
-            $this->sendLine($connection, 'Available RCON commands:');
-            foreach ($this->getCommandInfo($connection->world()) as $name => $info) {
-                $usage = $name.($info['params'] !== '' ? ' '.$info['params'] : '');
-                $this->sendLine($connection, $usage.' - '.$info['help']);
+            foreach (AbstractCommand::formatList(array_keys($this->getCommandInfo($connection->world()))) as $line) {
+                $this->sendLine($connection, $line);
             }
 
             return;
         }
 
-        $name = strtolower(strtok($line, " \t") ?: '');
         if (in_array($name, ['add_vote', 'remove_vote', 'force_vote'], true)) {
             $connection->consoleInfo('RCON command='.$name);
             $this->executeVoteCommand($connection, $name, substr($line, strlen($name)));
@@ -145,16 +146,15 @@ class Rcon
             return;
         }
 
-        $world = $connection->world();
-        foreach ($this->getCommands($world) as $command) {
+        $world   = $connection->world();
+        $command = $world->findCommand($name, AbstractCommand::TYPE_SERVER);
+        if ($command !== null) {
             $arguments = CommandLine::match($command, $line);
-            if ($arguments === null) {
-                continue;
-            }
+            assert($arguments !== null);
 
             // Arguments can contain credentials supplied to custom commands.
             $connection->consoleInfo('RCON command='.strtok($command->getName(), " \t"));
-            $command->execute($world, $connection->playerTee(), $arguments);
+            $command->execute($world, $connection->playerTee(), $arguments, fn (string $message) => $this->sendLine($connection, $message));
 
             return;
         }
@@ -196,15 +196,8 @@ class Rcon
 
     protected function sendVoteOptionUpdate(AbstractWorld $world, AbstractChunk $chunk): void
     {
-        foreach ($this->connections->getConnections() as $connection) {
-            // READY clients may already have received their initial vote menu.
-            if ($connection->world() === $world
-                && ($connection->state === ConnectionSlot::STATE_INGAME
-                    || ($connection->state === ConnectionSlot::STATE_READY && $connection->readyToEnter))
-            ) {
-                $connection->chunks()->add(clone $chunk)->send();
-            }
-        }
+        // READY clients may already have received their initial vote menu.
+        $world->getServer()->sendToWorld($world, $chunk, includeReady: true);
     }
 
     protected function forceVote(ConnectionSlot $connection, string $type, string $value, string $reason): void
@@ -220,7 +213,7 @@ class Rcon
                 if ($this->stopped || ! $connection->rcon()->authenticated || $connection->world() !== $world || $connection->state === ConnectionSlot::STATE_CLOSED) {
                     break;
                 }
-                $resolved['command']->execute($world, $connection->playerTee(), $resolved['arguments']);
+                $resolved['command']->execute($world, $connection->playerTee(), $resolved['arguments'], fn (string $message) => $this->sendLine($connection, $message));
             }
 
             return;
@@ -251,32 +244,21 @@ class Rcon
         $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: Utf8::truncateBytes("'{$tee->name}' was moved to spectators ({$reason})", 511)));
     }
 
-    /** @return array<string, AbstractCommand> */
-    protected function getCommands(AbstractWorld $world): array
-    {
-        $commands = [];
-        foreach ($world->getCommands() as $command) {
-            if ($command->getType() & AbstractCommand::TYPE_SERVER) {
-                $commands[$command->getName()] = $command;
-            }
-        }
-
-        return $commands;
-    }
-
     /** @return array<string, array{help: string, params: string}> */
-    protected function getCommandInfo(AbstractWorld $world): array
+    public function getCommandInfo(AbstractWorld $world): array
     {
-        return [
+        $info = [
             'cmdlist'     => ['help' => 'List available RCON commands', 'params' => ''],
             'logout'      => ['help' => 'Log out of the remote console', 'params' => ''],
             'add_vote'    => ['help' => 'Add a voting option', 'params' => 's[name] r[command]'],
             'remove_vote' => ['help' => 'Remove a voting option', 'params' => 'r[name]'],
             'force_vote'  => ['help' => 'Force a voting option, kick or spectate', 'params' => 's[type] s[value] ?r[reason]'],
         ] + array_map(
-            fn (AbstractCommand $command): array => ['help' => $command->getDescription(), 'params' => $command->getParams()],
-            $this->getCommands($world),
+            fn (AbstractCommand $command): array => ['help' => $command->getHelpText(), 'params' => $command->getParams()],
+            $world->getCommandMap(AbstractCommand::TYPE_SERVER),
         );
+
+        return $info;
     }
 
     public function update(): void

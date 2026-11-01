@@ -6,6 +6,9 @@ use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\Chunks\Game\ClSayChunk;
+use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 
 /** @return array{TestWorld, TickHandler, PlayerTee, PvpCharacterEntity} */
@@ -73,6 +76,58 @@ test('paused time preserves the remaining duration of a character emote', functi
     $clock->next();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
 });
+
+test('chat-selected expressions do not expire after the previous duration limit', function (string $name, int $emote) {
+    [$world, $clock, $tee, $character] = createCharacterEmoteWorld();
+    $world->onMessage($tee, new ClSayChunk(false, '/emote '.$name));
+    expect(characterSnapshotEmote($character))->toBe($emote);
+    for ($i = 0; $i <= 60 * NetworkParams::TICKS_PER_SECOND; $i++) {
+        $clock->next();
+    }
+    expect(characterSnapshotEmote($character))->toBe($emote);
+})->with([
+    ['normal', GameConstants::EMOTE_NORMAL],
+    ['pain', GameConstants::EMOTE_PAIN],
+    ['happy', GameConstants::EMOTE_HAPPY],
+    ['surprise', GameConstants::EMOTE_SURPRISE],
+    ['angry', GameConstants::EMOTE_ANGRY],
+    ['blink', GameConstants::EMOTE_BLINK],
+]);
+
+test('a permanent expression can be changed back to normal through chat', function () {
+    [$world, $clock, $tee, $character] = createCharacterEmoteWorld();
+    $character->setEmote(GameConstants::EMOTE_HAPPY);
+    $world->onMessage($tee, new ClSayChunk(false, '/emote normal'));
+    $clock->next();
+    expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
+});
+
+test('an explicit emote duration replaces a permanent expression and expires at its deadline', function (int $seconds) {
+    [$world, $clock, $tee, $character] = createCharacterEmoteWorld();
+    $character->setEmote(GameConstants::EMOTE_HAPPY);
+    $world->onMessage($tee, new ClSayChunk(false, '/emote angry '.$seconds));
+    expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_ANGRY);
+    for ($i = 0; $i < $seconds * NetworkParams::TICKS_PER_SECOND; $i++) {
+        $clock->next();
+    }
+    expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_ANGRY);
+    $clock->next();
+    expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
+})->with([1, 10, 60]);
+
+test('invalid emote durations leave the current expression unchanged', function (int $seconds) {
+    [$world, , $tee, $character] = createCharacterEmoteWorld();
+    $character->setEmote(GameConstants::EMOTE_HAPPY);
+    recordingServer($world)->clear();
+
+    $world->onMessage($tee, new ClSayChunk(false, '/emote angry '.$seconds));
+
+    expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_HAPPY);
+    $chunks = recordingServer($world)->sentChunks;
+    expect($chunks)->toHaveCount(1);
+    assert($chunks[0] instanceof SvChatChunk);
+    expect($chunks[0]->text)->toBe('Duration must be between 1 and 60 seconds');
+})->with([-1, 0, 61, PHP_INT_MAX]);
 
 test('spawning a reused character clears its previous emote', function () {
     [, , $tee, $character] = createCharacterEmoteWorld();

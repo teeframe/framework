@@ -80,7 +80,7 @@ test('command matching uses exact names and aliases rather than regex patterns',
             return 's[name] ?i[id]';
         }
 
-        public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void {}
+        public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?Closure $output = null): void {}
     };
 
     expect(CommandLine::match($command, 'EXAMPLE "a name" 3'))->toBe(['a name', '3']);

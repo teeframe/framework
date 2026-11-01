@@ -109,7 +109,7 @@ class WorldTransferTestCommand extends AbstractCommand
         return '';
     }
 
-    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments): void
+    public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?Closure $output = null): void
     {
         $world->getServer()->changeWorld($tee, $this->destination);
     }
@@ -1066,7 +1066,7 @@ test('reload votes finish before reloading and cannot be executed through chat',
     $command = new ReloadCommand;
     $server->dm->registerCommand($command);
     $votes = $server->dm->getVoteController();
-    $votes->addVoteOption($command->getDescription(), $command->getCommand());
+    $votes->addVoteOption('Reload', $command->getCommand());
     $server->send($slot, new ClSayChunk(false, '/reload'));
     $server->advance();
     expect($server->dm->getMap())->toBe($map);

@@ -42,6 +42,47 @@ class TuneController
         public int $playerHooking = 100
     ) {}
 
+    /** @return array<string, float> */
+    public function getValues(): array
+    {
+        $values = [];
+        foreach (get_object_vars($this) as $name => $value) {
+            $key          = strtolower(preg_replace('/[A-Z]/', '_$0', $name) ?? $name);
+            $values[$key] = $value / 100.0;
+        }
+
+        return $values;
+    }
+
+    public function get(string $name): float
+    {
+        return $this->getValues()[$name] ?? throw new \InvalidArgumentException('Unknown tuning parameter: '.$name);
+    }
+
+    public function set(string $name, float $value): void
+    {
+        $this->get($name);
+        $scaled = $value * 100;
+        if (! is_finite($scaled) || $scaled < -2147483648 || $scaled > 2147483647) {
+            throw new \InvalidArgumentException('Tuning value is outside the protocol integer range');
+        }
+        $property        = lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $name))));
+        $this->$property = (int) round($scaled);
+    }
+
+    public function reset(?string $name = null): void
+    {
+        $defaults = new self;
+        if ($name !== null) {
+            $this->set($name, $defaults->get($name));
+
+            return;
+        }
+        foreach (get_object_vars($defaults) as $property => $value) {
+            $this->$property = $value;
+        }
+    }
+
     public function getTuneParamsChunk(): SvTuneParamsChunk
     {
         return new SvTuneParamsChunk(
