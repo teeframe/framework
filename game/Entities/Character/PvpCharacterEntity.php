@@ -468,9 +468,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
             $this->createSound(GameConstants::SOUND_NINJA_HIT, position: $entity->getPosition());
 
-            if (count($this->ninjaHitObjects) < 10) {
-                $this->ninjaHitObjects[] = $entity;
-            }
+            $this->ninjaHitObjects[] = $entity;
 
             $entity->takeDamage(new Vector2(0, -10.0), 9, $this->tee->teeIndex ?? -1, GameConstants::WEAPON_NINJA);
         }

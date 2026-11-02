@@ -76,13 +76,14 @@ class WhisperCommand extends AbstractCommand
         }
 
         $server = $world->getServer();
-        $server->sendToTee($world, $targetTee->teeIndex, new SvChatChunk(
+
+        $server->sendToTee($world, $tee->teeIndex, new SvChatChunk(
             team: 2,
-            clientId: $tee->teeIndex,
+            clientId: $targetTee->teeIndex,
             text: $whisperMsg,
         ));
 
-        $server->sendToTee($world, $tee->teeIndex, new SvChatChunk(
+        $server->sendToTee($world, $targetTee->teeIndex, new SvChatChunk(
             team: 3,
             clientId: $tee->teeIndex,
             text: $whisperMsg,

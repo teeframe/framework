@@ -170,6 +170,69 @@ test('deferred hook drag still respects the configured drag speed', function (in
     expect($characters['target']->hookDragVelocity)->toEqual(new Vector2(0, 0));
 })->with([500, 1500])->with([false, true]);
 
+test('non-positive hook length releases an attached player hook and can be re-enabled', function (float $length) {
+    [$world, $clock, $characters] = createHookStrengthWorld();
+    $tuning                       = $world->getTuneController();
+    $tuning->gravity              = 0;
+    $hooker                       = $characters['hooker'];
+    $target                       = $characters['target'];
+    $targetTee                    = $target->tee;
+    assert($targetTee instanceof PlayerTee);
+    $hooker->onPredictedInput(input(['targetX' => 100, 'targetY' => 0, 'hook' => true]));
+
+    for ($i = 0; $i < 3; $i++) {
+        $world->doTick();
+        $clock->advanceTick();
+    }
+
+    expect($hooker->hookedPlayer)->toBe($targetTee->teeIndex);
+    $velocity = clone $target->vel;
+    $tuning->set('hook_length', $length);
+    $world->doTick();
+
+    expect($hooker->hookState)->toBe(GameConstants::HOOK_IDLE);
+    expect($hooker->hookedPlayer)->toBe(-1);
+    expect($hooker->hookPos)->toEqual($hooker->getPosition());
+    expect($target->vel->x)->toBe(round($velocity->x * 0.95 * 256.0) / 256.0);
+    expect($hooker->hookDragVelocity)->toEqual(new Vector2(0, 0));
+    expect($target->hookDragVelocity)->toEqual(new Vector2(0, 0));
+
+    $clock->advanceTick();
+    $world->doTick();
+    expect($hooker->hookState)->toBe(GameConstants::HOOK_IDLE);
+    expect($hooker->triggeredEvents & GameConstants::COREEVENT_HOOK_LAUNCH)->toBe(0);
+
+    $tuning->reset('hook_length');
+
+    for ($i = 0; $i < 3; $i++) {
+        $clock->advanceTick();
+        $world->doTick();
+    }
+
+    expect($hooker->hookState)->toBe(GameConstants::HOOK_GRABBED);
+    expect($hooker->hookedPlayer)->toBe($targetTee->teeIndex);
+})->with([0.0, -1.0]);
+
+test('non-positive hook length prevents launches and releases flying or ground hooks', function (int $state, float $length) {
+    [$world, , $characters] = createHookStrengthWorld();
+    $tuning                 = $world->getTuneController();
+    $tuning->gravity        = 0;
+    $tuning->set('hook_length', $length);
+    $hooker            = $characters['hooker'];
+    $hooker->hookState = $state;
+    $hooker->hookPos   = new Vector2(128, 64);
+    $hooker->hookDir   = new Vector2(0, -1);
+    $hooker->onPredictedInput(input(['targetX' => 0, 'targetY' => -100, 'hook' => true]));
+
+    $world->doTick();
+
+    expect($hooker->hookState)->toBe(GameConstants::HOOK_IDLE);
+    expect($hooker->hookedPlayer)->toBe(-1);
+    expect($hooker->hookPos)->toEqual($hooker->getPosition());
+    expect($hooker->triggeredEvents & GameConstants::COREEVENT_HOOK_LAUNCH)->toBe(0);
+    expect($hooker->vel)->toEqual(new Vector2(0, 0));
+})->with([GameConstants::HOOK_IDLE, GameConstants::HOOK_FLYING, GameConstants::HOOK_GRABBED])->with([0.0, -1.0]);
+
 test('released hooks do not leave drag accumulated for the next tick', function () {
     [$world, $clock, $characters] = createHookStrengthWorld();
     attachStrengthTestHook($characters['hooker'], $characters['target']);

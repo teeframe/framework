@@ -36,6 +36,49 @@ function addMovementCharacter(TestWorld $world, float $x, float $y = 128): PvpCh
     return $character;
 }
 
+test('velocity ramps stay finite at numerical limits and preserve ordinary factors', function (float $value, float $start, float $range, float $curvature, float $expected) {
+    $ramp = PvpCharacterEntity::velocityRamp($value, $start, $range, $curvature);
+
+    expect(is_finite($ramp))->toBeTrue();
+    expect($ramp)->toBe($expected);
+})->with([
+    'below threshold'     => [100.0, 550.0, 2000.0, 1.4, 1.0],
+    'at threshold'        => [550.0, 550.0, 2000.0, 1.4, 1.0],
+    'ordinary ramp'       => [1000.0, 550.0, 2000.0, 1.4, 1.0 / pow(1.4, 450.0 / 2000.0)],
+    'power overflow'      => [1000.0, 550.0, 0.01, 1.4, 0.0],
+    'power underflow'     => [1000.0, 550.0, 0.01, 0.01, PHP_FLOAT_MAX],
+    'reciprocal overflow' => [16.0, 0.0, 0.01, 0.63, PHP_FLOAT_MAX],
+    'zero range'          => [1000.0, 550.0, 0.0, 1.4, 1.0],
+    'zero curvature'      => [1000.0, 550.0, 2000.0, 0.0, 1.0],
+]);
+
+test('extreme velocity ramps keep movement bounded without corrupting stored momentum', function (float $range, float $curvature, float $velocityX, float $velocityY, float $movementX) {
+    [$world]   = createCharacterMovementWorld();
+    $character = addMovementCharacter($world, 128);
+    $tuning    = $world->getTuneController();
+    $tuning->set('velramp_range', $range);
+    $tuning->set('velramp_curvature', $curvature);
+    $character->vel = new Vector2($velocityX, $velocityY);
+    $collision      = $world->getMap()->getCollision();
+    assert($collision !== null);
+
+    $character->move($collision, $tuning);
+
+    expect(is_finite($character->getPosition()->x))->toBeTrue();
+    expect(is_finite($character->getPosition()->y))->toBeTrue();
+    expect($character->getPosition()->x)->toEqualWithDelta(128 + $movementX, 0.000001);
+    expect($character->getPosition()->y)->toEqualWithDelta(128 + $velocityY, 0.000001);
+    expect($character->vel)->toEqual(new Vector2($velocityX, $velocityY));
+})->with([
+    'ramp becomes zero'                         => [0.01, 1.4, 20.0, 0.0, 0.0],
+    'large finite ramp denominator'             => [0.64, 2.72, 20.0, 0.0, 0.0],
+    'ramp amplification overflows'              => [0.01, 0.01, 20.0, 0.0, 6000.0],
+    'finite excessive amplification'            => [1.0, 0.5, 20.0, 0.0, 6000.0],
+    'amplification while moving left'           => [0.01, 0.01, -20.0, 0.0, -6000.0],
+    'amplification with no horizontal velocity' => [0.01, 0.01, 0.0, 20.0, 0.0],
+    'ordinary ramp'                             => [2000.0, 1.4, 20.0, 0.0, 20.0 / pow(1.4, 450.0 / 2000.0)],
+]);
+
 test('character movement checks tees along the entire map-clipped path', function (float $targetX, float $velocity, float $expectedX) {
     [$world]                                  = createCharacterMovementWorld();
     $mover                                    = addMovementCharacter($world, 128);
@@ -56,7 +99,7 @@ test('character movement checks tees along the entire map-clipped path', functio
     'moving left'            => [88.0, -40.0, 116.0],
 ]);
 
-test('swept tee collision does not replace an earlier map collision', function () {
+test('swept tee collision does not replace an earlier map collision', function (bool $ramped) {
     [$world] = createCharacterMovementWorld();
     $mover   = addMovementCharacter($world, 128);
     $target  = addMovementCharacter($world, 200);
@@ -68,7 +111,7 @@ test('swept tee collision does not replace an earlier map collision', function (
     }
     $collision = new Collision;
     $collision->init(new GameLayer(16, 8, $tiles));
-    $world->getTuneController()->velrampStart = 1_000_000;
+    $world->getTuneController()->velrampStart = $ramped ? 0 : 1_000_000;
     $mover->vel                               = new Vector2(100, 0);
 
     $mover->move($collision, $world->getTuneController(), [$target]);
@@ -76,7 +119,7 @@ test('swept tee collision does not replace an earlier map collision', function (
     expect($mover->getPosition()->x)->toBeGreaterThanOrEqual(128.0);
     expect($mover->getPosition()->x)->toBeLessThanOrEqual(146.0);
     expect($mover->vel->x)->toBe(0.0);
-});
+})->with([false, true]);
 
 test('overlapping tees can move apart but cannot move deeper into each other', function (float $velocity, float $expectedX) {
     [$world]    = createCharacterMovementWorld();

@@ -62,8 +62,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     protected PlayerInput $input;
     protected PlayerInput $latestInput;
     protected PlayerInput $latestPrevInput;
-    protected int $numInputs      = 0;
-    protected int $lastActionTick = 0;
+    protected int $numInputs = 0;
 
     public function __construct(AbstractWorld $world, protected Vector2 $position)
     {
@@ -86,11 +85,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             && ($newInput->playerFlags & GameConstants::PLAYERFLAG_CHATTING)
         ) {
             return;
-        }
-
-        // Check for changes (mem_comp)
-        if ($this->input != $newInput) {
-            $this->lastActionTick = $this->world->getCurrentTick();
         }
 
         $this->input = $this->normalizeInputTarget($newInput);
@@ -277,9 +271,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $this->emoteStopTick++;
         }
 
-        if ($this->lastActionTick !== 0) {
-            $this->lastActionTick++;
-        }
     }
 
     public function doSnap(AbstractTee $requestingTee): array

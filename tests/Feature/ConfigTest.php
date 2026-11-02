@@ -51,8 +51,9 @@ require_once __DIR__.'/../Support/RconTestServer.php';
 class SkeletonConfigTestConfig extends Config
 {
     protected const DEFINITIONS = parent::DEFINITIONS + [
-        'app_option' => ['default' => 7, 'min' => 0, 'max' => 100, 'scope' => 'server', 'restart' => true, 'description' => 'Skeleton-specific integer setting'],
-        'app_label'  => ['default' => '', 'bytes' => 63, 'scope' => 'server', 'description' => 'Skeleton-specific string setting'],
+        'app_option'       => ['default' => 7, 'min' => 0, 'max' => 100, 'scope' => 'server', 'restart' => true, 'description' => 'Skeleton-specific integer setting'],
+        'app_label'        => ['default' => '', 'bytes' => 63, 'scope' => 'server', 'description' => 'Skeleton-specific string setting'],
+        'app_world_option' => ['default' => 3, 'min' => 0, 'max' => 100, 'scope' => 'world', 'description' => 'Skeleton-specific world setting'],
     ];
 }
 
@@ -582,6 +583,56 @@ test('skeleton-specific configuration definitions are isolated from framework de
     expect($child->getInt('app_option'))->toBe(12);
 });
 
+test('custom defaults survive attaching a less specialized configuration parent', function (bool $constructorParent) {
+    $parent = new Config(['sv_name' => 'Inherited name']);
+    $config = $constructorParent
+        ? new SkeletonConfigTestConfig(parent: $parent)
+        : (new SkeletonConfigTestConfig)->withParent($parent);
+
+    expect($config)->toBeInstanceOf(SkeletonConfigTestConfig::class);
+    expect($config->getInt('APP_WORLD_OPTION'))->toBe(3);
+    expect($config->getInt('app_world_option', 9))->toBe(9);
+    expect($config->getString('app_label'))->toBe('');
+    expect($config->getString('sv_name'))->toBe('Inherited name');
+    expect(fn () => $config->get('app_unknown_option'))->toThrow(InvalidArgumentException::class, 'Unknown configuration variable');
+    expect(fn () => $config->get('app_unknown_option', 9))->toThrow(InvalidArgumentException::class, 'Unknown configuration variable');
+
+    $config->set('app_world_option', 0);
+    expect($config->getInt('app_world_option', 9))->toBe(0);
+    expect($parent->has('app_world_option'))->toBeFalse();
+})->with([false, true]);
+
+test('local schema defaults yield to explicit ancestor values but not ancestor defaults', function () {
+    $ancestor = new Config;
+    $parent   = new Config(parent: $ancestor);
+    $config   = (new class extends SkeletonConfigTestConfig
+    {
+        protected const DEFINITIONS = [
+            'sv_world_pvp_score_limit' => ['default' => 12, 'min' => 0, 'max' => 1000, 'scope' => 'world', 'description' => 'Custom round score limit'],
+        ] + parent::DEFINITIONS;
+    })->withParent($parent);
+
+    expect($config->getInt('sv_world_pvp_score_limit'))->toBe(12);
+    expect($config->getInt('sv_world_pvp_score_limit', 9))->toBe(9);
+
+    $ancestor->set('sv_world_pvp_score_limit', 20);
+    expect($config->getInt('sv_world_pvp_score_limit', 9))->toBe(20);
+    $parent->set('sv_world_pvp_score_limit', 0);
+    expect($config->getInt('sv_world_pvp_score_limit', 9))->toBe(0);
+    $config->set('sv_world_pvp_score_limit', 15);
+    expect($config->getInt('sv_world_pvp_score_limit'))->toBe(15);
+});
+
+test('base configuration layers can read defaults defined by an extended parent', function () {
+    $parent = new SkeletonConfigTestConfig;
+    $config = new Config(parent: new Config(parent: $parent));
+
+    expect($config->getInt('app_world_option'))->toBe(3);
+    expect($config->getInt('app_world_option', 0))->toBe(0);
+    $parent->set('app_world_option', 8);
+    expect($config->getInt('app_world_option', 0))->toBe(8);
+});
+
 test('skeleton configuration files and includes use their own definitions', function () {
     withConfigFiles([
         'server.cfg' => "app_option 12\nexec \"extra.cfg\"\nsv_world_add dm dm1 8 2 dm",
@@ -631,6 +682,78 @@ test('runtime exec accepts skeleton-specific settings using the server configura
         expect($config->getString('app_label'))->toBe('From file');
     });
 });
+
+test('custom world settings inherit the server schema and remain isolated during live updates', function () {
+    $config = new SkeletonConfigTestConfig(['app_world_option' => 7, 'sv_rcon_password' => 'test-secret']);
+    $server = new RconTestServer(config: $config);
+    $first  = $server->entryWorld;
+    $second = $server->addWorld('other');
+    $admin  = $server->addClient();
+    expect($first->getConfigValue('app_world_option'))->toBe(7);
+    expect($second->getConfigValue('app_world_option'))->toBe(7);
+
+    $server->send($admin, new RconAuthChunk('', 'test-secret', false));
+    $server->send($admin, new RconCmdChunk('app_world_option 11'));
+
+    expect($first->getConfigValue('app_world_option'))->toBe(11);
+    expect(configRconLines($server->socket($admin)))->toContain('app_world_option = 11');
+    expect($second->getConfigValue('app_world_option'))->toBe(7);
+    expect($config->getInt('app_world_option'))->toBe(7);
+    expect(fn () => $first->setConfig('app_world_option', 101))->toThrow(InvalidArgumentException::class);
+    expect($first->getConfigValue('app_world_option'))->toBe(11);
+});
+
+test('world config files use the server schema and preserve supplied local settings and votes', function (bool $supplied) {
+    withConfigFiles([
+        'world.cfg' => 'app_world_option 16',
+        'local.cfg' => "sv_world_pvp_score_limit 20\nadd_vote Reload reload",
+    ], function (string $directory) use ($supplied): void {
+        $clock  = new TickHandler(100);
+        $server = new RconTestServer(clock: $clock, config: new SkeletonConfigTestConfig(['app_world_option' => 7]));
+        $local  = $supplied ? Config::fromFile($directory.'/local.cfg') : null;
+        $world  = new TestWorldWithController($clock, new Map, new PvpGameController($clock), $server, configFile: $directory.'/world.cfg', config: $local);
+
+        expect($world->getConfig())->toBeInstanceOf(SkeletonConfigTestConfig::class);
+        expect($world->getConfigValue('app_world_option'))->toBe(16);
+        expect($world->getConfigValue('sv_world_pvp_score_limit'))->toBe($supplied ? 20 : 0);
+        expect($world->getVoteController()->getVoteOptions())->toHaveCount($supplied ? 1 : 0);
+        expect($server->getConfigValue('app_world_option'))->toBe(7);
+        expect($local?->has('app_world_option') ?? false)->toBeFalse();
+    });
+})->with([false, true]);
+
+test('startup world declarations preserve custom schemas through nested world includes', function () {
+    withConfigFiles([
+        'server.cfg' => "app_world_option 7\nsv_world_add arena dm1 8 2 dm world.cfg\nsv_world_add other dm1 8 0 dm",
+        'world.cfg'  => 'exec "extra.cfg"',
+        'extra.cfg'  => 'app_world_option 16',
+    ], function (string $directory): void {
+        $config = SkeletonConfigTestConfig::fromFile($directory.'/server.cfg');
+        expect($config->getWorlds()[0]->settings)->toBeInstanceOf(SkeletonConfigTestConfig::class);
+        $server = new RconTestServer(config: $config);
+        expect($server->entryWorld->getConfigValue('app_world_option'))->toBe(16);
+        expect($server->getWorlds()[1]->getConfigValue('app_world_option'))->toBe(7);
+        expect($config->getInt('app_world_option'))->toBe(7);
+    });
+});
+
+test('RCON world creation preserves custom world schemas directly and through exec', function (bool $exec) {
+    withConfigFiles([
+        'world.cfg'  => 'app_world_option 19',
+        'worlds.cfg' => 'sv_world_add added dm1 8 2 dm "world.cfg"',
+    ], function (string $directory) use ($exec): void {
+        $server = new RconTestServer(config: new SkeletonConfigTestConfig(['app_world_option' => 7, 'sv_rcon_password' => 'test-secret']));
+        $admin  = $server->addClient();
+        $server->send($admin, new RconAuthChunk('', 'test-secret', false));
+        $line = $exec ? 'exec "'.$directory.'/worlds.cfg"' : 'sv_world_add added dm1 8 2 dm "'.$directory.'/world.cfg"';
+        $server->send($admin, new RconCmdChunk($line));
+
+        expect($server->getWorlds())->toHaveCount(2);
+        expect($server->getWorlds()[1]->getConfigValue('app_world_option'))->toBe(19);
+        expect($server->entryWorld->getConfigValue('app_world_option'))->toBe(7);
+        expect($server->getWorlds()[1]->getSpectatorSlots())->toBe(2);
+    });
+})->with([false, true]);
 
 test('the world creation command advertises its arguments', function () {
     $server  = new RconTestServer;

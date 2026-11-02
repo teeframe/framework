@@ -12,6 +12,7 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteClearOptionsChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteOptionListAddChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteStatusChunk;
@@ -19,6 +20,9 @@ use TeeFrame\Network\NetworkParams;
 
 class VoteController
 {
+    /** Minimum interval between vote attempts when sv_world_spam_protection is enabled. */
+    protected const VOTE_ATTEMPT_INTERVAL_TICKS = 3 * NetworkParams::TICKS_PER_SECOND;
+
     /** @var array<string, VoteOption> keyed by lowercase description */
     protected array $voteOptions = [];
 
@@ -30,21 +34,6 @@ class VoteController
     protected string $voteReason      = '';
     protected int $voteEnforce        = VoteEnforce::UNKNOWN;
     protected bool $voteUpdate        = false;
-    protected int $votePos            = 0;
-
-    /**
-     * Vote duration in ticks (mirrors g_Config.m_SvVoteTime = 25 seconds).
-     */
-    protected int $voteDurationTicks = 25 * NetworkParams::TICKS_PER_SECOND;
-
-    /** Minimum delay between votes called by the same player, in ticks (60 seconds). */
-    protected int $voteCallDelayTicks = 60 * NetworkParams::TICKS_PER_SECOND;
-
-    /**
-     * Spam protection for voting, in ticks
-     * (mirrors g_Config.m_SvSpamprotection: 3 seconds between vote tries).
-     */
-    protected int $voteTrySpamTicks = 3 * NetworkParams::TICKS_PER_SECOND;
 
     /**
      * @return AbstractChunk[]
@@ -115,6 +104,23 @@ class VoteController
         $this->voteOptions[$key] = $option;
     }
 
+    /** Returns false for an existing option; invalid commands are rejected before notifying clients. */
+    public function addLiveVoteOption(AbstractWorld $world, string $description, string $command): bool
+    {
+        if ($this->getVoteOption($description) !== null) {
+            return false;
+        }
+
+        if ($this->resolveCommands($world, $command) === null) {
+            throw new \InvalidArgumentException('Vote options must use registered server commands');
+        }
+
+        $this->addVoteOption($description, $command);
+        $world->getServer()->sendToWorld($world, new SvVoteOptionAddChunk($description), includeReady: true);
+
+        return true;
+    }
+
     public function getVoteOption(string $description): ?VoteOption
     {
         return $this->voteOptions[strtolower($description)] ?? null;
@@ -158,9 +164,7 @@ class VoteController
             return;
         }
 
-        $duration = $world->getConfig()->has('sv_world_vote_duration')
-            ? $world->getConfig()->getInt('sv_world_vote_duration') * NetworkParams::TICKS_PER_SECOND
-            : $this->voteDurationTicks;
+        $duration              = $world->getConfig()->getInt('sv_world_vote_duration') * NetworkParams::TICKS_PER_SECOND;
         $this->voteType        = 'option';
         $this->voteEnforce     = VoteEnforce::UNKNOWN;
         $this->voteCloseTime   = $world->getCurrentTick() + $duration;
@@ -172,8 +176,7 @@ class VoteController
 
         foreach ($world->getTees() as $tee) {
             if ($tee instanceof PlayerTee) {
-                $tee->vote    = 0;
-                $tee->votePos = 0;
+                $tee->vote = 0;
             }
         }
 
@@ -211,7 +214,7 @@ class VoteController
         $currentTick = $world->getCurrentTick();
 
         // Spam protection
-        if ($world->getConfig()->getInt('sv_world_spam_protection') && $tee->lastVoteTry > 0 && $tee->lastVoteTry + $this->voteTrySpamTicks > $currentTick) {
+        if ($world->getConfig()->getInt('sv_world_spam_protection') && $tee->lastVoteTry > 0 && $tee->lastVoteTry + self::VOTE_ATTEMPT_INTERVAL_TICKS > $currentTick) {
             return;
         }
 
@@ -230,10 +233,8 @@ class VoteController
         }
 
         // Per-player call delay (m_LastVoteCall).
-        $callDelay = $world->getConfig()->has('sv_world_vote_delay')
-            ? $world->getConfig()->getInt('sv_world_vote_delay') * NetworkParams::TICKS_PER_SECOND
-            : $this->voteCallDelayTicks;
-        $timeLeft = $tee->lastVoteCall > 0
+        $callDelay = $world->getConfig()->getInt('sv_world_vote_delay') * NetworkParams::TICKS_PER_SECOND;
+        $timeLeft  = $tee->lastVoteCall > 0
             ? $tee->lastVoteCall + $callDelay - $currentTick
             : 0;
 
@@ -271,8 +272,8 @@ class VoteController
         $this->voteType = $type;
 
         // The caller automatically votes yes
-        $tee->vote         = 1;
-        $tee->votePos      = ++$this->votePos;
+        $tee->vote = 1;
+
         $this->voteCreator = $tee->teeIndex;
         $tee->lastVoteCall = $currentTick;
     }
@@ -306,8 +307,8 @@ class VoteController
             return null;
         }
 
-        $targetIndex = (int) $value;
-        $target      = $world->findTee($targetIndex);
+        $targetIndex = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+        $target      = $targetIndex === false ? null : $world->findTee($targetIndex);
         $action      = $type === 'kick' ? 'kick' : 'move';
 
         if ($target === null) {
@@ -388,8 +389,8 @@ class VoteController
             return;
         }
 
-        $tee->vote        = $vote;
-        $tee->votePos     = ++$this->votePos;
+        $tee->vote = $vote;
+
         $this->voteUpdate = true;
     }
 

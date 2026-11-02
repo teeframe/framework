@@ -151,6 +151,26 @@ test('rules are supplied by the world instead of hard-coded game rules', functio
     }, recordingServer($world)->sentChunks))->toBe(['Rule one', 'Rule two']);
 });
 
+test('whispers identify the other player and use the correct direction on each client', function (string $command) {
+    [$server, $sender]         = commandTestServer();
+    $target                    = $server->addClient(address: '192.0.2.2');
+    $target->playerTee()->name = 'Target';
+    $server->send($sender, new ClSayChunk(false, '/w Target first message'));
+    $sender->playerTee()->lastChatTick = 0;
+    $server->socket($sender)->packets  = [];
+    $server->socket($target)->packets  = [];
+
+    $line = in_array($command, ['w', 'whisper'], true) ? '/'.$command.' Target secret' : '/'.$command.' secret';
+    $server->send($sender, new ClSayChunk(false, $line));
+
+    $sent     = $server->socket($sender)->chunks(SvChatChunk::class);
+    $received = $server->socket($target)->chunks(SvChatChunk::class);
+    expect($sent)->toHaveCount(1);
+    expect($received)->toHaveCount(1);
+    expect([$sent[0]->team, $sent[0]->clientId, $sent[0]->text])->toBe([2, $target->playerTee()->teeIndex, 'secret']);
+    expect([$received[0]->team, $received[0]->clientId, $received[0]->text])->toBe([3, $sender->playerTee()->teeIndex, 'secret']);
+})->with(['w', 'whisper', 'c', 'converse']);
+
 test('converse follows the last whispered player through renames but not index reuse', function () {
     [$server, $sender]         = commandTestServer();
     $target                    = $server->addClient(address: '192.0.2.2');
@@ -255,6 +275,56 @@ test('invalid tuning commands leave the existing values intact', function (strin
     expect($server->entryWorld->getTuneController())->toEqual(new TuneController);
     expect(commandReplyLines($server->socket($admin)))->not->toBeEmpty();
 })->with(['tune missing 5', 'tune gravity 21474836.48', 'tune gravity -21474836.49', 'tune gravity NaN', 'tune_reset missing']);
+
+test('invalid velocity ramp tuning is not broadcast and leaves moving characters usable', function (string $name, bool $toggle) {
+    [$server, $admin]    = commandTestServer();
+    $guest               = $server->addClient(address: '192.0.2.2');
+    $ready               = $server->addClient(address: '192.0.2.3', state: ConnectionSlot::STATE_READY);
+    $ready->readyToEnter = true;
+    $world               = $server->entryWorld;
+    $defaults            = new TuneController;
+    $line                = $toggle ? 'toggle_tune '.$name.' '.$defaults->get($name).' 0' : 'tune '.$name.' 0';
+
+    $server->send($admin, new RconCmdChunk($line));
+
+    expect($world->getTuneController())->toEqual($defaults);
+    expect(implode("\n", commandReplyLines($server->socket($admin))))->toContain($name.' must be at least 0.01');
+
+    foreach ([$admin, $guest, $ready] as $client) {
+        expect($server->socket($client)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
+    }
+
+    $character = new PvpCharacterEntity($world, new Vector2(1600, 320));
+    $character->spawn(new Vector2(1600, 320), $admin->playerTee());
+    $character->vel = new Vector2(20, 0);
+    $world->addEntity($character);
+    $world->doTick();
+
+    expect($character->alive)->toBeTrue();
+    expect(is_finite($character->getPosition()->x))->toBeTrue();
+    expect(is_finite($character->vel->x))->toBeTrue();
+})->with(['velramp_range', 'velramp_curvature'])->with([false, true]);
+
+test('extreme positive ramp tuning remains safe through RCON and world ticking', function (float $curvature) {
+    [$server, $admin] = commandTestServer();
+    $world            = $server->entryWorld;
+    $server->send($admin, new RconCmdChunk('tune velramp_range 0.01; tune velramp_curvature '.$curvature));
+
+    expect($world->getTuneController()->get('velramp_range'))->toBe(0.01);
+    expect($world->getTuneController()->get('velramp_curvature'))->toBe($curvature);
+    expect($server->socket($admin)->chunks(SvTuneParamsChunk::class))->toHaveCount(2);
+
+    $character = new PvpCharacterEntity($world, new Vector2(1600, 320));
+    $character->spawn(new Vector2(1600, 320), $admin->playerTee());
+    $character->vel = new Vector2(20, 0);
+    $world->addEntity($character);
+    $world->doTick();
+
+    expect($character->alive)->toBeTrue();
+    expect(is_finite($character->getPosition()->x))->toBeTrue();
+    expect(is_finite($character->vel->x))->toBeTrue();
+    expect(abs($character->getPosition()->x - 1600))->toBeLessThanOrEqual(6000.0);
+})->with([1.4, 0.01]);
 
 test('kick disconnects without a ban and refuses self and authenticated administrators', function () {
     [$server, $admin] = commandTestServer();

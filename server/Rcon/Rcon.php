@@ -9,7 +9,6 @@ use TeeFrame\Game\Commands\CommandLine;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
-use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteOptionRemoveChunk;
 use TeeFrame\Network\Chunks\System\RconAuthChunk;
 use TeeFrame\Network\Chunks\System\RconAuthStatusChunk;
@@ -235,16 +234,9 @@ class Rcon
         if ($name === 'add_vote') {
             [$description, $command] = $arguments;
 
-            if ($votes->getVoteOption($description) !== null) {
+            if (! $votes->addLiveVoteOption($world, $description, $command)) {
                 throw new \InvalidArgumentException('Vote option already exists: '.$description);
             }
-
-            if ($votes->resolveCommands($world, $command) === null) {
-                throw new \InvalidArgumentException('Vote options must use registered server commands');
-            }
-
-            $votes->addVoteOption($description, $command);
-            $this->sendVoteOptionUpdate($world, new SvVoteOptionAddChunk($description));
             $connection->consoleInfo('vote', 'Vote option added Description="'.$description.'"');
             $this->sendLine($connection, 'Added vote option: '.$description);
 

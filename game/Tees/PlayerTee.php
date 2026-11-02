@@ -53,9 +53,9 @@ class PlayerTee extends AbstractTee
     // Kill cooldown (CPlayer::m_LastKill)
     public int $lastKillTick = 0;
 
-    // Vote state (CPlayer::m_Vote / m_VotePos / m_LastVoteTry / m_LastVoteCall)
-    public int $vote         = 0;
-    public int $votePos      = 0;
+    // Vote state (CPlayer::m_Vote / m_LastVoteTry / m_LastVoteCall)
+    public int $vote = 0;
+
     public int $lastVoteTry  = 0;
     public int $lastVoteCall = 0;
 

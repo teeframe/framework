@@ -102,7 +102,16 @@ class Config
 
     public function withParent(self $parent): self
     {
-        $config         = clone $this;
+        if (is_a($this, $parent::class)) {
+            $config = clone $this;
+        } else {
+            // Inherit the parent's schema, but keep only this layer's explicit settings.
+            $configClass         = $parent::class;
+            $config              = new $configClass($this->values);
+            $config->worlds      = $this->worlds;
+            $config->voteOptions = $this->voteOptions;
+        }
+
         $config->parent = $parent;
 
         return $config;
@@ -190,13 +199,19 @@ class Config
     public function get(string $name, int|string|null $fallback = null): int|string
     {
         $name = strtolower($name);
-        if (! array_key_exists($name, $this->values) && $this->parent !== null) {
+
+        if (array_key_exists($name, $this->values)) {
+            return $this->values[$name];
+        }
+
+        // Inherit explicit values, but keep defaults from the nearest schema defining the setting.
+        if ($this->parent !== null && ($this->parent->has($name) || ! isset(static::DEFINITIONS[$name]))) {
             return $this->parent->get($name, $fallback);
         }
 
         $definition = static::definition($name);
 
-        return $this->values[$name] ?? $fallback ?? $definition['default'];
+        return $fallback ?? $definition['default'];
     }
 
     public function set(string $name, #[\SensitiveParameter] int|string $value): void

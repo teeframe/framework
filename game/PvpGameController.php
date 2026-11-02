@@ -519,6 +519,8 @@ class PvpGameController extends AbstractGameController
     public function checkTeamBalance(): bool
     {
         if (! $this->isTeamMode || $this->getTeamBalanceTime() === 0) {
+            $this->unbalancedTick = -1;
+
             return true;
         }
 

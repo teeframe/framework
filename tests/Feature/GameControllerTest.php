@@ -534,6 +534,50 @@ test('team balancing updates score totals after each move', function (int $large
     expect(array_sum($teamScores[GameConstants::TEAM_BLUE]))->toBe(10);
 })->with([GameConstants::TEAM_RED, GameConstants::TEAM_BLUE]);
 
+test('re-enabling team balancing starts a fresh delay after it was disabled', function (string $mode, bool $balancedWhileDisabled) {
+    $clock      = new TickHandler(100);
+    $controller = new PvpGameController($clock);
+    $world      = createWorldWithController(new Map, $clock, $controller, config: new Config([
+        'sv_world_game_type'             => $mode,
+        'sv_world_pvp_team_balance_time' => 1,
+    ]));
+    $players = [];
+
+    foreach ([GameConstants::TEAM_RED, GameConstants::TEAM_RED, GameConstants::TEAM_RED, GameConstants::TEAM_BLUE] as $team) {
+        $player = new PlayerTee;
+        $world->addTee($player);
+        $player->team = $team;
+        $players[]    = $player;
+    }
+
+    expect($controller->checkTeamBalance())->toBeFalse();
+    $world->setConfig('sv_world_pvp_team_balance_time', 0);
+
+    if ($balancedWhileDisabled) {
+        $players[0]->setTeam(GameConstants::TEAM_BLUE);
+    }
+
+    setGameTick($clock, 100 + NetworkParams::TICKS_PER_SECOND * 60 + 1);
+    $controller->doTick();
+
+    if ($balancedWhileDisabled) {
+        $players[0]->setTeam(GameConstants::TEAM_RED);
+    }
+
+    $world->setConfig('sv_world_pvp_team_balance_time', 1);
+    $controller->doTick();
+    expect(array_map(fn (PlayerTee $player): int => $player->team, $players))->toBe([0, 0, 0, 1]);
+
+    setGameTick($clock, $clock->getCurrentTick() + NetworkParams::TICKS_PER_SECOND * 60);
+    $controller->doTick();
+    expect(array_map(fn (PlayerTee $player): int => $player->team, $players))->toBe([0, 0, 0, 1]);
+
+    $clock->advanceTick();
+    $controller->doTick();
+    expect(array_count_values(array_map(fn (PlayerTee $player): int => $player->team, $players)))->toEqual([0 => 2, 1 => 2]);
+    expect(count(array_filter($players, fn (PlayerTee $player): bool => $player->forceBalanced)))->toBe(1);
+})->with(['tdm', 'ctf'])->with([false, true]);
+
 test('team balancing is disabled when teamBalanceTime is zero', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');

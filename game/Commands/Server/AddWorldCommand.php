@@ -31,7 +31,7 @@ class AddWorldCommand extends AbstractCommand
 
     public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
-        $config = WorldConfig::fromArguments($arguments);
+        $config = WorldConfig::fromArguments($arguments, $world->getServer()->getConfig()::class);
 
         if (isset($arguments[5])) {
             $config->settings->loadFile($arguments[5], worldOnly: true);

@@ -62,7 +62,6 @@ use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
-use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
@@ -132,7 +131,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             throw new \InvalidArgumentException('Spectator slots must be between zero and the world client limit');
         }
 
-        $this->config = $config?->withParent($server->getConfig()) ?? new Config(parent: $server->getConfig());
+        $this->config = ($config ?? new Config)->withParent($server->getConfig());
 
         if ($configFile !== '') {
             $this->config->loadFile($configFile, worldOnly: true);
@@ -306,17 +305,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if ($entry instanceof WorldConfig) {
                 $this->server->addWorldFromConfig($entry);
             } elseif ($entry instanceof VoteOption) {
-                if ($this->voteController->getVoteOption($entry->description) !== null) {
-                    continue;
+                if ($this->voteController->addLiveVoteOption($this, $entry->description, $entry->command)) {
+                    $this->consoleInfo('vote', 'Vote option added Description="'.$entry->description.'"');
                 }
-
-                if ($this->voteController->resolveCommands($this, $entry->command) === null) {
-                    throw new \InvalidArgumentException('Vote options must use registered server commands');
-                }
-
-                $this->voteController->addVoteOption($entry->description, $entry->command);
-                $this->server->sendToWorld($this, new SvVoteOptionAddChunk($entry->description), includeReady: true);
-                $this->consoleInfo('vote', 'Vote option added Description="'.$entry->description.'"');
             } else {
                 $this->setConfig($entry['name'], $entry['value']);
             }

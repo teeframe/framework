@@ -136,7 +136,7 @@ test('spectators cannot start votes and receive a private spam-protected rejecti
     assert($vote === null || $vote instanceof SvVoteSetChunk);
     expect($vote?->description)->toBe($running ? 'Existing vote' : null);
     expect($spectator->vote)->toBe(0);
-    expect($spectator->votePos)->toBe(0);
+
     expect($spectator->lastVoteCall)->toBe(0);
     expect($spectator->lastVoteTry)->toBe(100);
     $chats = array_values(array_filter(recordingServer($world)->sentPairs, fn ($pair) => $pair['chunk'] instanceof SvChatChunk));
@@ -145,6 +145,44 @@ test('spectators cannot start votes and receive a private spam-protected rejecti
     expect($chats[0]['chunk']->text)->toBe("Spectators aren't allowed to start a vote.");
     expect(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk))->toBeEmpty();
 })->with(['option', 'kick', 'spectate'])->with([false, true]);
+
+test('player votes reject malformed target ids without targeting player zero', function (string $type, string $value) {
+    $world  = createVoteWorld(new Map, new TickHandler(100));
+    $target = new PlayerTee;
+    $caller = new PlayerTee;
+    $world->addTee($target);
+    $world->addTee($caller);
+    recordingServer($world)->clear();
+
+    $world->onMessage($caller, new ClCallVoteChunk($type, $value, ''));
+
+    expect($target->teeIndex)->toBe(0);
+    expect($world->getVoteController()->isVoteRunning())->toBeFalse();
+    expect($caller->lastVoteCall)->toBe(0);
+    expect(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk))->toBeEmpty();
+    $replies = recordingServer($world)->sentPairs;
+    expect($replies)->toHaveCount(1);
+    expect($replies[0]['teeIndex'])->toBe($caller->teeIndex);
+    expect($replies[0]['chunk'])->toBeInstanceOf(SvChatChunk::class);
+    assert($replies[0]['chunk'] instanceof SvChatChunk);
+    expect($replies[0]['chunk']->text)->toBe('Invalid client id to '.($type === 'kick' ? 'kick' : 'move'));
+})->with(['kick', 'spectate'])->with(['', 'not-a-player', '0junk', '1.5', '-1', PHP_INT_MAX.'0']);
+
+test('player votes accept a valid zero target id', function (string $type) {
+    $world        = createVoteWorld(new Map, new TickHandler(100));
+    $target       = new PlayerTee;
+    $target->name = 'Target';
+    $caller       = new PlayerTee;
+    $world->addTee($target);
+    $world->addTee($caller);
+
+    $world->onMessage($caller, new ClCallVoteChunk($type, '0', ''));
+
+    $running = $world->getVoteController()->getRunningVote($world);
+    expect($running)->toBeInstanceOf(SvVoteSetChunk::class);
+    assert($running instanceof SvVoteSetChunk);
+    expect($running->description)->toBe($type === 'kick' ? "Kick 'Target'" : "Move 'Target' to spectators");
+})->with(['kick', 'spectate']);
 
 test('callVote option starts a vote and broadcasts SvVoteSet', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
@@ -183,7 +221,7 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
 
     // The caller should have automatically voted yes
     expect($tee1->vote)->toBe(1);
-    expect($tee1->votePos)->toBe(1);
+
 });
 
 test('vote call cooldown uses its configured duration independently of attempt spam protection', function (?int $delaySeconds, int $elapsedTicks, bool $allowed) {
@@ -193,7 +231,7 @@ test('vote call cooldown uses its configured duration independently of attempt s
     $world->addTee($tee);
     $votes = $world->getVoteController();
     if ($delaySeconds !== null) {
-        (new ReflectionProperty($votes, 'voteCallDelayTicks'))->setValue($votes, $delaySeconds * NetworkParams::TICKS_PER_SECOND);
+        $world->setConfig('sv_world_vote_delay', $delaySeconds);
     }
     $votes->addVoteOption('Example', 'example');
     $world->onMessage($tee, new ClCallVoteChunk('option', 'Example', ''));
@@ -500,12 +538,10 @@ test('player cannot vote twice', function () use ($mapPath, $mapExists) {
     // tee2 votes yes
     $world->onMessage($tee2, new ClVoteChunk(1));
     expect($tee2->vote)->toBe(1);
-    expect($tee2->votePos)->toBe(2);
 
     // tee2 tries to vote again — should be ignored
     $world->onMessage($tee2, new ClVoteChunk(-1));
     expect($tee2->vote)->toBe(1);
-    expect($tee2->votePos)->toBe(2);
 });
 
 test('vote option lookup is case insensitive', function () use ($mapPath, $mapExists) {

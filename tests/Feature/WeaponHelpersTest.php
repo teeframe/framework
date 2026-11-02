@@ -259,10 +259,10 @@ test('collecting another ninja mid dash preserves movement and cannot hit the sa
     expect($character->ninjaHitObjects)->toBeEmpty();
 });
 
-test('ninja hit tracking keeps its ten-target limit and resets for another dash', function () {
+test('ninja hits every target only once per dash and resets tracking for the next dash', function (int $targetCount) {
     [$world, $character] = createWeaponHelpersWorld();
     $victims             = [];
-    for ($i = 0; $i < 11; $i++) {
+    for ($i = 0; $i < $targetCount; $i++) {
         $victim = new class($world, clone $character->getPosition()) extends PvpCharacterEntity
         {
             public int $hits = 0;
@@ -279,21 +279,21 @@ test('ninja hit tracking keeps its ten-target limit and resets for another dash'
     $character->giveNinja();
     $hit = new ReflectionMethod($character, 'hitNinjaTargets');
     $hit->invoke($character);
-    expect($character->ninjaHitObjects)->toBe(array_slice($victims, 0, 10));
+    expect($character->ninjaHitObjects)->toBe($victims);
     $hit->invoke($character);
-    foreach (array_slice($victims, 0, 10) as $victim) {
+    foreach ($victims as $victim) {
         expect($victim->hits)->toBe(1);
     }
-    expect($character->ninjaHitObjects)->toHaveCount(10);
+    expect($character->ninjaHitObjects)->toHaveCount($targetCount);
 
     (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
     expect($character->ninjaHitObjects)->toBeEmpty();
     $hit->invoke($character);
-    expect($character->ninjaHitObjects)->toBe(array_slice($victims, 0, 10));
-    foreach (array_slice($victims, 0, 10) as $victim) {
+    expect($character->ninjaHitObjects)->toBe($victims);
+    foreach ($victims as $victim) {
         expect($victim->hits)->toBe(2);
     }
-});
+})->with([11, 63]);
 
 test('ninja restores the original speed along the dash direction when movement ends', function () {
     [, $character] = createWeaponHelpersWorld();

@@ -5,7 +5,6 @@ namespace TeeFrame\Game\Commands\Server;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
-use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
 
 class AddMapVotesCommand extends AbstractCommand
 {
@@ -51,19 +50,19 @@ class AddMapVotesCommand extends AbstractCommand
         foreach ($names as $name) {
             $description = 'Map: '.$name;
 
-            if ($name === '' || strlen($description) > 63 || ! mb_check_encoding($name, 'UTF-8') || $votes->getVoteOption($description) !== null) {
+            if ($name === '' || strlen($description) > 63 || ! mb_check_encoding($name, 'UTF-8')) {
                 continue;
             }
 
             $command = 'sv_world_map "'.addcslashes($name, '\\"').'"';
 
-            if ($votes->resolveCommands($world, $command) === null) {
+            try {
+                if ($votes->addLiveVoteOption($world, $description, $command)) {
+                    $added++;
+                }
+            } catch (\InvalidArgumentException) {
                 continue;
             }
-
-            $votes->addVoteOption($description, $command);
-            $world->getServer()->sendToWorld($world, new SvVoteOptionAddChunk($description), includeReady: true);
-            $added++;
         }
 
         $world->consoleInfo('vote', 'Map vote options added Count='.$added);

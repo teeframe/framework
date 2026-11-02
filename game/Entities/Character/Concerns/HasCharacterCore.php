@@ -18,6 +18,8 @@ use TeeFrame\Network\NetworkParams;
  */
 trait HasCharacterCore
 {
+    protected const MAX_SPEED = 6000.0;
+
     public Vector2 $vel;
 
     public Vector2 $hookDragVelocity;
@@ -119,7 +121,7 @@ trait HasCharacterCore
         }
 
         // Handle hook
-        if ($inputHook) {
+        if ($inputHook && $tune->hookLength > 0) {
             if ($this->hookState === GameConstants::HOOK_IDLE) {
                 $dirX = (float) $inputTargetX;
                 $dirY = (float) $inputTargetY;
@@ -210,10 +212,10 @@ trait HasCharacterCore
 
         $speed = $this->vel->length();
 
-        if ($speed > 6000) {
+        if ($speed > self::MAX_SPEED) {
             $this->vel = $this->vel->normalize();
-            $this->vel->x *= 6000;
-            $this->vel->y *= 6000;
+            $this->vel->x *= self::MAX_SPEED;
+            $this->vel->y *= self::MAX_SPEED;
         }
     }
 
@@ -237,12 +239,18 @@ trait HasCharacterCore
 
         $rampValue = self::velocityRamp($speed * NetworkParams::TICKS_PER_SECOND, $tune->velrampStart / 100.0, $tune->velrampRange / 100.0, $tune->velrampCurvature / 100.0);
 
-        $this->vel->x *= $rampValue;
+        $velocityX       = $this->vel->x;
+        $rampedVelocityX = max(-self::MAX_SPEED, min(self::MAX_SPEED, $velocityX * $rampValue));
+        $this->vel->x    = $rampedVelocityX;
 
         $newPos = new Vector2($this->position->x, $this->position->y);
         $collision->moveBox($newPos, $this->vel, new Vector2(28.0, 28.0), 0);
 
-        $this->vel->x *= (1.0 / $rampValue);
+        // Zero-elasticity collision only stops velocity components. Restore momentum
+        // unless a wall stopped it, without inverting a ramp that may underflow to zero.
+        if ($this->vel->x === $rampedVelocityX) {
+            $this->vel->x = $velocityX;
+        }
 
         $movement = $newPos->diff($this->position);
         $distance = $movement->length();
@@ -452,10 +460,13 @@ trait HasCharacterCore
 
     public static function velocityRamp(float $value, float $start, float $range, float $curvature): float
     {
-        if ($value < $start) {
+        if ($value < $start || $range <= 0.0 || $curvature <= 0.0) {
             return 1.0;
         }
 
-        return 1.0 / pow($curvature, ($value - $start) / $range);
+        $denominator = pow($curvature, ($value - $start) / $range);
+
+        // Extreme tuning can underflow the power or overflow its reciprocal.
+        return $denominator === 0.0 ? PHP_FLOAT_MAX : min(PHP_FLOAT_MAX, 1.0 / $denominator);
     }
 }

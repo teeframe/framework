@@ -61,7 +61,7 @@ class ConfigFile
                         }
 
                         $arguments = CommandLine::parseArguments($arguments, WorldConfig::PARAMS);
-                        $world     = WorldConfig::fromArguments($arguments);
+                        $world     = WorldConfig::fromArguments($arguments, $configClass);
 
                         if (isset($arguments[5])) {
                             $world->settings->loadFile(self::resolvePath($resolved, $arguments[5]), worldOnly: true, including: $including);

@@ -69,8 +69,15 @@ class TuneController
             throw new \InvalidArgumentException('Tuning value is outside the protocol integer range');
         }
 
+        $scaled = (int) round($scaled);
+
+        // Validate the encoded value: small positive inputs can round to zero.
+        if (in_array($name, ['velramp_range', 'velramp_curvature'], true) && $scaled <= 0) {
+            throw new \InvalidArgumentException($name.' must be at least 0.01');
+        }
+
         $property        = lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $name))));
-        $this->$property = (int) round($scaled);
+        $this->$property = $scaled;
     }
 
     public function reset(?string $name = null): void
