@@ -126,7 +126,7 @@ class MasterServerRegistration
                 $this->handleResponse($response, $serial, $token, $body !== '');
             } catch (\RuntimeException|\JsonException|\InvalidArgumentException $exception) {
                 $this->status = 'error';
-                Console::error('Master server '.$this->getProtocol().': '.$exception->getMessage());
+                Console::error('register', 'Master server '.$this->getProtocol().': '.$exception->getMessage());
             } finally {
                 if ($this->stopped) {
                     $this->deleteIfRegistered();
@@ -138,7 +138,7 @@ class MasterServerRegistration
 
         if ($coroutine === false) {
             $this->pendingRequest = null;
-            Console::error('Could not start master server registration');
+            Console::error('register', 'Could not start master server registration');
         }
     }
 
@@ -159,7 +159,7 @@ class MasterServerRegistration
 
         if ($result['status'] === 'success') {
             if ($this->status !== 'success') {
-                Console::info('Master server '.$this->getProtocol().': registered');
+                Console::info('register', 'Master server '.$this->getProtocol().': registered');
             }
             $this->registered           = true;
             $this->successfulInfoSerial = max($this->successfulInfoSerial, $serial);
@@ -175,7 +175,7 @@ class MasterServerRegistration
             if ($this->challengeToken !== null && $this->challengeToken !== $sentToken) {
                 $this->nextRegisterTime = $this->tickHandler->getTime();
             } elseif ($this->status === 'need_challenge') {
-                Console::warn('Master server '.$this->getProtocol().': UDP port '.$this->port.' is not reachable; check the firewall and port forwarding');
+                Console::warn('register', 'Master server '.$this->getProtocol().': UDP port '.$this->port.' is not reachable; check the firewall and port forwarding');
             }
         }
 
@@ -199,7 +199,7 @@ class MasterServerRegistration
                 localAddress: $this->localAddress,
             );
         } catch (\RuntimeException $exception) {
-            Console::warn('Could not remove master server listing: '.$exception->getMessage());
+            Console::warn('register', 'Could not remove master server listing: '.$exception->getMessage());
         }
     }
 

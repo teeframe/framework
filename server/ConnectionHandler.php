@@ -115,7 +115,7 @@ class ConnectionHandler
         $connection->state = ConnectionSlot::STATE_CONNECTING;
 
         $connection->sendControlMessage(NetworkMessages::CONTROL_CONNECT_ACCEPT);
-        $connection->consoleInfo('got connection, sending accept');
+        $connection->consoleInfo('network', 'got connection, sending accept');
     }
 
     public function handleConnectionHandshake(ConnectionSlot $connection, AbstractPacket $packet, string $password): bool
@@ -135,7 +135,7 @@ class ConnectionHandler
 
             // Step 1
             if ($chunk instanceof InfoChunk && $connection->state === ConnectionSlot::STATE_CONNECTING) {
-                $connection->consoleInfo('player sent info');
+                $connection->consoleDebug('network', 'player sent info');
 
                 if (! $this->handleInfoChunk($connection, $chunk, $password)) {
                     return false;
@@ -144,7 +144,7 @@ class ConnectionHandler
 
             // Step 2.1
             if ($chunk instanceof RequestMapDataChunk && $connection->state === ConnectionSlot::STATE_LOADING) {
-                $connection->consoleInfo('player requested map data');
+                $connection->consoleDebug('network', 'player requested map data');
 
                 if (! $this->handleRequestMapDataChunk($connection, $chunk)) {
                     return false;
@@ -153,23 +153,23 @@ class ConnectionHandler
 
             // Step 2.2
             if ($chunk instanceof ReadyChunk && $connection->state === ConnectionSlot::STATE_LOADING) {
-                $connection->consoleInfo('player is ready');
+                $connection->consoleDebug('network', 'player is ready');
 
                 $this->handleReadyChunk($connection, $chunk);
             }
 
             // Step 3
             if ($chunk instanceof ClStartInfoChunk && $connection->state === ConnectionSlot::STATE_READY && ! $connection->readyToEnter) {
-                $connection->consoleInfo('player sent start info');
+                $connection->consoleDebug('network', 'player sent start info');
 
                 $this->handleClStartInfoChunk($connection, $chunk);
             }
 
             // Step 4
             if ($chunk instanceof EnterGameChunk && $connection->state === ConnectionSlot::STATE_READY && $connection->readyToEnter) {
-                $connection->consoleInfo('player has entered the game');
-
                 $this->handleEnterGameChunk($connection, $chunk);
+
+                $connection->consoleInfo('network', 'player has entered the game');
             }
 
             // After step 4, the connection is completed. However,

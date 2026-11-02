@@ -36,6 +36,7 @@ class VoteCommand extends AbstractCommand
             default => throw new \InvalidArgumentException('Vote result must be yes or no'),
         };
         $world->getVoteController()->forceResult($yes);
+        $world->consoleInfo('vote', 'TeeIdx='.$tee->teeIndex.' Vote forced Result='.($yes ? 'yes' : 'no'));
         $this->reply($world, $tee, 'Vote forced to '.($yes ? 'yes' : 'no'), $output);
     }
 }

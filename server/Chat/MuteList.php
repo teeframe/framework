@@ -3,6 +3,7 @@
 namespace TeeFrame\Server\Chat;
 
 use TeeFrame\Core\IpAddress;
+use TeeFrame\Server\Console;
 
 class MuteList
 {
@@ -14,12 +15,18 @@ class MuteList
         if ($seconds < 1 || $seconds > 86400) {
             throw new \InvalidArgumentException('Mute duration must be between 1 and 86400 seconds');
         }
-        $this->mutes[$this->normalizeAddress($address)] = ['expiry' => time() + $seconds, 'reason' => $reason];
+        $address               = $this->normalizeAddress($address);
+        $this->mutes[$address] = ['expiry' => time() + $seconds, 'reason' => $reason];
+        Console::info('mute', 'Muted Address='.$address.' Duration='.$seconds.'s Reason='.$reason);
     }
 
     public function unmute(string $address): void
     {
-        unset($this->mutes[$this->normalizeAddress($address)]);
+        $address = $this->normalizeAddress($address);
+        if (isset($this->mutes[$address])) {
+            unset($this->mutes[$address]);
+            Console::info('mute', 'Unmuted Address='.$address);
+        }
     }
 
     /** @return array{expiry: int, reason: string}|null */
@@ -31,8 +38,13 @@ class MuteList
     /** @return array<string, array{expiry: int, reason: string}> */
     public function getMutes(): array
     {
-        $now         = time();
-        $this->mutes = array_filter($this->mutes, fn (array $mute): bool => $mute['expiry'] > $now);
+        $now = time();
+        foreach ($this->mutes as $address => $mute) {
+            if ($mute['expiry'] <= $now) {
+                unset($this->mutes[$address]);
+                Console::debug('mute', 'Mute expired Address='.$address);
+            }
+        }
 
         return $this->mutes;
     }

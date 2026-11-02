@@ -39,7 +39,7 @@ function rconCommandNames(RconTestSocket $socket): array
 /** @return list<string> */
 function rconListedNames(RconTestSocket $socket): array
 {
-    $lines = array_filter(rconLines($socket), fn (string $line): bool => ! str_starts_with($line, 'World=') && ! str_starts_with($line, 'Authentication successful.'));
+    $lines = array_filter(rconLines($socket), fn (string $line): bool => ! str_starts_with($line, '[INFO] [rcon]: ') && ! str_starts_with($line, 'Authentication successful.'));
 
     return $lines === [] ? [] : explode(', ', implode(', ', $lines));
 }
@@ -127,7 +127,7 @@ test('cmdlist returns complete command lists across multiple reply lines only to
     $expected = array_keys($server->getRcon()->getCommandInfo($server->entryWorld));
     sort($expected, SORT_STRING | SORT_FLAG_CASE);
     expect(rconListedNames($server->socket($admin)))->toBe($expected);
-    $listLines = array_filter($lines, fn (string $line): bool => ! str_starts_with($line, 'World='));
+    $listLines = array_filter($lines, fn (string $line): bool => ! str_starts_with($line, '[INFO] [rcon]: '));
     expect(count($listLines))->toBeGreaterThan(1);
     foreach ($lines as $line) {
         expect(strlen($line))->toBeLessThanOrEqual(511);
@@ -498,12 +498,77 @@ test('RCON forwards console output only to authenticated clients', function () {
     $server->socket($admin)->packets = [];
     $server->socket($guest)->packets = [];
 
-    Console::info('RCON broadcast test');
-    Console::warn('RCON warning test');
+    Console::info('server', 'RCON broadcast test');
+    Console::warn('server', 'RCON warning test');
     $server->getRcon()->update();
 
-    expect(rconLines($server->socket($admin)))->toContain('RCON broadcast test', 'RCON warning test');
+    expect(rconLines($server->socket($admin)))->toContain('[INFO] [server]: RCON broadcast test', '[WARN] [server]: RCON warning test');
     expect(rconLines($server->socket($guest)))->toBeEmpty();
+});
+
+test('RCON log verbosity is independent of terminal output and other server listeners', function () {
+    $server      = new RconTestServer;
+    $otherServer = new RconTestServer;
+    $admin       = $server->addClient();
+    $otherAdmin  = $otherServer->addClient();
+    $server->send($admin, new RconAuthChunk('', 'test-secret', false));
+    $otherServer->send($otherAdmin, new RconAuthChunk('', 'test-secret', false));
+    $server->getRcon()->update();
+    $otherServer->getRcon()->update();
+    $server->socket($admin)->packets           = [];
+    $otherServer->socket($otherAdmin)->packets = [];
+    $server->getRcon()->setOutputLevel(Console::LEVEL_DEBUG);
+    Console::setOutputLevel(Console::LEVEL_NONE);
+
+    ob_start();
+    try {
+        Console::info('network', 'Connected');
+        Console::debug('network', 'Handshake details');
+        Console::trace('network', 'Packet bytes');
+        $output = ob_get_contents();
+    } finally {
+        ob_end_clean();
+        Console::setOutputLevel(Console::LEVEL_INFO);
+    }
+    $server->getRcon()->update();
+    $otherServer->getRcon()->update();
+
+    expect($output)->toBe('');
+    expect(rconLines($server->socket($admin)))->toBe(['[INFO] [network]: Connected', '[DEBUG] [network]: Handshake details']);
+    expect(rconLines($otherServer->socket($otherAdmin)))->toBe(['[INFO] [network]: Connected']);
+});
+
+test('disabling RCON logs does not suppress private command replies', function () {
+    $server = new RconTestServer;
+    $admin  = $server->addClient();
+    $other  = $server->addClient(port: 8301);
+    $server->send($admin, new RconAuthChunk('', 'test-secret', false));
+    $server->send($other, new RconAuthChunk('', 'test-secret', false));
+    $server->getRcon()->update();
+    $server->socket($admin)->packets = [];
+    $server->socket($other)->packets = [];
+    $server->getRcon()->setOutputLevel(Console::LEVEL_NONE);
+
+    $server->send($admin, new RconCmdChunk('help'));
+    $server->getRcon()->update();
+
+    expect(rconLines($server->socket($admin)))->toBe(['Use cmdlist to list commands, or help <command> to show usage.']);
+    expect(rconLines($server->socket($other)))->toBeEmpty();
+});
+
+test('connection log context brackets IPv6 addresses and includes the subsystem', function () {
+    $server = new RconTestServer;
+    $admin  = $server->addClient(address: '::1');
+    $server->send($admin, new RconAuthChunk('', 'test-secret', false));
+    $server->getRcon()->update();
+    $server->socket($admin)->packets = [];
+
+    $admin->consoleInfo('network', 'Connection test');
+    $server->getRcon()->update();
+
+    expect(rconLines($server->socket($admin)))->toBe([
+        '[INFO] [network]: World=dm TeeIdx='.$admin->playerTee()->teeIndex.' addr=[::1]:8300 Connection test',
+    ]);
 });
 
 test('RCON never logs passwords or command arguments', function () {

@@ -34,6 +34,7 @@ class Rcon
         #[\SensitiveParameter] protected string $password = '',
         protected int $maxTries = 10,
         protected int $banDuration = 300,
+        int $outputLevel = Console::LEVEL_INFO,
     ) {
         if ($maxTries < 1 || $banDuration < 0) {
             throw new \InvalidArgumentException('RCON requires a positive attempt limit and a non-negative ban duration');
@@ -43,7 +44,14 @@ class Rcon
         }
 
         $this->consoleListener = fn (string $line) => $this->broadcastLine($line);
-        Console::listen($this->consoleListener);
+        $this->setOutputLevel($outputLevel);
+    }
+
+    public function setOutputLevel(int $level): void
+    {
+        if (! $this->stopped) {
+            Console::listen($this->consoleListener, $level);
+        }
     }
 
     public function handle(ConnectionSlot $connection, AbstractChunk $chunk): void
@@ -68,6 +76,7 @@ class Rcon
             return;
         }
         if ($this->password === '') {
+            $connection->consoleDebug('rcon', 'RCON authentication rejected: remote console is disabled');
             $this->sendLine($connection, 'Remote console is disabled.');
 
             return;
@@ -79,16 +88,17 @@ class Rcon
             $session->advertisedCommands = [];
             $connection->chunks()->add(new RconAuthStatusChunk(true, $chunk->sendCommandList));
             $this->sendLine($connection, 'Authentication successful. Full remote console access granted.');
-            $connection->consoleInfo('RCON authentication successful');
+            $connection->consoleInfo('rcon', 'RCON authentication successful');
 
             return;
         }
 
         $session->authTries++;
+        $connection->consoleWarn('rcon', 'RCON authentication failed Attempt='.$session->authTries.'/'.$this->maxTries);
         $this->sendLine($connection, 'Wrong password '.$session->authTries.'/'.$this->maxTries.'.');
         if ($session->authTries >= $this->maxTries) {
             $reason = 'Too many remote console authentication tries';
-            $connection->consoleWarn($reason);
+            $connection->consoleWarn('rcon', $reason);
             if ($this->banDuration > 0) {
                 $this->bans->ban($connection->destinationAddress, $this->banDuration, $reason);
             }
@@ -99,6 +109,7 @@ class Rcon
     protected function execute(ConnectionSlot $connection, string $line): void
     {
         if (strlen($line) > 511 || preg_match('/[\x00-\x08\x0a-\x1f\x7f]/', $line) || ! mb_check_encoding($line, 'UTF-8')) {
+            $connection->consoleDebug('rcon', 'RCON command rejected: invalid input');
             $this->sendLine($connection, 'Invalid remote console command.');
 
             return;
@@ -113,6 +124,7 @@ class Rcon
                 $this->executeCommand($connection, $commandLine);
             }
         } catch (\InvalidArgumentException|\RuntimeException $exception) {
+            $connection->consoleDebug('rcon', 'RCON command failed ('.$exception::class.')');
             $this->sendLine($connection, $exception->getMessage());
         }
     }
@@ -124,14 +136,14 @@ class Rcon
             CommandLine::arguments(substr($line, strlen($name)), '');
         }
         if ($name === 'logout') {
-            $connection->consoleInfo('RCON command=logout');
+            $connection->consoleInfo('rcon', 'RCON command=logout');
             $this->logout($connection);
 
             return;
         }
 
         if ($name === 'cmdlist') {
-            $connection->consoleInfo('RCON command=cmdlist');
+            $connection->consoleInfo('rcon', 'RCON command=cmdlist');
             foreach (AbstractCommand::formatList(array_keys($this->getCommandInfo($connection->world()))) as $line) {
                 $this->sendLine($connection, $line);
             }
@@ -140,7 +152,7 @@ class Rcon
         }
 
         if (in_array($name, ['add_vote', 'remove_vote', 'force_vote'], true)) {
-            $connection->consoleInfo('RCON command='.$name);
+            $connection->consoleInfo('rcon', 'RCON command='.$name);
             $this->executeVoteCommand($connection, $name, substr($line, strlen($name)));
 
             return;
@@ -153,7 +165,7 @@ class Rcon
             assert($arguments !== null);
 
             // Arguments can contain credentials supplied to custom commands.
-            $connection->consoleInfo('RCON command='.strtok($command->getName(), " \t"));
+            $connection->consoleInfo('rcon', 'RCON command='.strtok($command->getName(), " \t"));
             $command->execute($world, $connection->playerTee(), $arguments, fn (string $message) => $this->sendLine($connection, $message));
 
             return;
@@ -178,6 +190,7 @@ class Rcon
             }
             $votes->addVoteOption($description, $command);
             $this->sendVoteOptionUpdate($world, new SvVoteOptionAddChunk($description));
+            $connection->consoleInfo('vote', 'Vote option added Description="'.$description.'"');
             $this->sendLine($connection, 'Added vote option: '.$description);
 
             return;
@@ -186,6 +199,7 @@ class Rcon
             $option = $votes->getVoteOption($arguments[0]) ?? throw new \InvalidArgumentException('Unknown vote option: '.$arguments[0]);
             $votes->removeVoteOption($option->description);
             $this->sendVoteOptionUpdate($world, new SvVoteOptionRemoveChunk($option->description));
+            $connection->consoleInfo('vote', 'Vote option removed Description="'.$option->description.'"');
             $this->sendLine($connection, 'Removed vote option: '.$option->description);
 
             return;
@@ -213,6 +227,7 @@ class Rcon
                 if ($this->stopped || ! $connection->rcon()->authenticated || $connection->world() !== $world || $connection->state === ConnectionSlot::STATE_CLOSED) {
                     break;
                 }
+                $connection->consoleDebug('vote', 'Forced vote command='.$resolved['command']->getName());
                 $resolved['command']->execute($world, $connection->playerTee(), $resolved['arguments'], fn (string $message) => $this->sendLine($connection, $message));
             }
 
@@ -231,6 +246,7 @@ class Rcon
             if ($target === $connection || $target->rcon()->authenticated) {
                 throw new \InvalidArgumentException('Cannot kick yourself or another authenticated administrator');
             }
+            $connection->consoleInfo('vote', 'Forced kick Target='.$index);
             $world->getServer()->kick($world, $index, Utf8::truncateBytes($reason, 127));
 
             return;
@@ -316,6 +332,7 @@ class Rcon
     public function stop(): void
     {
         $this->stopped = true;
+        Console::unlisten($this->consoleListener);
     }
 
     public function sendLine(ConnectionSlot $connection, string $line): void

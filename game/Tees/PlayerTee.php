@@ -154,6 +154,7 @@ class PlayerTee extends AbstractTee
             $this->character->die($this->teeIndex, GameConstants::WEAPON_GAME);
         }
 
+        $previousTeam      = $this->team;
         $wasSpectator      = $this->team === GameConstants::TEAM_SPECTATORS;
         $this->team        = $team;
         $this->spectatorId = GameConstants::SPEC_FREEVIEW;
@@ -181,6 +182,7 @@ class PlayerTee extends AbstractTee
             );
 
             $world->broadcast($chat);
+            $world->consoleDebug('game', 'TeeIdx='.$this->teeIndex.' Name="'.$this->name.'" Team changed from '.$previousTeam.' to '.$team);
 
             // Re-check team balance after a team change (IGameController::CheckTeamBalance)
             $world->getGameController()->checkTeamBalance();

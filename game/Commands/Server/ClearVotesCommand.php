@@ -33,6 +33,7 @@ class ClearVotesCommand extends AbstractCommand
     {
         $world->getVoteController()->clearVoteOptions();
         $world->getServer()->sendToWorld($world, new SvVoteClearOptionsChunk, includeReady: true);
+        $world->consoleInfo('vote', 'Vote options cleared');
         $this->reply($world, $tee, 'Vote options cleared', $output);
     }
 }

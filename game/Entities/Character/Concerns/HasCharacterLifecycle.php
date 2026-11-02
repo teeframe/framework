@@ -49,6 +49,7 @@ trait HasCharacterLifecycle
         $this->queuedWeapon = -1;
         $this->reloadTimer  = 0;
         $this->attackTick   = 0;
+        $this->world->consoleTrace('game', 'TeeIdx='.($tee->teeIndex ?? -1).' Spawned X='.$pos->x.' Y='.$pos->y);
     }
 
     public function die(int $killerTeeIndex = -1, int $weapon = GameConstants::WEAPON_WORLD): void
@@ -72,6 +73,7 @@ trait HasCharacterLifecycle
             modeSpecial: $modeSpecial,
         );
         $this->world->broadcast($killMsg);
+        $this->world->consoleDebug('game', 'Kill Killer='.$killerTeeIndex.' Victim='.$victimTeeIndex.' Weapon='.$weapon);
 
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 

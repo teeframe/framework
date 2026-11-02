@@ -6,7 +6,6 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
-use TeeFrame\Server\Console;
 
 class ChangeGameModeCommand extends AbstractCommand
 {
@@ -42,7 +41,7 @@ class ChangeGameModeCommand extends AbstractCommand
                 $text .= ' ('.$reason.')';
             }
         } catch (\RuntimeException $exception) {
-            Console::warn('World='.$world->identifier.' Gamemode change failed: '.$exception->getMessage());
+            $world->consoleWarn('world', 'Gamemode change failed: '.$exception->getMessage());
             $text = 'Unable to change gamemode'.($gameMode !== '' ? ' to '.strtoupper($gameMode) : '');
         }
 

@@ -91,6 +91,9 @@ class ConnectionSlot extends AbstractConnection
 
     public function changeWorld(AbstractWorld $world): void
     {
+        if ($this->world !== $world) {
+            $this->consoleInfo('world', 'Changing world to '.$world->identifier);
+        }
         $previousTee = $this->playerTee;
         $this->world->removeTee($previousTee);
 
@@ -130,7 +133,7 @@ class ConnectionSlot extends AbstractConnection
     public function feedConnection(AbstractPacket $packet): bool
     {
         if (! $this->validateFeeding($packet)) {
-            $this->consoleError('Invalid ack');
+            $this->consoleDebug('network', 'Invalid ack');
 
             return false;
         }
@@ -151,6 +154,7 @@ class ConnectionSlot extends AbstractConnection
 
     public function closeConnection(string $reason): void
     {
+        $this->consoleInfo('network', 'Closing connection: '.$reason);
         $this->sendControlMessage(NetworkMessages::CONTROL_CLOSE, $reason);
 
         $this->world()->removeTee($this->playerTee, $reason);
@@ -169,7 +173,7 @@ class ConnectionSlot extends AbstractConnection
 
         if ($message === NetworkMessages::CONTROL_CLOSE) {
             $reason = Utf8::truncateBytes(explode("\0", $packet->getControlMessageExtra(), 2)[0], 127);
-            $this->consoleInfo('Closed reason='.$reason);
+            $this->consoleInfo('network', 'Closed reason='.$reason);
 
             $this->world()->removeTee($this->playerTee, $reason);
 
@@ -254,39 +258,52 @@ class ConnectionSlot extends AbstractConnection
         return true;
     }
 
-    public function consoleError(string $message): void
+    public function consoleError(string $system, string $message): void
     {
-        Console::error($this->generateConsoleMessage($message));
+        $this->world()->consoleError($system, $this->generateConsoleMessage($message));
     }
 
-    public function consoleWarn(string $message): void
+    public function consoleWarn(string $system, string $message): void
     {
-        Console::warn($this->generateConsoleMessage($message));
+        $this->world()->consoleWarn($system, $this->generateConsoleMessage($message));
     }
 
-    public function consoleInfo(string $message): void
+    public function consoleInfo(string $system, string $message): void
     {
-        Console::info($this->generateConsoleMessage($message));
+        $this->world()->consoleInfo($system, $this->generateConsoleMessage($message));
+    }
+
+    public function consoleDebug(string $system, string $message): void
+    {
+        $this->world()->consoleDebug($system, $this->generateConsoleMessage($message));
     }
 
     protected function generateConsoleMessage(string $message): string
     {
-        return 'World='.$this->world()->identifier.' TeeIdx='.$this->playerTee()->teeIndex.', addr='.$this->destinationAddress.':'.$this->destinationPort.'. '.$message;
+        $address = str_contains($this->destinationAddress, ':') ? '['.$this->destinationAddress.']' : $this->destinationAddress;
+
+        return 'TeeIdx='.$this->playerTee()->teeIndex.' addr='.$address.':'.$this->destinationPort.' '.$message;
     }
 
     protected function handlePacketSending(AbstractPacket $packet): bool
     {
-        return $this->socket->sendto($this->destinationAddress, $this->destinationPort, $packet->encodeToSend());
+        $sent = $this->socket->sendto($this->destinationAddress, $this->destinationPort, $packet->encodeToSend());
+
+        if (! $sent) {
+            $this->consoleWarn('network', 'Failed to send packet');
+        }
+
+        return $sent;
     }
 
     protected function handleUnsupportedChunk(UnsupportedChunk $chunk): void
     {
-        $this->consoleWarn('Unsupported chunk received, system='.(int) $chunk->isSystem().' message='.$chunk->unsupportedMessage);
+        $this->consoleDebug('network', 'Unsupported chunk received, system='.(int) $chunk->isSystem().' message='.$chunk->unsupportedMessage);
     }
 
     protected function handleConnectionOutOfSequence(int $sequence, int $ack): void
     {
-        $this->consoleWarn("Out of sequence, asking for resend, {$sequence} - {$ack}");
+        $this->consoleDebug('network', "Out of sequence, asking for resend, {$sequence} - {$ack}");
 
         $this->sendPacket(new ControlMessage(message: NetworkMessages::CONTROL_KEEP_ALIVE, ack: $this->ack, resend: true));
     }

@@ -167,6 +167,7 @@ class VoteController
         $this->voteCommand     = $command;
         $this->voteReason      = Utf8::truncateBytes($reason !== '' ? $reason : 'No reason given', 15);
         $this->voteUpdate      = true;
+        $world->consoleInfo('vote', 'Vote started Description="'.$this->voteDescription.'" Reason="'.$this->voteReason.'"');
 
         foreach ($world->getTees() as $tee) {
             if ($tee instanceof PlayerTee) {
@@ -184,6 +185,9 @@ class VoteController
 
     public function endVote(AbstractWorld $world): void
     {
+        if ($this->isVoteRunning()) {
+            $world->consoleDebug('vote', 'Vote ended Description="'.$this->voteDescription.'"');
+        }
         $this->voteCloseTime = 0;
         $this->voteCreator   = -1;
         $world->broadcast(new SvVoteSetChunk(
@@ -375,6 +379,7 @@ class VoteController
 
         // Abort (e.g. kick target disconnected)
         if ($this->voteEnforce === VoteEnforce::ABORT) {
+            $world->consoleInfo('vote', 'Vote aborted Description="'.$this->voteDescription.'"');
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote aborted'));
             $this->endVote($world);
 
@@ -383,6 +388,7 @@ class VoteController
 
         // Cancel (creator left)
         if ($this->voteEnforce === VoteEnforce::CANCEL) {
+            $world->consoleInfo('vote', 'Vote canceled Description="'.$this->voteDescription.'"');
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote canceled'));
             $this->endVote($world);
 
@@ -403,13 +409,16 @@ class VoteController
         if ($this->voteEnforce === VoteEnforce::YES) {
             try {
                 $this->executeVoteCommand($world);
+                $world->consoleInfo('vote', 'Vote passed Description="'.$this->voteDescription.'" Yes='.$yes.' No='.$no.' Total='.$total);
                 $message = 'Vote passed';
             } catch (\InvalidArgumentException|\RuntimeException $exception) {
+                $world->consoleWarn('vote', 'Vote execution failed Description="'.$this->voteDescription.'"');
                 $message = Utf8::truncateBytes('Vote command failed: '.$exception->getMessage(), 511);
             }
             $this->endVote($world);
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: $message));
         } elseif ($this->voteEnforce === VoteEnforce::NO || $currentTick > $this->voteCloseTime) {
+            $world->consoleInfo('vote', 'Vote failed Description="'.$this->voteDescription.'" Yes='.$yes.' No='.$no.' Total='.$total.' Reason='.($this->voteEnforce === VoteEnforce::NO ? 'rejected' : 'timeout'));
             $this->endVote($world);
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote failed'));
         } elseif ($this->voteUpdate) {
@@ -531,6 +540,7 @@ class VoteController
 
         if ($caller instanceof PlayerTee) {
             foreach ($commands as $resolved) {
+                $world->consoleDebug('vote', 'TeeIdx='.$caller->teeIndex.' Vote command='.$resolved['command']->getName());
                 $resolved['command']->execute($world, $caller, $resolved['arguments']);
                 if ($world->findTee($caller->teeIndex) !== $caller) {
                     break;

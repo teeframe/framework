@@ -62,6 +62,7 @@ use TeeFrame\Game\World\TuneController;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
 use TeeFrame\Network\NetworkParams;
@@ -69,6 +70,7 @@ use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjEventSpawnItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Console;
 
 abstract class AbstractWorld implements SnapableObject, TickableObject
 {
@@ -282,6 +284,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->pendingMap            = $map;
         $this->pendingGameController = $controller;
+
+        $this->consoleDebug('world', 'Reload queued Map='.$map->getName().' Gametype='.($controller ?? $this->gameController)->getGameType());
     }
 
     protected function performReload(Map $map): void
@@ -320,6 +324,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->gameController->resetMap();
         $this->bootMap();
         $this->server->reloadWorld($this);
+
+        $this->consoleInfo('world', 'Reloaded Map='.$this->map->getName().' Gametype='.$this->gameController->getGameType());
     }
 
     /**
@@ -359,7 +365,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             }
         }
 
-        $tee->name = $trimmed;
+        $previousName = $tee->name;
+        $tee->name    = $trimmed;
+
+        if ($previousName !== $tee->name && ($this->tees[$tee->teeIndex] ?? null) === $tee) {
+            $this->consoleInfo('game', 'TeeIdx='.$tee->teeIndex.' Name changed from "'.$previousName.'" to "'.$tee->name.'"');
+        }
 
         return true;
     }
@@ -451,7 +462,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function setPaused(bool $paused): void
     {
-        $this->paused = $paused;
+        if ($this->paused !== $paused) {
+            $this->paused = $paused;
+
+            $this->consoleInfo('game', $paused ? 'Paused' : 'Resumed');
+        }
     }
 
     public function isResetRequested(): bool
@@ -499,6 +514,15 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function broadcast(AbstractChunk $chunk): void
     {
+        if ($chunk instanceof SvChatChunk && in_array($chunk->team, [0, 1], true)) {
+            $sender = $chunk->clientId < 0
+                ? '***'
+                : 'TeeIdx='.$chunk->clientId.' Name="'.($this->findTee($chunk->clientId)->name ?? 'unknown').'":';
+            $this->consoleInfo($chunk->team === 1 ? 'teamchat' : 'chat', $sender.' '.$chunk->text);
+        } elseif ($chunk instanceof SvBroadcastChunk) {
+            $this->consoleInfo('broadcast', $chunk->text);
+        }
+
         foreach ($this->tees as $tee) {
             // Vital sequence numbers and resend flags belong to each connection.
             $this->server->sendToTee($this, $tee->teeIndex, clone $chunk);
@@ -593,6 +617,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->tees[$index] = $tee;
         $this->voteController->requestUpdate();
+        $this->consoleDebug('game', 'TeeIdx='.$index.' Name="'.$tee->name.'" Entered game');
 
         if ($tee instanceof PlayerTee) {
             $tee->spawning       = $tee->team !== GameConstants::TEAM_SPECTATORS;
@@ -654,6 +679,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->releasedTeeIndexes[] = $index;
         unset($this->tees[$index]);
+        $this->consoleDebug('game', 'TeeIdx='.$index.' Name="'.$tee->name.'" Left game'.($reason !== null && $reason !== '' ? ' Reason='.$reason : ''));
         $this->voteController->requestUpdate();
 
         $this->getGameController()->checkTeamBalance();
@@ -662,6 +688,36 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function onMessage(AbstractTee $tee, AbstractChunk $chunk): void
     {
         $this->clientMessageHandler->handle($tee, $chunk);
+    }
+
+    public function consoleError(string $system, string $message): void
+    {
+        Console::error($system, $this->generateConsoleMessage($message));
+    }
+
+    public function consoleWarn(string $system, string $message): void
+    {
+        Console::warn($system, $this->generateConsoleMessage($message));
+    }
+
+    public function consoleInfo(string $system, string $message): void
+    {
+        Console::info($system, $this->generateConsoleMessage($message));
+    }
+
+    public function consoleDebug(string $system, string $message): void
+    {
+        Console::debug($system, $this->generateConsoleMessage($message));
+    }
+
+    public function consoleTrace(string $system, string $message): void
+    {
+        Console::trace($system, $this->generateConsoleMessage($message));
+    }
+
+    protected function generateConsoleMessage(string $message): string
+    {
+        return 'World='.$this->identifier.' '.$message;
     }
 
     public function doTick(): void

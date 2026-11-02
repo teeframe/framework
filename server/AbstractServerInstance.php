@@ -57,12 +57,16 @@ abstract class AbstractServerInstance
         #[\SensitiveParameter] string $rconPassword = '',
         int $rconMaxTries = 10,
         int $rconBanDuration = 300,
+        int $rconOutputLevel = Console::LEVEL_INFO,
+        string $logFile = '',
     ) {
+        Console::setLogFile($logFile === '' ? null : $logFile);
+
         $this->startTime         = $tickHandler->getTime();
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
         $this->banList           = new BanList;
         $this->chatMutes         = new MuteList;
-        $this->rcon              = new Rcon($this->connectionHandler, $this->banList, $rconPassword, $rconMaxTries, $rconBanDuration);
+        $this->rcon              = new Rcon($this->connectionHandler, $this->banList, $rconPassword, $rconMaxTries, $rconBanDuration, $rconOutputLevel);
     }
 
     abstract protected function boot(): void;
@@ -127,7 +131,7 @@ abstract class AbstractServerInstance
 
     public function start(): void
     {
-        Console::info('Starting server "'.$this->name.'" ('.NetworkParams::TICKS_PER_SECOND.' ticks/s)');
+        Console::info('server', 'Starting server "'.$this->name.'" ('.NetworkParams::TICKS_PER_SECOND.' ticks/s)');
 
         $this->boot();
 
@@ -140,10 +144,7 @@ abstract class AbstractServerInstance
         }
 
         foreach ($this->worlds as $world) {
-            Console::info('World='.$world->identifier
-                .' Map='.$world->getMap()->getName()
-                .' Gametype='.$world->getGameController()->getGameType()
-                .' Slots='.$world->getSlotsLimit());
+            $world->consoleInfo('world', 'Map='.$world->getMap()->getName().' Gametype='.$world->getGameController()->getGameType().' Slots='.$world->getSlotsLimit());
         }
 
         $this->bootMasterServerRegistration();
@@ -162,16 +163,18 @@ abstract class AbstractServerInstance
             };
 
             $socket->on('start', function () use ($socket, $socketType): void {
-                Console::info('Server is listening on '.$socket->host.' port '.$socket->port.' ('.$socketType.')');
+                Console::info('network', 'Server is listening on '.$socket->host.' port '.$socket->port.' ('.$socketType.')');
             });
 
             $socket->on('shutdown', function () use ($socket, $socketType): void {
-                Console::info('Server stopped listening on '.$socket->host.' port '.$socket->port.' ('.$socketType.')');
+                Console::info('network', 'Server stopped listening on '.$socket->host.' port '.$socket->port.' ('.$socketType.')');
             });
 
             $socket->on('packet', function (mixed $server, string $data, array $clientInfo) use ($socket): void {
                 $packet = PacketDecoder::decodeFromRaw($data);
                 if ($packet === false) {
+                    Console::trace('network', 'Discarded malformed packet Address='.$clientInfo['address'].' Port='.$clientInfo['port'].' Bytes='.strlen($data));
+
                     return;
                 }
 
@@ -201,7 +204,7 @@ abstract class AbstractServerInstance
 
         $this->shuttingDown = true;
         $this->stopTicking();
-        Console::info('Shutting down server "'.$this->name.'"');
+        Console::info('server', 'Shutting down server "'.$this->name.'"');
         $this->rcon->update();
         $this->rcon->stop();
 
@@ -230,7 +233,7 @@ abstract class AbstractServerInstance
 
     protected function bootMasterServerRegistration(): void
     {
-        Console::info('Master server registration: '.($this->registerOnMasterServer ? 'enabled' : 'disabled'));
+        Console::info('register', 'Master server registration: '.($this->registerOnMasterServer ? 'enabled' : 'disabled'));
 
         if (! $this->registerOnMasterServer) {
             return;
@@ -415,6 +418,7 @@ abstract class AbstractServerInstance
 
         // Ban system: reject connections from banned addresses
         if ($this->banList->isBanned($clientInfo['address'])) {
+            Console::debug('network', 'Connection rejected Address='.$clientInfo['address'].' Port='.$clientInfo['port'].' Reason=banned');
             $ban = $this->banList->getBan($clientInfo['address']);
 
             if ($ban === null) {
@@ -437,6 +441,7 @@ abstract class AbstractServerInstance
             $reason = count($this->worlds) > 1
                 ? 'The entry-level world is full'
                 : 'The server is full';
+            Console::debug('network', 'Connection rejected Address='.$clientInfo['address'].' Port='.$clientInfo['port'].' Reason='.$reason);
 
             $socket->sendto(
                 $clientInfo['address'],

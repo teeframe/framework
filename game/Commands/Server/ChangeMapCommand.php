@@ -6,7 +6,6 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
-use TeeFrame\Server\Console;
 
 class ChangeMapCommand extends AbstractCommand
 {
@@ -41,7 +40,7 @@ class ChangeMapCommand extends AbstractCommand
                 $text .= ' ('.$reason.')';
             }
         } catch (\RuntimeException $exception) {
-            Console::warn('World='.$world->identifier.' Map change failed: '.$exception->getMessage());
+            $world->consoleWarn('world', 'Map change failed: '.$exception->getMessage());
             $text = 'Unable to change map'.($mapName !== '' ? ' to '.$mapName : '');
         }
 

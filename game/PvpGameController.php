@@ -193,6 +193,7 @@ class PvpGameController extends AbstractGameController
             if ($teamScore[GameConstants::TEAM_RED] !== $teamScore[GameConstants::TEAM_BLUE]) {
                 $this->endRound();
             } else {
+                $world->consoleInfo('game', 'Sudden death');
                 $this->suddenDeath = 1;
             }
 
@@ -225,6 +226,9 @@ class PvpGameController extends AbstractGameController
         if ($topScoreCount === 1) {
             $this->endRound();
         } else {
+            if ($this->suddenDeath === 0) {
+                $world->consoleInfo('game', 'Sudden death');
+            }
             $this->suddenDeath = 1;
         }
     }
@@ -232,6 +236,9 @@ class PvpGameController extends AbstractGameController
     public function doWarmup(int $seconds): void
     {
         $this->warmup = $seconds < 0 ? 0 : $seconds * NetworkParams::TICKS_PER_SECOND;
+        if ($this->world !== null) {
+            $this->world->consoleInfo('game', 'Warmup Seconds='.($this->warmup / NetworkParams::TICKS_PER_SECOND));
+        }
     }
 
     public function togglePause(): void
@@ -268,6 +275,9 @@ class PvpGameController extends AbstractGameController
         }
         $this->teamScores    = [0, 0];
         $this->forceBalanced = false;
+        if ($world !== null) {
+            $world->consoleInfo('game', 'Round started Gametype='.$this->getGameType());
+        }
     }
 
     public function resetMap(): void
@@ -295,6 +305,10 @@ class PvpGameController extends AbstractGameController
         $world = $this->world;
         if ($world !== null) {
             $world->setPaused(true);
+        }
+        if ($world !== null && ! $this->isGameOver()) {
+            $scores = $this->getTeamScores();
+            $world->consoleInfo('game', 'Round ended Gametype='.$this->getGameType().($this->isTeamMode ? ' ScoreRed='.$scores[0].' ScoreBlue='.$scores[1] : ''));
         }
         $this->gameOverTick = $this->tickHandler->get();
         $this->suddenDeath  = 0;
@@ -444,11 +458,15 @@ class PvpGameController extends AbstractGameController
         if (abs($teamSizes[0] - $teamSizes[1]) >= 2) {
             if ($this->unbalancedTick === -1) {
                 $this->unbalancedTick = $this->tickHandler->get();
+                $world->consoleDebug('game', 'Teams unbalanced Red='.$teamSizes[0].' Blue='.$teamSizes[1]);
             }
 
             return false;
         }
 
+        if ($this->unbalancedTick !== -1) {
+            $world->consoleDebug('game', 'Teams balanced Red='.$teamSizes[0].' Blue='.$teamSizes[1]);
+        }
         $this->unbalancedTick = -1;
 
         return true;
@@ -514,6 +532,7 @@ class PvpGameController extends AbstractGameController
             $candidate->setTeam($smallerTeam);
             $candidate->lastActionTick = $lastActionTick;
             $candidate->forceBalanced  = true;
+            $world->consoleInfo('game', 'TeeIdx='.$candidate->teeIndex.' Name="'.$candidate->name.'" Auto-balanced to '.$this->getTeamName($smallerTeam));
             $teamScoreRates[$largerTeam] -= $playerScoreRates[$candidate->teeIndex];
             $teamScoreRates[$smallerTeam] += $playerScoreRates[$candidate->teeIndex];
         }
@@ -695,6 +714,7 @@ class PvpGameController extends AbstractGameController
             ) {
                 $world->createSoundGlobal(GameConstants::SOUND_CTF_RETURN);
                 $flag->reset();
+                $world->consoleDebug('ctf', 'Flag returned Team='.$flag->team.' Reason=invalid position');
 
                 continue;
             }
@@ -713,6 +733,9 @@ class PvpGameController extends AbstractGameController
         if ($carrier === null || ! $carrier->alive) {
             $flag->carryingCharacter = null;
             $flag->dropTick          = $currentTick;
+            if ($this->world !== null) {
+                $this->world->consoleDebug('ctf', 'Flag dropped Team='.$flag->team.' Reason=carrier unavailable');
+            }
 
             return;
         }
@@ -738,6 +761,9 @@ class PvpGameController extends AbstractGameController
             $carrierTee->score += 5;
         }
 
+        if ($this->world !== null) {
+            $this->world->consoleDebug('ctf', 'Flag captured Team='.$flag->team.' TeeIdx='.($carrierTee->teeIndex ?? -1).' Duration='.(($this->tickHandler->get() - $flag->grabTick) / NetworkParams::TICKS_PER_SECOND).'s');
+        }
         $flag->reset();
         $this->getFlag($fi ^ 1)?->reset();
         $this->world?->createSoundGlobal(GameConstants::SOUND_CTF_CAPTURE);
@@ -774,6 +800,7 @@ class PvpGameController extends AbstractGameController
                     $playerTee->score += 1;
                     $world->createSoundGlobal(GameConstants::SOUND_CTF_RETURN);
                     $flag->reset();
+                    $world->consoleDebug('ctf', 'Flag returned Team='.$flag->team.' TeeIdx='.$playerTee->teeIndex);
                 }
             } else {
                 $this->onFlagGrab($flag, $entity, $currentTick);
@@ -786,6 +813,7 @@ class PvpGameController extends AbstractGameController
             if ($currentTick > $flag->dropTick + NetworkParams::TICKS_PER_SECOND * 30) {
                 $world->createSoundGlobal(GameConstants::SOUND_CTF_RETURN);
                 $flag->reset();
+                $world->consoleDebug('ctf', 'Flag returned Team='.$flag->team.' Reason=timeout');
             } elseif ($collision !== null) {
                 $flag->vel->y += $world->getTuneController()->gravity / 100.0;
                 $collision->moveBox(
@@ -819,6 +847,7 @@ class PvpGameController extends AbstractGameController
             return;
         }
 
+        $world->consoleDebug('ctf', 'Flag grabbed Team='.$flag->team.' TeeIdx='.($carrierTee->teeIndex ?? -1));
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee) {
                 continue;
@@ -855,6 +884,7 @@ class PvpGameController extends AbstractGameController
                 $flag->dropTick          = $this->tickHandler->get();
                 $flag->carryingCharacter = null;
                 $flag->vel               = new Vector2(0, 0);
+                $world->consoleDebug('ctf', 'Flag dropped Team='.$flag->team.' TeeIdx='.($victim->tee->teeIndex ?? -1));
 
                 $killerTee = $world->findTee($killerTeeIndex);
                 $victimTee = $victim->tee;

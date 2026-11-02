@@ -33,6 +33,7 @@ class TuneResetCommand extends AbstractCommand
         $tuning = $world->getTuneController();
         $tuning->reset(isset($arguments[0]) ? strtolower($arguments[0]) : null);
         $world->getServer()->sendToWorld($world, $tuning->getTuneParamsChunk(), includeReady: true);
+        $world->consoleInfo('tuning', 'Tuning reset Parameter='.(isset($arguments[0]) ? strtolower($arguments[0]) : 'all'));
         $this->reply($world, $tee, 'Tuning reset', $output);
     }
 }

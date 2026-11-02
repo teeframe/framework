@@ -92,6 +92,7 @@ class ClientMessageHandler
                     return;
                 }
                 if ($arguments !== null) {
+                    $this->world->consoleDebug('chat-command', 'TeeIdx='.$tee->teeIndex.' Chat command='.$command->getName());
                     $command->execute($this->world, $tee, $arguments);
 
                     return;
@@ -120,6 +121,7 @@ class ClientMessageHandler
         }
 
         $team = $tee instanceof PlayerTee ? $tee->team : GameConstants::TEAM_RED;
+        $this->world->consoleInfo('teamchat', 'Team='.$team.' TeeIdx='.$tee->teeIndex.' Name="'.$tee->name.'": '.$message);
         foreach ($this->world->getTees() as $recipient) {
             $recipientTeam = $recipient instanceof PlayerTee ? $recipient->team : GameConstants::TEAM_RED;
             if ($recipientTeam === $team) {

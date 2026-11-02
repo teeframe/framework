@@ -6,7 +6,6 @@ use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
-use TeeFrame\Server\Console;
 
 class ReloadCommand extends AbstractCommand
 {
@@ -36,7 +35,7 @@ class ReloadCommand extends AbstractCommand
             $world->reload();
             $text = 'Reloading world';
         } catch (\RuntimeException $exception) {
-            Console::warn('World='.$world->identifier.' Reload failed: '.$exception->getMessage());
+            $world->consoleWarn('world', 'Reload failed: '.$exception->getMessage());
             $text = 'Unable to reload world';
         }
 
