@@ -201,7 +201,7 @@ test('force_vote kick uses world-local IDs and the configured vote-kick ban path
 
     expect($target->state)->toBe(ConnectionSlot::STATE_CLOSED);
     expect($other->state)->toBe(ConnectionSlot::STATE_INGAME);
-    expect($server->isBanned('127.0.0.2'))->toBeTrue();
+    expect($server->getBanList()->getBan('127.0.0.2'))->not->toBeNull();
     $controls = array_values(array_filter($server->socket($target)->packets, fn ($packet): bool => $packet instanceof ControlMessage));
     expect($controls[0]->getControlMessageExtra())->toBe("Repeated abuse\0");
 });
@@ -217,7 +217,7 @@ test('force_vote cannot kick the issuing admin or another authenticated admin', 
 
     expect($admin->state)->toBe(ConnectionSlot::STATE_INGAME);
     expect($other->state)->toBe(ConnectionSlot::STATE_INGAME);
-    expect($server->isBanned('127.0.0.1'))->toBeFalse();
+    expect($server->getBanList()->getBan('127.0.0.1'))->toBeNull();
 })->with([0, 1]);
 
 test('force_vote spectate uses the player team-transition path and reports its reason', function () {

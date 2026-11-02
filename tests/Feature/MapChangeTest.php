@@ -239,14 +239,14 @@ test('map commands handle malformed map data without resetting the running world
         $arguments = CommandLine::match($command, $line);
         expect($arguments)->not->toBeNull();
         assert($arguments !== null);
-        $command->execute($world, $tee, $arguments);
+        expect(fn () => $command->execute($world, $tee, $arguments))->toThrow(RuntimeException::class, $message);
         $world->doTick();
 
         expect($world->getMap())->toBe($map);
         expect($world->getGameController())->toBe($controller);
         expect($world->getTees())->toBe([$tee]);
         $chats = array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvChatChunk);
-        expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain($message);
+        expect($chats)->toBeEmpty();
     } finally {
         unlink($path);
         rmdir($directory);
@@ -270,13 +270,13 @@ test('reload commands report a missing map without resetting the running world',
         recordingServer($world)->clear();
         unlink($path);
 
-        (new ReloadCommand)->execute($world, $tee, []);
+        expect(fn () => (new ReloadCommand)->execute($world, $tee, []))->toThrow(RuntimeException::class, 'Unable to reload world');
         $world->doTick();
 
         expect($world->getMap())->toBe($map);
         expect($world->getTees())->toBe([$tee]);
         $chats = array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvChatChunk);
-        expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Unable to reload world');
+        expect($chats)->toBeEmpty();
     } finally {
         if (file_exists($path)) {
             unlink($path);

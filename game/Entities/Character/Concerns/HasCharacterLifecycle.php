@@ -73,7 +73,7 @@ trait HasCharacterLifecycle
             modeSpecial: $modeSpecial,
         );
         $this->world->broadcast($killMsg);
-        $this->world->consoleDebug('game', 'Kill Killer='.$killerTeeIndex.' Victim='.$victimTeeIndex.' Weapon='.$weapon);
+        $this->world->consoleInfo('game', 'Kill Killer='.$killerTeeIndex.' Victim='.$victimTeeIndex.' Weapon='.$weapon);
 
         $this->createSound(GameConstants::SOUND_PLAYER_DIE);
 

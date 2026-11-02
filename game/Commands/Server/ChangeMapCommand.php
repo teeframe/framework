@@ -41,7 +41,7 @@ class ChangeMapCommand extends AbstractCommand
             }
         } catch (\RuntimeException $exception) {
             $world->consoleWarn('world', 'Map change failed: '.$exception->getMessage());
-            $text = 'Unable to change map'.($mapName !== '' ? ' to '.$mapName : '');
+            throw new \RuntimeException('Unable to change map'.($mapName !== '' ? ' to '.$mapName : ''), previous: $exception);
         }
 
         $world->broadcast(new SvChatChunk(

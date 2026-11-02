@@ -180,11 +180,6 @@ class RconTestServer extends AbstractServerInstance
         $this->onPacket($decoded, ['address' => $address, 'port' => $port], $socket);
     }
 
-    public function isBanned(string $address): bool
-    {
-        return $this->banList->isBanned($address);
-    }
-
     public function tick(): void
     {
         $this->doTick();

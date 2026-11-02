@@ -237,7 +237,7 @@ class PvpGameController extends AbstractGameController
     {
         $this->warmup = $seconds < 0 ? 0 : $seconds * NetworkParams::TICKS_PER_SECOND;
         if ($this->world !== null) {
-            $this->world->consoleInfo('game', 'Warmup Seconds='.($this->warmup / NetworkParams::TICKS_PER_SECOND));
+            $this->world->consoleInfo('game', 'Warmup Seconds='.$this->warmup / NetworkParams::TICKS_PER_SECOND);
         }
     }
 

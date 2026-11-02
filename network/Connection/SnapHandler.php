@@ -73,13 +73,13 @@ class SnapHandler
     public function setLastAckedTick(int $tick): void
     {
         $this->lastAckedTick = $tick;
-        if ($tick > 0) {
-            $this->state = self::STATE_FULL;
-        }
-
-        $snap = $this->sentList[$tick] ?? null;
+        $snap                = $this->sentList[$tick] ?? null;
         if ($snap === null) {
             return;
+        }
+
+        if ($tick > 0) {
+            $this->state = self::STATE_FULL;
         }
 
         // Teeworlds 0.6: (time_get() - TagTime) * 1000 / time_freq().

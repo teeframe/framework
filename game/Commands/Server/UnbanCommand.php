@@ -37,7 +37,7 @@ class UnbanCommand extends AbstractCommand
             $index   = filter_var($arguments[0], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
             $address = $index === false ? null : (array_keys($bans->getBans())[$index] ?? null);
         }
-        if ($address === null || ! $bans->isBanned($address)) {
+        if ($address === null || $bans->getBan($address) === null) {
             throw new \InvalidArgumentException('Ban not found');
         }
         $bans->unban($address);

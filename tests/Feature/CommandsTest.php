@@ -266,7 +266,7 @@ test('kick disconnects without a ban and refuses self and authenticated administ
     $server->send($admin, new RconCmdChunk('kick 1 "Test reason"'));
 
     expect($guest->state)->toBe(ConnectionSlot::STATE_CLOSED);
-    expect($server->isBanned('192.0.2.2'))->toBeFalse();
+    expect($server->getBanList()->getBan('192.0.2.2'))->toBeNull();
     expect($admin->state)->toBe(ConnectionSlot::STATE_INGAME);
     expect($otherAdmin->state)->toBe(ConnectionSlot::STATE_INGAME);
     $close = array_find($server->socket($guest)->packets, fn ($packet): bool => $packet instanceof ControlMessage);
@@ -282,7 +282,7 @@ test('IP bans apply across worlds support permanent duration and can be removed 
     expect($guest->state)->toBe(ConnectionSlot::STATE_CLOSED);
     expect($other->state)->toBe(ConnectionSlot::STATE_CLOSED);
     expect($server->getBanList()->getBan('2001:db8::2')?->expiry)->toBeNull();
-    expect($server->isBanned('2001:db8:0:0:0:0:0:2'))->toBeTrue();
+    expect($server->getBanList()->getBan('2001:db8:0:0:0:0:0:2'))->not->toBeNull();
     expect(implode("\n", commandReplyLines($server->socket($admin))))->toContain('2001:db8::2 (permanent)');
     $reply = $server->connect('2001:db8::2', 8301)->packets[0];
     assert($reply instanceof ControlMessage);
@@ -436,7 +436,7 @@ test('normal kick votes reject authenticated administrators without starting a p
     expect($votes->isVoteRunning())->toBeFalse();
     expect($admin->state)->toBe(ConnectionSlot::STATE_INGAME);
     expect($admin->rcon()->authenticated)->toBeTrue();
-    expect($server->isBanned('192.0.2.1'))->toBeFalse();
+    expect($server->getBanList()->getBan('192.0.2.1'))->toBeNull();
     expect($server->socket($caller)->chunks(SvChatChunk::class)[0]->text)->toBe("You can't kick an authenticated administrator");
     expect($server->socket($admin)->chunks(SvChatChunk::class))->toBeEmpty();
     expect($server->socket($other)->chunks(SvChatChunk::class))->toBeEmpty();
@@ -459,7 +459,7 @@ test('a kick-vote target that authenticates during the poll remains connected an
     expect($votes->isVoteRunning())->toBeFalse();
     expect($target->state)->toBe(ConnectionSlot::STATE_INGAME);
     expect($target->rcon()->authenticated)->toBeTrue();
-    expect($server->isBanned('192.0.2.1'))->toBeFalse();
+    expect($server->getBanList()->getBan('192.0.2.1'))->toBeNull();
     $messages = array_map(fn (SvChatChunk $chunk): string => $chunk->text, $server->socket($caller)->chunks(SvChatChunk::class));
     expect($messages)->toContain('Vote command failed: Authenticated administrators cannot be kicked by vote');
     expect($messages)->not->toContain('Vote passed');
@@ -479,10 +479,10 @@ test('kick-vote administrator checks use the target player rather than an index 
     $server->entryWorld->getVoteController()->tick($server->entryWorld);
 
     expect($target->state)->toBe(ConnectionSlot::STATE_CLOSED);
-    expect($server->isBanned('192.0.2.1'))->toBeTrue();
+    expect($server->getBanList()->getBan('192.0.2.1'))->not->toBeNull();
     expect($admin->state)->toBe(ConnectionSlot::STATE_INGAME);
     expect($admin->rcon()->authenticated)->toBeTrue();
-    expect($server->isBanned('192.0.2.4'))->toBeFalse();
+    expect($server->getBanList()->getBan('192.0.2.4'))->toBeNull();
 });
 
 test('forcing a result cannot revive a vote invalidated by a disconnected target', function () {

@@ -417,13 +417,8 @@ abstract class AbstractServerInstance
         }
 
         // Ban system: reject connections from banned addresses
-        if ($this->banList->isBanned($clientInfo['address'])) {
+        if (($ban = $this->banList->getBan($clientInfo['address'])) !== null) {
             Console::debug('network', 'Connection rejected Address='.$clientInfo['address'].' Port='.$clientInfo['port'].' Reason=banned');
-            $ban = $this->banList->getBan($clientInfo['address']);
-
-            if ($ban === null) {
-                return; // Impossible scenario, TODO: Refactor this to avoid this null check
-            }
 
             $duration = $ban->expiry === null ? 'permanently' : 'for '.(int) ceil(($ban->expiry - time()) / 60).' more minute(s)';
             $socket->sendto(

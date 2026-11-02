@@ -47,13 +47,6 @@ class BanList
         return $this->bans;
     }
 
-    public function isBanned(string $address): bool
-    {
-        $this->cleanup();
-
-        return isset($this->bans[IpAddress::normalize($address) ?? $address]);
-    }
-
     public function getBan(string $address): ?Ban
     {
         $this->cleanup();

@@ -374,7 +374,7 @@ test('exhausting RCON login attempts closes the connection and blocks reconnects
 
     expect($client->state)->toBe(ConnectionSlot::STATE_CLOSED);
     expect($client->rcon()->authenticated)->toBeFalse();
-    expect($server->isBanned('127.0.0.1'))->toBeTrue();
+    expect($server->getBanList()->getBan('127.0.0.1'))->not->toBeNull();
     $reply = $server->connect('127.0.0.1', 8301)->packets[0];
     expect($reply)->toBeInstanceOf(ControlMessage::class);
     assert($reply instanceof ControlMessage);
@@ -387,7 +387,7 @@ test('a zero RCON ban duration disconnects without banning', function () {
     $server->send($client, new RconAuthChunk('', 'wrong'));
 
     expect($client->state)->toBe(ConnectionSlot::STATE_CLOSED);
-    expect($server->isBanned('127.0.0.1'))->toBeFalse();
+    expect($server->getBanList()->getBan('127.0.0.1'))->toBeNull();
 });
 
 test('replayed vital RCON commands execute only once', function () {

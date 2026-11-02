@@ -4,6 +4,8 @@ namespace TeeFrame\Map;
 
 class MapBufferReader
 {
+    protected int $offset = 0;
+
     public function __construct(protected string $buffer) {}
 
     public function readBytes(int $length): string
@@ -13,19 +15,17 @@ class MapBufferReader
 
     public function readString(): string
     {
-        $string = '';
+        $end = strpos($this->buffer, "\0", $this->offset);
+        if ($end === false) {
+            $this->offset = strlen($this->buffer);
 
-        while (strlen($this->buffer) > 0) {
-            $char = $this->extractFromBuffer(1);
-
-            if ($char === "\0") {
-                return $string;
-            }
-
-            $string .= $char;
+            throw new \UnexpectedValueException('Unterminated map string');
         }
 
-        throw new \UnexpectedValueException('Unterminated map string');
+        $string       = substr($this->buffer, $this->offset, $end - $this->offset);
+        $this->offset = $end + 1;
+
+        return $string;
     }
 
     public function readMagic(): string
@@ -64,7 +64,7 @@ class MapBufferReader
 
     public function remaining(): int
     {
-        return strlen($this->buffer);
+        return strlen($this->buffer) - $this->offset;
     }
 
     protected function extractFromBuffer(int $length): string
@@ -76,8 +76,8 @@ class MapBufferReader
             throw new \UnexpectedValueException('Truncated map buffer');
         }
 
-        $data         = substr($this->buffer, 0, $length);
-        $this->buffer = substr($this->buffer, $length);
+        $data = substr($this->buffer, $this->offset, $length);
+        $this->offset += $length;
 
         return $data;
     }

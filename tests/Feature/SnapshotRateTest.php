@@ -157,7 +157,7 @@ test('a nonpositive snapshot ACK does not leave INIT', function (int $ackTick) {
     expect(snapshotRateTicks($server->world))->toBe([100, 110, 120, 130, 140]);
 })->with([-1, 0]);
 
-test('a positive snapshot ACK enables fifty FULL snapshots per second by default', function () {
+test('an ACK for a retained positive snapshot enables fifty FULL snapshots per second by default', function () {
     $server          = new SnapshotRateTestServer;
     [$slot, $socket] = $server->connect();
     $server->advance();
@@ -169,7 +169,7 @@ test('a positive snapshot ACK enables fifty FULL snapshots per second by default
     expect($socket->snapshots())->toHaveCount(50);
 });
 
-test('a missing baseline sends one full snapshot then uses RECOVER until a positive ACK', function (int $missingTick) {
+test('a missing baseline sends one full snapshot then uses RECOVER until an ACK for a retained snapshot', function (int $missingTick) {
     $server          = new SnapshotRateTestServer;
     [$slot, $socket] = $server->connect();
     $server->advance();
@@ -214,6 +214,43 @@ test('an expired baseline switches FULL to RECOVER without another input packet'
     expect($recovery->currentTick)->toBe(300);
     expect($recovery->currentTick - $recovery->deltaTick)->toBe(-1);
 });
+
+test('repeated ACKs for unsent snapshots do not leave INIT', function (int $ackTick) {
+    $server          = new SnapshotRateTestServer;
+    [$slot, $socket] = $server->connect();
+
+    for ($i = 0; $i < 50; $i++) {
+        $server->ack($slot, $ackTick);
+        $server->advance();
+    }
+
+    expect(snapshotRateTicks($server->world))->toBe([100, 110, 120, 130, 140]);
+    expect($socket->snapshots())->toHaveCount(5);
+})->with(['unsent tick' => 99, 'future tick' => 999]);
+
+test('repeated ACKs for unavailable snapshots cannot bypass RECOVER', function (int $ackTick) {
+    $server          = new SnapshotRateTestServer;
+    [$slot, $socket] = $server->connect();
+    $server->advance();
+    $server->ack($slot, 100);
+    $server->advance(151);
+    $server->world->builtSnapshots = [];
+    $socket->packets               = [];
+
+    for ($i = 0; $i < 50; $i++) {
+        $server->ack($slot, $ackTick);
+        $server->advance();
+    }
+
+    expect(snapshotRateTicks($server->world))->toBe([300]);
+    $snapshots = $socket->snapshots();
+    expect($snapshots)->toHaveCount(1);
+    expect($snapshots[0]->currentTick - $snapshots[0]->deltaTick)->toBe(-1);
+
+    $server->ack($slot, 300);
+    $server->advance(2);
+    expect(snapshotRateTicks($server->world))->toBe([300, 302, 303]);
+})->with(['expired tick' => 100, 'unsent tick' => 99, 'future tick' => 999]);
 
 test('resetting snapshots restores INIT and discards the previous baseline', function () {
     $server          = new SnapshotRateTestServer;

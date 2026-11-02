@@ -855,8 +855,10 @@ test('a failed map vote reports the load failure and leaves players on the curre
     expect($character?->alive)->toBeTrue();
     expect($server->dm->getVoteController()->isVoteRunning())->toBeFalse();
     expect(array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof MapChangeChunk))->toBeEmpty();
-    $chats = array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof SvChatChunk);
-    expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Unable to change map to missing-map');
+    $chats    = array_filter($server->socket->chunks(), fn ($chunk) => $chunk instanceof SvChatChunk);
+    $messages = array_map(fn ($chunk) => $chunk->text, $chats);
+    expect($messages)->toContain('Vote command failed: Unable to change map to missing-map');
+    expect($messages)->not->toContain('Vote passed');
 });
 
 test('chat cannot execute a vote-only map command', function () {
@@ -997,8 +999,10 @@ test('failed gamemode votes keep the active match and report the failure', funct
     expect($server->dm->getVoteController()->isVoteRunning())->toBeFalse();
     $chunks = $server->socket->chunks();
     expect(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk))->toBeEmpty();
-    $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
-    expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Unable to change gamemode to '.strtoupper($mode));
+    $chats    = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
+    $messages = array_map(fn ($chunk) => $chunk->text, $chats);
+    expect($messages)->toContain('Vote command failed: Unable to change gamemode to '.strtoupper($mode));
+    expect($messages)->not->toContain('Vote passed');
 })->with([
     'unsupported mode' => ['unknown', null],
     'missing map'      => ['ctf', 'missing-map'],

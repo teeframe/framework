@@ -36,7 +36,7 @@ class ReloadCommand extends AbstractCommand
             $text = 'Reloading world';
         } catch (\RuntimeException $exception) {
             $world->consoleWarn('world', 'Reload failed: '.$exception->getMessage());
-            $text = 'Unable to reload world';
+            throw new \RuntimeException('Unable to reload world', previous: $exception);
         }
 
         $world->broadcast(new SvChatChunk(

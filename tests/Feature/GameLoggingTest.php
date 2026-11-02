@@ -231,23 +231,29 @@ test('failed reloads never log a successful reload', function () {
     $command = $server->entryWorld->findCommand('change_map', AbstractCommand::TYPE_SERVER);
     assert($command !== null);
 
-    $lines = captureGameLogs(fn () => $command->execute($server->entryWorld, $player->playerTee(), ['missing-map']));
+    $lines = captureGameLogs(function () use ($command, $server, $player): void {
+        expect(fn () => $command->execute($server->entryWorld, $player->playerTee(), ['missing-map']))->toThrow(RuntimeException::class, 'Unable to change map to missing-map');
+    });
 
     expect($lines[0])->toStartWith('[WARN] [world]: World=dm Map change failed:');
     expect(implode("\n", $lines))->not->toContain('Reload queued', 'Reloaded');
 });
 
-test('kills are logged at debug level with actual killer victim and weapon', function () {
-    $server    = new RconTestServer;
-    $victim    = $server->addClient();
-    $killer    = $server->addClient(port: 8301);
+test('kills are logged at info level with actual killer victim and weapon', function (int $killerTeeIndex, int $weapon) {
+    $server = new RconTestServer;
+    $victim = $server->addClient();
+    $server->addClient(port: 8301);
     $character = new PvpCharacterEntity($server->entryWorld, new Vector2(0, 0));
     $character->spawn(new Vector2(0, 0), $victim->playerTee());
 
-    $lines = captureGameLogs(fn () => $character->die($killer->playerTee()->teeIndex, GameConstants::WEAPON_GRENADE));
+    $lines = captureGameLogs(fn () => $character->die($killerTeeIndex, $weapon), Console::LEVEL_INFO);
 
-    expect($lines)->toBe(['[DEBUG] [game]: World=dm Kill Killer=1 Victim=0 Weapon='.GameConstants::WEAPON_GRENADE]);
-});
+    expect($lines)->toBe(['[INFO] [game]: World=dm Kill Killer='.$killerTeeIndex.' Victim=0 Weapon='.$weapon]);
+})->with([
+    'player kill' => [1, GameConstants::WEAPON_GRENADE],
+    'self kill'   => [0, GameConstants::WEAPON_SELF],
+    'world death' => [-1, GameConstants::WEAPON_WORLD],
+]);
 
 test('ban changes and expiration are logged once and include normalized addresses', function () {
     $bans  = new BanList;

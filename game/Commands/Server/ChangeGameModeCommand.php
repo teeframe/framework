@@ -42,7 +42,7 @@ class ChangeGameModeCommand extends AbstractCommand
             }
         } catch (\RuntimeException $exception) {
             $world->consoleWarn('world', 'Gamemode change failed: '.$exception->getMessage());
-            $text = 'Unable to change gamemode'.($gameMode !== '' ? ' to '.strtoupper($gameMode) : '');
+            throw new \RuntimeException('Unable to change gamemode'.($gameMode !== '' ? ' to '.strtoupper($gameMode) : ''), previous: $exception);
         }
 
         $world->broadcast(new SvChatChunk(
