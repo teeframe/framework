@@ -32,9 +32,11 @@ class StatusCommand extends AbstractCommand
     {
         foreach ($world->getServer()->getConnections() as $connection) {
             $player = $connection->playerTee();
+
             if ($connection->world() !== $world || (isset($arguments[0]) && mb_stripos($player->name, $arguments[0], encoding: 'UTF-8') === false)) {
                 continue;
             }
+
             $address = str_contains($connection->destinationAddress, ':') ? '['.$connection->destinationAddress.']' : $connection->destinationAddress;
             $this->reply($world, $tee, 'id='.$player->teeIndex.' name='.$player->name.' addr='.$address.':'.$connection->destinationPort.' state='.$connection->state.' latency='.$player->latency, $output);
         }

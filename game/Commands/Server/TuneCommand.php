@@ -32,11 +32,13 @@ class TuneCommand extends AbstractCommand
     {
         $tuning = $world->getTuneController();
         $name   = strtolower($arguments[0]);
+
         if (isset($arguments[1])) {
             $tuning->set($name, (float) $arguments[1]);
             $world->getServer()->sendToWorld($world, $tuning->getTuneParamsChunk(), includeReady: true);
             $world->consoleInfo('tuning', $name.'='.$tuning->get($name));
         }
+
         $this->reply($world, $tee, sprintf('%s %.2f', $name, $tuning->get($name)), $output);
     }
 }

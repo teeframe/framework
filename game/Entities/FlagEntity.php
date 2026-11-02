@@ -16,10 +16,12 @@ class FlagEntity extends AbstractEntity
     public Vector2 $vel;
     public Vector2 $standPos;
     public int $team;
+
     public ?AbstractCharacterEntity $carryingCharacter = null;
     public bool $atStand                               = true;
-    public int $dropTick                               = 0;
-    public int $grabTick                               = 0;
+
+    public int $dropTick = 0;
+    public int $grabTick = 0;
 
     public function __construct(AbstractWorld $world, Vector2 $position, int $team)
     {
@@ -54,6 +56,7 @@ class FlagEntity extends AbstractEntity
     public function doTickPaused(): void
     {
         $this->dropTick++;
+
         if ($this->grabTick !== 0) {
             $this->grabTick++;
         }

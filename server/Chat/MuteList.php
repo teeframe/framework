@@ -15,6 +15,7 @@ class MuteList
         if ($seconds < 1 || $seconds > 86400) {
             throw new \InvalidArgumentException('Mute duration must be between 1 and 86400 seconds');
         }
+
         $address               = $this->normalizeAddress($address);
         $this->mutes[$address] = ['expiry' => time() + $seconds, 'reason' => $reason];
         Console::info('mute', 'Muted Address='.$address.' Duration='.$seconds.'s Reason='.$reason);
@@ -23,6 +24,7 @@ class MuteList
     public function unmute(string $address): void
     {
         $address = $this->normalizeAddress($address);
+
         if (isset($this->mutes[$address])) {
             unset($this->mutes[$address]);
             Console::info('mute', 'Unmuted Address='.$address);
@@ -39,6 +41,7 @@ class MuteList
     public function getMutes(): array
     {
         $now = time();
+
         foreach ($this->mutes as $address => $mute) {
             if ($mute['expiry'] <= $now) {
                 unset($this->mutes[$address]);

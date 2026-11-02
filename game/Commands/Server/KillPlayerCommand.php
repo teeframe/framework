@@ -34,12 +34,15 @@ class KillPlayerCommand extends AbstractCommand
     public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $target = $world->findTee((int) $arguments[0]);
+
         if ($target?->character === null) {
             throw new \InvalidArgumentException('Player has no living character');
         }
+
         if ($world->isPaused()) {
             throw new \InvalidArgumentException('Cannot kill a player while the world is paused');
         }
+
         $target->character->die($target->teeIndex, GameConstants::WEAPON_GAME);
         $message = 'Admin killed \''.$target->name.'\''.(isset($arguments[1]) ? ' ('.$arguments[1].')' : '');
         $world->broadcast(new SvChatChunk(0, -1, Utf8::truncateBytes($message, 511)));

@@ -23,6 +23,7 @@ class PvpGameController extends AbstractGameController
     protected int $warmup         = 0;
     protected int $unpauseTimer   = 0;
     protected int $roundCount     = 0;
+
     protected int $unbalancedTick = -1;
     protected bool $forceBalanced = false;
 
@@ -83,6 +84,7 @@ class PvpGameController extends AbstractGameController
 
         if (! $paused && $this->warmup > 0) {
             $this->warmup--;
+
             if ($this->warmup === 0) {
                 $this->startRound();
             }
@@ -96,6 +98,7 @@ class PvpGameController extends AbstractGameController
             }
         } elseif ($paused && $this->unpauseTimer > 0) {
             $this->unpauseTimer--;
+
             if ($this->unpauseTimer === 0) {
                 $world->setPaused(false);
             }
@@ -123,6 +126,7 @@ class PvpGameController extends AbstractGameController
     public function doTickDeferred(): void
     {
         $world = $this->world;
+
         if ($this->isCaptureTheFlag && $world !== null && ! $world->isResetRequested() && ! $world->isPaused()) {
             $this->tickFlags();
         }
@@ -136,6 +140,7 @@ class PvpGameController extends AbstractGameController
     {
         $hadFlag   = $this->dropFlagsOnDeath($victim, $killerTeeIndex);
         $killerTee = $this->world?->findTee($killerTeeIndex);
+
         if (! $killerTee instanceof PlayerTee || $weapon === GameConstants::WEAPON_GAME) {
             return $hadFlag;
         }
@@ -158,6 +163,7 @@ class PvpGameController extends AbstractGameController
     public function doWincheck(): void
     {
         $world = $this->world;
+
         if ($this->gameOverTick !== -1 || $this->warmup > 0 || $world === null || $world->isResetRequested()) {
             return;
         }
@@ -183,6 +189,7 @@ class PvpGameController extends AbstractGameController
                 $blue = $this->isCaptureTheFlag
                     ? (int) ($teamScore[GameConstants::TEAM_BLUE] / 100)
                     : $teamScore[GameConstants::TEAM_BLUE];
+
                 if ($red !== $blue) {
                     $this->endRound();
                 }
@@ -202,10 +209,12 @@ class PvpGameController extends AbstractGameController
 
         $topScore      = 0;
         $topScoreCount = 0;
+
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
+
             if ($topScoreCount === 0 || $tee->score > $topScore) {
                 $topScore      = $tee->score;
                 $topScoreCount = 1;
@@ -219,6 +228,7 @@ class PvpGameController extends AbstractGameController
         }
 
         $scoreLimitReached = $this->scoreLimit > 0 && $topScore >= $this->scoreLimit;
+
         if (! $scoreLimitReached && ! $timeLimitReached) {
             return;
         }
@@ -229,6 +239,7 @@ class PvpGameController extends AbstractGameController
             if ($this->suddenDeath === 0) {
                 $world->consoleInfo('game', 'Sudden death');
             }
+
             $this->suddenDeath = 1;
         }
     }
@@ -236,6 +247,7 @@ class PvpGameController extends AbstractGameController
     public function setWarmup(int $seconds): void
     {
         $this->warmup = $seconds < 0 ? 0 : $seconds * NetworkParams::TICKS_PER_SECOND;
+
         if ($this->world !== null) {
             $this->world->consoleInfo('game', 'Warmup Seconds='.$this->warmup / NetworkParams::TICKS_PER_SECOND);
         }
@@ -244,6 +256,7 @@ class PvpGameController extends AbstractGameController
     public function togglePause(): void
     {
         $world = $this->world;
+
         if ($world === null || $this->isGameOver()) {
             return;
         }
@@ -252,6 +265,7 @@ class PvpGameController extends AbstractGameController
             if ($this->unpauseTimer > 0) {
                 return;
             }
+
             $world->setPaused(false);
             $this->unpauseTimer = 0;
         } else {
@@ -263,6 +277,7 @@ class PvpGameController extends AbstractGameController
     public function startRound(): void
     {
         $world = $this->world;
+
         if ($world !== null) {
             $world->requestRoundReset();
         }
@@ -270,11 +285,14 @@ class PvpGameController extends AbstractGameController
         $this->roundStartTick = $this->tickHandler->getCurrentTick();
         $this->suddenDeath    = 0;
         $this->gameOverTick   = -1;
+
         if ($world !== null) {
             $world->setPaused(false);
         }
+
         $this->teamScores    = [0, 0];
         $this->forceBalanced = false;
+
         if ($world !== null) {
             $world->consoleInfo('game', 'Round started Gametype='.$this->getGameType());
         }
@@ -303,13 +321,16 @@ class PvpGameController extends AbstractGameController
         }
 
         $world = $this->world;
+
         if ($world !== null) {
             $world->setPaused(true);
         }
+
         if ($world !== null && ! $this->isGameOver()) {
             $scores = $this->getTeamScores();
             $world->consoleInfo('game', 'Round ended Gametype='.$this->getGameType().($this->isTeamMode ? ' ScoreRed='.$scores[0].' ScoreBlue='.$scores[1] : ''));
         }
+
         $this->gameOverTick = $this->tickHandler->getCurrentTick();
         $this->suddenDeath  = 0;
     }
@@ -351,16 +372,19 @@ class PvpGameController extends AbstractGameController
     public function canChangeTeam(PlayerTee $tee, int $team): bool
     {
         $team = $this->clampTeam($team);
+
         if (! $this->isTeamMode || $team === GameConstants::TEAM_SPECTATORS || $this->teamBalanceTime === 0 || $this->world === null) {
             return true;
         }
 
         $counts = [0, 0];
+
         foreach ($this->world->getTees() as $player) {
             if ($player instanceof PlayerTee && $player !== $tee && $player->team !== GameConstants::TEAM_SPECTATORS) {
                 $counts[$player->team]++;
             }
         }
+
         $counts[$team]++;
 
         return abs($counts[0] - $counts[1]) < 2 || $counts[$team] < $counts[$team ^ 1];
@@ -408,21 +432,25 @@ class PvpGameController extends AbstractGameController
     public function getAutoTeam(int $notThisTeeIndex): int
     {
         $world = $this->world;
+
         if ($world === null) {
             return GameConstants::TEAM_RED;
         }
 
         $numPlayers = [0, 0];
+
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee || $tee->teeIndex === $notThisTeeIndex) {
                 continue;
             }
+
             if ($tee->team === GameConstants::TEAM_RED || $tee->team === GameConstants::TEAM_BLUE) {
                 $numPlayers[$tee->team]++;
             }
         }
 
         $team = GameConstants::TEAM_RED;
+
         if ($this->isTeamMode) {
             $team = $numPlayers[GameConstants::TEAM_RED] > $numPlayers[GameConstants::TEAM_BLUE]
                 ? GameConstants::TEAM_BLUE
@@ -443,15 +471,18 @@ class PvpGameController extends AbstractGameController
         }
 
         $world = $this->world;
+
         if ($world === null) {
             return true;
         }
 
         $teamSizes = [0, 0];
+
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
+
             $teamSizes[$tee->team]++;
         }
 
@@ -467,6 +498,7 @@ class PvpGameController extends AbstractGameController
         if ($this->unbalancedTick !== -1) {
             $world->consoleDebug('game', 'Teams balanced Red='.$teamSizes[0].' Blue='.$teamSizes[1]);
         }
+
         $this->unbalancedTick = -1;
 
         return true;
@@ -475,6 +507,7 @@ class PvpGameController extends AbstractGameController
     protected function balanceTeams(): void
     {
         $world = $this->world;
+
         if ($world === null) {
             return;
         }
@@ -487,6 +520,7 @@ class PvpGameController extends AbstractGameController
             if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
+
             $teamSizes[$tee->team]++;
             $elapsed                          = $this->tickHandler->getCurrentTick() - $tee->scoreStartTick;
             $playerScoreRates[$tee->teeIndex] = $elapsed > 0
@@ -510,6 +544,7 @@ class PvpGameController extends AbstractGameController
                 if (! $tee instanceof PlayerTee || $tee->team !== $largerTeam) {
                     continue;
                 }
+
                 if (! $this->canBeMovedOnBalance($tee->teeIndex)) {
                     continue;
                 }
@@ -518,6 +553,7 @@ class PvpGameController extends AbstractGameController
                     ($teamScoreRates[$smallerTeam] + $playerScoreRates[$tee->teeIndex])
                     - ($teamScoreRates[$largerTeam] - $playerScoreRates[$tee->teeIndex])
                 );
+
                 if ($candidate === null || $scoreDifference < $bestScoreDifference) {
                     $candidate           = $tee;
                     $bestScoreDifference = $scoreDifference;
@@ -589,20 +625,25 @@ class PvpGameController extends AbstractGameController
         $paused = $world !== null && $world->isPaused();
 
         $gameStateFlags = 0;
+
         if ($this->gameOverTick !== -1) {
             $gameStateFlags |= GameConstants::GAMESTATEFLAG_GAMEOVER;
         }
+
         if ($this->suddenDeath !== 0) {
             $gameStateFlags |= GameConstants::GAMESTATEFLAG_SUDDENDEATH;
         }
+
         if ($paused) {
             $gameStateFlags |= GameConstants::GAMESTATEFLAG_PAUSED;
         }
 
         $gameFlags = $this->isTeamMode ? GameConstants::GAMEFLAG_TEAMS : 0;
+
         if ($this->getFlag(GameConstants::TEAM_RED) !== null || $this->getFlag(GameConstants::TEAM_BLUE) !== null) {
             $gameFlags |= GameConstants::GAMEFLAG_FLAGS;
         }
+
         $warmupTimer = $paused ? $this->unpauseTimer : $this->warmup;
 
         $snaps[] = new ObjGameInfoItem(
@@ -639,12 +680,15 @@ class PvpGameController extends AbstractGameController
     protected function getFlagCarrierId(int $team): int
     {
         $flag = $this->getFlag($team);
+
         if ($flag === null) {
             return GameConstants::FLAG_MISSING;
         }
+
         if ($flag->atStand) {
             return GameConstants::FLAG_ATSTAND;
         }
+
         if ($flag->carryingCharacter !== null && $flag->carryingCharacter->tee !== null) {
             return $flag->carryingCharacter->tee->teeIndex;
         }
@@ -672,6 +716,7 @@ class PvpGameController extends AbstractGameController
     public function collectFlagPoints(GameLayer $gameLayer): void
     {
         $world = $this->world;
+
         if (! $this->isCaptureTheFlag || $world === null) {
             return;
         }
@@ -682,6 +727,7 @@ class PvpGameController extends AbstractGameController
                 GameLayer::ENTITY_FLAGSTAND_BLUE => GameConstants::TEAM_BLUE,
                 default                          => -1,
             };
+
             if ($team === -1 || $this->flags[$team] !== null) {
                 continue;
             }
@@ -695,6 +741,7 @@ class PvpGameController extends AbstractGameController
     protected function tickFlags(): void
     {
         $world = $this->world;
+
         if ($world === null) {
             return;
         }
@@ -704,11 +751,13 @@ class PvpGameController extends AbstractGameController
 
         for ($fi = 0; $fi < 2; $fi++) {
             $flag = $this->flags[$fi];
+
             if ($flag === null) {
                 continue;
             }
 
             $flagPos = $flag->getPosition();
+
             if ($flag->gameLayerClipped($flagPos)
                 || ($collision !== null && ($collision->getCollisionAt($flagPos->x, $flagPos->y) & Collision::COLFLAG_DEATH))
             ) {
@@ -730,9 +779,11 @@ class PvpGameController extends AbstractGameController
     protected function tickCarriedFlag(FlagEntity $flag, int $fi, int $currentTick): void
     {
         $carrier = $flag->carryingCharacter;
+
         if ($carrier === null || ! $carrier->alive) {
             $flag->carryingCharacter = null;
             $flag->dropTick          = $currentTick;
+
             if ($this->world !== null) {
                 $this->world->consoleDebug('ctf', 'Flag dropped Team='.$flag->team.' Reason=carrier unavailable');
             }
@@ -742,9 +793,11 @@ class PvpGameController extends AbstractGameController
 
         $flag->setPosition(clone $carrier->getPosition());
         $enemyFlag = $this->flags[$fi ^ 1] ?? null;
+
         if ($enemyFlag === null || ! $enemyFlag->atStand) {
             return;
         }
+
         if ($flag->getPosition()->distance($enemyFlag->getPosition()) >= FlagEntity::PHYS_SIZE + AbstractCharacterEntity::PHYS_SIZE) {
             return;
         }
@@ -757,6 +810,7 @@ class PvpGameController extends AbstractGameController
         $team = $fi === GameConstants::TEAM_RED ? GameConstants::TEAM_BLUE : GameConstants::TEAM_RED;
         $this->teamScores[$team] += 100;
         $carrierTee = $flag->carryingCharacter?->tee;
+
         if ($carrierTee instanceof PlayerTee) {
             $carrierTee->score += 5;
         }
@@ -764,6 +818,7 @@ class PvpGameController extends AbstractGameController
         if ($this->world !== null) {
             $this->world->consoleDebug('ctf', 'Flag captured Team='.$flag->team.' TeeIdx='.($carrierTee->teeIndex ?? -1).' Duration='.(($this->tickHandler->getCurrentTick() - $flag->grabTick) / NetworkParams::TICKS_PER_SECOND).'s');
         }
+
         $flag->reset();
         $this->getFlag($fi ^ 1)?->reset();
         $this->world?->createSoundGlobal(GameConstants::SOUND_CTF_CAPTURE);
@@ -772,6 +827,7 @@ class PvpGameController extends AbstractGameController
     protected function tickDroppedOrAtStandFlag(FlagEntity $flag, ?Collision $collision, int $currentTick): void
     {
         $world = $this->world;
+
         if ($world === null) {
             return;
         }
@@ -780,17 +836,21 @@ class PvpGameController extends AbstractGameController
             if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
                 continue;
             }
+
             $playerTee = $entity->tee;
+
             if (! $playerTee instanceof PlayerTee || $playerTee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
 
             if ($collision !== null) {
                 [$hitFlags] = $collision->intersectLine($flag->getPosition(), $entity->getPosition());
+
                 if ($hitFlags !== 0) {
                     continue;
                 }
             }
+
             if ($flag->getPosition()->distance($entity->getPosition()) >= FlagEntity::PHYS_SIZE + $entity->getHitBoxRadius()) {
                 continue;
             }
@@ -829,6 +889,7 @@ class PvpGameController extends AbstractGameController
     protected function onFlagGrab(FlagEntity $flag, AbstractCharacterEntity $carrier, int $currentTick): void
     {
         $carrierTee = $carrier->tee;
+
         if ($flag->atStand) {
             $team = $flag->team === GameConstants::TEAM_RED ? GameConstants::TEAM_BLUE : GameConstants::TEAM_RED;
             $this->teamScores[$team]++;
@@ -838,20 +899,24 @@ class PvpGameController extends AbstractGameController
         $flag->atStand           = false;
         $flag->carryingCharacter = $carrier;
         $flag->setPosition(clone $carrier->getPosition());
+
         if ($carrierTee instanceof PlayerTee) {
             $carrierTee->score += 1;
         }
 
         $world = $this->world;
+
         if ($world === null) {
             return;
         }
 
         $world->consoleDebug('ctf', 'Flag grabbed Team='.$flag->team.' TeeIdx='.($carrierTee->teeIndex ?? -1));
+
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee) {
                 continue;
             }
+
             $soundId = $tee->team === $flag->team
                 ? GameConstants::SOUND_CTF_GRAB_EN
                 : GameConstants::SOUND_CTF_GRAB_PL;
@@ -862,18 +927,22 @@ class PvpGameController extends AbstractGameController
     protected function dropFlagsOnDeath(AbstractCharacterEntity $victim, int $killerTeeIndex): int
     {
         $world = $this->world;
+
         if ($world === null) {
             return 0;
         }
 
         $hadFlag = 0;
+
         for ($i = 0; $i < 2; $i++) {
             $flag = $this->flags[$i];
+
             if ($flag === null) {
                 continue;
             }
 
             $killerCharacter = $world->findCharacter($killerTeeIndex);
+
             if ($killerCharacter !== null && $flag->carryingCharacter === $killerCharacter) {
                 $hadFlag |= 2;
             }
@@ -888,11 +957,13 @@ class PvpGameController extends AbstractGameController
 
                 $killerTee = $world->findTee($killerTeeIndex);
                 $victimTee = $victim->tee;
+
                 if ($killerTee instanceof PlayerTee && $victimTee instanceof PlayerTee
                     && $killerTee->team !== $victimTee->team
                 ) {
                     $killerTee->score++;
                 }
+
                 $hadFlag |= 1;
             }
         }

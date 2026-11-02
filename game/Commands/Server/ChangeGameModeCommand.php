@@ -34,9 +34,11 @@ class ChangeGameModeCommand extends AbstractCommand
         $gameMode = $arguments[0];
         $mapName  = $arguments[1] ?? '';
         $reason   = $arguments[2] ?? '';
+
         try {
             $world->reload(mapName: $mapName === '' ? null : $mapName, gameMode: $gameMode);
             $text = 'Changing gamemode to '.strtoupper($gameMode);
+
             if ($reason !== '') {
                 $text .= ' ('.$reason.')';
             }

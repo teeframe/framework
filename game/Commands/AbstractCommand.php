@@ -52,13 +52,16 @@ abstract class AbstractCommand
         sort($names, SORT_STRING | SORT_FLAG_CASE);
         $lines = [];
         $line  = '';
+
         foreach ($names as $name) {
             if ($line !== '' && strlen($line) + 2 + strlen($name) > 511) {
                 $lines[] = $line;
                 $line    = '';
             }
+
             $line .= ($line !== '' ? ', ' : '').$name;
         }
+
         if ($line !== '') {
             $lines[] = $line;
         }

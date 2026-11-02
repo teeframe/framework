@@ -5,6 +5,7 @@ namespace TeeFrame\Map;
 class MapReader
 {
     protected string $rawContent = '';
+
     /**
      * @var array<int, array{typeId: int, start: int, num: int}>
      */
@@ -48,11 +49,13 @@ class MapReader
     protected function readFile(): string
     {
         set_error_handler(static fn (): bool => true, E_WARNING);
+
         try {
             $buffer = file_get_contents($this->path);
         } finally {
             restore_error_handler();
         }
+
         if ($buffer === false) {
             throw new \RuntimeException("$this->path : Failed to read file");
         }
@@ -88,6 +91,7 @@ class MapReader
 
         $itemsStart = 36 + $numItemTypes * 12 + $numItems * 4 + $numData * ($version === 4 ? 8 : 4);
         $dataStart  = $itemsStart + $itemSize;
+
         if ($size !== $fileSize - 16
             || $swapLen !== $dataStart - 16
             || $dataStart + $dataSize !== $fileSize
@@ -115,19 +119,23 @@ class MapReader
         $itemTypes = [];
         $seenTypes = [];
         $nextItem  = 0;
+
         for ($i = 0; $i < $numItemTypes; $i++) {
             $typeId = $reader->readInt();
             $start  = $reader->readInt();
             $num    = $reader->readInt();
+
             if ($typeId < 0 || $typeId > 0xFFFF || isset($seenTypes[$typeId])
                 || $start !== $nextItem || $num <= 0 || $num > $numItems - $start
             ) {
                 $this->throwException('Invalid item type range or duplicate type');
             }
+
             $itemTypes[]        = ['typeId' => $typeId, 'start' => $start, 'num' => $num];
             $seenTypes[$typeId] = true;
             $nextItem += $num;
         }
+
         if ($nextItem !== $numItems) {
             $this->throwException('Item type ranges do not cover the items section');
         }
@@ -144,25 +152,31 @@ class MapReader
     {
         $itemSize = strlen($itemBytes);
         $items    = [];
+
         foreach ($itemTypes as $itemType) {
             $seenIds = [];
+
             for ($i = $itemType['start']; $i < $itemType['start'] + $itemType['num']; $i++) {
                 $start = $itemOffsets[$i];
                 $end   = $itemOffsets[$i + 1] ?? $itemSize;
+
                 if ($start % 4 !== 0 || $end - $start < 8) {
                     $this->throwException("Invalid item offset at index {$i}");
                 }
+
                 $itemReader  = new MapBufferReader(substr($itemBytes, $start, $end - $start));
                 $typeIdAndId = $itemReader->readInt();
                 $payloadSize = $itemReader->readInt();
                 $typeId      = ($typeIdAndId >> 16) & 0xFFFF;
                 $id          = $typeIdAndId & 0xFFFF;
+
                 if ($typeId !== $itemType['typeId'] || isset($seenIds[$id])
                     || $payloadSize < 0 || $payloadSize % 4 !== 0
                     || $payloadSize !== $itemReader->remaining()
                 ) {
                     $this->throwException("Invalid item header at index {$i}");
                 }
+
                 $items[] = [
                     'typeId' => $typeId,
                     'id'     => $id,
@@ -185,12 +199,15 @@ class MapReader
     {
         $dataSize   = strlen($rawData);
         $dataBlocks = [];
+
         foreach ($dataOffsets as $i => $start) {
             $end   = $dataOffsets[$i + 1] ?? $dataSize;
             $block = substr($rawData, $start, $end - $start);
+
             if ($version === 4) {
                 $block = $this->decompressDataBlock($block, $dataSizes[$i], $i);
             }
+
             $dataBlocks[$i] = $block;
         }
 
@@ -206,11 +223,13 @@ class MapReader
         // Bound expansion and reject streams larger than the declared size.
         // Malformed streams report warnings; expose them as the exception below.
         set_error_handler(static fn (): bool => true, E_WARNING);
+
         try {
             $block = zlib_decode($block, max(1, $expectedSize + 1));
         } finally {
             restore_error_handler();
         }
+
         if ($block === false || strlen($block) !== $expectedSize) {
             $this->throwException("Invalid compression or uncompressed size for data block {$index}");
         }
@@ -276,6 +295,7 @@ class MapReader
         }
 
         $nullPos = strpos($data, "\0");
+
         if ($nullPos !== false) {
             $data = substr($data, 0, $nullPos);
         }
@@ -297,10 +317,12 @@ class MapReader
         }
 
         $previous = 0;
+
         foreach ($offsets as $index => $offset) {
             if (($index === 0 && $offset !== 0) || $offset < $previous || $offset > $sectionSize) {
                 $this->throwException("Invalid {$section} offset at index {$index}");
             }
+
             $previous = $offset;
         }
     }

@@ -37,11 +37,13 @@ class HelpCommand extends AbstractCommand
         }
 
         $command = $world->findCommand(ltrim($arguments[0], '/'), self::TYPE_CHAT);
+
         if ($command === null) {
             $this->reply($world, $tee, 'Command not found', $output);
 
             return;
         }
+
         $usage = '/'.$command->getName().($command->getParams() !== '' ? ' '.$command->getParams() : '');
         $this->reply($world, $tee, $usage.' - '.$command->getHelpText(), $output);
     }

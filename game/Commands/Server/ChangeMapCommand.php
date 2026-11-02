@@ -33,9 +33,11 @@ class ChangeMapCommand extends AbstractCommand
     {
         $mapName = $arguments[0];
         $reason  = $arguments[1] ?? '';
+
         try {
             $world->reload(mapName: $mapName);
             $text = 'Changing map to '.$mapName;
+
             if ($reason !== '') {
                 $text .= ' ('.$reason.')';
             }

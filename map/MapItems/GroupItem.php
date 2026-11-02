@@ -14,11 +14,13 @@ class GroupItem extends AbstractMapItem
         public int $parallaxY,
         public int $startLayer,
         public int $numLayers,
+
         public bool $useClipping = false,
         public int $clipX = 0,
         public int $clipY = 0,
         public int $clipW = 0,
         public int $clipH = 0,
+
         public string $name = '',
     ) {
         parent::__construct();
@@ -48,6 +50,7 @@ class GroupItem extends AbstractMapItem
         }
 
         $name = '';
+
         if ($version >= 3) {
             $name = self::readI32String($reader, 3);
         }
@@ -58,6 +61,7 @@ class GroupItem extends AbstractMapItem
     public static function readI32String(MapBufferReader $reader, int $length): string
     {
         $bytes = '';
+
         foreach ($reader->readInts($length) as $integer) {
             foreach ([24, 16, 8, 0] as $shift) {
                 $bytes .= chr(((($integer >> $shift) & 0xFF) - 128) & 0xFF);

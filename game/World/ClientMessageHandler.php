@@ -52,12 +52,14 @@ class ClientMessageHandler
     {
         // Teeworlds 0.6 limits chat to Unicode characters, not bytes.
         $message = trim(Utf8::truncateCharacters(trim($chunk->text), 127));
+
         if ($message === '') {
             return;
         }
 
         $connection = $this->world->getServer()->getConnection($tee);
         $mute       = $connection === null ? null : $this->world->getServer()->getChatMutes()->getMute($connection->destinationAddress);
+
         if ($mute !== null) {
             $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvChatChunk(
                 team: 0,
@@ -71,14 +73,17 @@ class ClientMessageHandler
         // Spam protection: max ~16 characters per second (CPlayer::m_LastChat).
         if ($tee instanceof PlayerTee) {
             $currentTick = $this->world->getCurrentTick();
+
             if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * ((15 + Utf8::length($message)) / 16)) > $currentTick) {
                 return;
             }
+
             $tee->lastChatTick = $currentTick;
         }
 
         if (str_starts_with($message, '/')) {
             $command = $this->world->findCommand(CommandLine::name(substr($message, 1)), AbstractCommand::TYPE_CHAT);
+
             if ($command !== null) {
                 try {
                     $arguments = CommandLine::match($command, substr($message, 1));
@@ -91,6 +96,7 @@ class ClientMessageHandler
 
                     return;
                 }
+
                 if ($arguments !== null) {
                     $this->world->consoleDebug('chat-command', 'TeeIdx='.$tee->teeIndex.' Chat command='.$command->getName());
                     $command->execute($this->world, $tee, $arguments);
@@ -122,8 +128,10 @@ class ClientMessageHandler
 
         $team = $tee instanceof PlayerTee ? $tee->team : GameConstants::TEAM_RED;
         $this->world->consoleInfo('teamchat', 'Team='.$team.' TeeIdx='.$tee->teeIndex.' Name="'.$tee->name.'": '.$message);
+
         foreach ($this->world->getTees() as $recipient) {
             $recipientTeam = $recipient instanceof PlayerTee ? $recipient->team : GameConstants::TEAM_RED;
+
             if ($recipientTeam === $team) {
                 $this->world->getServer()->sendToTee($this->world, $recipient->teeIndex, clone $chat);
             }
@@ -137,9 +145,11 @@ class ClientMessageHandler
         }
 
         $currentTick = $this->world->getCurrentTick();
+
         if ($tee->lastChangeInfo >= 0 && $tee->lastChangeInfo + 5 * NetworkParams::TICKS_PER_SECOND > $currentTick) {
             return;
         }
+
         $tee->lastChangeInfo = $currentTick;
 
         $previousName = $tee->name;
@@ -178,9 +188,11 @@ class ClientMessageHandler
         }
 
         $currentTick = $this->world->getCurrentTick();
+
         if ($tee->lastKillTick > 0 && $tee->lastKillTick + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick) {
             return;
         }
+
         $tee->lastKillTick = $currentTick;
 
         // WEAPON_SELF preserves the self-kill message and three-second respawn penalty.
@@ -196,6 +208,7 @@ class ClientMessageHandler
         $controller  = $this->world->getGameController();
         $team        = $controller->clampTeam($chunk->team);
         $currentTick = $this->world->getCurrentTick();
+
         if ($tee->team === $team || ($tee->lastSetTeam > 0 && $tee->lastSetTeam + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)) {
             return;
         }
@@ -246,16 +259,19 @@ class ClientMessageHandler
         }
 
         $currentTick = $this->world->getCurrentTick();
+
         if ($tee->spectatorId === $chunk->spectatorId
             || $tee->teeIndex === $chunk->spectatorId
             || ($tee->lastSetSpectatorMode > 0 && $tee->lastSetSpectatorMode + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)
         ) {
             return;
         }
+
         $tee->lastSetSpectatorMode = $currentTick;
 
         if ($chunk->spectatorId !== GameConstants::SPEC_FREEVIEW) {
             $target = $this->world->findTee($chunk->spectatorId);
+
             if ($target === null || ($target instanceof PlayerTee && $target->team === GameConstants::TEAM_SPECTATORS)) {
                 $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvChatChunk(
                     team: 0,

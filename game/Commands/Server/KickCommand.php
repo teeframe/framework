@@ -33,12 +33,15 @@ class KickCommand extends AbstractCommand
     {
         $target     = $world->findTee((int) $arguments[0]);
         $connection = $target === null ? null : $world->getServer()->getConnection($target);
+
         if ($connection === null) {
             throw new \InvalidArgumentException('Invalid player id');
         }
+
         if ($target === $tee || $connection->rcon()->authenticated) {
             throw new \InvalidArgumentException('Cannot kick yourself or another authenticated administrator');
         }
+
         $connection->closeConnection(Utf8::truncateBytes($arguments[1] ?? 'Kicked by administrator', 127));
     }
 }

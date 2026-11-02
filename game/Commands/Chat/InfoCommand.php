@@ -32,6 +32,7 @@ class InfoCommand extends AbstractCommand
     {
         $this->reply($world, $tee, $world->getServer()->getName(), $output);
         $this->reply($world, $tee, 'World='.$world->identifier.' Map='.$world->getMap()->getName().' Gametype='.$world->getGameController()->getGameType().' Players='.count($world->getTees()).'/'.$world->getSlotsLimit(), $output);
+
         foreach (explode("\n", $world->getMotd($tee)) as $line) {
             if (trim($line) !== '') {
                 $this->reply($world, $tee, $line, $output);

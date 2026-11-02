@@ -25,6 +25,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
     public function doTick(): void
     {
         $currentTick = $this->world->getCurrentTick();
+
         // Direct input can create a projectile before this tick's world update.
         if ($currentTick <= $this->startTick) {
             return;
@@ -41,8 +42,10 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         // Check map collision
         $collision  = $this->world->getMap()->getCollision();
         $mapCollide = false;
+
         if ($collision !== null) {
             [$hit, $colPos] = $collision->intersectLine($prevPos, $curPos);
+
             if ($hit) {
                 $curPos     = $colPos;
                 $mapCollide = true;
@@ -51,6 +54,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
 
         // Check character collision (always, using potentially shortened curPos)
         [$targetChar, $charHitPos] = $this->intersectCharacter($prevPos, $curPos);
+
         if ($targetChar !== null) {
             $curPos = $charHitPos;
         }
@@ -109,6 +113,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
 
             if ($len < $entity->getHitBoxRadius() + $this->getHitBoxRadius()) {
                 $lineDist = $pos0->distance($intersectPos);
+
                 if ($lineDist < $closestLen) {
                     $closestLen = $lineDist;
                     $closest    = $entity;
@@ -151,6 +156,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
             $dist = $diff->length();
 
             $forceDir = new Vector2(0, 1);
+
             if ($dist > 0.0) {
                 $forceDir = $diff->normalize();
             }

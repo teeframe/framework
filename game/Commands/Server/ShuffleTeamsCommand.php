@@ -35,8 +35,10 @@ class ShuffleTeamsCommand extends AbstractCommand
         if (! $world->getGameController()->isTeamplay()) {
             throw new \InvalidArgumentException('This gamemode does not use teams');
         }
+
         $players = array_values(array_filter($world->getTees(), fn (AbstractTee $player): bool => $player instanceof PlayerTee && $player->team !== GameConstants::TEAM_SPECTATORS));
         shuffle($players);
+
         foreach ($players as $index => $player) {
 
             $player->setTeam($index % 2);

@@ -17,6 +17,7 @@ class SnapshotEncoder
     public function indexItems(array $items): array
     {
         $indexed = [];
+
         foreach ($items as $item) {
             $indexed[$item->getKey()] = $item;
         }
@@ -32,6 +33,7 @@ class SnapshotEncoder
     public function encode(int $currentTick, int $deltaTick, array $items, array $deltaItems = []): array
     {
         [$changes, $removedCount, $updatedCount] = $this->calculateDelta($items, $deltaItems);
+
         if ($changes === []) {
             return [new SnapEmptyChunk($currentTick, $deltaTick)];
         }
@@ -55,6 +57,7 @@ class SnapshotEncoder
         }
 
         $chunks = [];
+
         for ($i = 0; $i < $slices; $i++) {
             $slice    = array_slice($payload, $i * NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE, NetworkParams::MAXIMUM_SNAP_PAYLOAD_SIZE);
             $chunks[] = new SnapSliceChunk(
@@ -91,6 +94,7 @@ class SnapshotEncoder
 
         foreach ($items as $key => $item) {
             $previous = $deltaItems[$key] ?? null;
+
             if ($previous !== null && $item->getInts() === $previous->getInts()) {
                 continue;
             }
@@ -106,6 +110,7 @@ class SnapshotEncoder
     public function calculateCrc(array $items): int
     {
         $crc = 0;
+
         foreach ($items as $item) {
             foreach ($item->getInts() as $int) {
                 $crc += $int;
@@ -120,6 +125,7 @@ class SnapshotEncoder
     {
         $previousInts = $previous->getInts();
         $payload      = (new RawPayload)->addInt($item->getItemId())->addInt($item->getId());
+
         foreach ($item->getInts() as $i => $value) {
             $payload->addInt(NetworkBase::toInt32($value - $previousInts[$i]));
         }

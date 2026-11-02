@@ -39,6 +39,7 @@ class Rcon
         if ($maxTries < 1 || $banDuration < 0) {
             throw new \InvalidArgumentException('RCON requires a positive attempt limit and a non-negative ban duration');
         }
+
         if (str_contains($password, "\0")) {
             throw new \InvalidArgumentException('RCON password must not contain a zero byte');
         }
@@ -72,15 +73,18 @@ class Rcon
     protected function authenticate(ConnectionSlot $connection, RconAuthChunk $chunk): void
     {
         $session = $connection->rcon();
+
         if ($session->authenticated) {
             return;
         }
+
         if ($this->password === '') {
             $connection->consoleDebug('rcon', 'RCON authentication rejected: remote console is disabled');
             $this->sendLine($connection, 'Remote console is disabled.');
 
             return;
         }
+
         if (hash_equals($this->password, $chunk->password)) {
             $session->authenticated      = true;
             $session->authTries          = 0;
@@ -96,12 +100,15 @@ class Rcon
         $session->authTries++;
         $connection->consoleWarn('rcon', 'RCON authentication failed Attempt='.$session->authTries.'/'.$this->maxTries);
         $this->sendLine($connection, 'Wrong password '.$session->authTries.'/'.$this->maxTries.'.');
+
         if ($session->authTries >= $this->maxTries) {
             $reason = 'Too many remote console authentication tries';
             $connection->consoleWarn('rcon', $reason);
+
             if ($this->banDuration > 0) {
                 $this->bans->ban($connection->destinationAddress, $this->banDuration, $reason);
             }
+
             $connection->closeConnection($reason);
         }
     }
@@ -132,9 +139,11 @@ class Rcon
     protected function executeCommand(ConnectionSlot $connection, string $line): void
     {
         $name = strtolower(CommandLine::name($line));
+
         if ($name === 'logout' || $name === 'cmdlist') {
             CommandLine::parseArguments(substr($line, strlen($name)), '');
         }
+
         if ($name === 'logout') {
             $connection->consoleInfo('rcon', 'RCON command=logout');
             $this->logout($connection);
@@ -144,6 +153,7 @@ class Rcon
 
         if ($name === 'cmdlist') {
             $connection->consoleInfo('rcon', 'RCON command=cmdlist');
+
             foreach (AbstractCommand::formatList(array_keys($this->getCommandInfo($connection->world()))) as $line) {
                 $this->sendLine($connection, $line);
             }
@@ -160,6 +170,7 @@ class Rcon
 
         $world   = $connection->world();
         $command = $world->findCommand($name, AbstractCommand::TYPE_SERVER);
+
         if ($command !== null) {
             $arguments = CommandLine::match($command, $line);
             assert($arguments !== null);
@@ -180,14 +191,18 @@ class Rcon
 
         $world = $connection->world();
         $votes = $world->getVoteController();
+
         if ($name === 'add_vote') {
             [$description, $command] = $arguments;
+
             if ($votes->getVoteOption($description) !== null) {
                 throw new \InvalidArgumentException('Vote option already exists: '.$description);
             }
+
             if ($votes->resolveCommands($world, $command) === null) {
                 throw new \InvalidArgumentException('Vote options must use registered server commands');
             }
+
             $votes->addVoteOption($description, $command);
             $this->sendVoteOptionUpdate($world, new SvVoteOptionAddChunk($description));
             $connection->consoleInfo('vote', 'Vote option added Description="'.$description.'"');
@@ -195,6 +210,7 @@ class Rcon
 
             return;
         }
+
         if ($name === 'remove_vote') {
             $option = $votes->getVoteOption($arguments[0]) ?? throw new \InvalidArgumentException('Unknown vote option: '.$arguments[0]);
             $votes->removeVoteOption($option->description);
@@ -218,34 +234,41 @@ class Rcon
     {
         $world  = $connection->world();
         $reason = $reason === '' ? 'No reason given' : $reason;
+
         if ($type === 'option') {
             $votes    = $world->getVoteController();
             $option   = $votes->getVoteOption($value) ?? throw new \InvalidArgumentException('Unknown vote option: '.$value);
             $commands = $votes->resolveCommands($world, $option->command) ?? throw new \InvalidArgumentException('Vote options must use registered server commands');
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: Utf8::truncateBytes("Admin forced server option '{$option->description}' ({$reason})", 511)));
+
             foreach ($commands as $resolved) {
                 if ($this->stopped || ! $connection->rcon()->authenticated || $connection->world() !== $world || $connection->state === ConnectionSlot::STATE_CLOSED) {
                     break;
                 }
+
                 $connection->consoleDebug('vote', 'Forced vote command='.$resolved['command']->getName());
                 $resolved['command']->execute($world, $connection->playerTee(), $resolved['arguments'], fn (string $message) => $this->sendLine($connection, $message));
             }
 
             return;
         }
+
         if ($type !== 'kick' && $type !== 'spectate') {
             throw new \InvalidArgumentException('Vote type must be option, kick or spectate');
         }
 
         $index  = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
         $target = $index === false ? null : $this->connections->findByTee($world, $index);
+
         if ($target === null) {
             throw new \InvalidArgumentException('Invalid client id to '.$type);
         }
+
         if ($type === 'kick') {
             if ($target === $connection || $target->rcon()->authenticated) {
                 throw new \InvalidArgumentException('Cannot kick yourself or another authenticated administrator');
             }
+
             $connection->consoleInfo('vote', 'Forced kick Target='.$index);
             $world->getServer()->kick($world, $index, Utf8::truncateBytes($reason, 127));
 
@@ -253,9 +276,11 @@ class Rcon
         }
 
         $tee = $target->playerTee();
+
         if ($tee->team === GameConstants::TEAM_SPECTATORS) {
             throw new \InvalidArgumentException('The player is already a spectator');
         }
+
         $tee->setTeam(GameConstants::TEAM_SPECTATORS);
         $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: Utf8::truncateBytes("'{$tee->name}' was moved to spectators ({$reason})", 511)));
     }
@@ -282,6 +307,7 @@ class Rcon
         if ($this->stopped) {
             return;
         }
+
         foreach ($this->connections->getConnections() as $connection) {
             if (! $connection->rcon()->authenticated || $connection->state === ConnectionSlot::STATE_CLOSED) {
                 continue;
@@ -301,18 +327,22 @@ class Rcon
             if (($commands[$name] ?? null) === $metadata) {
                 continue;
             }
+
             $connection->chunks()->add(new RconCmdRemChunk($name));
             unset($session->advertisedCommands[$name]);
         }
 
         // Spread autocomplete over ticks instead of filling the reliable buffer.
         $added = 0;
+
         foreach ($commands as $name => $metadata) {
             if (isset($session->advertisedCommands[$name])) {
                 continue;
             }
+
             $connection->chunks()->add(new RconCmdAddChunk($name, $metadata['help'], $metadata['params']));
             $session->advertisedCommands[$name] = $metadata;
+
             if (++$added === 4) {
                 break;
             }
@@ -340,6 +370,7 @@ class Rcon
         if ($connection->state === ConnectionSlot::STATE_CLOSED) {
             return;
         }
+
         $connection->chunks()->add(new RconLineChunk($line))->send();
     }
 
@@ -348,6 +379,7 @@ class Rcon
         if ($this->stopped) {
             return;
         }
+
         foreach ($this->connections->getConnections() as $connection) {
             if ($connection->rcon()->authenticated && $connection->state !== ConnectionSlot::STATE_CLOSED) {
                 $connection->chunks()->add(new RconLineChunk($line));

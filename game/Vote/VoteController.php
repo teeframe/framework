@@ -110,6 +110,7 @@ class VoteController
         }
 
         $key = strtolower($description);
+
         if (isset($this->voteOptions[$key])) {
             return;
         }
@@ -188,6 +189,7 @@ class VoteController
         if ($this->isVoteRunning()) {
             $world->consoleDebug('vote', 'Vote ended Description="'.$this->voteDescription.'"');
         }
+
         $this->voteCloseTime = 0;
         $this->voteCreator   = -1;
         $world->broadcast(new SvVoteSetChunk(
@@ -212,6 +214,7 @@ class VoteController
         if ($tee->lastVoteTry > 0 && $tee->lastVoteTry + $this->voteTrySpamTicks > $currentTick) {
             return;
         }
+
         $tee->lastVoteTry = $currentTick;
 
         if ($tee->team === GameConstants::TEAM_SPECTATORS) {
@@ -230,6 +233,7 @@ class VoteController
         $timeLeft = $tee->lastVoteCall > 0
             ? $tee->lastVoteCall + $this->voteCallDelayTicks - $currentTick
             : 0;
+
         if ($timeLeft > 0) {
             $this->sendChat($world, $tee, sprintf('You must wait %d seconds before making another vote', (int) ($timeLeft / NetworkParams::TICKS_PER_SECOND) + 1));
 
@@ -273,6 +277,7 @@ class VoteController
     protected function resolveOptionVote(AbstractWorld $world, PlayerTee $tee, string $value): ?VoteOption
     {
         $option = $this->voteOptions[strtolower($value)] ?? null;
+
         if ($option !== null) {
             return $option;
         }
@@ -321,19 +326,24 @@ class VoteController
         }
 
         $commands = [];
+
         foreach ($parts as $part) {
             $command = $world->findCommand(CommandLine::name($part), AbstractCommand::TYPE_SERVER);
+
             if ($command === null) {
                 return null;
             }
+
             try {
                 $arguments = CommandLine::match($command, $part);
             } catch (\InvalidArgumentException) {
                 return null;
             }
+
             if ($arguments === null) {
                 return null;
             }
+
             $commands[] = ['command' => $command, 'arguments' => $arguments];
         }
 
@@ -415,6 +425,7 @@ class VoteController
                 $world->consoleWarn('vote', 'Vote execution failed Description="'.$this->voteDescription.'"');
                 $message = Utf8::truncateBytes('Vote command failed: '.$exception->getMessage(), 511);
             }
+
             $this->endVote($world);
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: $message));
         } elseif ($this->voteEnforce === VoteEnforce::NO || $currentTick > $this->voteCloseTime) {
@@ -493,6 +504,7 @@ class VoteController
             }
 
             $total++;
+
             if ($tee->vote > 0) {
                 $yes++;
             } elseif ($tee->vote < 0) {
@@ -515,9 +527,11 @@ class VoteController
             $kickId = (int) ($parts[1] ?? -1);
             $reason = $parts[2] ?? 'Kicked by vote';
             $target = $world->findTee($kickId);
+
             if ($target !== null && $world->getServer()->getConnection($target)?->rcon()->authenticated) {
                 throw new \InvalidArgumentException('Authenticated administrators cannot be kicked by vote');
             }
+
             $world->getServer()->kick($world, $kickId, $reason);
 
             return;
@@ -527,6 +541,7 @@ class VoteController
         if ($this->voteType === 'spectate') {
             $parts = explode(' ', $this->voteCommand, 4);
             $tee   = $world->findTee((int) ($parts[1] ?? -1));
+
             if ($tee instanceof PlayerTee) {
                 $tee->setTeam(GameConstants::TEAM_SPECTATORS);
             }
@@ -542,6 +557,7 @@ class VoteController
             foreach ($commands as $resolved) {
                 $world->consoleDebug('vote', 'TeeIdx='.$caller->teeIndex.' Vote command='.$resolved['command']->getName());
                 $resolved['command']->execute($world, $caller, $resolved['arguments']);
+
                 if ($world->findTee($caller->teeIndex) !== $caller) {
                     break;
                 }

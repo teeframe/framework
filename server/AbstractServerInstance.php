@@ -33,19 +33,13 @@ abstract class AbstractServerInstance
     protected array $sockets = [];
 
     protected ConnectionHandler $connectionHandler;
-
     protected BanList $banList;
-
     protected MuteList $chatMutes;
-
     protected Rcon $rcon;
-
     protected ?MasterServer $masterServer = null;
 
     protected int|false $tickTimer = false;
-
-    protected bool $shuttingDown = false;
-
+    protected bool $shuttingDown   = false;
     protected int $startTime;
 
     public function __construct(
@@ -96,7 +90,11 @@ abstract class AbstractServerInstance
     /** @return list<ConnectionSlot> */
     public function getConnections(): array
     {
-        return array_values(array_filter($this->connectionHandler->getConnections(), fn (ConnectionSlot $connection): bool => $connection->state !== ConnectionSlot::STATE_WAITING_INIT && $connection->state !== ConnectionSlot::STATE_CLOSED));
+        return array_values(array_filter(
+            $this->connectionHandler->getConnections(),
+            fn (ConnectionSlot $connection): bool => $connection->state !== ConnectionSlot::STATE_WAITING_INIT
+                && $connection->state !== ConnectionSlot::STATE_CLOSED
+        ));
     }
 
     public function getConnection(AbstractTee $tee): ?ConnectionSlot
@@ -107,9 +105,11 @@ abstract class AbstractServerInstance
     public function resolveClientAddress(AbstractWorld $world, string $target): string
     {
         $address = IpAddress::normalize($target);
+
         if ($address !== null) {
             return $address;
         }
+
         $id         = filter_var($target, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
         $player     = $id === false ? null : $world->findTee($id);
         $connection = $player === null ? null : $this->getConnection($player);
@@ -172,6 +172,7 @@ abstract class AbstractServerInstance
 
             $socket->on('packet', function (mixed $server, string $data, array $clientInfo) use ($socket): void {
                 $packet = PacketDecoder::decodeFromRaw($data);
+
                 if ($packet === false) {
                     Console::trace('network', 'Discarded malformed packet Address='.$clientInfo['address'].' Port='.$clientInfo['port'].' Bytes='.strlen($data));
 
@@ -371,6 +372,7 @@ abstract class AbstractServerInstance
     public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
     {
         $connection = $this->connectionHandler->findByTee($world, $teeIndex);
+
         if ($connection === null) {
             return;
         }
@@ -432,6 +434,7 @@ abstract class AbstractServerInstance
 
         // New connection...
         $slotConnection = $this->connectionHandler->startNew($socket, $this->selectWorldForNewConnection());
+
         if (! $slotConnection) {
             $reason = count($this->worlds) > 1
                 ? 'The entry-level world is full'

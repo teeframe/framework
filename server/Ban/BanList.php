@@ -25,6 +25,7 @@ class BanList
     {
         $count      = count($this->bans);
         $this->bans = [];
+
         if ($count > 0) {
             Console::info('ban', 'Cleared bans Count='.$count);
         }
@@ -33,6 +34,7 @@ class BanList
     public function unban(string $address): void
     {
         $address = IpAddress::normalize($address) ?? $address;
+
         if (isset($this->bans[$address])) {
             unset($this->bans[$address]);
             Console::info('ban', 'Unbanned Address='.$address);

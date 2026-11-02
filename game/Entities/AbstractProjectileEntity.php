@@ -11,7 +11,6 @@ use TeeFrame\Network\SnapItems\ObjProjectileItem;
 abstract class AbstractProjectileEntity extends AbstractEntity
 {
     protected int $startTick = -1;
-
     protected Vector2 $startPos;
 
     protected int $lifeSpan;

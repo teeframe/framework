@@ -32,6 +32,7 @@ class ListCommand extends AbstractCommand
     {
         $players = array_filter($world->getTees(), fn (AbstractTee $player): bool => ! isset($arguments[0]) || mb_stripos($player->name, $arguments[0], encoding: 'UTF-8') !== false);
         $this->reply($world, $tee, count($players).' player(s) found:', $output);
+
         foreach ($players as $player) {
             $this->reply($world, $tee, $player->teeIndex.': '.$player->name, $output);
         }

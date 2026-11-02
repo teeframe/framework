@@ -37,11 +37,13 @@ class PauseCommand extends AbstractCommand
     public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $controller = $world->getGameController();
+
         if ($controller instanceof PvpGameController) {
             $controller->togglePause();
         } else {
             $world->setPaused(! $world->isPaused());
         }
+
         $this->reply($world, $tee, $world->isPaused() ? 'Game is paused' : 'Game is unpaused', $output);
     }
 }

@@ -32,6 +32,7 @@ class SetTeamAllCommand extends AbstractCommand
     public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $team = max(-1, min(1, (int) $arguments[0]));
+
         foreach ($world->getTees() as $player) {
             if ($player instanceof PlayerTee) {
                 $player->setTeam($team);

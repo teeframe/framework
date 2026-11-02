@@ -19,20 +19,24 @@ class LayerItem extends AbstractMapItem
     public function __construct(
         public int $type,
         public int $flags,
+
         // Tilemap fields
         public int $version = 0,
         public int $width = 0,
         public int $height = 0,
         public int $tileFlags = 0,
+
         public int $colorR = 255,
         public int $colorG = 255,
         public int $colorB = 255,
         public int $colorA = 255,
         public int $colorEnv = -1,
         public int $colorEnvOffset = 0,
+
         public int $image = -1,
         public int $data = -1,
         public string $name = '',
+
         // Quads fields
         public int $numQuads = 0,
         public int $quadData = -1,
@@ -62,20 +66,23 @@ class LayerItem extends AbstractMapItem
 
     protected static function makeTilemap(MapBufferReader $reader, int $type, int $flags): static
     {
-        $version        = $reader->readInt();
-        $width          = $reader->readInt();
-        $height         = $reader->readInt();
-        $tileFlags      = $reader->readInt();
+        $version   = $reader->readInt();
+        $width     = $reader->readInt();
+        $height    = $reader->readInt();
+        $tileFlags = $reader->readInt();
+
         $colorR         = $reader->readInt();
         $colorG         = $reader->readInt();
         $colorB         = $reader->readInt();
         $colorA         = $reader->readInt();
         $colorEnv       = $reader->readInt();
         $colorEnvOffset = $reader->readInt();
-        $image          = $reader->readInt();
-        $data           = $reader->readInt();
+
+        $image = $reader->readInt();
+        $data  = $reader->readInt();
 
         $name = '';
+
         if ($version >= 3) {
             $name = GroupItem::readI32String($reader, 3);
         }
@@ -107,6 +114,7 @@ class LayerItem extends AbstractMapItem
         $quadImage = $reader->readInt();
 
         $name = '';
+
         if ($version >= 2) {
             $name = GroupItem::readI32String($reader, 3);
         }

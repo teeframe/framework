@@ -14,12 +14,12 @@ class MasterServer
 {
     /** @var array<int, MasterServerRegistration> */
     protected array $registrations = [];
-    protected int $nextInfoUpdate  = 0;
-    protected bool $stopped        = false;
+
+    protected int $nextInfoUpdate = 0;
+    protected bool $stopped       = false;
 
     public function __construct(
         protected TickHandler $tickHandler,
-
         protected MasterServerHttpClient $httpClient = new MasterServerHttpClient,
     ) {}
 
@@ -28,12 +28,12 @@ class MasterServer
     {
         // One identity lets the master group this server's IPv4/IPv6 addresses.
         $secret = MasterServerRegistration::createSecret();
+
         foreach ($sockets as $socket) {
             $this->registrations[spl_object_id($socket)] = new MasterServerRegistration(
                 tickHandler: $this->tickHandler,
                 port: $socket->port,
                 family: str_contains($socket->host, ':') ? AF_INET6 : AF_INET,
-
                 httpClient: $this->httpClient,
                 localAddress: $socket->host,
                 secret: $secret,
@@ -52,6 +52,7 @@ class MasterServer
         }
 
         $info = null;
+
         if ($this->tickHandler->getTime() >= $this->nextInfoUpdate) {
             $info = json_encode((new ServerInfoPacketBuilder)->buildInfo(
                 $worlds,
@@ -84,6 +85,7 @@ class MasterServer
     public function shutdown(): void
     {
         $this->stopped = true;
+
         foreach ($this->registrations as $registration) {
             $registration->shutdown();
         }

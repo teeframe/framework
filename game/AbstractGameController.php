@@ -130,6 +130,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     public function canJoinTeam(int $team, int $notThisTeeIndex): bool
     {
         $world = $this->world;
+
         if ($world === null) {
             return false;
         }
@@ -139,15 +140,18 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
 
         $tee = $world->findTee($notThisTeeIndex);
+
         if ($tee instanceof PlayerTee && $tee->team !== GameConstants::TEAM_SPECTATORS) {
             return true;
         }
 
         $numPlayers = 0;
+
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee || $tee->teeIndex === $notThisTeeIndex) {
                 continue;
             }
+
             if ($tee->team === GameConstants::TEAM_RED || $tee->team === GameConstants::TEAM_BLUE) {
                 $numPlayers++;
             }
@@ -169,6 +173,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     protected function checkInactivePlayers(): void
     {
         $world = $this->world;
+
         if ($world === null) {
             return;
         }
@@ -192,16 +197,19 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
                 case self::INACTIVE_KICK_SPEC_OR_KICK:
                     $spectators = 0;
+
                     foreach ($world->getTees() as $t) {
                         if ($t instanceof PlayerTee && $t->team === GameConstants::TEAM_SPECTATORS) {
                             $spectators++;
                         }
                     }
+
                     if ($spectators >= $this->spectatorSlots) {
                         $world->getServer()->kick($world, $tee->teeIndex, 'Kicked for inactivity');
                     } else {
                         $tee->setTeam(GameConstants::TEAM_SPECTATORS);
                     }
+
                     break;
 
                 case self::INACTIVE_KICK_KICK:
@@ -227,6 +235,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         if (empty($this->spawnPoints[self::SPAWN_RED])) {
             $this->spawnPoints[self::SPAWN_RED] = $this->spawnPoints[self::SPAWN_HUMAN];
         }
+
         if (empty($this->spawnPoints[self::SPAWN_BLUE])) {
             $this->spawnPoints[self::SPAWN_BLUE] = $this->spawnPoints[self::SPAWN_HUMAN];
         }
@@ -242,6 +251,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
         foreach ($spawnOrder as $type) {
             $pos = $this->evaluateSpawnType($world, $type);
+
             if ($pos !== null) {
                 return $pos;
             }
@@ -267,6 +277,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
         foreach ($this->spawnPoints[$type] as $spawnPoint) {
             $pos = $this->findSpawnPosition($world, $spawnPoint);
+
             if ($pos === null) {
                 continue;
             }
@@ -289,6 +300,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         // Teeworlds 0.6: center, left, up, right, down.
         foreach ([[0, 0], [-32, 0], [0, -32], [32, 0], [0, 32]] as [$dx, $dy]) {
             $pos = new Vector2($spawnPoint->x + $dx, $spawnPoint->y + $dy);
+
             if ($collision !== null && $collision->isSolidAt($pos->x, $pos->y)) {
                 continue;
             }
@@ -297,6 +309,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 && $entity->alive
                 && ! $entity->isMarkedForDestruction()
                 && $pos->distance($entity->getPosition()) <= $entity->getHitBoxRadius());
+
             if (! $occupied) {
                 return $pos;
             }

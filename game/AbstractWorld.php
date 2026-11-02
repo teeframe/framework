@@ -109,8 +109,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected AbstractGameController $gameController;
     protected VoteController $voteController;
     protected TuneController $tuneController;
-    protected bool $paused                                   = false;
-    protected bool $resetRequested                           = false;
+
+    protected bool $paused         = false;
+    protected bool $resetRequested = false;
+
     protected ?Map $pendingMap                               = null;
     protected ?AbstractGameController $pendingGameController = null;
 
@@ -277,6 +279,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
             $path = $mapName === null ? $map->getPath() : dirname($map->getPath()).'/'.$mapName.'.map';
             $map  = new Map($path);
+
             if ($map->getGameLayer() === null) {
                 throw new \UnexpectedValueException('Map has no game layer');
             }
@@ -355,6 +358,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function trySetTeeName(AbstractTee $tee, string $name): bool
     {
         $trimmed = trim(Utf8::truncateBytes(trim($name), NetworkParams::MAX_NAME_LENGTH - 1));
+
         if ($trimmed === '') {
             return false;
         }
@@ -378,6 +382,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function setTeeName(AbstractTee $tee, string $name): void
     {
         $cleanName = '';
+
         for ($i = 0, $len = strlen($name); $i < $len; $i++) {
             $cleanName .= $name[$i] < ' ' ? ' ' : $name[$i];
         }
@@ -425,6 +430,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getCommandMap(int $type): array
     {
         $commands = [];
+
         foreach ($this->commands as $command) {
             if ($command->getType() & $type) {
                 $commands[strtolower($command->getName())] = $command;
@@ -432,10 +438,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
 
         $aliases = [];
+
         foreach ($this->commands as $command) {
             if (($commands[strtolower($command->getName())] ?? null) !== $command) {
                 continue;
             }
+
             foreach ($command->getAliases() as $alias) {
                 $aliases[strtolower($alias)] = $command;
             }
@@ -485,6 +493,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if (($this->entities[$index] ?? null) !== $entity) {
                 continue;
             }
+
             $entity->reset();
 
             if ($entity->isMarkedForDestruction()) {
@@ -646,6 +655,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function removeTee(AbstractTee $tee, ?string $reason = null): void
     {
         $index = $tee->teeIndex;
+
         if (($this->tees[$index] ?? null) !== $tee) {
             return;
         }
@@ -736,6 +746,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
 
         $this->getGameController()->doTick();
+
         if ($this->resetRequested) {
             $this->resetRequested = false;
             $this->resetRound($currentTick);
@@ -767,11 +778,13 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             }
 
             $input = $tee->consumeInput($currentTick);
+
             if ($tee->team === GameConstants::TEAM_SPECTATORS) {
                 continue;
             }
 
             $character = $tee->character;
+
             // Fire-to-respawn: consume the input even while no character exists.
             if ($character === null) {
                 if ($input !== null && ! ($input->playerFlags & GameConstants::PLAYERFLAG_CHATTING) && ($input->fire & 1)) {
@@ -784,7 +797,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if ($input !== null) {
                 $character->onPredictedInput($input);
             }
-
         }
     }
 
@@ -798,6 +810,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected function tickEntities(): void
     {
         $entities = $this->getEntities();
+
         foreach ($entities as $index => $entity) {
             if (($this->entities[$index] ?? null) !== $entity) {
                 continue;
@@ -815,9 +828,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if (($this->entities[$index] ?? null) !== $entity) {
                 continue;
             }
+
             if (! $entity->isMarkedForDestruction()) {
                 $entity->doTickDeferred();
             }
+
             if ($entity->isMarkedForDestruction()) {
                 $this->removeEntityAt($index, $entity);
             }
@@ -830,11 +845,13 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if (! $tee instanceof PlayerTee) {
                 continue;
             }
+
             if ($this->paused) {
                 $tee->doTickPaused();
 
                 continue;
             }
+
             if ($tee->team === GameConstants::TEAM_SPECTATORS || $tee->character !== null) {
                 continue;
             }
@@ -843,6 +860,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if (! $tee->spawning && $tee->dieTick > 0 && $tee->dieTick + 3 * NetworkParams::TICKS_PER_SECOND <= $currentTick) {
                 $tee->spawning = true;
             }
+
             if ($tee->spawning && $tee->respawnTick <= $currentTick) {
                 $this->tryRespawnTee($tee);
             }
@@ -855,6 +873,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if (! $tee instanceof PlayerTee) {
                 continue;
             }
+
             if ($tee->team === GameConstants::TEAM_SPECTATORS && $tee->spectatorId !== GameConstants::SPEC_FREEVIEW) {
                 if (($targetTee = $this->findTee($tee->spectatorId)) !== null) {
                     $tee->viewPosition = clone $targetTee->viewPosition;
@@ -958,6 +977,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $entitySnaps = $entity->doSnap($requestingTee);
 
             $fixedSnapId = $entity->getFixedSnapId();
+
             if ($fixedSnapId !== null) {
                 foreach ($entitySnaps as $snap) {
                     $snap->setId($fixedSnapId);
@@ -983,6 +1003,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected function tryRespawnTee(PlayerTee $tee): bool
     {
         $spawnPos = $this->getGameController()->selectSpawnPosition($this, $tee->team);
+
         if ($spawnPos === null) {
             return false;
         }

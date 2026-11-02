@@ -94,6 +94,7 @@ class ConnectionSlot extends AbstractConnection
         if ($this->world !== $world) {
             $this->consoleInfo('world', 'Changing world to '.$world->identifier);
         }
+
         $previousTee = $this->playerTee;
         $this->world->removeTee($previousTee);
 
@@ -145,6 +146,7 @@ class ConnectionSlot extends AbstractConnection
         if ($packet instanceof ControlMessage) {
             return $this->handleControlMessagePacket($packet);
         }
+
         if ($packet instanceof DefaultPacket) {
             return $this->state === static::STATE_INGAME ? $this->handleDefaultPacket() : true;
         }

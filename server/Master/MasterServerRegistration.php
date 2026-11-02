@@ -15,22 +15,24 @@ class MasterServerRegistration
 
     protected string $secret;
     protected string $challengeSecret;
-    protected ?string $challengeToken   = null;
+    protected ?string $challengeToken = null;
+
     protected string $info              = '';
     protected int $infoSerial           = -1;
     protected int $successfulInfoSerial = -1;
-    protected int $nextRegisterTime     = 0;
-    protected ?int $lastRegisterTime    = null;
-    protected ?Channel $pendingRequest  = null;
-    protected string $status            = '';
-    protected bool $registered          = false;
-    protected bool $stopped             = false;
+
+    protected int $nextRegisterTime    = 0;
+    protected ?int $lastRegisterTime   = null;
+    protected ?Channel $pendingRequest = null;
+
+    protected string $status   = '';
+    protected bool $registered = false;
+    protected bool $stopped    = false;
 
     public function __construct(
         protected TickHandler $tickHandler,
         protected int $port,
         protected int $family,
-
         protected MasterServerHttpClient $httpClient = new MasterServerHttpClient,
         protected string $localAddress = '',
         ?string $secret = null,
@@ -38,6 +40,7 @@ class MasterServerRegistration
         if ($port < 1 || $port > 65535) {
             throw new \InvalidArgumentException('The registration port must be between 1 and 65535');
         }
+
         if (! in_array($family, [AF_INET, AF_INET6], true)) {
             throw new \InvalidArgumentException('Registration requires an IPv4 or IPv6 socket');
         }
@@ -53,9 +56,11 @@ class MasterServerRegistration
         }
 
         $now = $this->tickHandler->getTime();
+
         if ($info !== null && $info !== $this->info) {
             $this->info = $info;
             $this->infoSerial++;
+
             if ($this->lastRegisterTime !== null) {
                 $this->nextRegisterTime = min($this->nextRegisterTime, $this->lastRegisterTime + 1_000_000_000);
             }
@@ -70,11 +75,13 @@ class MasterServerRegistration
     {
         $prefix = NetworkMessages::SERVERBROWSE_CHALLENGE.$this->challengeSecret.':';
         $data   = $packet->getData();
+
         if ($this->stopped || ! str_starts_with($data, $prefix)) {
             return false;
         }
 
         $fields = explode("\0", substr($data, strlen($prefix)));
+
         if (count($fields) !== 3 || $fields[0] !== $this->getProtocol() || $fields[2] !== ''
             || preg_match('/\A[\x21-\x7e]{1,127}\z/', $fields[1]) !== 1
         ) {
@@ -82,6 +89,7 @@ class MasterServerRegistration
         }
 
         $this->challengeToken = $fields[1];
+
         if ($this->status === 'need_challenge') {
             $this->nextRegisterTime = $this->tickHandler->getTime();
         }
@@ -92,6 +100,7 @@ class MasterServerRegistration
     public function shutdown(): void
     {
         $this->stopped = true;
+
         if ($this->pendingRequest !== null) {
             // Its coroutine removes any accepted listing before signalling completion.
             $this->pendingRequest->pop(1.0);
@@ -112,6 +121,7 @@ class MasterServerRegistration
             'Challenge-Secret' => $this->challengeSecret.':'.$this->getProtocol(),
             'Info-Serial'      => (string) $serial,
         ];
+
         if ($token !== null) {
             $headers['Challenge-Token'] = $token;
         }
@@ -131,6 +141,7 @@ class MasterServerRegistration
                 if ($this->stopped) {
                     $this->deleteIfRegistered();
                 }
+
                 $this->pendingRequest = null;
                 $finished->push(true);
             }
@@ -146,11 +157,13 @@ class MasterServerRegistration
     protected function handleResponse(array $response, int $serial, ?string $sentToken, bool $sentInfo): void
     {
         $result = json_decode($response['body'], true, flags: JSON_THROW_ON_ERROR);
+
         if (! is_array($result) || ! isset($result['status'])
             || ! in_array($result['status'], ['success', 'need_challenge', 'need_info', 'error'], true)
         ) {
             throw new \UnexpectedValueException('Invalid registration response');
         }
+
         if ($response['status'] < 200 || $response['status'] >= 300 || $result['status'] === 'error') {
             $message = isset($result['message']) && is_string($result['message']) ? $result['message'] : 'Registration request rejected';
 
@@ -161,12 +174,14 @@ class MasterServerRegistration
             if ($this->status !== 'success') {
                 Console::info('register', 'Master server '.$this->getProtocol().': registered');
             }
+
             $this->registered           = true;
             $this->successfulInfoSerial = max($this->successfulInfoSerial, $serial);
         } elseif ($result['status'] === 'need_info') {
             if ($serial === $this->successfulInfoSerial) {
                 $this->successfulInfoSerial--;
             }
+
             if (! $sentInfo) {
                 $this->nextRegisterTime = $this->tickHandler->getTime();
             }
@@ -189,6 +204,7 @@ class MasterServerRegistration
         }
 
         $this->registered = false;
+
         try {
             $this->httpClient->post(
                 self::URL,

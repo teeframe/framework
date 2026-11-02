@@ -76,6 +76,7 @@ class RawPayload
     public function extractString(): string
     {
         $length = array_search(0, $this->payload, true);
+
         if ($length === false) {
             $this->payload = [];
 

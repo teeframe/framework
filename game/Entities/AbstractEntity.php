@@ -64,6 +64,7 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
     public function gameLayerClipped(Vector2 $position): bool
     {
         $collision = $this->world->getMap()->getCollision();
+
         if ($collision === null) {
             return false;
         }

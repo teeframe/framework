@@ -38,12 +38,14 @@ class SettingsCommand extends AbstractCommand
             'hooking'   => 'Player hooking is '.($tuning->playerHooking !== 0 ? 'enabled' : 'disabled'),
             'pause'     => $world->isPaused() ? 'Game is paused' : 'Game is unpaused',
         ];
+
         if (isset($arguments[0])) {
             $name = strtolower($arguments[0]);
             $this->reply($world, $tee, $settings[$name] ?? 'Unknown setting. Available: '.implode(', ', array_keys($settings)), $output);
 
             return;
         }
+
         foreach ($settings as $message) {
             $this->reply($world, $tee, $message, $output);
         }

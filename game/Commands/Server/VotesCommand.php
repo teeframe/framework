@@ -32,10 +32,13 @@ class VotesCommand extends AbstractCommand
     {
         $options = $world->getVoteController()->getVoteOptions();
         $page    = (int) ($arguments[0] ?? 0);
+
         if ($page < 0 || $page > max(0, intdiv(count($options) - 1, 20))) {
             throw new \InvalidArgumentException('Invalid vote-list page');
         }
+
         $this->reply($world, $tee, count($options).' vote option(s), page '.$page, $output);
+
         foreach (array_slice($options, $page * 20, 20) as $option) {
             $this->reply($world, $tee, $option->description.' - '.$option->command, $output);
         }

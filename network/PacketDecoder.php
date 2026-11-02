@@ -129,6 +129,7 @@ class PacketDecoder
             $size  = (($payload[$pointer] & 0x3F) << 4) | ($payload[$pointer + 1] & 0xF);
 
             $headerSize = ($flags & NetworkBase::CHUNK_FLAG_VITAL) ? 3 : 2;
+
             if ($size === 0 || $headerSize + $size > $payloadSize - $pointer) {
                 throw new \UnexpectedValueException('Invalid chunk size or truncated payload');
             }

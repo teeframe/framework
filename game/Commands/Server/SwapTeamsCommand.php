@@ -35,6 +35,7 @@ class SwapTeamsCommand extends AbstractCommand
         if (! $world->getGameController()->isTeamplay()) {
             throw new \InvalidArgumentException('This gamemode does not use teams');
         }
+
         foreach ($world->getTees() as $player) {
             if ($player instanceof PlayerTee && $player->team !== GameConstants::TEAM_SPECTATORS) {
                 $player->setTeam($player->team ^ 1);

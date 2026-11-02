@@ -26,12 +26,14 @@ class TileLayer
     {
         $rawTiles = [];
         $dataLen  = strlen($rawData);
+
         if ($this->width <= 0 || $this->height <= 0
             || $this->width > intdiv(intdiv(PHP_INT_MAX, 4), $this->height)
             || $dataLen % 4 !== 0
         ) {
             throw new \UnexpectedValueException('Invalid tile dimensions or incomplete tile record');
         }
+
         $tileCount = $this->width * $this->height;
 
         if ($version < 4 && $dataLen !== $tileCount * 4) {
@@ -49,20 +51,26 @@ class TileLayer
         if ($version >= 4) {
             // Expand skip-compressed tiles
             $expanded = [];
+
             foreach ($rawTiles as $tile) {
                 $skip = $tile['skip'];
+
                 if (count($expanded) + $skip + 1 > $tileCount) {
                     throw new \UnexpectedValueException('Expanded tile data exceeds layer dimensions');
                 }
+
                 $tile['skip'] = 0;
                 $expanded[]   = $tile;
+
                 for ($s = 0; $s < $skip; $s++) {
                     $expanded[] = $tile;
                 }
             }
+
             if (count($expanded) !== $tileCount) {
                 throw new \UnexpectedValueException('Expanded tile data does not match layer dimensions');
             }
+
             $this->tiles = $expanded;
         } else {
             $this->tiles = $rawTiles;

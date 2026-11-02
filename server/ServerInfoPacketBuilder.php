@@ -87,6 +87,7 @@ class ServerInfoPacketBuilder
 
         $clients    = [];
         $numPlayers = 0;
+
         foreach ($connections as $slot) {
             if (! in_array($slot->world(), $worlds, true)
                 || $slot->state < ConnectionSlot::STATE_CONNECTING
@@ -105,6 +106,7 @@ class ServerInfoPacketBuilder
                 'score'     => $tee->score,
                 'is_player' => $tee->team !== GameConstants::TEAM_SPECTATORS,
             ];
+
             if ($tee->team !== GameConstants::TEAM_SPECTATORS) {
                 $numPlayers++;
             }

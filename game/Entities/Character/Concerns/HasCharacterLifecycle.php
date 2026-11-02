@@ -38,9 +38,11 @@ trait HasCharacterLifecycle
 
         // Initialize weapons: hammer + gun
         $this->weapons = [];
+
         for ($i = 0; $i < GameConstants::NUM_WEAPONS; $i++) {
             $this->weapons[$i] = new CharacterWeaponState(got: false, ammo: 0);
         }
+
         $this->weapons[GameConstants::WEAPON_HAMMER] = new CharacterWeaponState(got: true, ammo: -1);
         $this->weapons[GameConstants::WEAPON_GUN]    = new CharacterWeaponState(got: true, ammo: 10);
 
@@ -100,6 +102,7 @@ trait HasCharacterLifecycle
         if ($this->health >= 10) {
             return false;
         }
+
         $this->health = min(10, $this->health + $amount);
 
         return true;
@@ -110,6 +113,7 @@ trait HasCharacterLifecycle
         if ($this->armor >= 10) {
             return false;
         }
+
         $this->armor = min(10, $this->armor + $amount);
 
         return true;
@@ -121,11 +125,13 @@ trait HasCharacterLifecycle
 
         $this->weapons[GameConstants::WEAPON_NINJA]->got  = true;
         $this->weapons[GameConstants::WEAPON_NINJA]->ammo = -1;
+
         if ($this->activeWeapon !== GameConstants::WEAPON_NINJA) {
             $this->lastWeapon           = $this->activeWeapon;
             $this->ninjaCurrentMoveTime = 0;
             $this->ninjaHitObjects      = [];
         }
+
         $this->activeWeapon = GameConstants::WEAPON_NINJA;
     }
 

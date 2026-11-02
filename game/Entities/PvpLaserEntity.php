@@ -72,6 +72,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         );
 
         $collision = $this->world->getMap()->getCollision();
+
         if ($collision === null) {
             return;
         }
@@ -129,8 +130,10 @@ class PvpLaserEntity extends AbstractLaserEntity
             $projected = $this->closestPointOnSegment($from, $to, $entity->getPosition());
 
             $dist = $projected->distance($entity->getPosition());
+
             if ($dist <= $radius) {
                 $lineDist = $projected->distance($from);
+
                 if ($lineDist < $closestDist) {
                     $closestDist     = $lineDist;
                     $closestEntity   = $entity;
@@ -154,6 +157,7 @@ class PvpLaserEntity extends AbstractLaserEntity
     protected function closestPointOnSegment(Vector2 $lineStart, Vector2 $lineEnd, Vector2 $point): Vector2
     {
         $line = $lineEnd->diff($lineStart);
+
         // Lasers use a squared-length cutoff; hooks and projectiles use length.
         if ($line->dot($line) < 0.0001) {
             return clone $lineStart;

@@ -15,13 +15,10 @@ class SnapHandler
     protected const HISTORY_TICKS = 3 * NetworkParams::TICKS_PER_SECOND;
 
     protected int $state;
-
     protected int $lastAckedTick;
 
     protected int $latency;
-
     protected int $minimumLatency;
-
     protected int $latencyWindowStart;
 
     protected SnapshotEncoder $encoder;
@@ -74,6 +71,7 @@ class SnapHandler
     {
         $this->lastAckedTick = $tick;
         $snap                = $this->sentList[$tick] ?? null;
+
         if ($snap === null) {
             return;
         }
@@ -104,6 +102,7 @@ class SnapHandler
         $oldestTick     = $currentTick - self::HISTORY_TICKS;
         $this->sentList = array_filter($this->sentList, fn (ConnectionSnap $snap): bool => $snap->getTick() >= $oldestTick);
         $deltaSnap      = $this->sentList[$this->lastAckedTick] ?? null;
+
         if ($deltaSnap === null && $this->state === self::STATE_FULL) {
             $this->state = self::STATE_RECOVER;
         }
@@ -114,6 +113,7 @@ class SnapHandler
             items: $indexedItems,
             deltaItems: $deltaSnap?->getSnapItems() ?? [],
         );
+
         foreach ($chunks as $chunk) {
             $this->connection->chunks()->add($chunk)->send();
         }

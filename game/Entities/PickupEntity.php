@@ -72,12 +72,14 @@ class PickupEntity extends AbstractEntity
 
         $closest         = null;
         $closestDistance = PHP_FLOAT_MAX;
+
         foreach ($this->world->getEntities() as $entity) {
             if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
                 continue;
             }
 
             $dist = $this->position->distance($entity->getPosition());
+
             if ($dist > self::PICKUP_PHYS_SIZE + $entity->getHitBoxRadius() || $dist >= $closestDistance) {
                 continue;
             }
@@ -92,6 +94,7 @@ class PickupEntity extends AbstractEntity
 
         // Only the nearest character can take the pickup (CPickup::Tick).
         $respawnTime = $this->onPickup($closest);
+
         if ($respawnTime !== null && ! $this->alwaysAvailable) {
             $this->spawnTick = $respawnTime < 0 ? null : $currentTick + $respawnTime;
         }
@@ -112,6 +115,7 @@ class PickupEntity extends AbstractEntity
                     $soundId     = GameConstants::SOUND_PICKUP_HEALTH;
                     $respawnTime = $this->respawnTime;
                 }
+
                 break;
 
             case GameConstants::POWERUP_ARMOR:
@@ -119,6 +123,7 @@ class PickupEntity extends AbstractEntity
                     $soundId     = GameConstants::SOUND_PICKUP_ARMOR;
                     $respawnTime = $this->respawnTime;
                 }
+
                 break;
 
             case GameConstants::POWERUP_WEAPON:
@@ -132,6 +137,7 @@ class PickupEntity extends AbstractEntity
                         $respawnTime = $this->respawnTime;
                     }
                 }
+
                 break;
 
             case GameConstants::POWERUP_NINJA:

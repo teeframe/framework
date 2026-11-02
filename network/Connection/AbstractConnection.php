@@ -15,24 +15,18 @@ use TeeFrame\Network\Packets\DefaultPacket;
 abstract class AbstractConnection
 {
     public string $destinationAddress;
-
     public int $destinationPort;
 
     public int $sequence;
-
     public int $ack;
-
     public int $peerAck;
 
     /** Monotonic transport timestamps, in nanoseconds. */
     public int $lastSendTime;
-
     public int $lastRecvTime;
-
     public int $lastResendAskTime;
 
     protected ChunkHandler $chunkHandler;
-
     protected SnapHandler $snapHandler;
 
     /** @var list<AbstractChunk> */
@@ -97,6 +91,7 @@ abstract class AbstractConnection
     public function update(): ?string
     {
         $now = $this->tickHandler->getTime();
+
         if ($now - $this->lastRecvTime > 10_000_000_000) {
             return 'Timeout';
         }
@@ -108,6 +103,7 @@ abstract class AbstractConnection
         if ($now - $this->lastSendTime > 500_000_000) {
             $this->chunks()->send();
         }
+
         if ($now - $this->lastSendTime > 1_000_000_000) {
             $this->sendControlMessage(NetworkMessages::CONTROL_KEEP_ALIVE);
         }

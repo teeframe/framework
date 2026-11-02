@@ -16,6 +16,7 @@ class MapBufferReader
     public function readString(): string
     {
         $end = strpos($this->buffer, "\0", $this->offset);
+
         if ($end === false) {
             $this->offset = strlen($this->buffer);
 
@@ -50,11 +51,13 @@ class MapBufferReader
         if ($count < 0) {
             throw new \InvalidArgumentException('Negative map integer count');
         }
+
         if ($count > intdiv($this->remaining(), 4)) {
             throw new \UnexpectedValueException('Truncated map integer buffer');
         }
 
         $ints = [];
+
         for ($i = 0; $i < $count; $i++) {
             $ints[] = $this->readInt();
         }
@@ -72,6 +75,7 @@ class MapBufferReader
         if ($length < 0) {
             throw new \InvalidArgumentException('Negative map read length');
         }
+
         if ($length > $this->remaining()) {
             throw new \UnexpectedValueException('Truncated map buffer');
         }

@@ -19,31 +19,37 @@ use TeeFrame\Network\NetworkParams;
 trait HasCharacterCore
 {
     public Vector2 $vel;
+
     public Vector2 $hookDragVelocity;
     public Vector2 $hookPos;
     public Vector2 $hookDir;
-    public int $hookTick        = 0;
-    public int $hookState       = GameConstants::HOOK_IDLE;
-    public int $hookedPlayer    = -1;
-    public int $jumped          = 0;
-    public int $direction       = 0;
-    public int $angle           = 0;
+    public int $hookTick     = 0;
+    public int $hookState    = GameConstants::HOOK_IDLE;
+    public int $hookedPlayer = -1;
+
+    public int $jumped    = 0;
+    public int $direction = 0;
+    public int $angle     = 0;
+
     public int $triggeredEvents = 0;
 
     protected function initCore(Vector2 $position): void
     {
-        $this->position         = clone $position;
-        $this->vel              = new Vector2(0, 0);
+        $this->position = clone $position;
+        $this->vel      = new Vector2(0, 0);
+
         $this->hookDragVelocity = new Vector2(0, 0);
         $this->hookPos          = new Vector2(0, 0);
         $this->hookDir          = new Vector2(0, 0);
         $this->hookTick         = 0;
         $this->hookState        = GameConstants::HOOK_IDLE;
         $this->hookedPlayer     = -1;
-        $this->jumped           = 0;
-        $this->direction        = 0;
-        $this->angle            = 0;
-        $this->triggeredEvents  = 0;
+
+        $this->jumped    = 0;
+        $this->direction = 0;
+        $this->angle     = 0;
+
+        $this->triggeredEvents = 0;
     }
 
     /**
@@ -63,9 +69,11 @@ trait HasCharacterCore
         $this->triggeredEvents = 0;
 
         $grounded = false;
+
         if ($collision->isSolidAt($this->position->x + $physSize / 2, $this->position->y + $physSize / 2 + 5)) {
             $grounded = true;
         }
+
         if ($collision->isSolidAt($this->position->x - $physSize / 2, $this->position->y + $physSize / 2 + 5)) {
             $grounded = true;
         }
@@ -80,14 +88,17 @@ trait HasCharacterCore
 
         // Setup angle: atan(y/x) + pi if x < 0
         $a = 0.0;
+
         if ($inputTargetX === 0) {
             $a = atan((float) $inputTargetY);
         } else {
             $a = atan((float) $inputTargetY / (float) $inputTargetX);
         }
+
         if ($inputTargetX < 0) {
             $a += M_PI;
         }
+
         $this->angle = (int) ($a * 256.0);
 
         // Handle jump
@@ -139,9 +150,11 @@ trait HasCharacterCore
         if ($this->direction < 0) {
             $this->vel->x = self::saturatedAdd(-$maxSpeed, $maxSpeed, $this->vel->x, -$accel);
         }
+
         if ($this->direction > 0) {
             $this->vel->x = self::saturatedAdd(-$maxSpeed, $maxSpeed, $this->vel->x, $accel);
         }
+
         if ($this->direction === 0) {
             $this->vel->x *= $friction;
         }
@@ -157,6 +170,7 @@ trait HasCharacterCore
             $distance = $this->position->distance($otherCharacter->position);
             $dir      = $this->position->diff($otherCharacter->position);
             $dirLen   = $dir->length();
+
             if ($dirLen > 0.0) {
                 $dir = $dir->normalize();
             } else {
@@ -195,6 +209,7 @@ trait HasCharacterCore
         }
 
         $speed = $this->vel->length();
+
         if ($speed > 6000) {
             $this->vel = $this->vel->normalize();
             $this->vel->x *= 6000;
@@ -231,9 +246,11 @@ trait HasCharacterCore
 
         $movement = $newPos->diff($this->position);
         $distance = $movement->length();
+
         if ($tune->playerCollision > 0 && $otherCharacters !== [] && $distance > 0.0) {
             $end     = (int) ($distance + 1);
             $lastPos = clone $this->position;
+
             // CCharacterCore::Move samples the path after map collision has shortened it.
             for ($i = 0; $i < $end; $i++) {
                 $fraction = $i / $distance;
@@ -241,11 +258,14 @@ trait HasCharacterCore
                     $this->position->x + $movement->x * $fraction,
                     $this->position->y + $movement->y * $fraction,
                 );
+
                 foreach ($otherCharacters as $character) {
                     if ($character === $this || ! $character->alive || $character->isMarkedForDestruction()) {
                         continue;
                     }
+
                     $separation = $pos->distance($character->position);
+
                     if ($separation < self::PHYS_SIZE && $separation > 0.0) {
                         if ($i > 0) {
                             $newPos = $lastPos;
@@ -256,6 +276,7 @@ trait HasCharacterCore
                         break 2;
                     }
                 }
+
                 $lastPos = $pos;
             }
         }
@@ -331,6 +352,7 @@ trait HasCharacterCore
 
                     if ($dist < 28.0 + 2.0) {
                         $lineDist = $this->hookPos->distance($closestPoint);
+
                         if ($lineDist < $closestDist) {
                             $closestDist = $lineDist;
                             $this->triggeredEvents |= GameConstants::COREEVENT_HOOK_ATTACH_PLAYER;
@@ -390,6 +412,7 @@ trait HasCharacterCore
             }
 
             $this->hookTick++;
+
             if ($this->hookedPlayer >= 0 && $this->hookTick > NetworkParams::TICKS_PER_SECOND + intdiv(NetworkParams::TICKS_PER_SECOND, 5)) {
                 $this->hookedPlayer = -1;
                 $this->hookState    = GameConstants::HOOK_RETRACTED;
@@ -404,7 +427,9 @@ trait HasCharacterCore
             if ($current < $min) {
                 return $current;
             }
+
             $current += $modifier;
+
             if ($current < $min) {
                 $current = $min;
             }
@@ -415,7 +440,9 @@ trait HasCharacterCore
         if ($current > $max) {
             return $current;
         }
+
         $current += $modifier;
+
         if ($current > $max) {
             $current = $max;
         }

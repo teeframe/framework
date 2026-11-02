@@ -37,6 +37,7 @@ class ConverseCommand extends AbstractCommand
     public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $target = $tee instanceof PlayerTee ? $tee->lastWhisperTo?->get() : null;
+
         if ($target === null || ! in_array($target, $world->getTees(), true)) {
             $this->reply($world, $tee, 'No ongoing conversation. Whisper to someone first.', $output);
 

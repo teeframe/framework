@@ -19,6 +19,7 @@ class DefaultPacket extends AbstractPacket
         }
 
         $payload = [];
+
         foreach ($chunks as $chunk) {
             $payload = [...$payload, ...$chunk->encode()];
         }

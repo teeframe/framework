@@ -44,6 +44,7 @@ class WhisperCommand extends AbstractCommand
             fn (AbstractTee $candidate): bool => strcasecmp($candidate->name, $targetName) === 0,
         );
         $targetTee = array_find($candidates, fn (AbstractTee $candidate): bool => $candidate->name === $targetName);
+
         if ($targetTee === null && count($candidates) === 1) {
             $targetTee = reset($candidates);
         }
@@ -73,6 +74,7 @@ class WhisperCommand extends AbstractCommand
         if ($tee instanceof PlayerTee) {
             $tee->lastWhisperTo = \WeakReference::create($targetTee);
         }
+
         $server = $world->getServer();
         $server->sendToTee($world, $targetTee->teeIndex, new SvChatChunk(
             team: 2,

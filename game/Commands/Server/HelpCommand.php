@@ -35,12 +35,15 @@ class HelpCommand extends AbstractCommand
 
             return;
         }
+
         $name = strtolower($arguments[0]);
 
         $info = $world->getServer()->getRcon()->getCommandInfo($world)[$name] ?? null;
+
         if ($info === null) {
             throw new \InvalidArgumentException('Unknown command: '.$name);
         }
+
         $this->reply($world, $tee, $name.($info['params'] !== '' ? ' '.$info['params'] : '').' - '.$info['help'], $output);
     }
 }

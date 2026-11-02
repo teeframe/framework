@@ -20,6 +20,7 @@ abstract class AbstractTee implements SnapableObject
     public string $name;
     public string $clan;
     public int $country;
+
     public string $skinName;
     public bool $useCustomColor;
     public int $colorBody;
@@ -39,9 +40,10 @@ abstract class AbstractTee implements SnapableObject
     public function reset(): void
     {
         // Client Info
-        $this->name           = '';
-        $this->clan           = '';
-        $this->country        = 0;
+        $this->name    = '';
+        $this->clan    = '';
+        $this->country = 0;
+
         $this->skinName       = '';
         $this->useCustomColor = false;
         $this->colorBody      = 0;
@@ -56,9 +58,10 @@ abstract class AbstractTee implements SnapableObject
 
     public function setInfo(string $name, string $clan, int $country, string $skinName, bool $useCustomColor, int $colorBody, int $colorFeet): void
     {
-        $this->name           = $name;
-        $this->clan           = $clan;
-        $this->country        = $country;
+        $this->name    = $name;
+        $this->clan    = $clan;
+        $this->country = $country;
+
         $this->skinName       = $skinName;
         $this->useCustomColor = $useCustomColor;
         $this->colorBody      = $colorBody;

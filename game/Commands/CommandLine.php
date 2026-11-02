@@ -17,6 +17,7 @@ class CommandLine
         $line   = ltrim($line);
         $name   = self::name($line);
         $length = strlen($name);
+
         if (strcasecmp($name, $command->getName()) !== 0
             && ! array_any($command->getAliases(), fn (string $alias): bool => strcasecmp($name, $alias) === 0)) {
             return null;
@@ -31,12 +32,15 @@ class CommandLine
         $arguments = [];
         $offset    = 0;
         $length    = strlen($line);
+
         foreach (self::parseParameterDefinitions($params) as $parameter) {
             $offset += strspn($line, " \t\r\n\v\f", $offset);
+
             if ($offset === $length) {
                 if (! $parameter['optional']) {
                     throw new \InvalidArgumentException('Missing argument: '.$parameter['name']);
                 }
+
                 break;
             }
 
@@ -46,13 +50,16 @@ class CommandLine
                 'f'     => filter_var($value, FILTER_VALIDATE_FLOAT) !== false && is_finite((float) $value),
                 default => true,
             };
+
             if (! $valid) {
                 throw new \InvalidArgumentException('Expected '.($parameter['type'] === 'i' ? 'an integer' : 'a float').' for '.$parameter['name']);
             }
+
             $arguments[] = $value;
         }
 
         $offset += strspn($line, " \t\r\n\v\f", $offset);
+
         if ($offset !== $length) {
             throw new \InvalidArgumentException('Too many command arguments');
         }
@@ -68,14 +75,18 @@ class CommandLine
         $length     = strlen($params);
         $optional   = false;
         $rest       = false;
+
         while ($offset < $length) {
             $offset += strspn($params, " \t\r\n\v\f", $offset);
+
             if ($offset === $length) {
                 break;
             }
+
             if ($rest || ! preg_match('/\G(\??)([sifr])(?:\[([^\]]+)\])?(?=\s|$)/', $params, $matches, 0, $offset)) {
                 throw new \LogicException('Invalid command parameter format: '.$params);
             }
+
             $optional     = $optional || $matches[1] === '?';
             $rest         = $matches[2] === 'r';
             $parameters[] = [
@@ -92,6 +103,7 @@ class CommandLine
     protected static function readArgument(string $line, int &$offset, bool $rest): string
     {
         $length = strlen($line);
+
         if ($line[$offset] !== '"') {
             $size  = $rest ? $length - $offset : strcspn($line, " \t\r\n\v\f", $offset);
             $value = substr($line, $offset, $size);
@@ -102,16 +114,21 @@ class CommandLine
 
         $value = '';
         $offset++;
+
         while ($offset < $length && $line[$offset] !== '"') {
             if ($line[$offset] === '\\' && $offset + 1 < $length && ($line[$offset + 1] === '"' || $line[$offset + 1] === '\\')) {
                 $offset++;
             }
+
             $value .= $line[$offset++];
         }
+
         if ($offset === $length) {
             throw new \InvalidArgumentException('Unclosed quote in command line');
         }
+
         $offset++;
+
         if ($offset < $length && strspn($line, " \t\r\n\v\f", $offset, 1) === 0) {
             throw new \InvalidArgumentException('Expected whitespace after a quoted argument');
         }
@@ -129,28 +146,35 @@ class CommandLine
 
         for ($i = 0; $i < $length; $i++) {
             $character = $line[$i];
+
             if ($character === '\\' && $i + 1 < $length && ($line[$i + 1] === '"' || $line[$i + 1] === '\\')) {
                 $i++;
 
                 continue;
             }
+
             if ($character === '"') {
                 $quoted = ! $quoted;
 
                 continue;
             }
+
             if ($quoted) {
                 continue;
             }
+
             if ($character === '#') {
                 $length = $i;
                 break;
             }
+
             if ($character === ';') {
                 $command = trim(substr($line, $start, $i - $start));
+
                 if ($command !== '') {
                     $commands[] = $command;
                 }
+
                 $start = $i + 1;
             }
         }
@@ -158,7 +182,9 @@ class CommandLine
         if ($quoted) {
             throw new \InvalidArgumentException('Unclosed quote in command line');
         }
+
         $command = trim(substr($line, $start, $length - $start));
+
         if ($command !== '') {
             $commands[] = $command;
         }

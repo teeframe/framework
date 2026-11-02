@@ -18,7 +18,6 @@ class PlayerTee extends AbstractTee
     public ?\WeakReference $lastWhisperTo = null;
 
     public int $score = 0;
-
     // Tick when the current score run started
     public int $scoreStartTick = 0;
 
@@ -27,9 +26,10 @@ class PlayerTee extends AbstractTee
 
     // Last tick with meaningful input activity
     public int $lastActionTick = 0;
-    public bool $spawning      = false;
-    public int $respawnTick    = 0;
-    public int $dieTick        = 0;
+
+    public bool $spawning   = false;
+    public int $respawnTick = 0;
+    public int $dieTick     = 0;
 
     // Team / spectator (CPlayer::m_Team / m_SpectatorID / m_TeamChangeTick)
     public int $team                 = GameConstants::TEAM_RED;
@@ -37,7 +37,8 @@ class PlayerTee extends AbstractTee
     public int $teamChangeTick       = 0;
     public int $lastSetTeam          = 0;
     public int $lastSetSpectatorMode = 0;
-    public int $lastChangeInfo       = -1;
+
+    public int $lastChangeInfo = -1;
 
     /**
      * Buffered client inputs keyed by scheduled server tick (m_aInputs).
@@ -93,6 +94,7 @@ class PlayerTee extends AbstractTee
         // Replacing a tick also refreshes its arrival order for capacity eviction.
         unset($this->inputs[$tick]);
         $this->inputs[$tick] = $input;
+
         while (count($this->inputs) > self::INPUT_BUFFER_SIZE) {
             unset($this->inputs[array_key_first($this->inputs)]);
         }
@@ -102,15 +104,18 @@ class PlayerTee extends AbstractTee
     {
         $input     = null;
         $inputTick = null;
+
         // After a skipped tick, use the newest due frame instead of replaying a backlog.
         foreach ($this->inputs as $tick => $bufferedInput) {
             if ($tick > $currentTick) {
                 continue;
             }
+
             if ($inputTick === null || $tick > $inputTick) {
                 $input     = $bufferedInput;
                 $inputTick = $tick;
             }
+
             unset($this->inputs[$tick]);
         }
 
@@ -146,6 +151,7 @@ class PlayerTee extends AbstractTee
         $world = $this->world;
         $team  = $world?->getGameController()->clampTeam($team)
             ?? max(GameConstants::TEAM_SPECTATORS, min(GameConstants::TEAM_BLUE, $team));
+
         if ($this->team === $team) {
             return;
         }

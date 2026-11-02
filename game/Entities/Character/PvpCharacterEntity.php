@@ -15,7 +15,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 {
     public int $damageTaken     = 0;
     public int $damageTakenTick = 0;
-    public int $ammoRegenStart  = -1;
+
+    public int $ammoRegenStart = -1;
 
     protected function shootHammer(): int
     {
@@ -32,6 +33,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             if (! $entity instanceof AbstractCharacterEntity) {
                 continue;
             }
+
             if ($entity === $this || ! $entity->alive) {
                 continue;
             }
@@ -44,12 +46,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
             if ($collision !== null) {
                 [$hit] = $collision->intersectLine($projStartPos, $targetPos);
+
                 if ($hit) {
                     continue;
                 }
             }
 
             $diff = $targetPos->diff($projStartPos);
+
             if ($diff->length() > 0.0) {
                 $hitPos = $targetPos->diff($diff->normalize()->mul(self::PHYS_SIZE * 0.5));
             } else {
@@ -62,11 +66,13 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             ));
 
             $dir = $targetPos->diff($this->position);
+
             if ($dir->length() > 0.0) {
                 $dir = $dir->normalize();
             } else {
                 $dir = new Vector2(0, -1);
             }
+
             $knockback = (new Vector2(0, -1))->add($dir->add(new Vector2(0, -1.1))->normalize()->mul(10.0));
 
             $entity->takeDamage($knockback, 3, $this->tee->teeIndex ?? -1, GameConstants::WEAPON_HAMMER);
@@ -86,8 +92,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $dir = $this->getAimDirection();
-
+        $dir  = $this->getAimDirection();
         $tune = $this->world->getTuneController();
 
         $this->spawnProjectile(
@@ -145,8 +150,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return 0;
         }
 
-        $dir = $this->getAimDirection();
-
+        $dir  = $this->getAimDirection();
         $tune = $this->world->getTuneController();
 
         $this->spawnProjectile(
@@ -172,7 +176,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $dir  = $this->getAimDirection();
         $tune = $this->world->getTuneController();
 
-        $laser = new PvpLaserEntity($this->world,
+        $laser = new PvpLaserEntity(
+            $this->world,
             position: clone $this->position,
             direction: $dir,
             energy: $tune->laserReach / 100.0,
@@ -324,6 +329,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         // Friendly fire check (gamecontroller.cpp L698): in teamplay, same-team
         // hits deal no damage. Self-damage is allowed (handled below).
         $victimTeeIndex = $this->tee !== null ? $this->tee->teeIndex : -1;
+
         if ($this->world->getGameController()->isFriendlyFire($victimTeeIndex, $attackerTeeIndex)) {
             return;
         }
@@ -360,8 +366,10 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $attacker = $attackerTeeIndex >= 0 && $attackerTeeIndex !== $victimTeeIndex
             ? $this->world->findTee($attackerTeeIndex)
             : null;
+
         if ($attacker !== null) {
             $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $attackerTeeIndex);
+
             foreach ($this->world->getTees() as $tee) {
                 if ($tee instanceof PlayerTee && $tee->team === GameConstants::TEAM_SPECTATORS && $tee->spectatorId === $attackerTeeIndex) {
                     $this->world->createSoundGlobalFor(GameConstants::SOUND_HIT, $tee->teeIndex);
@@ -433,6 +441,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $this->vel->y = $this->ninjaActivationDir->y * 50;
 
         $collision = $this->world->getMap()->getCollision();
+
         if ($collision !== null) {
             $collision->moveBox($this->position, $this->vel, new Vector2(self::PHYS_SIZE, self::PHYS_SIZE), 0.0);
         }
@@ -448,9 +457,11 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
                 continue;
             }
+
             if (in_array($entity, $this->ninjaHitObjects, true)) {
                 continue;
             }
+
             if ($entity->getPosition()->distance($this->position) > self::PHYS_SIZE * 2.0) {
                 continue;
             }

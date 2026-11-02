@@ -45,11 +45,10 @@ class NetworkMessages
     const REQUEST_MAP_DATA = 19;
 
     // sent by both
-    const PING       = 22;
-    const PING_REPLY = 23;
-
-    const RCON_CMD_ADD     = 25;
-    const RCON_CMD_REM     = 26;
+    const PING         = 22;
+    const PING_REPLY   = 23;
+    const RCON_CMD_ADD = 25;
+    const RCON_CMD_REM = 26;
 
     /*
      * Game Messages

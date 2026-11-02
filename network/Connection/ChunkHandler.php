@@ -14,12 +14,10 @@ class ChunkHandler
      * @var AbstractChunk[]
      */
     protected array $queue;
-
     protected int $queueSize;
 
     /** @var list<array{chunk: AbstractChunk, firstSendTime: int, lastSendTime: int}> */
     protected array $sentList;
-
     /** @var array<int, int> Encoded sizes of queued and sent vital chunks, keyed by sequence. This is not calculated dynamically as re-encoding chunks every time may consume too much CPU */
     protected array $pendingSizes;
 
@@ -49,6 +47,7 @@ class ChunkHandler
         }
 
         $chunkSize = count($chunk->encode());
+
         if ($chunkSize + NetworkParams::PACKET_HEADER_SIZE_DEFAULT > NetworkParams::MAXIMUM_PACKET_SIZE) {
             throw new \RuntimeException('Chunk exceeds the packet size limit');
         }
@@ -142,14 +141,17 @@ class ChunkHandler
         }
 
         $oldest = $this->sentList[0] ?? null;
+
         if ($oldest === null) {
             return null;
         }
 
         $now = $this->tickHandler->getTime();
+
         if ($now - $oldest['firstSendTime'] > 10_000_000_000) {
             return 'Too weak connection (not acked for 10 seconds)';
         }
+
         if ($now - $oldest['lastSendTime'] > 1_000_000_000) {
             $this->resend($oldest['chunk']->getSequence());
         }
@@ -160,8 +162,10 @@ class ChunkHandler
     public function removeAcknowledgedChunks(int $sequence): void
     {
         $acknowledged = 0;
+
         foreach ($this->sentList as $entry) {
             $chunkSequence = $entry['chunk']->getSequence();
+
             if (! NetworkBase::isSequenceInBackroom($chunkSequence, $sequence)) {
                 break;
             }

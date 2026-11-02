@@ -30,6 +30,7 @@ class SvVoteOptionListAddChunk extends AbstractChunk
         $numOptions = $payload->extractInt();
 
         $descriptions = [];
+
         for ($i = 0; $i < self::MAX_OPTIONS; $i++) {
             $descriptions[] = $payload->extractString();
         }

@@ -41,22 +41,27 @@ class EmoteCommand extends AbstractCommand
             'blink'    => GameConstants::EMOTE_BLINK,
             default    => null,
         };
+
         if ($emote === null) {
             $this->reply($world, $tee, $this->getDescription(), $output);
 
             return;
         }
+
         $seconds = isset($arguments[1]) ? (int) $arguments[1] : null;
+
         if ($seconds !== null && ($seconds < 1 || $seconds > 60)) {
             $this->reply($world, $tee, 'Duration must be between 1 and 60 seconds', $output);
 
             return;
         }
+
         if ($world->isPaused() || $tee->character === null) {
             $this->reply($world, $tee, 'You need a living character in an unpaused world.', $output);
 
             return;
         }
+
         $tee->character->setEmote($emote, $seconds === null ? -1 : $world->getCurrentTick() + $seconds * NetworkParams::TICKS_PER_SECOND);
     }
 }

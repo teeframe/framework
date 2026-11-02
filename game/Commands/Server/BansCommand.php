@@ -32,6 +32,7 @@ class BansCommand extends AbstractCommand
     {
         $bans = array_values($world->getServer()->getBanList()->getBans());
         $this->reply($world, $tee, count($bans).' active ban(s)', $output);
+
         foreach ($bans as $index => $ban) {
             $duration = $ban->expiry === null ? 'permanent' : (int) ceil(($ban->expiry - time()) / 60).' minute(s) left';
             $this->reply($world, $tee, $index.': '.$ban->address.' ('.$duration.') '.$ban->reason, $output);

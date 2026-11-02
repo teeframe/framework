@@ -32,6 +32,7 @@ class EnvelopeItem extends AbstractMapItem
             : GroupItem::readI32String($reader, 8);
 
         $synchronized = true;
+
         if ($version >= 2) {
             $synchronized = $reader->readInt() !== 0;
         }

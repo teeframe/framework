@@ -33,13 +33,17 @@ class SetTeamCommand extends AbstractCommand
     public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
         $target = $world->findTee((int) $arguments[0]);
+
         if (! $target instanceof PlayerTee) {
             throw new \InvalidArgumentException('Invalid player id');
         }
+
         $delay = (int) ($arguments[2] ?? 0);
+
         if ($delay < 0 || $delay > 1440) {
             throw new \InvalidArgumentException('Team-change delay must be between 0 and 1440 minutes');
         }
+
         $target->setTeam(max(-1, min(1, (int) $arguments[1])));
         $target->teamChangeTick = $world->getCurrentTick() + $delay * 60 * NetworkParams::TICKS_PER_SECOND;
     }

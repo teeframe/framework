@@ -88,6 +88,7 @@ class Collision
     public function intersectLine(Vector2 $pos0, Vector2 $pos1): array
     {
         $distance = $pos0->distance($pos1);
+
         if ($distance <= 0.0) {
             return [0, $pos1, $pos1];
         }
@@ -149,12 +150,15 @@ class Collision
         if ($this->isSolidAt($pos->x - $halfW, $pos->y - $halfH)) {
             return true;
         }
+
         if ($this->isSolidAt($pos->x + $halfW, $pos->y - $halfH)) {
             return true;
         }
+
         if ($this->isSolidAt($pos->x - $halfW, $pos->y + $halfH)) {
             return true;
         }
+
         if ($this->isSolidAt($pos->x + $halfW, $pos->y + $halfH)) {
             return true;
         }

@@ -264,6 +264,7 @@ class ConnectionHandler
         );
 
         $voteChunks = $connection->world()->getVoteController()->getInitialVoteChunks($connection->playerTee());
+
         foreach ($voteChunks as $voteChunk) {
             $connection->chunks()->add($voteChunk);
         }

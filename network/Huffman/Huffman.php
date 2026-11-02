@@ -43,7 +43,6 @@ class Huffman
     public array $decodeLut;
 
     public int $numNodes;
-
     public int $startNodeIndex;
 
     /**
@@ -52,6 +51,7 @@ class Huffman
     public function __construct(array $frequencies = self::FREQ_TABLE)
     {
         $this->nodes = [];
+
         for ($i = 0; $i < self::HUFFMAN_MAX_NODES; $i++) {
             $this->nodes[$i] = new HuffmanNode;
         }
@@ -66,19 +66,23 @@ class Huffman
             $bits  = $i;
             $found = false;
             $index = $this->startNodeIndex;
+
             for ($x = 0; $x < self::HUFFMAN_LUTBITS; $x++) {
                 if ($bits & 1) {
                     $index = $this->nodes[$index]->right;
                 } else {
                     $index = $this->nodes[$index]->left;
                 }
+
                 $bits >>= 1;
+
                 if ($this->nodes[$index]->numBits) {
                     $this->decodeLut[$i] = $index;
                     $found               = true;
                     break;
                 }
             }
+
             if (! $found) {
                 $this->decodeLut[$i] = $index;
             }
@@ -90,9 +94,11 @@ class Huffman
         if ($this->nodes[$nodeIndex]->right !== self::HUFFMAN_NULL_NODE) {
             $this->assignSymbolCodes($this->nodes[$nodeIndex]->right, $bits | (1 << $depth), $depth + 1);
         }
+
         if ($this->nodes[$nodeIndex]->left !== self::HUFFMAN_NULL_NODE) {
             $this->assignSymbolCodes($this->nodes[$nodeIndex]->left, $bits, $depth + 1);
         }
+
         if ($this->nodes[$nodeIndex]->numBits) {
             $this->nodes[$nodeIndex]->bits    = $bits;
             $this->nodes[$nodeIndex]->numBits = $depth;
@@ -107,8 +113,10 @@ class Huffman
     public function bubbleSort(array $indexList, array $nodeList, int $size): array
     {
         $changed = true;
+
         while ($changed) {
             $changed = false;
+
             for ($i = 0; $i < $size - 1; $i++) {
                 if ($nodeList[$indexList[$i]]->frequency < $nodeList[$indexList[$i + 1]]->frequency) {
                     $temp              = $indexList[$i];
@@ -117,6 +125,7 @@ class Huffman
                     $changed           = true;
                 }
             }
+
             $size--;
         }
 
@@ -241,9 +250,11 @@ class Huffman
         if ($size === 0) {
             $size = count($inputBuffer);
         }
+
         if ($size < 0 || $size > count($inputBuffer) || $outputSize < 0) {
             throw new \UnexpectedValueException('Invalid Huffman buffer size');
         }
+
         $srcIndex = 0;
 
         while (true) {
@@ -262,16 +273,19 @@ class Huffman
             if ($nodeIndex === -1) {
                 $nodeIndex = $this->decodeLut[$bits & self::HUFFMAN_LUTMASK];
             }
+
             if ($this->nodes[$nodeIndex]->numBits) {
                 if ($bitCount < $this->nodes[$nodeIndex]->numBits) {
                     throw new \UnexpectedValueException('Truncated Huffman symbol or missing EOF');
                 }
+
                 $bits >>= $this->nodes[$nodeIndex]->numBits;
                 $bitCount -= $this->nodes[$nodeIndex]->numBits;
             } else {
                 if ($bitCount < self::HUFFMAN_LUTBITS) {
                     throw new \UnexpectedValueException('Truncated Huffman symbol or missing EOF');
                 }
+
                 $bits >>= self::HUFFMAN_LUTBITS;
                 $bitCount -= self::HUFFMAN_LUTBITS;
 
@@ -279,11 +293,13 @@ class Huffman
                     if ($bitCount === 0) {
                         throw new \UnexpectedValueException('Truncated Huffman symbol or missing EOF');
                     }
+
                     if ($bits & 1) {
                         $nodeIndex = $this->nodes[$nodeIndex]->right;
                     } else {
                         $nodeIndex = $this->nodes[$nodeIndex]->left;
                     }
+
                     $bitCount -= 1;
                     $bits >>= 1;
 
@@ -300,6 +316,7 @@ class Huffman
             if (count($output) >= $outputSize) {
                 throw new \UnexpectedValueException('Huffman output exceeds the size limit');
             }
+
             $output[] = $this->nodes[$nodeIndex]->symbol;
         }
 

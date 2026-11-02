@@ -108,17 +108,21 @@ class NetworkBase
 
         $firstByte |= $value & 0x3F;
         $value >>= 6;
+
         if ($value !== 0) {
             $firstByte |= 0x80;
         }
 
         $result = [$firstByte];
+
         while ($value !== 0) {
             $byte = $value & 0x7F;
             $value >>= 7;
+
             if ($value !== 0) {
                 $byte |= 0x80;
             }
+
             $result[] = $byte;
         }
 
@@ -144,6 +148,7 @@ class NetworkBase
 
         while ($data[$pointer] & 0x80) {
             $pointer++;
+
             if (! isset($data[$pointer])) {
                 throw new \UnexpectedValueException('Truncated packed integer');
             }

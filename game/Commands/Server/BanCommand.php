@@ -35,20 +35,26 @@ class BanCommand extends AbstractCommand
         $server      = $world->getServer();
         $address     = $server->resolveClientAddress($world, $arguments[0]);
         $connections = array_filter($server->getConnections(), fn ($connection): bool => IpAddress::normalize($connection->destinationAddress) === $address);
+
         foreach ($connections as $connection) {
             if ($connection->playerTee() === $tee || $connection->rcon()->authenticated) {
                 throw new \InvalidArgumentException('Cannot ban your address or an authenticated administrator\'s address');
             }
         }
+
         $minutes = (int) ($arguments[1] ?? 30);
+
         if ($minutes < 0 || $minutes > 525600) {
             throw new \InvalidArgumentException('Ban duration must be between 0 and 525600 minutes');
         }
+
         $reason = Utf8::truncateBytes($arguments[2] ?? 'Banned by administrator', 127);
         $server->getBanList()->ban($address, $minutes === 0 ? null : $minutes * 60, $reason);
+
         foreach ($connections as $connection) {
             $connection->closeConnection($reason);
         }
+
         $this->reply($world, $tee, 'Banned '.$address.($minutes === 0 ? ' permanently' : ' for '.$minutes.' minute(s)'), $output);
     }
 }

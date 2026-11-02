@@ -16,8 +16,9 @@ class Console
 
     /** @var WeakMap<\Closure, int>|null */
     protected static ?WeakMap $listeners = null;
-    protected static int $outputLevel    = self::LEVEL_INFO;
-    protected static ?bool $colors       = null;
+
+    protected static int $outputLevel = self::LEVEL_INFO;
+    protected static ?bool $colors    = null;
 
     /** @var resource|null */
     protected static $logFile          = null;
@@ -56,6 +57,7 @@ class Console
         if (static::$logFile !== null) {
             fclose(static::$logFile);
         }
+
         static::$logFile      = $file;
         static::$logFileLevel = $level;
     }
@@ -135,6 +137,7 @@ class Console
         }
 
         $data = $line.PHP_EOL;
+
         if (@fwrite(static::$logFile, $data) === strlen($data)) {
             return;
         }
@@ -147,6 +150,7 @@ class Console
     protected static function openLogFile(string $path)
     {
         set_error_handler(static fn (): bool => true, E_WARNING);
+
         try {
             $file = fopen($path, 'ab');
         } finally {

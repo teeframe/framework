@@ -32,12 +32,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public int $lastWeapon   = GameConstants::WEAPON_HAMMER;
     public int $queuedWeapon = -1;
 
-    public bool $alive = false;
-
+    public bool $alive     = false;
     public int $tick       = 0;
     public int $attackTick = 0;
-    public int $emote      = GameConstants::EMOTE_NORMAL;
 
+    public int $emote            = GameConstants::EMOTE_NORMAL;
     protected int $emoteStopTick = -1;
 
     public int $reloadTimer = 0;
@@ -52,7 +51,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     public Vector2 $ninjaActivationDir;
     public int $ninjaCurrentMoveTime = 0;
     public float $ninjaOldVelAmount  = 0.0;
-
     /**
      * @var list<AbstractCharacterEntity>
      */
@@ -64,7 +62,6 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     protected PlayerInput $input;
     protected PlayerInput $latestInput;
     protected PlayerInput $latestPrevInput;
-
     protected int $numInputs      = 0;
     protected int $lastActionTick = 0;
 
@@ -122,6 +119,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         // Release fire without generating another press (CCharacter::ResetInput).
         $fire = $this->input->fire;
+
         if ($fire & 1) {
             $fire++;
         }
@@ -187,6 +185,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->tick = $this->world->getCurrentTick();
 
         $collision = $this->world->getMap()->getCollision();
+
         if ($collision === null) {
             return;
         }
@@ -202,7 +201,9 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             $tune,
             $this->getOtherCharacters(),
         );
+
         $radius = self::PHYS_SIZE / 3;
+
         if (($collision->getCollisionAt($this->position->x + $radius, $this->position->y - $radius) & Collision::COLFLAG_DEATH)
             || ($collision->getCollisionAt($this->position->x + $radius, $this->position->y + $radius) & Collision::COLFLAG_DEATH)
             || ($collision->getCollisionAt($this->position->x - $radius, $this->position->y - $radius) & Collision::COLFLAG_DEATH)
@@ -224,15 +225,18 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         }
 
         $collision = $this->world->getMap()->getCollision();
+
         if ($collision === null) {
             return;
         }
 
         $tune = $this->world->getTuneController();
+
         // Ninja must not retain drag that would be applied after its dash.
         if ($this->activeWeapon !== GameConstants::WEAPON_NINJA || $this->ninjaCurrentMoveTime < 0) {
             $this->addDragVelocity($tune);
         }
+
         $this->resetDragVelocity();
 
         $this->move($collision, $tune, $this->getOtherCharacters());
@@ -246,15 +250,19 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         // other clients need server events (CCharacter::TickDefered in 0.6).
         $events           = $this->triggeredEvents;
         $excludedTeeIndex = $this->tee?->teeIndex;
+
         if ($events & GameConstants::COREEVENT_GROUND_JUMP) {
             $this->createSound(GameConstants::SOUND_PLAYER_JUMP, $excludedTeeIndex);
         }
+
         if ($events & GameConstants::COREEVENT_HOOK_ATTACH_PLAYER) {
             $this->createSound(GameConstants::SOUND_HOOK_ATTACH_PLAYER);
         }
+
         if ($events & GameConstants::COREEVENT_HOOK_ATTACH_GROUND) {
             $this->createSound(GameConstants::SOUND_HOOK_ATTACH_GROUND, $excludedTeeIndex);
         }
+
         if ($events & GameConstants::COREEVENT_HOOK_HIT_NOHOOK) {
             $this->createSound(GameConstants::SOUND_HOOK_NOATTACH, $excludedTeeIndex);
         }
@@ -264,9 +272,11 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         $this->attackTick++;
         $this->ninjaActivationTick++;
+
         if ($this->emoteStopTick >= 0) {
             $this->emoteStopTick++;
         }
+
         if ($this->lastActionTick !== 0) {
             $this->lastActionTick++;
         }
@@ -330,8 +340,14 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     protected function getOtherCharacters(): array
     {
         $characters = [];
+
         foreach ($this->world->getEntities() as $entity) {
-            if ($entity instanceof AbstractCharacterEntity && $entity !== $this && $entity->alive && ! $entity->isMarkedForDestruction() && $entity->tee !== null) {
+            if ($entity instanceof AbstractCharacterEntity
+                && $entity !== $this
+                && $entity->alive
+                && ! $entity->isMarkedForDestruction()
+                && $entity->tee !== null
+            ) {
                 $characters[$entity->tee->teeIndex] = $entity;
             }
         }

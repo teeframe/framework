@@ -49,6 +49,7 @@ trait HasWeaponSwitching
 
         while ($i !== $cur) {
             $i = ($i + 1) & self::INPUT_STATE_MASK;
+
             if ($i & 1) {
                 $presses++;
             }
@@ -64,6 +65,7 @@ trait HasWeaponSwitching
         }
 
         $wantedWeapon = $this->activeWeapon;
+
         if ($this->queuedWeapon !== GameConstants::NO_WEAPON) {
             $wantedWeapon = $this->queuedWeapon;
         }
@@ -74,6 +76,7 @@ trait HasWeaponSwitching
         if ($next < 128) {
             while ($next > 0) {
                 $wantedWeapon = ($wantedWeapon + 1) % GameConstants::NUM_WEAPONS;
+
                 if ($this->weapons[$wantedWeapon]->got) {
                     $next--;
                 }
@@ -83,6 +86,7 @@ trait HasWeaponSwitching
         if ($prev < 128) {
             while ($prev > 0) {
                 $wantedWeapon = ($wantedWeapon - 1) < 0 ? GameConstants::NUM_WEAPONS - 1 : $wantedWeapon - 1;
+
                 if ($this->weapons[$wantedWeapon]->got) {
                     $prev--;
                 }

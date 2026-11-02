@@ -32,6 +32,7 @@ class MutesCommand extends AbstractCommand
     {
         $mutes = $world->getServer()->getChatMutes()->getMutes();
         $this->reply($world, $tee, count($mutes).' active mute(s)', $output);
+
         foreach ($mutes as $address => $mute) {
             $this->reply($world, $tee, $address.' ('.max(0, $mute['expiry'] - time()).' second(s) left) '.$mute['reason'], $output);
         }

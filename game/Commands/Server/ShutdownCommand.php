@@ -33,9 +33,11 @@ class ShutdownCommand extends AbstractCommand
     {
         $server = $world->getServer();
         $reason = Utf8::truncateBytes($arguments[0] ?? 'Server shutdown', 127);
+
         foreach ($server->getConnections() as $connection) {
             $connection->closeConnection($reason);
         }
+
         $server->shutdown();
     }
 }

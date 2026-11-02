@@ -19,16 +19,13 @@ class Map
     protected array $layers = [];
 
     protected ?GameLayer $gameLayer = null;
-
     protected ?Collision $collision = null;
 
     protected string $rawData = '';
 
     protected string $name = '';
-
     protected string $path = '';
-
-    protected int $crc = 0;
+    protected int $crc     = 0;
 
     /**
      * @param  string  $mapPath  Path to the .map file (e.g., "maps/dm1.map")
@@ -58,6 +55,7 @@ class Map
         $this->layers    = $layers;
         $this->gameLayer = $gameLayer;
         $this->collision = $collision;
+
         // Teeworlds packs the CRC as a signed 32-bit integer.
         $this->crc = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
 
@@ -82,16 +80,19 @@ class Map
         }
 
         $usedLayers = [];
+
         foreach ($groups as $group) {
             if ($group->startLayer < 0 || $group->numLayers < 0
                 || $group->startLayer + $group->numLayers > count($layers)
             ) {
                 throw new \UnexpectedValueException('Invalid group layer range');
             }
+
             for ($i = $group->startLayer; $i < $group->startLayer + $group->numLayers; $i++) {
                 if (isset($usedLayers[$i])) {
                     throw new \UnexpectedValueException('Overlapping group layer ranges');
                 }
+
                 $usedLayers[$i] = true;
             }
         }
@@ -115,6 +116,7 @@ class Map
                     && ($layer->tileFlags & LayerItem::TILESLAYERFLAG_GAME)
                 ) {
                     $rawData = $reader->getDataBlock($layer->data);
+
                     if ($rawData === null) {
                         throw new \UnexpectedValueException('Game layer references a missing data block');
                     }
