@@ -126,8 +126,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         protected int $slotsLimit,
         string $configFile = '',
         ?Config $config = null,
-        ?int $spectatorSlots = null,
+        protected int $spectatorSlots = 0,
     ) {
+        if ($spectatorSlots < 0 || $spectatorSlots > $slotsLimit) {
+            throw new \InvalidArgumentException('Spectator slots must be between zero and the world client limit');
+        }
+
         $this->config = $config?->withParent($server->getConfig()) ?? new Config(parent: $server->getConfig());
 
         if ($configFile !== '') {
@@ -156,10 +160,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->getGameController()->setWorld($this);
 
-        if ($spectatorSlots !== null) {
-            $this->getGameController()->setSpectatorSlots($spectatorSlots);
-        }
-
         $this->bootMap();
         $this->getGameController()->onWorldReady();
     }
@@ -172,8 +172,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     }
 
     abstract protected function bootGameController(): void;
-
-    abstract public function getMotd(AbstractTee $requestingTee): string;
 
     /** @return list<string> */
     public function getRules(): array
@@ -297,8 +295,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $defaults = [
             'sv_world_map'       => $this->map->getName(),
             'sv_world_game_type' => strtolower($this->gameController->getGameType()),
-
-        ] + $this->gameController->getConfigDefaults();
+        ];
 
         return $this->config->get($name, $defaults[$name] ?? null);
     }
@@ -538,6 +535,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getSlotsLimit(): int
     {
         return $this->slotsLimit;
+    }
+
+    public function getSpectatorSlots(): int
+    {
+        return $this->spectatorSlots;
     }
 
     public function getServer(): AbstractServerInstance

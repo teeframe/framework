@@ -12,6 +12,7 @@ use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClSetTeamChunk;
 use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteStatusChunk;
+use TeeFrame\Server\Config\Config;
 
 class TeamTransitionTestController extends PvpGameController
 {
@@ -29,9 +30,12 @@ class TeamTransitionTestController extends PvpGameController
 function createTeamTransitionWorld(string $mode = 'TDM', int $slotsLimit = 8, int $spectatorSlots = 0, int $balanceTime = 0, int $inactiveTime = 0): array
 {
     $clock      = new TickHandler(100);
-    $controller = new TeamTransitionTestController($clock, teamBalanceTime: $balanceTime, inactiveKickTime: $inactiveTime, spectatorSlots: $spectatorSlots);
-    $controller->setGameMode($mode);
-    $world = new TestPvpWorldWithController($clock, new Map, $controller, slotsLimit: $slotsLimit);
+    $controller = new TeamTransitionTestController($clock);
+    $world      = new TestPvpWorldWithController($clock, new Map, $controller, slotsLimit: $slotsLimit, config: new Config([
+        'sv_world_game_type'             => $mode,
+        'sv_world_pvp_team_balance_time' => $balanceTime,
+        'sv_world_inactivity_timeout'    => $inactiveTime,
+    ]), spectatorSlots: $spectatorSlots);
 
     return [$world, $clock, $controller];
 }

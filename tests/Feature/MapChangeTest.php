@@ -21,7 +21,7 @@ use TeeFrame\Server\Config\Config;
 
 function createMapChangeWorld(TickHandler $tickHandler, ?Map $map = null): TestPvpWorldWithController
 {
-    $server = new class($tickHandler, new Config(['sv_name' => 'Map change test'])) extends AbstractServerInstance
+    $server = new class($tickHandler, new Config(['sv_name' => 'Map change test', 'sv_world_game_type' => 'ctf', 'sv_world_pvp_score_limit' => 300, 'sv_world_pvp_time_limit' => 10]), activatePvpSettings: true) extends AbstractServerInstance
     {
         protected function boot(): void {}
 
@@ -30,9 +30,9 @@ function createMapChangeWorld(TickHandler $tickHandler, ?Map $map = null): TestP
             throw new RuntimeException('Not used by this test');
         }
     };
-    $controller = new PvpGameController($tickHandler, isTeamMode: true, isCaptureTheFlag: true, scoreLimit: 300, timeLimit: 10, spectatorSlots: 2);
+    $controller = new PvpGameController($tickHandler);
 
-    return new class($tickHandler, $map ?? new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12) extends TestPvpWorldWithController
+    return new class($tickHandler, $map ?? new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12, spectatorSlots: 2) extends TestPvpWorldWithController
     {
         protected function bootMap(): void
         {
@@ -76,7 +76,7 @@ test('map reload replaces entities spawns flags and round state while preserving
     expect($world->getGameController())->toBe($controller);
     expect($world->getGameController()->getGameType())->toBe('CTF');
     expect($world->getSlotsLimit())->toBe(12);
-    expect($controller->getSpectatorSlots())->toBe(2);
+    expect($world->getSpectatorSlots())->toBe(2);
     expect($world->getVoteController())->toBe($votes);
     expect($votes->getVoteChunks(new PlayerTee))->toHaveCount(1);
     expect($world->getCommands())->toContain($command);

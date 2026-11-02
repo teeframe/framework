@@ -200,7 +200,7 @@ test('startup cfg configures server identity world map gametype capacity scores 
         expect($world->getMap()->getName())->toBe('ctf1');
         expect($world->getGameController()->getGameType())->toBe('CTF');
         expect($world->getSlotsLimit())->toBe(8);
-        expect($world->getGameController()->getSpectatorSlots())->toBe(2);
+        expect($world->getSpectatorSlots())->toBe(2);
         expect([$snapshot->scoreLimit, $snapshot->timeLimit, $snapshot->warmupTimer])->toBe([42, 4, 2 * NetworkParams::TICKS_PER_SECOND]);
     });
 });
@@ -361,6 +361,26 @@ test('configured motd is sent during the handshake and live updates reach the wo
     });
 });
 
+test('info uses the configured world motd and skips empty lines', function (string $motd, array $expected) {
+    $server = new RconTestServer(config: new Config(['sv_world_motd' => $motd]));
+    $first  = $server->addClient();
+    $other  = $server->addClient($server->addWorld('other'), port: 8301);
+    $other->world()->setConfig('sv_world_motd', 'Other world');
+    foreach ([$first, $other] as $client) {
+        $server->socket($client)->packets = [];
+        $server->send($client, new ClSayChunk(false, '/info'));
+    }
+
+    $firstLines = array_map(fn (SvChatChunk $chunk): string => $chunk->text, $server->socket($first)->chunks(SvChatChunk::class));
+    $otherLines = array_map(fn (SvChatChunk $chunk): string => $chunk->text, $server->socket($other)->chunks(SvChatChunk::class));
+    expect(array_slice($firstLines, 2))->toBe($expected);
+    expect(array_slice($otherLines, 2))->toBe(['Other world']);
+})->with([
+    'empty'            => ['', []],
+    'escaped newlines' => ['First\\n\\nSecond', ['First', 'Second']],
+    'literal newlines' => ["First\n\nSecond", ['First', 'Second']],
+]);
+
 test('default connection world selection rejects an empty list and selects the first available world', function () {
     $clock  = new TickHandler(100);
     $server = new class($clock) extends AbstractServerInstance
@@ -456,7 +476,7 @@ test('world declarations inside exec files use paths relative to the containing 
         $world  = $server->entryWorld;
         expect($world->identifier)->toBe('arena');
         expect($world->getSlotsLimit())->toBe(12);
-        expect($world->getGameController()->getSpectatorSlots())->toBe(2);
+        expect($world->getSpectatorSlots())->toBe(2);
         expect($world->getConfigValue('sv_world_pvp_score_limit'))->toBe(30);
         expect($world->getConfigValue('sv_world_motd'))->toBe('Arena rules');
     });
@@ -506,12 +526,12 @@ test('authenticated rcon can add a world with independent settings without movin
         expect($added->getMap()->getName())->toBe('ctf1');
         expect($added->getGameController()->getGameType())->toBe('CTF');
         expect($added->getSlotsLimit())->toBe(12);
-        expect($added->getGameController()->getSpectatorSlots())->toBe(2);
+        expect($added->getSpectatorSlots())->toBe(2);
         expect($added->getConfigValue('sv_world_pvp_score_limit'))->toBe(30);
         expect($added->getCurrentTick())->toBe($original->getCurrentTick());
         expect($admin->world())->toBe($original);
         expect($original->getSlotsLimit())->toBe(64);
-        expect($original->getGameController()->getSpectatorSlots())->toBe(0);
+        expect($original->getSpectatorSlots())->toBe(0);
         expect(configRconLines($server->socket($admin)))->toContain('Added world: arena');
         $server->send($admin, new RconCmdChunk('sv_world_add arena dm1 4 0 dm'));
         expect($server->getWorlds())->toHaveCount(2);
@@ -537,7 +557,7 @@ test('rcon exec can add worlds from configuration without changing existing capa
         expect($server->getWorlds())->toHaveCount(2);
         expect($server->getWorlds()[0]->getSlotsLimit())->toBe(64);
         expect($server->getWorlds()[1]->getSlotsLimit())->toBe(10);
-        expect($server->getWorlds()[1]->getGameController()->getSpectatorSlots())->toBe(2);
+        expect($server->getWorlds()[1]->getSpectatorSlots())->toBe(2);
     });
 });
 
@@ -721,19 +741,19 @@ test('PvP controllers initialize and update configured warmup without requiring 
     expect($world->getConfigValue('sv_world_pvp_warmup'))->toBe(3);
 });
 
-test('PvP settings are opt-in without disabling the PvP controller defaults', function () {
+test('PvP settings are opt-in without disabling the default PvP gameplay', function () {
     $clock  = new TickHandler(100);
     $server = new class($clock) extends AbstractServerInstance
     {
         protected function boot(): void {}
     };
-    $controller = new PvpGameController($clock, scoreLimit: 7);
+    $controller = new PvpGameController($clock);
     $world      = new TestWorldWithController($clock, new Map, $controller, $server);
     $snapshot   = $controller->doSnap(new PlayerTee)[0];
     assert($snapshot instanceof ObjGameInfoItem);
 
     expect($server->activatePvpSettings)->toBeFalse();
-    expect($snapshot->scoreLimit)->toBe(7);
+    expect($snapshot->scoreLimit)->toBe(0);
     expect($world->findCommand('sv_world_map', AbstractCommand::TYPE_SERVER))->not->toBeNull();
     expect(array_any(array_keys($world->getCommandMap(AbstractCommand::TYPE_SERVER)), fn (string $name): bool => str_starts_with($name, 'sv_world_pvp_')))->toBeFalse();
 });
@@ -850,7 +870,7 @@ test('rcon configuration changes are private and affect only the current world u
 
     expect($server->entryWorld->getConfigValue('sv_world_pvp_score_limit'))->toBe(12);
     expect($server->entryWorld->getSlotsLimit())->toBe(64);
-    expect($server->entryWorld->getGameController()->getSpectatorSlots())->toBe(0);
+    expect($server->entryWorld->getSpectatorSlots())->toBe(0);
     expect($other->getConfigValue('sv_world_pvp_score_limit'))->toBe(0);
     expect($other->getSlotsLimit())->toBe(64);
     expect($server->getName())->toBe('Renamed server');
@@ -967,10 +987,18 @@ test('tournament and welcome settings apply when a player enters', function () {
     expect(array_map(fn (SvChatChunk $chunk): string => $chunk->text, $server->socket($client)->chunks(SvChatChunk::class)))->toContain('Welcome, player!');
 });
 
+test('world construction rejects spectator reservations outside its client limit', function (int $spectatorSlots) {
+    $clock      = new TickHandler(100);
+    $controller = new PvpGameController($clock);
+
+    expect(fn () => new TestWorldWithController($clock, new Map, $controller, slotsLimit: 8, spectatorSlots: $spectatorSlots))
+        ->toThrow(InvalidArgumentException::class, 'Spectator slots must be between zero and the world client limit');
+})->with([-1, 9]);
+
 test('spectator reservations cannot make world player capacity negative', function () {
     $server = new RconTestServer;
     $world  = $server->addWorldFromConfig(new WorldConfig('spectators', 'dm1', 4, 4));
-    expect($world->getGameController()->getSpectatorSlots())->toBe(4);
+    expect($world->getSpectatorSlots())->toBe(4);
     expect($world->getGameController()->canJoinTeam(GameConstants::TEAM_RED, -1))->toBeFalse();
 });
 
@@ -1070,8 +1098,8 @@ test('strict spectator mode hides combat stats but not the owning player stats',
 
 test('team damage can be enabled without disabling same-team identification', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: true);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
     $attacker   = new PlayerTee;
     $victim     = new PlayerTee;
     $world->addTee($attacker);
@@ -1152,8 +1180,8 @@ test('configuration reloads maps and gametypes through the usual queued reload p
 
 test('configured score limits control win checks as well as snapshots', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, scoreLimit: 20);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config(['sv_world_pvp_score_limit' => 20]));
     $tee        = new PlayerTee;
     $world->addTee($tee);
     $tee->score = 5;
@@ -1177,8 +1205,8 @@ test('rules configured in a file are shown in order by the normal chat command',
 
 test('enabling team balancing starts the timer for already unbalanced teams', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: true);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
     $first      = new PlayerTee;
     $second     = new PlayerTee;
     $world->addTee($first);
@@ -1194,8 +1222,8 @@ test('enabling team balancing starts the timer for already unbalanced teams', fu
 
 test('round swapping moves playing teams and leaves spectators alone', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: true);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
     $red        = new PlayerTee;
     $blue       = new PlayerTee;
     $spectator  = new PlayerTee;

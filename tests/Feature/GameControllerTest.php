@@ -17,6 +17,7 @@ use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
+use TeeFrame\Server\Config\Config;
 
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
@@ -24,12 +25,10 @@ $mapExists = file_exists($mapPath);
 /**
  * A controller that runs the shared tick() + doWincheck() logic,
  * so we can exercise warmup, game-over, balancing and inactive kick.
- *
- * @param  array<string, mixed>  $opts
  */
-function makeGameController(TickHandler $tickHandler, array $opts = []): PvpGameController
+function makeGameController(TickHandler $tickHandler): PvpGameController
 {
-    return new class($tickHandler, $opts['isTeamMode'] ?? false, $opts['isCaptureTheFlag'] ?? false, $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0) extends PvpGameController
+    return new class($tickHandler) extends PvpGameController
     {
         public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
         {
@@ -38,9 +37,9 @@ function makeGameController(TickHandler $tickHandler, array $opts = []): PvpGame
     };
 }
 
-function createWorldWithController(Map $map, TickHandler $tickHandler, AbstractGameController $controller): AbstractWorld
+function createWorldWithController(Map $map, TickHandler $tickHandler, AbstractGameController $controller, ?Config $config = null): AbstractWorld
 {
-    return new TestWorldWithController($tickHandler, $map, $controller);
+    return new TestWorldWithController($tickHandler, $map, $controller, config: $config);
 }
 
 /*
@@ -58,9 +57,12 @@ function setGameTick(TickHandler $tickHandler, int $tick): void
 
 test('team snapshots and win checks use the same independent team scores', function (bool $ctf) {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: true, isCaptureTheFlag: $ctf, scoreLimit: 5);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
-    $requester  = new PlayerTee;
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config([
+        'sv_world_game_type'       => $ctf ? 'ctf' : 'tdm',
+        'sv_world_pvp_score_limit' => 5,
+    ]));
+    $requester = new PlayerTee;
     (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [5, 4]);
     foreach ([[0, 1000], [0, 1000], [1, 1000], [-1, 1000]] as [$team, $score]) {
         $tee = new PlayerTee;
@@ -82,14 +84,17 @@ test('team snapshots and win checks use the same independent team scores', funct
 
 test('overridden team scoring is shared by snapshots and round resolution', function () {
     $clock      = new TickHandler(100);
-    $controller = new class($clock, isTeamMode: true, scoreLimit: 9) extends PvpGameController
+    $controller = new class($clock) extends PvpGameController
     {
         protected function getTeamScores(): array
         {
             return [9, 4];
         }
     };
-    new TestWorldWithController($clock, new Map, $controller);
+    new TestWorldWithController($clock, new Map, $controller, config: new Config([
+        'sv_world_game_type'       => 'tdm',
+        'sv_world_pvp_score_limit' => 9,
+    ]));
     $data = $controller->doSnap(new PlayerTee)[1];
     assert($data instanceof ObjGameDataItem);
     expect([$data->teamScoreRed, $data->teamScoreBlue])->toBe([9, 4]);
@@ -105,8 +110,8 @@ test('warmup counts down and starts round when it reaches zero', function () use
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 20]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 20]));
 
     $controller->setWarmup(3); // 3 seconds = 150 ticks
     expect($controller->isGameOver())->toBeFalse();
@@ -153,8 +158,8 @@ test('round ends when a tee reaches the score limit', function () use ($mapPath,
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 3]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 3]));
 
     $tee       = new PlayerTee;
     $tee->name = 'Winner';
@@ -174,8 +179,8 @@ test('round does not end during warmup even if score limit reached', function ()
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 3]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 3]));
 
     $tee       = new PlayerTee;
     $tee->name = 'WarmupKiller';
@@ -196,8 +201,8 @@ test('game over pauses the world', function () use ($mapPath, $mapExists) {
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     $tee       = new PlayerTee;
     $tee->name = 'Scorer';
@@ -217,8 +222,8 @@ test('round restarts after the 10 second game-over pause', function () use ($map
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     $tee       = new PlayerTee;
     $tee->name = 'RestartTee';
@@ -246,8 +251,8 @@ test('sudden death triggers when scores are tied at the limit', function () use 
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm', 'sv_world_pvp_score_limit' => 2]));
     (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [2, 2]);
 
     $red        = new PlayerTee;
@@ -278,8 +283,8 @@ test('team mode round ends when one team exceeds the other at score limit', func
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 2]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm', 'sv_world_pvp_score_limit' => 2]));
     (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [3, 1]);
 
     $red        = new PlayerTee;
@@ -312,8 +317,8 @@ test('doSnap reflects game over and paused state flags', function () use ($mapPa
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     $tee       = new PlayerTee;
     $tee->name = 'SnapTee';
@@ -344,8 +349,8 @@ test('doSnap includes team scores in team mode', function () use ($mapPath, $map
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'scoreLimit' => 10]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm', 'sv_world_pvp_score_limit' => 10]));
     (new ReflectionProperty(PvpGameController::class, 'teamScores'))->setValue($controller, [5, 3]);
 
     $red        = new PlayerTee;
@@ -375,8 +380,8 @@ test('doSnap emits GAMEFLAG_TEAMS in team mode', function () use ($mapPath, $map
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $tee       = new PlayerTee;
     $tee->name = 'FlagCheck';
@@ -401,8 +406,8 @@ test('checkTeamBalance marks teams as unbalanced when diff is 2 or more', functi
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm', 'sv_world_pvp_team_balance_time' => 1]));
 
     for ($i = 0; $i < 3; $i++) {
         $tee       = new PlayerTee;
@@ -426,8 +431,8 @@ test('checkTeamBalance returns true when teams are even', function () use ($mapP
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm', 'sv_world_pvp_team_balance_time' => 1]));
 
     $red       = new PlayerTee;
     $red->name = 'Red';
@@ -450,8 +455,8 @@ test('team balancing moves a player from the larger team after the balance time 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
     // 1 minute balance time
-    $controller = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 1]);
-    $world      = createWorldWithController($map, $tickHandler, $controller);
+    $controller = makeGameController($tickHandler);
+    $world      = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm', 'sv_world_pvp_team_balance_time' => 1]));
 
     // 3 reds, 1 blue → diff of 2
     $red1       = new PlayerTee;
@@ -499,8 +504,11 @@ test('team balancing moves a player from the larger team after the balance time 
 
 test('team balancing updates score totals after each move', function (int $largerTeam) {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: true, teamBalanceTime: 1);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config([
+        'sv_world_game_type'             => 'tdm',
+        'sv_world_pvp_team_balance_time' => 1,
+    ]));
     foreach ([10, 9, 1, 0] as $score) {
         $tee = new PlayerTee;
         $world->addTee($tee);
@@ -533,8 +541,8 @@ test('team balancing is disabled when teamBalanceTime is zero', function () use 
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true, 'teamBalanceTime' => 0]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm', 'sv_world_pvp_team_balance_time' => 0]));
 
     $red1       = new PlayerTee;
     $red1->name = 'R1';
@@ -562,11 +570,11 @@ test('inactive kick moves player to spectators after the timeout', function () u
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, [
-        'inactiveKickTime' => 1, // 1 minute
-        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
-    ]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config([
+        'sv_world_inactivity_timeout' => 1, // 1 minute
+        'sv_world_inactivity_action'  => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+    ]));
 
     $tee                 = new PlayerTee;
     $tee->name           = 'Idle';
@@ -588,11 +596,11 @@ test('inactive kick is disabled when inactiveKickTime is zero', function () use 
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, [
-        'inactiveKickTime' => 0,
-        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
-    ]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config([
+        'sv_world_inactivity_timeout' => 0,
+        'sv_world_inactivity_action'  => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+    ]));
 
     $tee                 = new PlayerTee;
     $tee->name           = 'StillHere';
@@ -613,11 +621,11 @@ test('inactive kick does not affect spectators', function () use ($mapPath, $map
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, [
-        'inactiveKickTime' => 1,
-        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
-    ]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config([
+        'sv_world_inactivity_timeout' => 1,
+        'sv_world_inactivity_action'  => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+    ]));
 
     $tee                 = new PlayerTee;
     $tee->name           = 'Spec';
@@ -638,11 +646,11 @@ test('inactive kick in kick mode kicks the player', function () use ($mapPath, $
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, [
-        'inactiveKickTime' => 1,
-        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_KICK,
-    ]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config([
+        'sv_world_inactivity_timeout' => 1,
+        'sv_world_inactivity_action'  => AbstractGameController::INACTIVE_KICK_KICK,
+    ]));
 
     $tee                 = new PlayerTee;
     $tee->name           = 'ToKick';
@@ -664,11 +672,11 @@ test('active player is not kicked for inactivity', function () use ($mapPath, $m
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, [
-        'inactiveKickTime' => 1,
-        'inactiveKick'     => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
-    ]);
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config([
+        'sv_world_inactivity_timeout' => 1,
+        'sv_world_inactivity_action'  => AbstractGameController::INACTIVE_KICK_TO_SPECTATOR,
+    ]));
 
     $tee                 = new PlayerTee;
     $tee->name           = 'Active';
@@ -697,8 +705,8 @@ test('paused world does not apply input to characters', function () use ($mapPat
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     $tee       = new PlayerTee;
     $tee->name = 'Walker';
@@ -736,8 +744,8 @@ test('paused world does not apply input to characters', function () use ($mapPat
 test('paused character snapshots disable dead reckoning until play resumes', function (bool $endMatch) use ($mapPath) {
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     $tee = new PlayerTee;
     $world->addTee($tee);
@@ -820,8 +828,8 @@ test('paused world does not tick entities (no gravity)', function () use ($mapPa
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     $tee       = new PlayerTee;
     $tee->name = 'Faller';
@@ -865,8 +873,8 @@ test('isFriendlyFire returns false in non-team mode', function () use ($mapPath,
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'dm']));
 
     $tee1       = new PlayerTee;
     $tee1->name = 'A';
@@ -885,8 +893,8 @@ test('isFriendlyFire returns true for same-team players in team mode', function 
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $red1       = new PlayerTee;
     $red1->name = 'R1';
@@ -907,8 +915,8 @@ test('isFriendlyFire returns false for different teams in team mode', function (
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $red       = new PlayerTee;
     $red->name = 'R';
@@ -929,8 +937,8 @@ test('isFriendlyFire returns false for self-damage', function () use ($mapPath, 
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $tee       = new PlayerTee;
     $tee->name = 'Self';
@@ -947,8 +955,8 @@ test('same-team takeDamage deals no damage in team mode', function () use ($mapP
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
@@ -983,8 +991,8 @@ test('different-team takeDamage deals damage in team mode', function () use ($ma
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
@@ -1018,8 +1026,8 @@ test('non-team mode takeDamage always deals damage', function () use ($mapPath, 
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'dm']));
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
@@ -1050,8 +1058,8 @@ test('self-damage is halved', function () use ($mapPath, $mapExists) {
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'dm']));
 
     $spawnPos = new Vector2(50 * 32, 25 * 32);
 
@@ -1084,7 +1092,7 @@ test('tryRespawnTee passes the tee team to selectSpawnPosition', function () use
     $tickHandler = new TickHandler(100);
 
     // A controller that records the team argument passed to selectSpawnPosition
-    $controller = new class($tickHandler, true) extends PvpGameController
+    $controller = new class($tickHandler) extends PvpGameController
     {
         public int $lastSpawnTeam = -99;
 
@@ -1105,7 +1113,7 @@ test('tryRespawnTee passes the tee team to selectSpawnPosition', function () use
             return parent::selectSpawnPosition($world, $team);
         }
     };
-    $world = createWorldWithController($map, $tickHandler, $controller);
+    $world = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $tee       = new PlayerTee;
     $tee->name = 'BlueSpawn';
@@ -1131,8 +1139,8 @@ test('first player in team mode joins red team automatically', function () use (
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $tee       = new PlayerTee;
     $tee->name = 'First';
@@ -1148,8 +1156,8 @@ test('second player in team mode joins blue team automatically', function () use
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $first       = new PlayerTee;
     $first->name = 'First';
@@ -1169,8 +1177,8 @@ test('third player in team mode joins the team with fewer players', function () 
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => true]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $first       = new PlayerTee;
     $first->name = 'First';
@@ -1195,8 +1203,8 @@ test('non-team mode always assigns red team', function () use ($mapPath, $mapExi
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['isTeamMode' => false]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_game_type' => 'dm']));
 
     $first       = new PlayerTee;
     $first->name = 'First';
@@ -1222,8 +1230,8 @@ test('round restart destroys existing characters and respawns everyone', functio
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     $tee       = new PlayerTee;
     $tee->name = 'Restart';
@@ -1277,8 +1285,8 @@ test('pickups survive round restart and reset their spawn tick', function () use
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     // Add a health pickup and an armor pickup to the world
     $healthPos    = new Vector2(50 * 32, 25 * 32);
@@ -1321,8 +1329,8 @@ test('pickups with spawn delay re-enter spawn delay after round restart', functi
 
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeGameController($tickHandler, ['scoreLimit' => 1]);
-    $world       = createWorldWithController($map, $tickHandler, $controller);
+    $controller  = makeGameController($tickHandler);
+    $world       = createWorldWithController($map, $tickHandler, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
 
     // Add a pickup with a spawn delay of 50 ticks
     $pos    = new Vector2(50 * 32, 25 * 32);

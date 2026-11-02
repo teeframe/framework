@@ -22,6 +22,7 @@ use TeeFrame\Network\Chunks\System\MapDataChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionHandler;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
@@ -473,8 +474,8 @@ test('flags return when they leave the game layer clipping margin', function () 
     $tiles[16]  = chr(195);
     $map        = mapRegressionLoad(mapRegressionGameFile($tiles));
     $ticks      = new TickHandler;
-    $controller = new class($ticks, true, true) extends PvpGameController {};
-    $world      = new TestWorldWithController($ticks, $map, $controller);
+    $controller = new PvpGameController($ticks);
+    $world      = new TestWorldWithController($ticks, $map, $controller, config: new Config(['sv_world_game_type' => 'ctf']));
     $flag       = $controller->getFlag(GameConstants::TEAM_RED);
     assert($flag !== null);
     $flag->setPosition(new Vector2(204 * 32, 48));

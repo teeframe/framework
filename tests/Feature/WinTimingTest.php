@@ -11,6 +11,7 @@ use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
+use TeeFrame\Server\Config\Config;
 
 /** @return array{TestPvpWorldWithController, TickHandler, PlayerTee, PlayerTee} */
 function winTimingFixture(string $mode, int $scoreLimit = 1, int $timeLimit = 0): array
@@ -26,9 +27,12 @@ function winTimingFixture(string $mode, int $scoreLimit = 1, int $timeLimit = 0)
             $this->collision          = $this->createCollision($this->gameLayer);
         }
     };
-    $controller = new PvpGameController($clock, scoreLimit: $scoreLimit, timeLimit: $timeLimit);
-    $controller->setGameMode($mode);
-    $world                               = new TestPvpWorldWithController($clock, $map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestPvpWorldWithController($clock, $map, $controller, config: new Config([
+        'sv_world_game_type'       => $mode,
+        'sv_world_pvp_score_limit' => $scoreLimit,
+        'sv_world_pvp_time_limit'  => $timeLimit,
+    ]));
     $world->getTuneController()->gravity = 0;
     $owner                               = new PlayerTee;
     $target                              = new PlayerTee;

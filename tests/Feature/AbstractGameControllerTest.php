@@ -29,7 +29,7 @@ class NeutralTestGameController extends AbstractGameController
 
 function createNeutralControllerWorld(TickHandler $clock, int $slotsLimit = 64, int $spectatorSlots = 0, int $inactiveKickTime = 0): TestWorldWithController
 {
-    $server = new class($clock, new Config(['sv_name' => 'Neutral controller test'])) extends AbstractServerInstance
+    $server = new class($clock, new Config(['sv_name' => 'Neutral controller test', 'sv_world_inactivity_timeout' => $inactiveKickTime])) extends AbstractServerInstance
     {
         protected function boot(): void {}
 
@@ -38,9 +38,9 @@ function createNeutralControllerWorld(TickHandler $clock, int $slotsLimit = 64, 
             throw new RuntimeException('Not used by this test');
         }
     };
-    $controller = new NeutralTestGameController($clock, inactiveKickTime: $inactiveKickTime, spectatorSlots: $spectatorSlots);
+    $controller = new NeutralTestGameController($clock);
 
-    return new TestWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, $slotsLimit);
+    return new TestWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, $slotsLimit, spectatorSlots: $spectatorSlots);
 }
 
 test('a base controller boots a map with flag stands without creating flags or team snapshots', function () {
@@ -166,7 +166,7 @@ test('a base controller can reload maps and spawn again without PvP APIs', funct
 
     expect($world->getMap()->getName())->toBe('dm1');
     expect($world->getGameController())->toBe($controller);
-    expect($controller->getSpectatorSlots())->toBe(2);
+    expect($world->getSpectatorSlots())->toBe(2);
     expect($controller->getGameType())->toBe('Custom');
     $tee = new PlayerTee;
     $world->addTee($tee);
@@ -178,12 +178,16 @@ test('a base controller can reload maps and spawn again without PvP APIs', funct
     expect($info->gameFlags)->toBe(0);
 });
 
-test('PvP controllers retain their mode snapshots and kill and suicide scoring', function (bool $teams, bool $ctf, string $mode, int $gameFlags) {
+test('PvP controllers retain their mode snapshots and kill and suicide scoring', function (bool $teams, string $mode, int $gameFlags) {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: $teams, isCaptureTheFlag: $ctf, scoreLimit: 20, timeLimit: 10);
-    $world      = new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller);
-    $killer     = new PlayerTee;
-    $victim     = new PlayerTee;
+    $controller = new PvpGameController($clock);
+    $world      = new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, config: new Config([
+        'sv_world_game_type'       => $mode,
+        'sv_world_pvp_score_limit' => 20,
+        'sv_world_pvp_time_limit'  => 10,
+    ]));
+    $killer = new PlayerTee;
+    $victim = new PlayerTee;
     $world->addTee($killer);
     $world->addTee($victim);
     $world->doTick();
@@ -202,9 +206,9 @@ test('PvP controllers retain their mode snapshots and kill and suicide scoring',
     assert($info instanceof ObjGameInfoItem);
     expect([$info->gameFlags, $info->scoreLimit, $info->timeLimit])->toBe([$gameFlags, 20, 10]);
 })->with([
-    'DM'  => [false, false, 'DM', 0],
-    'TDM' => [true, false, 'TDM', GameConstants::GAMEFLAG_TEAMS],
-    'CTF' => [true, true, 'CTF', GameConstants::GAMEFLAG_TEAMS | GameConstants::GAMEFLAG_FLAGS],
+    'DM'  => [false, 'DM', 0],
+    'TDM' => [true, 'TDM', GameConstants::GAMEFLAG_TEAMS],
+    'CTF' => [true, 'CTF', GameConstants::GAMEFLAG_TEAMS | GameConstants::GAMEFLAG_FLAGS],
 ]);
 
 test('only PvP team modes prioritize their own team spawn points', function () {
@@ -215,8 +219,8 @@ test('only PvP team modes prioritize their own team spawn points', function () {
         ->toEqual($neutral->selectSpawnPosition($world, GameConstants::TEAM_BLUE));
     expect($neutral->selectSpawnPosition($world, GameConstants::TEAM_SPECTATORS))->toBeNull();
 
-    $controller = new PvpGameController($clock, isTeamMode: true);
-    $pvpWorld   = new TestPvpWorldWithController($clock, $world->getMap(), $controller);
+    $controller = new PvpGameController($clock);
+    $pvpWorld   = new TestPvpWorldWithController($clock, $world->getMap(), $controller, config: new Config(['sv_world_game_type' => 'tdm']));
     $layer      = $world->getMap()->getGameLayer();
     assert($layer !== null);
     foreach ([GameConstants::TEAM_RED => GameLayer::ENTITY_SPAWN_RED, GameConstants::TEAM_BLUE => GameLayer::ENTITY_SPAWN_BLUE] as $team => $type) {

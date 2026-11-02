@@ -12,6 +12,7 @@ use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjFlagItem;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
+use TeeFrame\Server\Config\Config;
 
 /** @return array{TestPvpWorldWithController, TickHandler, PlayerTee, PvpCharacterEntity} */
 function flagMovementFixture(int $team = GameConstants::TEAM_BLUE, int $scoreLimit = 0): array
@@ -29,8 +30,11 @@ function flagMovementFixture(int $team = GameConstants::TEAM_BLUE, int $scoreLim
             $this->collision          = $this->createCollision($this->gameLayer);
         }
     };
-    $controller                          = new PvpGameController($clock, isTeamMode: true, isCaptureTheFlag: true, scoreLimit: $scoreLimit);
-    $world                               = new TestPvpWorldWithController($clock, $map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestPvpWorldWithController($clock, $map, $controller, config: new Config([
+        'sv_world_game_type'       => 'ctf',
+        'sv_world_pvp_score_limit' => $scoreLimit,
+    ]));
     $world->getTuneController()->gravity = 0;
     $tee                                 = new PlayerTee;
     $world->addTee($tee);

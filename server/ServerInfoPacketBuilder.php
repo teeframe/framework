@@ -82,7 +82,7 @@ class ServerInfoPacketBuilder
             $slotsLimit = $world->getSlotsLimit();
 
             $maxClients += $slotsLimit;
-            $maxPlayers += $slotsLimit - $world->getGameController()->getSpectatorSlots();
+            $maxPlayers += $slotsLimit - $world->getSpectatorSlots();
         }
 
         $clients    = [];

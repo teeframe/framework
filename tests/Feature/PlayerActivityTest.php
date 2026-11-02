@@ -9,6 +9,7 @@ use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Server\Config\Config;
 
 test('changed aim counts as activity but repeating the same target does not', function (string $state) {
     $clock = new TickHandler(100);
@@ -49,9 +50,12 @@ test('chatting aim changes do not update activity or replace the last active tar
 
 test('mouse movement prevents an inactivity kick but unchanged aim eventually times out', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, inactiveKickTime: 1, inactiveKick: AbstractGameController::INACTIVE_KICK_KICK);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
-    $tee        = new PlayerTee;
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config([
+        'sv_world_inactivity_timeout' => 1,
+        'sv_world_inactivity_action'  => AbstractGameController::INACTIVE_KICK_KICK,
+    ]));
+    $tee = new PlayerTee;
     $world->addTee($tee);
     $tee->onDirectInput(input(['targetX' => 100, 'targetY' => 0]), $clock->getCurrentTick());
     for ($i = 0; $i <= NetworkParams::TICKS_PER_SECOND * 60; $i++) {

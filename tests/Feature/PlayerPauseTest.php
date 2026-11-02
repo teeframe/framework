@@ -10,6 +10,7 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Server\Config\Config;
 
 /** @return array{TestPvpWorldWithController, list<PlayerTee>} */
 function teamBalancePauseFixture(TickHandler $clock, string $mode = 'TDM'): array
@@ -22,9 +23,11 @@ function teamBalancePauseFixture(TickHandler $clock, string $mode = 'TDM'): arra
             $this->collision = $this->createCollision($this->gameLayer);
         }
     };
-    $controller = new PvpGameController($clock, teamBalanceTime: 1);
-    $controller->setGameMode($mode);
-    $world                               = new TestPvpWorldWithController($clock, $map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestPvpWorldWithController($clock, $map, $controller, config: new Config([
+        'sv_world_game_type'             => $mode,
+        'sv_world_pvp_team_balance_time' => 1,
+    ]));
     $world->getTuneController()->gravity = 0;
     $players                             = [];
     foreach ([GameConstants::TEAM_RED, GameConstants::TEAM_RED, GameConstants::TEAM_RED, GameConstants::TEAM_BLUE] as $i => $team) {
@@ -81,9 +84,12 @@ test('paused ticks preserve player deadlines for living dead and spectator playe
 
 test('paused time never triggers inactivity removal and the remaining timeout resumes afterwards', function (int $mode) {
     $clock      = new TickHandler(5000);
-    $controller = new PvpGameController($clock, inactiveKickTime: 1, inactiveKick: $mode);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
-    $tee        = new PlayerTee;
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config([
+        'sv_world_inactivity_timeout' => 1,
+        'sv_world_inactivity_action'  => $mode,
+    ]));
+    $tee = new PlayerTee;
     $world->addTee($tee);
     $tee->lastActionTick = 2001;
     $world->setPaused(true);

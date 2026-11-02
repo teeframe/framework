@@ -234,7 +234,7 @@ class ClientMessageHandler
 
         if (! $controller->canJoinTeam($team, $tee->teeIndex)) {
             $this->world->getServer()->sendToTee($this->world, $tee->teeIndex, new SvBroadcastChunk(
-                sprintf('Only %d active players are allowed', $this->world->getSlotsLimit() - $controller->getSpectatorSlots()),
+                sprintf('Only %d active players are allowed', $this->world->getSlotsLimit() - $this->world->getSpectatorSlots()),
             ));
 
             return;

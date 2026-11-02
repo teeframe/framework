@@ -88,8 +88,10 @@ class RegistrationTestServer extends AbstractServerInstance
 
     public function addWorld(string $map = 'dm1', int $slotsLimit = 12, int $spectatorSlots = 0): AbstractWorld
     {
-        $controller     = new TestGameController($this->clock, isTeamMode: $map === 'ctf1', isCaptureTheFlag: $map === 'ctf1', spectatorSlots: $spectatorSlots);
-        $world          = new TestWorldWithController($this->clock, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this, $slotsLimit);
+        $controller = new TestGameController($this->clock);
+        $world      = new TestWorldWithController($this->clock, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this, $slotsLimit, config: new Config([
+            'sv_world_game_type' => $map === 'ctf1' ? 'ctf' : 'dm',
+        ]), spectatorSlots: $spectatorSlots);
         $this->worlds[] = $world;
 
         return $world;

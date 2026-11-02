@@ -5,11 +5,13 @@ use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
+use TeeFrame\Network\Chunks\Game\ClVoteChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\System\RconAuthChunk;
 use TeeFrame\Network\Chunks\System\RconCmdChunk;
 use TeeFrame\Network\Chunks\System\RconLineChunk;
 use TeeFrame\Server\ConnectionSlot;
+use TeeFrame\Server\Console;
 use Tests\Support\RconTestCommand;
 use Tests\Support\RconTestServer;
 use Tests\Support\RconTestSocket;
@@ -79,8 +81,8 @@ test('latest command registration is shared by chat RCON help and passed votes w
     $server->socket($client)->packets = [];
     $server->send($client, new ClCallVoteChunk('option', 'Probe', ''));
     $world->getVoteController()->tick($world);
-    expect(dispatchChatLines($server->socket($client)))->toContain('Last:hello');
-    expect(dispatchRconLines($server->socket($client)))->not->toContain('Last:hello');
+    expect(dispatchChatLines($server->socket($client)))->toContain('Vote passed')->not()->toContain('Last:hello');
+    expect(dispatchRconLines($server->socket($client)))->toContain('[INFO] [vote]: World=dm Last:hello');
     expect($last->executions)->toHaveCount(3);
     expect($first->executions)->toBeEmpty();
 });
@@ -198,7 +200,7 @@ test('RCON replies work for dual-type commands before a player enters the world'
     expect(dispatchChatLines($server->socket($client)))->toBeEmpty();
 })->with([ConnectionSlot::STATE_LOADING, ConnectionSlot::STATE_READY]);
 
-test('a forced option uses RCON output while a passed poll uses private chat output', function () {
+test('a forced option uses RCON output while a passed poll logs replies to the console', function () {
     $server = new RconTestServer;
     $client = $server->addClient();
     $world  = $server->entryWorld;
@@ -212,8 +214,46 @@ test('a forced option uses RCON output while a passed poll uses private chat out
     $server->socket($client)->packets = [];
     $server->send($client, new ClCallVoteChunk('option', 'Probe', ''));
     $world->getVoteController()->tick($world);
-    expect(dispatchChatLines($server->socket($client)))->toContain('Reply:');
-    expect(dispatchRconLines($server->socket($client)))->not->toContain('Reply:');
+    expect(dispatchChatLines($server->socket($client)))->toContain('Vote passed')->not()->toContain('Reply:');
+    expect(dispatchRconLines($server->socket($client)))->toContain('[INFO] [vote]: World=dm Reply:');
+});
+
+test('passed configuration votes log each reply without sending it to player chat', function () {
+    $server = new RconTestServer;
+    $caller = $server->addClient();
+    $other  = $server->addClient(port: 8301);
+    $world  = $server->entryWorld;
+    $votes  = $world->getVoteController();
+    $votes->addVoteOption('CTF', 'sv_world_map ctf1; sv_world_game_type ctf; sv_world_pvp_score_limit 300');
+    $server->send($caller, new ClCallVoteChunk('option', 'CTF', ''));
+    $server->send($other, new ClVoteChunk(1));
+    foreach ([$caller, $other] as $client) {
+        $server->socket($client)->packets = [];
+    }
+
+    $logs     = [];
+    $listener = function (string $line) use (&$logs): void {
+        $logs[] = $line;
+    };
+    Console::listen($listener);
+    try {
+        $votes->tick($world);
+    } finally {
+        Console::unlisten($listener);
+    }
+
+    expect($votes->isVoteRunning())->toBeFalse();
+    expect($world->getConfigValue('sv_world_map'))->toBe('ctf1');
+    expect($world->getConfigValue('sv_world_game_type'))->toBe('ctf');
+    expect($world->getConfigValue('sv_world_pvp_score_limit'))->toBe(300);
+    expect($logs)->toContain(
+        '[INFO] [vote]: World=dm sv_world_map = ctf1',
+        '[INFO] [vote]: World=dm sv_world_game_type = ctf',
+        '[INFO] [vote]: World=dm sv_world_pvp_score_limit = 300',
+    );
+    foreach ([$caller, $other] as $client) {
+        expect(dispatchChatLines($server->socket($client)))->toBe(['Vote passed']);
+    }
 });
 
 test('interleaved executions of one command keep their reply callbacks isolated', function () {

@@ -125,9 +125,9 @@ class WorldTransferTestServer extends AbstractServerInstance
         parent::__construct(new TickHandler(1000), new Config(['sv_name' => 'Multiworld test']));
         $this->socket  = new WorldTransferTestSocket;
         $dmController  = new PvpGameController($this->tickHandler);
-        $ctfController = new PvpGameController($this->tickHandler, isTeamMode: true, isCaptureTheFlag: true);
+        $ctfController = new PvpGameController($this->tickHandler);
         $this->dm      = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../dm1.map'), $dmController, $this, $dmSlots);
-        $this->ctf     = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../ctf1.map'), $ctfController, $this, $ctfSlots);
+        $this->ctf     = new TestPvpWorldWithController($this->tickHandler, new Map(__DIR__.'/../ctf1.map'), $ctfController, $this, $ctfSlots, config: new Config(['sv_world_game_type' => 'ctf']));
         $this->worlds  = [$this->dm, $this->ctf];
         foreach ($this->worlds as $world) {
             $world->registerCommand(new WorldTransferTestCommand($this->dm));
@@ -751,10 +751,7 @@ test('a passed map vote reloads only its world and restarts map loading without 
     expect([$changes[0]->mapName, $changes[0]->crc, $changes[0]->size])->toBe($server->dm->getMapInfo());
     expect(array_filter($chunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk))->toBeEmpty();
     $chats = array_values(array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk));
-    expect(array_map(fn ($chunk) => $chunk->text, $chats))->toBe([
-        'sv_world_map = '.$mapName,
-        'Vote passed',
-    ]);
+    expect(array_map(fn ($chunk) => $chunk->text, $chats))->toBe(['Vote passed']);
     $voteEnds   = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
     $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
     expect($voteEnds[0])->toBeLessThan($mapChanges[0]);
@@ -935,7 +932,9 @@ test('gamemode votes reset only their world and players rejoin with the new team
         expect(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk))->toHaveCount(2);
         expect(array_filter($chunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk))->toBeEmpty();
         $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
-        expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('sv_world_game_type = '.$mode, 'Vote passed');
+        expect(array_map(fn ($chunk) => $chunk->text, $chats))
+            ->toContain('Vote passed')
+            ->not()->toContain('sv_world_map = ctf1', 'sv_world_game_type = '.$mode);
         $voteEnds   = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
         $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
         assert($voteEnds !== [] && $mapChanges !== []);

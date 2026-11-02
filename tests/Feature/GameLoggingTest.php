@@ -16,6 +16,7 @@ use TeeFrame\Network\Chunks\System\RconAuthChunk;
 use TeeFrame\Network\Chunks\System\RconCmdChunk;
 use TeeFrame\Server\Ban\BanList;
 use TeeFrame\Server\Chat\MuteList;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\Console;
 use Tests\Support\RconTestCommand;
 use Tests\Support\RconTestServer;
@@ -171,8 +172,8 @@ test('player name logs use the accepted name and omit no-op or rejected changes'
 
 test('pause and round logs describe transitions without repeating every tick', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: true);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     $lines = captureGameLogs(function () use ($controller, $world) {
         $controller->startRound();
@@ -195,8 +196,8 @@ test('pause and round logs describe transitions without repeating every tick', f
 
 test('sudden death is logged only when it starts', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, scoreLimit: 1);
-    $world      = new TestWorldWithController($clock, new Map, $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map, $controller, config: new Config(['sv_world_pvp_score_limit' => 1]));
     foreach (range(1, 2) as $_) {
         $player = new PlayerTee;
         $world->addTee($player);
@@ -416,8 +417,8 @@ test('world transfer logs identify the source connection and destination', funct
 
 test('CTF grab drop and return logs are emitted for actual flag transitions', function () {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, isTeamMode: true, isCaptureTheFlag: true);
-    $world      = new TestWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller);
+    $controller = new PvpGameController($clock);
+    $world      = new TestWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, config: new Config(['sv_world_game_type' => 'ctf']));
     $redFlag    = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
     $attacker = new PlayerTee;

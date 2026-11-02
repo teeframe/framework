@@ -7,7 +7,6 @@ use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\PlayerInput;
 use TeeFrame\Game\PvpGameController;
-use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
@@ -36,11 +35,6 @@ class TestWorld extends AbstractWorld
         parent::__construct('test', $tickHandler, $map, $server ?? new RecordingGameServer($tickHandler), slotsLimit: 64);
     }
 
-    public function getMotd(AbstractTee $requestingTee): string
-    {
-        return '';
-    }
-
     protected function bootGameController(): void
     {
         $this->gameController = new TestGameController($this->tickHandler);
@@ -62,15 +56,10 @@ class TestWorldWithController extends AbstractWorld
         int $slotsLimit = 64,
         string $configFile = '',
         ?Config $config = null,
-        ?int $spectatorSlots = null,
+        int $spectatorSlots = 0,
     ) {
         $this->gameController = $controller;
         parent::__construct('test', $tickHandler, $map, $server ?? new RecordingGameServer($tickHandler), $slotsLimit, $configFile, $config, $spectatorSlots);
-    }
-
-    public function getMotd(AbstractTee $requestingTee): string
-    {
-        return '';
     }
 
     protected function bootGameController(): void

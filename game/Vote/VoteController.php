@@ -575,7 +575,12 @@ class VoteController
         if ($caller instanceof PlayerTee) {
             foreach ($commands as $resolved) {
                 $world->consoleDebug('vote', 'TeeIdx='.$caller->teeIndex.' Vote command='.$resolved['command']->getName());
-                $resolved['command']->execute($world, $caller, $resolved['arguments']);
+                $resolved['command']->execute(
+                    $world,
+                    $caller,
+                    $resolved['arguments'],
+                    output: static fn (string $message) => $world->consoleInfo('vote', $message),
+                );
 
                 if ($world->findTee($caller->teeIndex) !== $caller) {
                     break;

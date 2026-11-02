@@ -17,6 +17,9 @@ use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 
 class PvpGameController extends AbstractGameController
 {
+    protected bool $isTeamMode       = false;
+    protected bool $isCaptureTheFlag = false;
+
     protected int $roundStartTick = 0;
     protected int $gameOverTick   = -1;
     protected int $suddenDeath    = 0;
@@ -33,25 +36,15 @@ class PvpGameController extends AbstractGameController
     /** @var array<int, FlagEntity|null> */
     protected array $flags = [null, null];
 
-    public function __construct(
-        TickHandler $tickHandler,
-        protected bool $isTeamMode = false,
-        protected bool $isCaptureTheFlag = false,
-        protected int $scoreLimit = 0,
-        protected int $timeLimit = 0,
-        protected int $teamBalanceTime = 0,
-        int $inactiveKickTime = 0,
-        int $inactiveKick = self::INACTIVE_KICK_TO_SPECTATOR,
-        int $spectatorSlots = 0,
-    ) {
-        parent::__construct($tickHandler, $inactiveKickTime, $inactiveKick, $spectatorSlots);
+    public function __construct(TickHandler $tickHandler)
+    {
+        parent::__construct($tickHandler);
 
         $this->roundStartTick = $tickHandler->getCurrentTick();
     }
 
     public function onWorldReady(): void
     {
-
         $config = $this->world?->getConfig();
 
         if ($config?->has('sv_world_pvp_warmup')) {
@@ -61,7 +54,6 @@ class PvpGameController extends AbstractGameController
 
     public function onConfigChanged(string $name, int|string $value): void
     {
-
         if ($name === 'sv_world_pvp_warmup') {
             $this->setWarmup((int) $value);
         } elseif ($name === 'sv_world_pvp_team_balance_time') {
@@ -69,19 +61,9 @@ class PvpGameController extends AbstractGameController
         }
     }
 
-    /** @return array<string, int> */
-    public function getConfigDefaults(): array
-    {
-        return [
-            'sv_world_pvp_score_limit'       => $this->scoreLimit,
-            'sv_world_pvp_time_limit'        => $this->timeLimit,
-            'sv_world_pvp_team_balance_time' => $this->teamBalanceTime,
-        ] + parent::getConfigDefaults();
-    }
-
     protected function getTeamBalanceTime(): int
     {
-        return $this->world?->getConfig()->getInt('sv_world_pvp_team_balance_time', $this->teamBalanceTime) ?? $this->teamBalanceTime;
+        return $this->world?->getConfig()->getInt('sv_world_pvp_team_balance_time') ?? 0;
     }
 
     public function getGameType(): string
@@ -203,8 +185,8 @@ class PvpGameController extends AbstractGameController
             return;
         }
 
-        $scoreLimit       = $world->getConfig()->getInt('sv_world_pvp_score_limit', $this->scoreLimit);
-        $timeLimit        = $world->getConfig()->getInt('sv_world_pvp_time_limit', $this->timeLimit);
+        $scoreLimit       = $world->getConfig()->getInt('sv_world_pvp_score_limit');
+        $timeLimit        = $world->getConfig()->getInt('sv_world_pvp_time_limit');
         $elapsed          = $this->tickHandler->getCurrentTick() - $this->roundStartTick;
         $timeLimitReached = $timeLimit > 0 && $elapsed >= $timeLimit * NetworkParams::TICKS_PER_SECOND * 60;
 
@@ -721,8 +703,8 @@ class PvpGameController extends AbstractGameController
             gameStateFlags: $gameStateFlags,
             roundStartTick: $this->roundStartTick,
             warmupTimer: $warmupTimer,
-            scoreLimit: $this->world?->getConfig()->getInt('sv_world_pvp_score_limit', $this->scoreLimit) ?? $this->scoreLimit,
-            timeLimit: $this->world?->getConfig()->getInt('sv_world_pvp_time_limit', $this->timeLimit) ?? $this->timeLimit,
+            scoreLimit: $world?->getConfig()->getInt('sv_world_pvp_score_limit') ?? 0,
+            timeLimit: $world?->getConfig()->getInt('sv_world_pvp_time_limit') ?? 0,
             roundNum: $world !== null && $world->getConfig()->getString('sv_world_pvp_map_rotation') !== '' ? $world->getConfig()->getInt('sv_world_pvp_rounds_per_map') : 0,
             roundCurrent: $this->roundCount + 1,
         );

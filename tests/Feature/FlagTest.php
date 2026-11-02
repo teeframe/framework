@@ -15,25 +15,23 @@ use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\ObjFlagItem;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
+use TeeFrame\Server\Config\Config;
 
 $ctfMapPath   = __DIR__.'/../ctf1.map';
 $ctfMapExists = file_exists($ctfMapPath);
 
-/**
- * Build a CTF-enabled game controller for tests.
- *
- * @param  array<string, mixed>  $opts
- */
-function makeCtfGameController(TickHandler $tickHandler, array $opts = []): PvpGameController
+/** Build a game controller for CTF test worlds. */
+function makeCtfGameController(TickHandler $tickHandler): PvpGameController
 {
-    return new class($tickHandler, true, // isTeamMode
-        true, // isCaptureTheFlag
-        $opts['scoreLimit'] ?? 0, $opts['timeLimit'] ?? 0, $opts['teamBalanceTime'] ?? 0, $opts['inactiveKickTime'] ?? 0, $opts['inactiveKick'] ?? 0, $opts['spectatorSlots'] ?? 0, ) extends PvpGameController {};
+    return new PvpGameController($tickHandler);
 }
 
-function createCtfWorld(Map $map, TickHandler $tickHandler, AbstractGameController $controller): AbstractWorld
+function createCtfWorld(Map $map, TickHandler $tickHandler, AbstractGameController $controller, int $scoreLimit = 0): AbstractWorld
 {
-    return new TestWorldWithController($tickHandler, $map, $controller);
+    return new TestWorldWithController($tickHandler, $map, $controller, config: new Config([
+        'sv_world_game_type'       => 'ctf',
+        'sv_world_pvp_score_limit' => $scoreLimit,
+    ]));
 }
 
 function setCtfTick(TickHandler $tickHandler, int $tick): void
@@ -117,8 +115,8 @@ test('non-CTF controller does not create flags from flag stands', function () us
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = new class($tickHandler, true, false) extends PvpGameController {};
-    $world       = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = new PvpGameController($tickHandler);
+    $world       = new TestWorldWithController($tickHandler, $map, $controller, config: new Config(['sv_world_game_type' => 'tdm']));
 
     expect($controller->getFlag(GameConstants::TEAM_RED))->toBeNull();
     expect($controller->getFlag(GameConstants::TEAM_BLUE))->toBeNull();
@@ -571,8 +569,8 @@ test('flags survive round restart and return to their stands', function () use (
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 100]);
-    $world       = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller, scoreLimit: 100);
 
     $redFlag = $controller->getFlag(GameConstants::TEAM_RED);
     assert($redFlag !== null);
@@ -655,8 +653,8 @@ test('CTF round ends when a team reaches the score limit', function () use ($ctf
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
-    $world       = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller, scoreLimit: 1000);
 
     $red       = new PlayerTee;
     $red->name = 'Red';
@@ -676,8 +674,8 @@ test('CTF sudden death triggers when scores are tied at the limit', function () 
 
     $map         = new Map($ctfMapPath);
     $tickHandler = new TickHandler(100);
-    $controller  = makeCtfGameController($tickHandler, ['scoreLimit' => 1000]);
-    $world       = createCtfWorld($map, $tickHandler, $controller);
+    $controller  = makeCtfGameController($tickHandler);
+    $world       = createCtfWorld($map, $tickHandler, $controller, scoreLimit: 1000);
 
     $red       = new PlayerTee;
     $red->name = 'Red';

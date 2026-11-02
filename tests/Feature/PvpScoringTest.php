@@ -10,17 +10,20 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
+use TeeFrame\Server\Config\Config;
 
 /** @return array{TestWorldWithController, PvpGameController, PlayerTee, PlayerTee, PvpCharacterEntity, PvpCharacterEntity} */
 function createPvpScoringWorld(string $mode = 'TDM', int $scoreLimit = 0): array
 {
     $clock      = new TickHandler(100);
-    $controller = new PvpGameController($clock, scoreLimit: $scoreLimit);
-    $controller->setGameMode($mode);
-    $map   = $mode === 'CTF' ? new Map(__DIR__.'/../ctf1.map') : new Map;
-    $world = new TestWorldWithController($clock, $map, $controller);
-    $red   = new PlayerTee;
-    $blue  = new PlayerTee;
+    $controller = new PvpGameController($clock);
+    $map        = $mode === 'CTF' ? new Map(__DIR__.'/../ctf1.map') : new Map;
+    $world      = new TestWorldWithController($clock, $map, $controller, config: new Config([
+        'sv_world_game_type'       => $mode,
+        'sv_world_pvp_score_limit' => $scoreLimit,
+    ]));
+    $red  = new PlayerTee;
+    $blue = new PlayerTee;
     $world->addTee($red);
     $world->addTee($blue);
     $red->team    = GameConstants::TEAM_RED;

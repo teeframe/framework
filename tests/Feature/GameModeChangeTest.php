@@ -15,7 +15,7 @@ use TeeFrame\Server\Config\Config;
 function createGameModeChangeWorld(): TestPvpWorldWithController
 {
     $clock  = new TickHandler(1000);
-    $server = new class($clock, new Config(['sv_name' => 'Gamemode change test'])) extends AbstractServerInstance
+    $server = new class($clock, new Config(['sv_name' => 'Gamemode change test', 'sv_world_pvp_score_limit' => 10, 'sv_world_pvp_time_limit' => 15]), activatePvpSettings: true) extends AbstractServerInstance
     {
         protected function boot(): void {}
 
@@ -24,9 +24,9 @@ function createGameModeChangeWorld(): TestPvpWorldWithController
             throw new RuntimeException('Not used by this test');
         }
     };
-    $controller = new class($clock, scoreLimit: 10, timeLimit: 15, spectatorSlots: 2) extends PvpGameController {};
+    $controller = new class($clock) extends PvpGameController {};
 
-    return new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12);
+    return new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12, spectatorSlots: 2);
 }
 
 test('gametype configuration commands expose their description and optional value', function () {
@@ -71,7 +71,7 @@ test('gamemode changes are deferred and rebuild round and flag state without rep
         expect($controller->isGameOver())->toBeFalse();
         expect($world->getMap())->toBe($map);
         expect($world->getSlotsLimit())->toBe(12);
-        expect($controller->getSpectatorSlots())->toBe(2);
+        expect($world->getSpectatorSlots())->toBe(2);
         expect($world->getVoteController())->toBe($votes);
         expect($votes->getVoteChunks(new PlayerTee))->toHaveCount(1);
         expect($world->getCommands())->toContain($command);

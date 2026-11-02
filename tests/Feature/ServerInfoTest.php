@@ -43,8 +43,10 @@ class ServerInfoTestServer extends AbstractServerInstance
 
     public function addWorld(string $map = 'dm1', bool $teams = false, bool $ctf = false, int $spectatorSlots = 0, int $slotsLimit = 64): AbstractWorld
     {
-        $controller     = new TestGameController($this->tickHandler, isTeamMode: $teams, isCaptureTheFlag: $ctf, spectatorSlots: $spectatorSlots);
-        $world          = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this, $slotsLimit);
+        $controller = new TestGameController($this->tickHandler);
+        $world      = new TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../'.$map.'.map'), $controller, $this, $slotsLimit, config: new Config([
+            'sv_world_game_type' => $ctf ? 'ctf' : ($teams ? 'tdm' : 'dm'),
+        ]), spectatorSlots: $spectatorSlots);
         $this->worlds[] = $world;
 
         return $world;
