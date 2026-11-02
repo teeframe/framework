@@ -32,6 +32,32 @@ jobs:
           --coverage-clover=build/coverage/clover.xml
           --coverage-html=build/coverage/html
 
+      - name: Summarize coverage
+        if: always()
+        run: |
+          php <<'PHP'
+          <?php
+          $report = 'build/coverage/clover.xml';
+          $summary = getenv('GITHUB_STEP_SUMMARY');
+
+          if (!is_file($report)) {
+              file_put_contents($summary, "## Code coverage\n\nNo coverage report was generated. Check the test logs.\n", FILE_APPEND);
+              exit(0);
+          }
+
+          $coverage = simplexml_load_file($report);
+          if ($coverage === false) {
+              throw new RuntimeException('Could not read the Clover coverage report');
+          }
+
+          $metrics = $coverage->project->metrics;
+          $total = (int) $metrics['statements'];
+          $covered = (int) $metrics['coveredstatements'];
+          $percentage = $total > 0 ? number_format(100 * $covered / $total, 2).'%' : 'N/A';
+
+          file_put_contents($summary, "## Code coverage\n\n**{$percentage} line coverage** ({$covered} / {$total} executable lines).\n\nDownload the **code-coverage** artifact for the full HTML report.\n", FILE_APPEND);
+          PHP
+
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
