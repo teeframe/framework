@@ -22,16 +22,16 @@ class CommandLine
             return null;
         }
 
-        return self::arguments(substr($line, $length), $command->getParams());
+        return self::parseArguments(substr($line, $length), $command->getParams());
     }
 
     /** @return list<string> */
-    public static function arguments(string $line, string $params): array
+    public static function parseArguments(string $line, string $params): array
     {
         $arguments = [];
         $offset    = 0;
         $length    = strlen($line);
-        foreach (self::parameters($params) as $parameter) {
+        foreach (self::parseParameterDefinitions($params) as $parameter) {
             $offset += strspn($line, " \t\r\n\v\f", $offset);
             if ($offset === $length) {
                 if (! $parameter['optional']) {
@@ -61,7 +61,7 @@ class CommandLine
     }
 
     /** @return list<array{type: string, name: string, optional: bool}> */
-    protected static function parameters(string $params): array
+    protected static function parseParameterDefinitions(string $params): array
     {
         $parameters = [];
         $offset     = 0;

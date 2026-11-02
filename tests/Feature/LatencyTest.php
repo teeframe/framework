@@ -232,6 +232,24 @@ test('input timing accounts for time within the tick and signed late inputs', fu
     'late input'                                => [7_000_000, 100, -7],
     'truncate positive fractional milliseconds' => [7_750_000, 101, 12],
     'truncate negative fractional milliseconds' => [7_750_000, 100, -7],
+    'positive sub-millisecond remainder'        => [19_000_001, 101, 0],
+    'negative sub-millisecond remainder'        => [20_999_999, 101, 0],
+    'exact deadline'                            => [20_000_000, 101, 0],
+]);
+
+test('tick deadlines retain nanosecond precision for future and elapsed ticks', function (int $elapsedNanoseconds, int $tick, int $expected) {
+    $ticks = new LatencyTestTickHandler(100);
+    $ticks->now += $elapsedNanoseconds;
+
+    expect($ticks->getTimeUntilTick($tick))->toBe($expected);
+})->with([
+    'current tick deadline'          => [0, 100, 0],
+    'future fractional millisecond'  => [7_750_001, 101, 12_249_999],
+    'elapsed fractional millisecond' => [7_750_001, 100, -7_750_001],
+    'one nanosecond before deadline' => [19_999_999, 101, 1],
+    'one nanosecond after deadline'  => [20_000_001, 101, -1],
+    'previous tick'                  => [7_000_000, 99, -27_000_000],
+    'two ticks ahead'                => [7_000_000, 102, 33_000_000],
 ]);
 
 test('advancing the tick preserves its deadline rather than pretending no time has elapsed', function () {
@@ -241,8 +259,8 @@ test('advancing the tick preserves its deadline rather than pretending no time h
     $ticks->advanceTick();
 
     expect($ticks->getCurrentTick())->toBe(101);
-    expect($ticks->getTimeUntilTick(101))->toBe(13);
-    expect($ticks->getTimeUntilTick(102))->toBe(33);
+    expect($ticks->getTimeUntilTick(101))->toBe(13_000_000);
+    expect($ticks->getTimeUntilTick(102))->toBe(33_000_000);
 });
 
 test('the server records each tick start before processing worlds and snapshots', function () {
@@ -265,9 +283,9 @@ test('the server records each tick start before processing worlds and snapshots'
     $server->advanceTick();
 
     expect($ticks->getCurrentTick())->toBe(101);
-    expect($ticks->getTimeUntilTick(101))->toBe(20);
+    expect($ticks->getTimeUntilTick(101))->toBe(20_000_000);
     $ticks->now += 5_000_000;
-    expect($ticks->getTimeUntilTick(101))->toBe(15);
+    expect($ticks->getTimeUntilTick(101))->toBe(15_000_000);
 });
 
 test('duplicate or older prediction ticks do not enqueue repeated timing corrections', function () {

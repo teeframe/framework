@@ -27,7 +27,7 @@ abstract class AbstractPacket
         return $this->ack;
     }
 
-    public function isResend(): bool
+    public function requestsResend(): bool
     {
         return (bool) ($this->flags & NetworkBase::PACKET_FLAG_RESEND);
     }
@@ -44,7 +44,7 @@ abstract class AbstractPacket
         return $this;
     }
 
-    public function getSize(): int
+    public function getPayloadSize(): int
     {
         return count($this->payload);
     }

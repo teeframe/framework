@@ -395,7 +395,7 @@ abstract class AbstractServerInstance
             return;
         }
 
-        if ($connectionSlot = $this->connectionHandler->tryToMatch($clientInfo)) {
+        if ($connectionSlot = $this->connectionHandler->findByEndpoint($clientInfo)) {
             if ($connectionSlot->state !== ConnectionSlot::STATE_INGAME) {
                 $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet, $this->password);
 
@@ -463,7 +463,7 @@ abstract class AbstractServerInstance
             return;
         }
 
-        $connection = $this->connectionHandler->tryToMatch($clientInfo);
+        $connection = $this->connectionHandler->findByEndpoint($clientInfo);
         $worlds     = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
             ? [$connection->world()]
             : $this->worlds;

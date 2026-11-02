@@ -40,7 +40,7 @@ trait HasWeaponSwitching
         return false;
     }
 
-    protected function countInput(int $prev, int $cur): int
+    protected function countInputPresses(int $prev, int $cur): int
     {
         $prev &= self::INPUT_STATE_MASK;
         $cur &= self::INPUT_STATE_MASK;
@@ -68,8 +68,8 @@ trait HasWeaponSwitching
             $wantedWeapon = $this->queuedWeapon;
         }
 
-        $next = $this->countInput($this->latestPrevInput->nextWeapon, $this->latestInput->nextWeapon);
-        $prev = $this->countInput($this->latestPrevInput->prevWeapon, $this->latestInput->prevWeapon);
+        $next = $this->countInputPresses($this->latestPrevInput->nextWeapon, $this->latestInput->nextWeapon);
+        $prev = $this->countInputPresses($this->latestPrevInput->prevWeapon, $this->latestInput->prevWeapon);
 
         if ($next < 128) {
             while ($next > 0) {

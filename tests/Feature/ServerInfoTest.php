@@ -152,7 +152,7 @@ test('connectionless packets decode and encode with the six-byte 0.6 header', fu
     expect($packet->getFlags())->toBe(NetworkBase::PACKET_FLAG_TYPE_CONNECTION_LESS);
     expect($packet->getAck())->toBe(0);
     expect($packet->getNumChunks())->toBe(0);
-    expect($packet->isResend())->toBeFalse();
+    expect($packet->requestsResend())->toBeFalse();
     expect($packet->encodeToSend())->toBe($raw);
 });
 

@@ -63,10 +63,10 @@ trait HasCharacterCore
         $this->triggeredEvents = 0;
 
         $grounded = false;
-        if ($collision->checkPoint($this->position->x + $physSize / 2, $this->position->y + $physSize / 2 + 5)) {
+        if ($collision->isSolidAt($this->position->x + $physSize / 2, $this->position->y + $physSize / 2 + 5)) {
             $grounded = true;
         }
-        if ($collision->checkPoint($this->position->x - $physSize / 2, $this->position->y + $physSize / 2 + 5)) {
+        if ($collision->isSolidAt($this->position->x - $physSize / 2, $this->position->y + $physSize / 2 + 5)) {
             $grounded = true;
         }
 

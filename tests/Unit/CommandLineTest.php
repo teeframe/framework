@@ -6,7 +6,7 @@ use TeeFrame\Game\Commands\CommandLine;
 use TeeFrame\Game\Tees\AbstractTee;
 
 test('parameter declarations control token boundaries optional arguments and numeric validation', function (string $params, string $line, array $expected) {
-    expect(CommandLine::arguments($line, $params))->toBe($expected);
+    expect(CommandLine::parseArguments($line, $params))->toBe($expected);
 })->with([
     'no parameters'                            => ['', '', []],
     'whitespace without parameters'            => ['', " \t", []],
@@ -33,7 +33,7 @@ test('parameter declarations control token boundaries optional arguments and num
 ]);
 
 test('missing excess and malformed typed arguments are rejected', function (string $params, string $line) {
-    expect(fn () => CommandLine::arguments($line, $params))->toThrow(InvalidArgumentException::class);
+    expect(fn () => CommandLine::parseArguments($line, $params))->toThrow(InvalidArgumentException::class);
 })->with([
     'missing string'                    => ['s[name]', ''],
     'missing rest'                      => ['s[name] r[message]', 'name'],
@@ -54,7 +54,7 @@ test('missing excess and malformed typed arguments are rejected', function (stri
 ]);
 
 test('invalid parameter declarations are configuration errors', function (string $params) {
-    expect(fn () => CommandLine::arguments('', $params))->toThrow(LogicException::class);
+    expect(fn () => CommandLine::parseArguments('', $params))->toThrow(LogicException::class);
 })->with(['unknown', 's[name', 's[]', '?', 's[name] extra', 'r[text] s[other]', 'x[name]', 's[name]?i[id]']);
 
 test('command matching uses exact names and aliases rather than regex patterns', function () {

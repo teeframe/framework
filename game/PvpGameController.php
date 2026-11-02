@@ -233,7 +233,7 @@ class PvpGameController extends AbstractGameController
         }
     }
 
-    public function doWarmup(int $seconds): void
+    public function setWarmup(int $seconds): void
     {
         $this->warmup = $seconds < 0 ? 0 : $seconds * NetworkParams::TICKS_PER_SECOND;
         if ($this->world !== null) {

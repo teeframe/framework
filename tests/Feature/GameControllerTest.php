@@ -108,7 +108,7 @@ test('warmup counts down and starts round when it reaches zero', function () use
     $controller  = makeGameController($tickHandler, ['scoreLimit' => 20]);
     $world       = createWorldWithController($map, $tickHandler, $controller);
 
-    $controller->doWarmup(3); // 3 seconds = 150 ticks
+    $controller->setWarmup(3); // 3 seconds = 150 ticks
     expect($controller->isGameOver())->toBeFalse();
 
     // Tick partway through warmup — should still be in warmup
@@ -122,7 +122,7 @@ test('warmup counts down and starts round when it reaches zero', function () use
     expect($controller->isGameOver())->toBeFalse();
 });
 
-test('doWarmup with negative seconds clears warmup', function () use ($mapPath, $mapExists) {
+test('setWarmup with negative seconds clears warmup', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -132,8 +132,8 @@ test('doWarmup with negative seconds clears warmup', function () use ($mapPath, 
     $controller  = makeGameController($tickHandler);
     createWorldWithController($map, $tickHandler, $controller);
 
-    $controller->doWarmup(5);
-    $controller->doWarmup(-1);
+    $controller->setWarmup(5);
+    $controller->setWarmup(-1);
 
     // Warmup should be 0 — the round starts immediately on next tick
     setGameTick($tickHandler, 101);
@@ -181,7 +181,7 @@ test('round does not end during warmup even if score limit reached', function ()
     $tee->name = 'WarmupKiller';
     $world->addTee($tee);
 
-    $controller->doWarmup(10);
+    $controller->setWarmup(10);
     $tee->score = 5;
 
     $world->doTick();

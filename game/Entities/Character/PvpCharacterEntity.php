@@ -225,7 +225,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->doWeaponSwitch();
 
-        $firePressed = $this->countInput($this->latestPrevInput->fire, $this->latestInput->fire) > 0;
+        $firePressed = $this->countInputPresses($this->latestPrevInput->fire, $this->latestInput->fire) > 0;
         $weaponAmmo  = $this->weapons[$this->activeWeapon]->ammo;
 
         // Full-auto weapons keep firing while held and there is ammo,

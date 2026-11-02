@@ -203,7 +203,7 @@ test('a DM world without active players does not declare a winner or sudden deat
 
 test('warmup still prevents a projectile kill from ending the round', function (string $mode) {
     [$world, $clock, $owner] = winTimingFixture($mode);
-    $world->getGameController()->doWarmup(10);
+    $world->getGameController()->setWarmup(10);
     addWinTimingProjectile($world, $owner);
     $clock->advanceTick();
 

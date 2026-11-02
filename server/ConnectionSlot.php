@@ -132,13 +132,13 @@ class ConnectionSlot extends AbstractConnection
 
     public function feedConnection(AbstractPacket $packet): bool
     {
-        if (! $this->validateFeeding($packet)) {
+        if (! $this->acceptIncomingPacket($packet)) {
             $this->consoleDebug('network', 'Invalid ack');
 
             return false;
         }
 
-        if ($packet->isResend()) {
+        if ($packet->requestsResend()) {
             $this->chunks()->resend();
         }
 
@@ -223,7 +223,7 @@ class ConnectionSlot extends AbstractConnection
                 if ($chunk->predictionTick > $this->lastInputTick) {
                     $this->chunks()->add(new InputTimingChunk(
                         intendedTick: $chunk->predictionTick,
-                        timeLeft: $this->tickHandler->getTimeUntilTick($chunk->predictionTick),
+                        timeLeft: intdiv($this->tickHandler->getTimeUntilTick($chunk->predictionTick), 1_000_000),
                     ));
                 }
 

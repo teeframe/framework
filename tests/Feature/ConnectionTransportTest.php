@@ -109,7 +109,7 @@ class TransportTestServer extends AbstractServerInstance
     public function connect(int $port = 8300): ConnectionSlot
     {
         $this->receive(new ControlMessage(NetworkMessages::CONTROL_CONNECT), $port);
-        $slot = $this->connectionHandler->tryToMatch(['address' => '127.0.0.1', 'port' => $port]);
+        $slot = $this->connectionHandler->findByEndpoint(['address' => '127.0.0.1', 'port' => $port]);
         if ($slot === false) {
             throw new RuntimeException('Test connection was not accepted');
         }
@@ -187,7 +187,7 @@ test('out-of-order vital chunks wait for the gap and do not block later in-order
     expect($slot->ack)->toBe(2);
     $controls = $server->socket->controls();
     expect($controls)->toHaveCount(1);
-    expect($controls[0]->isResend())->toBeTrue();
+    expect($controls[0]->requestsResend())->toBeTrue();
     expect($controls[0]->getAck())->toBe(0);
 });
 
@@ -397,7 +397,7 @@ test('client-requested retransmissions preserve sequence numbers and do not requ
     $server->receive(new ControlMessage(NetworkMessages::CONTROL_KEEP_ALIVE, ack: 0, resend: true));
 
     expect($server->socket->packets)->toHaveCount(1);
-    expect($server->socket->packets[0]->isResend())->toBeFalse();
+    expect($server->socket->packets[0]->requestsResend())->toBeFalse();
     expect($server->socket->chunks()[0]->getSequence())->toBe(1);
     expect($server->socket->chunks()[0]->getFlags())->toBe(NetworkBase::CHUNK_FLAG_VITAL | NetworkBase::CHUNK_FLAG_RESEND);
     expect($slot->sequence)->toBe(1);

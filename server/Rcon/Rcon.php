@@ -133,7 +133,7 @@ class Rcon
     {
         $name = strtolower(CommandLine::name($line));
         if ($name === 'logout' || $name === 'cmdlist') {
-            CommandLine::arguments(substr($line, strlen($name)), '');
+            CommandLine::parseArguments(substr($line, strlen($name)), '');
         }
         if ($name === 'logout') {
             $connection->consoleInfo('rcon', 'RCON command=logout');
@@ -176,7 +176,7 @@ class Rcon
 
     protected function executeVoteCommand(ConnectionSlot $connection, string $name, string $line): void
     {
-        $arguments = CommandLine::arguments($line, $this->getCommandInfo($connection->world())[$name]['params']);
+        $arguments = CommandLine::parseArguments($line, $this->getCommandInfo($connection->world())[$name]['params']);
 
         $world = $connection->world();
         $votes = $world->getVoteController();

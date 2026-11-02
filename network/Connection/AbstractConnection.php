@@ -127,7 +127,7 @@ abstract class AbstractConnection
         return $this->sendPacket(new ControlMessage(message: $message, extra: $extra, ack: $this->ack));
     }
 
-    protected function validateFeeding(AbstractPacket $packet): bool
+    protected function acceptIncomingPacket(AbstractPacket $packet): bool
     {
         $this->receivedChunks = [];
 

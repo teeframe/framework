@@ -50,7 +50,7 @@ test('a laser reflects outside the wall and keeps its first segment for the snap
     expect($laser->direction->y)->toEqual(0.0);
     $collision = $world->getMap()->getCollision();
     assert($collision !== null);
-    expect($collision->checkPoint($laser->getPosition()->x, $laser->getPosition()->y))->toBeFalse();
+    expect($collision->isSolidAt($laser->getPosition()->x, $laser->getPosition()->y))->toBeFalse();
 
     $sounds = array_values(array_filter($world->doSnap($owner), fn ($item) => $item instanceof ObjEventSoundWorldItem));
     expect($sounds)->toHaveCount(1);

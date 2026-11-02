@@ -55,11 +55,11 @@ class PacketDecoder
             return false;
         }
 
-        $data      = array_values(NetworkBase::unpackBuffer($rawBuffer));
-        $flags     = $data[0] >> 4;
-        $ack       = (($data[0] & 0xF) << 8) | $data[1];
-        $numChunks = $data[2];
-        $isResend  = (bool) ($flags & NetworkBase::PACKET_FLAG_RESEND);
+        $data           = array_values(NetworkBase::unpackBuffer($rawBuffer));
+        $flags          = $data[0] >> 4;
+        $ack            = (($data[0] & 0xF) << 8) | $data[1];
+        $numChunks      = $data[2];
+        $requestsResend = (bool) ($flags & NetworkBase::PACKET_FLAG_RESEND);
 
         // TODO: Implement token support
 
@@ -85,7 +85,7 @@ class PacketDecoder
                 return false;
             }
 
-            return new ControlMessage(message: $data[3], extra: NetworkBase::packBuffer(array_slice($data, 4)), ack: $ack, resend: $isResend);
+            return new ControlMessage(message: $data[3], extra: NetworkBase::packBuffer(array_slice($data, 4)), ack: $ack, resend: $requestsResend);
         }
 
         $payload = array_slice($data, NetworkParams::PACKET_HEADER_SIZE_DEFAULT);
@@ -105,7 +105,7 @@ class PacketDecoder
             return false;
         }
 
-        return new DefaultPacket(chunks: $chunks, ack: $ack, resend: $isResend);
+        return new DefaultPacket(chunks: $chunks, ack: $ack, resend: $requestsResend);
     }
 
     /**

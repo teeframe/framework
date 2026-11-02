@@ -45,7 +45,7 @@ test('only vital chunks are retained for retransmission', function () {
     expect($connection->sentPackets)->toHaveCount(2);
     $resent = $connection->sentPackets[1];
     expect($resent->getNumChunks())->toBe(1);
-    expect($resent->isResend())->toBeFalse();
+    expect($resent->requestsResend())->toBeFalse();
     assert($resent instanceof DefaultPacket);
     $chunk = $resent->getChunks()[0];
     expect($chunk->getSequence())->toBe(1);
@@ -68,7 +68,7 @@ test('retransmissions respect the packet byte limit without allocating new seque
     foreach (array_slice($connection->sentPackets, 2) as $index => $packet) {
         expect(strlen($packet->encodeToSend()))->toBeLessThanOrEqual(NetworkParams::MAXIMUM_PACKET_SIZE);
         expect($packet->getNumChunks())->toBe(1);
-        expect($packet->isResend())->toBeFalse();
+        expect($packet->requestsResend())->toBeFalse();
         assert($packet instanceof DefaultPacket);
         expect($packet->getChunks()[0]->getSequence())->toBe($index + 1);
     }

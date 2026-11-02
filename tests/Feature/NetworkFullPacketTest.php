@@ -3,6 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Network\Chunks\System\SnapSingleChunk;
 use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjCharacterItem;
 use TeeFrame\Network\SnapItems\ObjClientInfoItem;
@@ -146,6 +147,8 @@ test('can encode a full packet with multiple snap items through snap handler', f
 
     expect($connection->sentPackets)->toHaveCount(1);
     $encodedPacket = NetworkBase::unpackBuffer($connection->sentPackets[0]->encodeToSend());
+
+    expect($connection->sentPackets[0]->getPayloadSize())->toBe(count($encodedPacket) - NetworkParams::PACKET_HEADER_SIZE_DEFAULT);
 
     // Verify packet structure: [flags, ack, numChunks, ...chunk]
     expect($encodedPacket)->not->toBeEmpty();

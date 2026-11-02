@@ -72,7 +72,7 @@ class Collision
         return ($this->getTile($x, $y) & self::COLFLAG_SOLID) !== 0;
     }
 
-    public function checkPoint(float $x, float $y): bool
+    public function isSolidAt(float $x, float $y): bool
     {
         return $this->isTileSolid((int) round($x), (int) round($y));
     }
@@ -102,7 +102,7 @@ class Collision
                 $pos0->y + ($pos1->y - $pos0->y) * $a,
             );
 
-            if ($this->checkPoint($pos->x, $pos->y)) {
+            if ($this->isSolidAt($pos->x, $pos->y)) {
                 return [$this->getCollisionAt($pos->x, $pos->y), $pos, $last];
             }
 
@@ -116,16 +116,16 @@ class Collision
     {
         $bounces = 0;
 
-        if ($this->checkPoint($pos->x + $vel->x, $pos->y + $vel->y)) {
+        if ($this->isSolidAt($pos->x + $vel->x, $pos->y + $vel->y)) {
             $affected = 0;
 
-            if ($this->checkPoint($pos->x + $vel->x, $pos->y)) {
+            if ($this->isSolidAt($pos->x + $vel->x, $pos->y)) {
                 $vel->x *= -$elasticity;
                 $bounces++;
                 $affected++;
             }
 
-            if ($this->checkPoint($pos->x, $pos->y + $vel->y)) {
+            if ($this->isSolidAt($pos->x, $pos->y + $vel->y)) {
                 $vel->y *= -$elasticity;
                 $bounces++;
                 $affected++;
@@ -141,21 +141,21 @@ class Collision
         }
     }
 
-    public function testBox(Vector2 $pos, Vector2 $size): bool
+    public function isBoxBlocked(Vector2 $pos, Vector2 $size): bool
     {
         $halfW = $size->x * 0.5;
         $halfH = $size->y * 0.5;
 
-        if ($this->checkPoint($pos->x - $halfW, $pos->y - $halfH)) {
+        if ($this->isSolidAt($pos->x - $halfW, $pos->y - $halfH)) {
             return true;
         }
-        if ($this->checkPoint($pos->x + $halfW, $pos->y - $halfH)) {
+        if ($this->isSolidAt($pos->x + $halfW, $pos->y - $halfH)) {
             return true;
         }
-        if ($this->checkPoint($pos->x - $halfW, $pos->y + $halfH)) {
+        if ($this->isSolidAt($pos->x - $halfW, $pos->y + $halfH)) {
             return true;
         }
-        if ($this->checkPoint($pos->x + $halfW, $pos->y + $halfH)) {
+        if ($this->isSolidAt($pos->x + $halfW, $pos->y + $halfH)) {
             return true;
         }
 
@@ -179,16 +179,16 @@ class Collision
                 $pos->y + $vel->y * $fraction,
             );
 
-            if ($this->testBox($newPos, $size)) {
+            if ($this->isBoxBlocked($newPos, $size)) {
                 $hits = 0;
 
-                if ($this->testBox(new Vector2($pos->x, $newPos->y), $size)) {
+                if ($this->isBoxBlocked(new Vector2($pos->x, $newPos->y), $size)) {
                     $newPos->y = $pos->y;
                     $vel->y *= -$elasticity;
                     $hits++;
                 }
 
-                if ($this->testBox(new Vector2($newPos->x, $pos->y), $size)) {
+                if ($this->isBoxBlocked(new Vector2($newPos->x, $pos->y), $size)) {
                     $newPos->x = $pos->x;
                     $vel->x *= -$elasticity;
                     $hits++;

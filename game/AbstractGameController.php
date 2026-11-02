@@ -289,7 +289,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         // Teeworlds 0.6: center, left, up, right, down.
         foreach ([[0, 0], [-32, 0], [0, -32], [32, 0], [0, 32]] as [$dx, $dy]) {
             $pos = new Vector2($spawnPoint->x + $dx, $spawnPoint->y + $dy);
-            if ($collision !== null && $collision->checkPoint($pos->x, $pos->y)) {
+            if ($collision !== null && $collision->isSolidAt($pos->x, $pos->y)) {
                 continue;
             }
 

@@ -44,7 +44,7 @@ class ConnectionHandler
     /**
      * @param  array{address: string, port: int}  $clientInfo
      */
-    public function tryToMatch(array $clientInfo): ConnectionSlot|false
+    public function findByEndpoint(array $clientInfo): ConnectionSlot|false
     {
         foreach ($this->slots as $connection) {
             if ($connection->state === ConnectionSlot::STATE_CLOSED

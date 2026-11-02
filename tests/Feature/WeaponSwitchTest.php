@@ -173,11 +173,11 @@ test('prev weapon wraps around from hammer to gun', function () {
     expect($character->activeWeapon)->toBe(GameConstants::WEAPON_GUN);
 });
 
-// --- CountInput press detection ---
+// --- Input press counting ---
 
-test('countInput detects single press', function () use ($makeChar) {
+test('countInputPresses detects single press', function () use ($makeChar) {
     $ref    = new ReflectionClass(AbstractCharacterEntity::class);
-    $method = $ref->getMethod('countInput');
+    $method = $ref->getMethod('countInputPresses');
 
     $character = $makeChar();
 
@@ -186,9 +186,9 @@ test('countInput detects single press', function () use ($makeChar) {
     expect($presses)->toBe(1);
 });
 
-test('countInput detects multiple presses', function () use ($makeChar) {
+test('countInputPresses detects multiple presses', function () use ($makeChar) {
     $ref    = new ReflectionClass(AbstractCharacterEntity::class);
-    $method = $ref->getMethod('countInput');
+    $method = $ref->getMethod('countInputPresses');
 
     $character = $makeChar();
 
@@ -198,9 +198,9 @@ test('countInput detects multiple presses', function () use ($makeChar) {
     expect($presses)->toBe(3);
 });
 
-test('countInput returns zero for no change', function () use ($makeChar) {
+test('countInputPresses returns zero for no change', function () use ($makeChar) {
     $ref    = new ReflectionClass(AbstractCharacterEntity::class);
-    $method = $ref->getMethod('countInput');
+    $method = $ref->getMethod('countInputPresses');
 
     $character = $makeChar();
 
@@ -208,9 +208,9 @@ test('countInput returns zero for no change', function () use ($makeChar) {
     expect($presses)->toBe(0);
 });
 
-test('countInput wraps at INPUT_STATE_MASK', function () use ($makeChar) {
+test('countInputPresses wraps at INPUT_STATE_MASK', function () use ($makeChar) {
     $ref    = new ReflectionClass(AbstractCharacterEntity::class);
-    $method = $ref->getMethod('countInput');
+    $method = $ref->getMethod('countInputPresses');
 
     $character = $makeChar();
 

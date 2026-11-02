@@ -85,13 +85,13 @@ class Huffman
         }
     }
 
-    public function setBitsR(int $nodeIndex, int $bits, int $depth): void
+    public function assignSymbolCodes(int $nodeIndex, int $bits, int $depth): void
     {
         if ($this->nodes[$nodeIndex]->right !== self::HUFFMAN_NULL_NODE) {
-            $this->setBitsR($this->nodes[$nodeIndex]->right, $bits | (1 << $depth), $depth + 1);
+            $this->assignSymbolCodes($this->nodes[$nodeIndex]->right, $bits | (1 << $depth), $depth + 1);
         }
         if ($this->nodes[$nodeIndex]->left !== self::HUFFMAN_NULL_NODE) {
-            $this->setBitsR($this->nodes[$nodeIndex]->left, $bits, $depth + 1);
+            $this->assignSymbolCodes($this->nodes[$nodeIndex]->left, $bits, $depth + 1);
         }
         if ($this->nodes[$nodeIndex]->numBits) {
             $this->nodes[$nodeIndex]->bits    = $bits;
@@ -172,7 +172,7 @@ class Huffman
         }
 
         $this->startNodeIndex = $this->numNodes - 1;
-        $this->setBitsR($this->startNodeIndex, 0, 0);
+        $this->assignSymbolCodes($this->startNodeIndex, 0, 0);
     }
 
     /**

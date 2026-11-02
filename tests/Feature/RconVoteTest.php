@@ -323,7 +323,7 @@ test('vote-management commands require authentication and cannot be executed fro
 });
 
 test('invalid quoted command arguments and excess arguments are rejected', function (string $line, string $params) {
-    expect(fn () => CommandLine::arguments($line, $params))->toThrow(InvalidArgumentException::class);
+    expect(fn () => CommandLine::parseArguments($line, $params))->toThrow(InvalidArgumentException::class);
 })->with([
     ['"unclosed', 's[value]'],
     ['"value" extra', 's[value]'],
@@ -332,7 +332,7 @@ test('invalid quoted command arguments and excess arguments are rejected', funct
 ]);
 
 test('command arguments preserve the unquoted remainder and decode quoted values once', function (string $line, string $params, array $expected) {
-    expect(CommandLine::arguments($line, $params))->toBe($expected);
+    expect(CommandLine::parseArguments($line, $params))->toBe($expected);
 })->with([
     ['"Record action" record', 's[name] r[command]', ['Record action', 'record']],
     ['"Record action" echo "value with spaces"', 's[name] r[command]', ['Record action', 'echo "value with spaces"']],

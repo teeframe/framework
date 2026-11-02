@@ -23,7 +23,7 @@ class TickHandler
         $tickDuration = intdiv(1_000_000_000, NetworkParams::TICKS_PER_SECOND);
         $deadline     = $this->currentTickStartTime + ($tick - $this->currentTick) * $tickDuration;
 
-        return (int) (($deadline - $this->getTime()) / 1_000_000);
+        return $deadline - $this->getTime();
     }
 
     public function getTime(): int

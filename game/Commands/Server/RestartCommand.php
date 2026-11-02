@@ -36,7 +36,7 @@ class RestartCommand extends AbstractCommand
             throw new \InvalidArgumentException('This gamemode does not support round restarts');
         }
         if (! isset($arguments[0])) {
-            $controller->doWarmup(0);
+            $controller->setWarmup(0);
             $controller->startRound();
 
             return;
@@ -45,6 +45,6 @@ class RestartCommand extends AbstractCommand
         if ($seconds < 0 || $seconds > 3600) {
             throw new \InvalidArgumentException('Restart delay must be between 0 and 3600 seconds');
         }
-        $controller->doWarmup($seconds);
+        $controller->setWarmup($seconds);
     }
 }
