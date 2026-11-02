@@ -52,12 +52,12 @@ abstract class AbstractProjectileEntity extends AbstractEntity
 
     abstract public function doTick(): void;
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         $this->startTick++;
     }
 
-    abstract protected function getPos(float $time): Vector2;
+    abstract protected function calculatePositionAtTime(float $time): Vector2;
 
     /**
      * @return AbstractSnapItem[]

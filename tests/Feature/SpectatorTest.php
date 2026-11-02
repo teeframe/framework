@@ -316,7 +316,7 @@ test('spectator view position follows spectated player', function () use ($mapPa
     $spectator->spectatorId = $player->teeIndex;
 
     // Defer spawning so this tick tests camera following, not spawn positioning.
-    $player->respawnTick  = $tickHandler->get() + 1;
+    $player->respawnTick  = $tickHandler->getCurrentTick() + 1;
     $player->viewPosition = new Vector2(5000, 3000);
 
     // Spectator's view position is still at origin

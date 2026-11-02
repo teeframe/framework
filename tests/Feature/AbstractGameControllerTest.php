@@ -82,7 +82,7 @@ test('a base controller has no automatic win condition or round restart', functi
     $tee   = new PlayerTee;
     $world->addTee($tee);
     $tee->score = 1000;
-    $clock->next();
+    $clock->advanceTick();
     $world->doTick();
 
     expect($tee->score)->toBe(1000);
@@ -91,7 +91,7 @@ test('a base controller has no automatic win condition or round restart', functi
 
     $world->setPaused(true);
     for ($i = 0; $i < 501; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $world->doTick();
     }
 
@@ -144,7 +144,7 @@ test('a base controller still enforces its inactivity policy', function () {
     $world->addTee($tee);
 
     for ($i = 0; $i < 3001; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     $world->doTick();
 
@@ -156,7 +156,7 @@ test('a base controller can reload maps and spawn again without PvP APIs', funct
     $world      = createNeutralControllerWorld($clock, slotsLimit: 12, spectatorSlots: 2);
     $controller = $world->getGameController();
     $world->changeMap('dm1');
-    $clock->next();
+    $clock->advanceTick();
     $world->doTick();
 
     expect($world->getMap()->getName())->toBe('dm1');
@@ -206,16 +206,16 @@ test('only PvP team modes prioritize their own team spawn points', function () {
     $clock   = new TickHandler(100);
     $world   = createNeutralControllerWorld($clock);
     $neutral = $world->getGameController();
-    expect($neutral->canSpawn($world, GameConstants::TEAM_RED))
-        ->toEqual($neutral->canSpawn($world, GameConstants::TEAM_BLUE));
-    expect($neutral->canSpawn($world, GameConstants::TEAM_SPECTATORS))->toBeNull();
+    expect($neutral->selectSpawnPosition($world, GameConstants::TEAM_RED))
+        ->toEqual($neutral->selectSpawnPosition($world, GameConstants::TEAM_BLUE));
+    expect($neutral->selectSpawnPosition($world, GameConstants::TEAM_SPECTATORS))->toBeNull();
 
     $controller = new PvpGameController($clock, isTeamMode: true);
     $pvpWorld   = new TestPvpWorldWithController($clock, $world->getMap(), $controller);
     $layer      = $world->getMap()->getGameLayer();
     assert($layer !== null);
     foreach ([GameConstants::TEAM_RED => GameLayer::ENTITY_SPAWN_RED, GameConstants::TEAM_BLUE => GameLayer::ENTITY_SPAWN_BLUE] as $team => $type) {
-        $spawn = $controller->canSpawn($pvpWorld, $team);
+        $spawn = $controller->selectSpawnPosition($pvpWorld, $team);
         assert($spawn !== null);
         $teamSpawns = array_filter($layer->getEntityPositions(), fn ($entity) => $entity['type'] === $type);
         $positions  = array_map(fn ($entity) => [(float) $entity['x'], (float) $entity['y']], $teamSpawns);

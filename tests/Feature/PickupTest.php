@@ -49,12 +49,12 @@ test('a pickup configured never to respawn is consumed until the round resets', 
 
     $pickup->doTick();
     expect($pickup->doSnap($viewer))->toBeEmpty();
-    expect($pickup->isToDestroy())->toBeFalse();
+    expect($pickup->isMarkedForDestruction())->toBeFalse();
     if ($type === GameConstants::POWERUP_WEAPON) {
         $character->weapons[GameConstants::WEAPON_SHOTGUN]->ammo = 0;
     }
     for ($i = 0; $i < 100; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $pickup->doTick();
     }
     expect($pickup->doSnap($viewer))->toBeEmpty();
@@ -66,7 +66,7 @@ test('a pickup configured never to respawn is consumed until the round resets', 
     $sounds = array_filter($world->doSnap($viewer), fn ($item) => $item instanceof ObjEventSoundWorldItem);
     expect($sounds)->toHaveCount(1);
 
-    $world->resetGame();
+    $world->requestRoundReset();
     $world->doTick();
     expect($world->getEntities())->toBe([$pickup]);
     expect($pickup->doSnap($viewer))->toHaveCount(1);
@@ -82,7 +82,7 @@ test('always available pickups stay collectible independently of their respawn t
     if ($type === GameConstants::POWERUP_WEAPON) {
         $character->weapons[GameConstants::WEAPON_SHOTGUN]->ammo = 0;
     }
-    $clock->next();
+    $clock->advanceTick();
     $pickup->doTick();
 
     expect($pickup->doSnap($viewer))->toHaveCount(1);
@@ -124,12 +124,12 @@ test('timed pickups become collectible only after their respawn deadline', funct
     expect($character->health)->toBe(6);
     expect($pickup->doSnap($viewer))->toBeEmpty();
     for ($i = 0; $i < $respawnTime; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $pickup->doTick();
     }
     expect($character->health)->toBe(6);
     expect($pickup->doSnap($viewer))->toBeEmpty();
-    $clock->next();
+    $clock->advanceTick();
     expect($pickup->doSnap($viewer))->toHaveCount(1);
     $pickup->doTick();
     expect($character->health)->toBe(7);
@@ -144,7 +144,7 @@ test('initial spawn delays apply to both consumable and always available pickups
         $pickup->doTick();
         expect($character->health)->toBe(5);
         expect($pickup->doSnap($viewer))->toBeEmpty();
-        $clock->next();
+        $clock->advanceTick();
     }
     expect($pickup->doSnap($viewer))->toHaveCount(1);
     $pickup->doTick();
@@ -154,7 +154,7 @@ test('initial spawn delays apply to both consumable and always available pickups
     $pickup->reset();
     expect($pickup->doSnap($viewer))->toBeEmpty();
     for ($i = 0; $i < 3; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     expect($pickup->doSnap($viewer))->toHaveCount(1);
 })->with([false, true]);
@@ -164,12 +164,12 @@ test('paused time preserves pickup delays without reviving permanently consumed 
     $pickup                      = new PickupEntity($world, new Vector2(64, 64), GameConstants::POWERUP_HEALTH, respawnTime: $respawnTime);
     $pickup->doTick();
     for ($i = 0; $i < 10; $i++) {
-        $clock->next();
-        $pickup->tickPaused();
+        $clock->advanceTick();
+        $pickup->doTickPaused();
         expect($pickup->doSnap(new PlayerTee))->toBeEmpty();
     }
     for ($i = 0; $i < 4; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $pickup->doTick();
     }
     expect($character->health)->toBe($respawnTime < 0 ? 6 : 7);
@@ -185,7 +185,7 @@ test('map pickups configure availability independently for each entity type', fu
 
     $pickup->doTick();
     expect($pickup->doSnap(new PlayerTee))->toHaveCount($alwaysAvailable ? 1 : 0);
-    $clock->next();
+    $clock->advanceTick();
     $pickup->doTick();
     expect($pickup->doSnap(new PlayerTee))->toHaveCount($alwaysAvailable ? 1 : 0);
     $sounds   = array_filter($world->doSnap(new PlayerTee), fn ($item) => $item instanceof ObjEventSoundWorldItem);

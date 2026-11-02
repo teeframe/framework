@@ -147,7 +147,7 @@ test('profile changes enforce five seconds between accepted updates including at
     recordingServer($world)->clear();
 
     for ($i = 0; $i < 5 * NetworkParams::TICKS_PER_SECOND - 1; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     $blocked = new ClChangeInfoChunk('Blocked', 'Blocked', 99, 'default', false, 0, 0);
     $slot->feedConnection(clientInfoTestPacket($slot, $blocked));
@@ -162,7 +162,7 @@ test('profile changes enforce five seconds between accepted updates including at
     expect($tee->lastChangeInfo)->toBe($startTick);
     expect(recordingServer($world)->sentChunks)->toBeEmpty();
 
-    $clock->next();
+    $clock->advanceTick();
     $slot->feedConnection(clientInfoTestPacket($slot, clientInfoChange('Second')));
     expect($tee->name)->toBe('Second');
     expect($tee->lastChangeInfo)->toBe($startTick + 5 * NetworkParams::TICKS_PER_SECOND);
@@ -187,7 +187,7 @@ test('profile name changes preserve world-local uniqueness and UTF-8 bounds', fu
     expect($other->name)->toBe('(1)Changed');
 
     for ($i = 0; $i < 5 * NetworkParams::TICKS_PER_SECOND; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     $slot->feedConnection(clientInfoTestPacket($slot, clientInfoChange(str_repeat('é', 20))));
     expect($slot->playerTee()->name)->toBe(str_repeat('é', 7));

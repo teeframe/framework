@@ -22,15 +22,15 @@ test('changed aim counts as activity but repeating the same target does not', fu
     } elseif ($state === 'spectator') {
         $tee->team = GameConstants::TEAM_SPECTATORS;
     }
-    $tee->onDirectInput(input(['targetX' => 100, 'targetY' => 0]), $clock->get());
-    $clock->next();
+    $tee->onDirectInput(input(['targetX' => 100, 'targetY' => 0]), $clock->getCurrentTick());
+    $clock->advanceTick();
 
-    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->get());
+    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->getCurrentTick());
     expect($tee->lastActionTick)->toBe(101);
-    $clock->next();
-    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->get());
+    $clock->advanceTick();
+    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->getCurrentTick());
     expect($tee->lastActionTick)->toBe(101);
-    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 10]), $clock->get());
+    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 10]), $clock->getCurrentTick());
     expect($tee->lastActionTick)->toBe(102);
 })->with(['living', 'dead', 'spectator']);
 
@@ -53,19 +53,19 @@ test('mouse movement prevents an inactivity kick but unchanged aim eventually ti
     $world      = new TestWorldWithController($clock, new Map, $controller);
     $tee        = new PlayerTee;
     $world->addTee($tee);
-    $tee->onDirectInput(input(['targetX' => 100, 'targetY' => 0]), $clock->get());
+    $tee->onDirectInput(input(['targetX' => 100, 'targetY' => 0]), $clock->getCurrentTick());
     for ($i = 0; $i <= NetworkParams::TICKS_PER_SECOND * 60; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
 
-    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->get());
+    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->getCurrentTick());
     $controller->doTick();
     expect(recordingServer($world)->kickedTees)->toBeEmpty();
 
     for ($i = 0; $i <= NetworkParams::TICKS_PER_SECOND * 60; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
-    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->get());
+    $tee->onDirectInput(input(['targetX' => 200, 'targetY' => 0]), $clock->getCurrentTick());
     $controller->doTick();
     expect(recordingServer($world)->kickedTees)->toBe([$tee->teeIndex => 'Kicked for inactivity']);
 });

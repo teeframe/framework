@@ -17,7 +17,7 @@ function createAmmoRegenerationWorld(): array
     $world->addTee($tee);
     $world->doTick();
     $world->clearEvents();
-    $tickHandler->next();
+    $tickHandler->advanceTick();
     assert($tee->character instanceof PvpCharacterEntity);
     $character = $tee->character;
 
@@ -32,8 +32,8 @@ function createAmmoRegenerationWorld(): array
 /** @return int[] Sound IDs in this tick's player snapshot. */
 function advanceAmmoRegenerationTick(TestWorld $world, TickHandler $tickHandler, PlayerTee $tee, PlayerInput $input): array
 {
-    $tee->onDirectInput($input, $tickHandler->get());
-    $tee->bufferInput($tickHandler->get(), $input);
+    $tee->onDirectInput($input, $tickHandler->getCurrentTick());
+    $tee->bufferInput($tickHandler->getCurrentTick(), $input);
     $world->doTick();
     $sounds = [];
     foreach ($world->doSnap($tee) as $item) {
@@ -42,7 +42,7 @@ function advanceAmmoRegenerationTick(TestWorld $world, TickHandler $tickHandler,
         }
     }
     $world->clearEvents();
-    $tickHandler->next();
+    $tickHandler->advanceTick();
 
     return $sounds;
 }
@@ -59,7 +59,7 @@ test('an exhausted gun regenerates and fires again while the player keeps clicki
             // A release and another press advance the 0.6 fire counter by two.
             $fireCounter = ($fireCounter + 2) & PvpCharacterEntity::INPUT_STATE_MASK;
         }
-        $currentTick = $tickHandler->get();
+        $currentTick = $tickHandler->getCurrentTick();
         $sounds      = advanceAmmoRegenerationTick($world, $tickHandler, $tee, input(['fire' => $fireCounter]));
         if (in_array(GameConstants::SOUND_GUN_FIRE, $sounds, true)) {
             $shotTicks[] = $currentTick;
@@ -101,7 +101,7 @@ test('an idle equipped gun regenerates one bullet after 500 milliseconds', funct
 test('a successful gun shot resets regeneration and waits until after reload to restart it', function () {
     [$world, $tickHandler, $tee, $character]             = createAmmoRegenerationWorld();
     $character->weapons[GameConstants::WEAPON_GUN]->ammo = 2;
-    $character->ammoRegenStart                           = $tickHandler->get() - 24;
+    $character->ammoRegenStart                           = $tickHandler->getCurrentTick() - 24;
 
     $sounds = advanceAmmoRegenerationTick($world, $tickHandler, $tee, input(['fire' => 1]));
     expect($sounds)->toContain(GameConstants::SOUND_GUN_FIRE);

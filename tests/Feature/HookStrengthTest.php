@@ -102,7 +102,7 @@ test('tee hook strength is independent of client ids and entity tick order', fun
             $state = hookStrengthState($characters);
             $expected ??= $state;
             expect($state)->toBe($expected);
-            $clock->next();
+            $clock->advanceTick();
         }
     }
 })->with([false, true])->with([-1, 0, 1])->with([false, true]);
@@ -122,8 +122,8 @@ test('hook forces do not modify either tees baseline velocity during core tickin
     $target->doTick();
     expect($target->vel->x)->toBe(4.0 * 0.95);
     $acceleration = 4.0 * (192.0 / 380.0);
-    $target->tickDeferred();
-    $hooker->tickDeferred();
+    $target->doTickDeferred();
+    $hooker->doTickDeferred();
     expect($target->vel->x)->toBe(round((4.0 * 0.95 - $acceleration * 1.5) * 256.0) / 256.0);
     expect($hooker->vel->x)->toBe(round($acceleration * 0.25 * 256.0) / 256.0);
     expect($target->hookDragVelocity)->toEqual(new Vector2(0, 0));
@@ -176,7 +176,7 @@ test('released hooks do not leave drag accumulated for the next tick', function 
     $world->doTick();
     $velocity = clone $characters['target']->vel;
     $characters['hooker']->onPredictedInput(input());
-    $clock->next();
+    $clock->advanceTick();
 
     $world->doTick();
 
@@ -196,7 +196,7 @@ test('departing tees release all attached hooks before their id can be reused ev
     }
     for ($i = 0; $i < 3; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
     foreach ($hookers as $hooker) {
         expect($hooker->hookState)->toBe(GameConstants::HOOK_GRABBED);
@@ -222,7 +222,7 @@ test('departing tees release all attached hooks before their id can be reused ev
     if ($paused) {
         for ($i = 0; $i < 100; $i++) {
             $world->doTick();
-            $clock->next();
+            $clock->advanceTick();
         }
     }
     foreach ($hookers as $hooker) {
@@ -235,7 +235,7 @@ test('departing tees release all attached hooks before their id can be reused ev
     $world->setPaused(false);
     for ($i = 0; $i < 3; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
 
     expect($character->getPosition())->toEqual(new Vector2(320, 256));

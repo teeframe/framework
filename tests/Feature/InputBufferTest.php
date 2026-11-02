@@ -76,7 +76,7 @@ test('network inputs schedule late ticks for the next server tick without changi
     [$world, $clock, $slot, $character] = createInputBufferWorld();
     assert($character instanceof InputBufferTestCharacter);
     $world->doTick();
-    $clock->next(); // Tick 100 is complete; 101 is the next unprocessed tick.
+    $clock->advanceTick(); // Tick 100 is complete; 101 is the next unprocessed tick.
     $slot->feedConnection(new DefaultPacket([bufferedTestInput($predictionTick)], ack: $slot->sequence));
     $slot->chunks()->send();
 
@@ -134,7 +134,7 @@ test('multiple late inputs coalesce to the latest received frame for the next ti
     [$world, $clock, $slot, $character] = createInputBufferWorld();
     assert($character instanceof InputBufferTestCharacter);
     $world->doTick();
-    $clock->next();
+    $clock->advanceTick();
     foreach ([99 => 1, 100 => 0, 98 => -1] as $tick => $direction) {
         $slot->feedConnection(new DefaultPacket([bufferedTestInput($tick, $direction)], ack: $slot->sequence));
     }
@@ -152,14 +152,14 @@ test('out of order buffered inputs consume the newest due tick and remove every 
         $slot->feedConnection(new DefaultPacket([bufferedTestInput($tick, $direction)], ack: $slot->sequence));
     }
     for ($i = 0; $i < 4; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     $world->doTick();
 
     expect($character->receivedInputs)->toHaveCount(1);
     expect($character->receivedInputs[0]->direction)->toBe(0);
     expect(array_keys($slot->playerTee()->inputs))->toBe([105]);
-    $clock->next();
+    $clock->advanceTick();
     $world->doTick();
     expect($character->receivedInputs)->toHaveCount(2);
     expect($character->receivedInputs[1]->direction)->toBe(1);
@@ -177,7 +177,7 @@ test('dead and spectator inputs are drained without replay after respawn even wh
 
     expect(array_keys($tee->inputs))->toBe([101]);
     expect($tee->spawning)->toBe(! $spectator && ($fire & 1) === 1);
-    $clock->next();
+    $clock->advanceTick();
     $world->doTick();
     expect($tee->inputs)->toBeEmpty();
     expect($tee->character)->toBeNull();
@@ -187,7 +187,7 @@ test('dead and spectator inputs are drained without replay after respawn even wh
     $character->spawn(new Vector2(64, 64), $tee);
     $world->addEntity($character);
     $world->setPaused(false);
-    $clock->next();
+    $clock->advanceTick();
     $world->doTick();
     expect($character->receivedInputs)->toBeEmpty();
 })->with([false, true])->with([false, true])->with([0, 1]);
@@ -197,7 +197,7 @@ test('a dead player can request respawn with a late fire input without retaining
     $tee                    = $slot->playerTee();
     $tee->respawnTick       = 500;
     $world->doTick();
-    $clock->next();
+    $clock->advanceTick();
     $slot->feedConnection(new DefaultPacket([bufferedTestInput(99, fire: 1)], ack: $slot->sequence));
     $world->doTick();
 

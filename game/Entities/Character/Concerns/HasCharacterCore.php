@@ -49,7 +49,7 @@ trait HasCharacterCore
     /**
      * @param  array<int, AbstractCharacterEntity>  $otherCharacters
      */
-    public function tick(
+    public function tickCore(
         int $inputDirection,
         int $inputTargetX,
         int $inputTargetY,
@@ -242,7 +242,7 @@ trait HasCharacterCore
                     $this->position->y + $movement->y * $fraction,
                 );
                 foreach ($otherCharacters as $character) {
-                    if ($character === $this || ! $character->alive || $character->isToDestroy()) {
+                    if ($character === $this || ! $character->alive || $character->isMarkedForDestruction()) {
                         continue;
                     }
                     $separation = $pos->distance($character->position);
@@ -326,7 +326,7 @@ trait HasCharacterCore
                 $closestDist = PHP_FLOAT_MAX;
 
                 foreach ($otherCharacters as $teeIdx => $otherCharacter) {
-                    $closestPoint = $otherCharacter->position->closestPointOnLine($this->hookPos, $newHookPos);
+                    $closestPoint = $otherCharacter->position->closestPointOnSegment($this->hookPos, $newHookPos);
                     $dist         = $otherCharacter->position->distance($closestPoint);
 
                     if ($dist < 28.0 + 2.0) {

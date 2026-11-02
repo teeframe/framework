@@ -56,7 +56,7 @@ test('spawn selection tries center left up right and down before leaving spawnin
         addSpawnBlocker($world, new Vector2($x, $y));
     }
 
-    $spawn = $world->getGameController()->canSpawn($world, GameConstants::TEAM_RED);
+    $spawn = $world->getGameController()->selectSpawnPosition($world, GameConstants::TEAM_RED);
 
     expect($spawn === null ? null : [$spawn->x, $spawn->y])->toBe($expected);
 })->with([
@@ -72,7 +72,7 @@ test('spawn occupancy includes the character proximity radius boundary', functio
     $world = createSpawnOccupancyWorld();
     addSpawnBlocker($world, new Vector2(144 + $distance, 144));
 
-    $spawn = $world->getGameController()->canSpawn($world, GameConstants::TEAM_RED);
+    $spawn = $world->getGameController()->selectSpawnPosition($world, GameConstants::TEAM_RED);
 
     expect($spawn)->not->toBeNull();
     assert($spawn !== null);
@@ -87,7 +87,7 @@ test('spawn offsets cannot pass through solid tiles', function (array $solidTile
     $world = createSpawnOccupancyWorld($solidTiles);
     addSpawnBlocker($world, new Vector2(144, 144));
 
-    $spawn = $world->getGameController()->canSpawn($world, GameConstants::TEAM_RED);
+    $spawn = $world->getGameController()->selectSpawnPosition($world, GameConstants::TEAM_RED);
 
     expect($spawn === null ? null : [$spawn->x, $spawn->y])->toBe($expected);
 })->with([
@@ -100,7 +100,7 @@ test('spawn offsets cannot pass through solid tiles', function (array $solidTile
 test('solid spawn positions are rejected even without nearby characters', function () {
     $world = createSpawnOccupancyWorld([[4, 4]]);
 
-    $spawn = $world->getGameController()->canSpawn($world, GameConstants::TEAM_RED);
+    $spawn = $world->getGameController()->selectSpawnPosition($world, GameConstants::TEAM_RED);
 
     assert($spawn !== null);
     expect([$spawn->x, $spawn->y])->toBe([112.0, 144.0]);
@@ -110,12 +110,12 @@ test('dead and destroyed characters do not block spawning', function (bool $dest
     $world     = createSpawnOccupancyWorld();
     $character = addSpawnBlocker($world, new Vector2(144, 144));
     if ($destroyed) {
-        $character->markToDestroy();
+        $character->markForDestruction();
     } else {
         $character->alive = false;
     }
 
-    $spawn = $world->getGameController()->canSpawn($world, GameConstants::TEAM_RED);
+    $spawn = $world->getGameController()->selectSpawnPosition($world, GameConstants::TEAM_RED);
 
     assert($spawn !== null);
     expect([$spawn->x, $spawn->y])->toBe([144.0, 144.0]);
@@ -135,7 +135,7 @@ test('spawn scoring ignores spectator cameras and players without a living chara
     $character->tee      = $enemy;
     $enemy->character    = $character;
     $enemy->viewPosition = new Vector2(550, 144);
-    expect($controller->canSpawn($world, GameConstants::TEAM_RED)?->x)->toBe(100.0);
+    expect($controller->selectSpawnPosition($world, GameConstants::TEAM_RED)?->x)->toBe(100.0);
 
     $observer = new PlayerTee;
     $world->addTee($observer);
@@ -147,13 +147,13 @@ test('spawn scoring ignores spectator cameras and players without a living chara
         $dead->tee           = $observer;
         $observer->character = $dead;
         if ($state === 'destroyed') {
-            $dead->markToDestroy();
+            $dead->markForDestruction();
         } else {
             $dead->alive = false;
         }
     }
 
-    expect($controller->canSpawn($world, GameConstants::TEAM_RED)?->x)->toBe(100.0);
+    expect($controller->selectSpawnPosition($world, GameConstants::TEAM_RED)?->x)->toBe(100.0);
 })->with(['spectator', 'no character', 'dead', 'destroyed']);
 
 test('spawn scoring uses a living characters position instead of its camera position', function () {
@@ -171,7 +171,7 @@ test('spawn scoring uses a living characters position instead of its camera posi
     $enemy->character    = $character;
     $enemy->viewPosition = new Vector2(100, 144);
 
-    expect($controller->canSpawn($world, GameConstants::TEAM_RED)?->x)->toBe(100.0);
+    expect($controller->selectSpawnPosition($world, GameConstants::TEAM_RED)?->x)->toBe(100.0);
 });
 
 test('team spawning falls back to neutral then enemy points only when preferred points are blocked', function (int $blockedGroups, ?float $expectedX) {
@@ -189,7 +189,7 @@ test('team spawning falls back to neutral then enemy points only when preferred 
         }
     }
 
-    $spawn = $controller->canSpawn($world, GameConstants::TEAM_RED);
+    $spawn = $controller->selectSpawnPosition($world, GameConstants::TEAM_RED);
 
     expect($spawn?->x)->toBe($expectedX);
 })->with([
@@ -211,7 +211,7 @@ test('blocked players remain pending and respawn once a position becomes free', 
     $world->doTick();
     expect($tee->character)->toBeNull();
     expect($tee->spawning)->toBeTrue();
-    $blockers[0]->markToDestroy();
+    $blockers[0]->markForDestruction();
     $world->doTick();
 
     $character = $tee->character;

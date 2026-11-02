@@ -23,19 +23,19 @@ test('projectile movement and lifetime start after the creation tick', function 
     $projectile->doTick();
     $projectile->doTick();
     expect($projectile->getPosition())->toEqual(new Vector2(128, 128));
-    expect($projectile->isToDestroy())->toBeFalse();
+    expect($projectile->isMarkedForDestruction())->toBeFalse();
     $explosions = array_filter($world->doSnap(new PlayerTee), fn ($item) => $item instanceof ObjEventExplosionItem);
     expect($explosions)->toBeEmpty();
 
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
     expect($projectile->getPosition())->toEqual(new Vector2(172, 128));
-    expect($projectile->isToDestroy())->toBeFalse();
+    expect($projectile->isMarkedForDestruction())->toBeFalse();
 
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
     expect($projectile->getPosition())->toEqual(new Vector2(216, 128));
-    expect($projectile->isToDestroy())->toBeTrue();
+    expect($projectile->isMarkedForDestruction())->toBeTrue();
 })->with([GameConstants::WEAPON_GUN, GameConstants::WEAPON_SHOTGUN, GameConstants::WEAPON_GRENADE]);
 
 test('projectile survives full lifecycle', function () use ($mapPath, $mapExists) {
@@ -71,7 +71,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
     // Tick once to set up angle (needed for shoot direction)
     $tune = $world->getTuneController();
     $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
     // Shoot through the character so tuning is applied from the controller
@@ -97,7 +97,7 @@ test('projectile survives full lifecycle', function () use ($mapPath, $mapExists
 function getProjectilePos(PvpProjectileEntity $proj, float $time): Vector2
 {
     $ref    = new ReflectionClass($proj);
-    $method = $ref->getMethod('getPos');
+    $method = $ref->getMethod('calculatePositionAtTime');
 
     return $method->invoke($proj, $time);
 }
@@ -134,7 +134,7 @@ test('character firing creates valid projectile snap', function () use ($mapPath
     // Tick once to set up angle (needed for shoot direction)
     $tune = $world->getTuneController();
     $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
     // Now shoot — this would normally be called from doTick
@@ -180,7 +180,7 @@ test('multiple rapid shots do not crash', function () use ($mapPath, $mapExists)
     $tune = $world->getTuneController();
     for ($i = 0; $i < 20; $i++) {
         $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-        $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+        $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
         $character->move($collision, $tune);
 
         $method->invoke($character);
@@ -221,7 +221,7 @@ test('projectile snap has valid integer values', function () use ($mapPath, $map
     // Tick once to set up angle, then shoot through the character
     $tune = $world->getTuneController();
     $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
     $ref    = new ReflectionClass($character);
@@ -266,7 +266,7 @@ test('projectile snap uses start position not current position', function () use
     // Tick once to set up angle, then shoot through the character
     $tune = $world->getTuneController();
     $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
     $ref    = new ReflectionClass($character);
@@ -328,7 +328,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
     $proj->setTuning(1000.0, 7.0, 0); // lifespan = 0, expires on its first simulation tick
     $world->addEntity($proj);
 
-    $tickHandler->next();
+    $tickHandler->advanceTick();
     $proj->doTick();
 
     // Check that an explosion event was added
@@ -376,7 +376,7 @@ test('grenade explosion damages nearby character', function () use ($mapPath, $m
     $proj->setTuning(1000.0, 7.0, 0);
     $world->addEntity($proj);
 
-    $tickHandler->next();
+    $tickHandler->advanceTick();
     $proj->doTick();
 
     // Target at distance 50: l = 1 - (50-48)/(135-48) = 1 - 2/87 ≈ 0.977
@@ -419,9 +419,9 @@ test('grenade explosion does not damage character outside radius', function () u
     $proj->setTuning(1000.0, 7.0, 0);
     $world->addEntity($proj);
 
-    $tickHandler->next();
+    $tickHandler->advanceTick();
     $proj->doTick();
-    expect($proj->isToDestroy())->toBeTrue();
+    expect($proj->isMarkedForDestruction())->toBeTrue();
 
     // Target outside radius should not take damage
     expect($targetChar->health)->toBe(10);
@@ -454,9 +454,9 @@ test('non-grenade projectile does not create explosion event', function () use (
     $proj->setTuning(2200.0, 1.25, 0);
     $world->addEntity($proj);
 
-    $tickHandler->next();
+    $tickHandler->advanceTick();
     $proj->doTick();
-    expect($proj->isToDestroy())->toBeTrue();
+    expect($proj->isMarkedForDestruction())->toBeTrue();
 
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
@@ -524,15 +524,15 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
 
     // Tick until projectile hits something or expires
     for ($i = 0; $i < 50; $i++) {
-        $tickHandler->next();
+        $tickHandler->advanceTick();
         $proj->doTick();
-        if ($proj->isToDestroy()) {
+        if ($proj->isMarkedForDestruction()) {
             break;
         }
     }
 
     // Projectile should be destroyed (hit the character)
-    expect($proj->isToDestroy())->toBeTrue();
+    expect($proj->isMarkedForDestruction())->toBeTrue();
 
     // Target should have taken explosion damage
     expect($targetChar->health)->toBeLessThan(10);
@@ -604,15 +604,15 @@ test('gun projectile damages character on hit', function () use ($mapPath, $mapE
 
     // Tick until projectile hits something or expires
     for ($i = 0; $i < 50; $i++) {
-        $tickHandler->next();
+        $tickHandler->advanceTick();
         $proj->doTick();
-        if ($proj->isToDestroy()) {
+        if ($proj->isMarkedForDestruction()) {
             break;
         }
     }
 
     // Projectile should be destroyed (hit the character)
-    expect($proj->isToDestroy())->toBeTrue();
+    expect($proj->isMarkedForDestruction())->toBeTrue();
 
     // Target should have taken 1 damage from direct hit
     expect($targetChar->health)->toBe(9);
@@ -665,9 +665,9 @@ test('projectile does not collide with owner character', function () use ($mapPa
 
     // Tick a few times — projectile should survive (not hit owner)
     for ($i = 0; $i < 5; $i++) {
-        $tickHandler->next();
+        $tickHandler->advanceTick();
         $proj->doTick();
-        if ($proj->isToDestroy()) {
+        if ($proj->isMarkedForDestruction()) {
             break;
         }
     }

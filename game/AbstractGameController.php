@@ -44,7 +44,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         protected int $inactiveKick = self::INACTIVE_KICK_TO_SPECTATOR,
         protected int $spectatorSlots = 0,
     ) {
-        $this->mapStartTick = $tickHandler->get();
+        $this->mapStartTick = $tickHandler->getCurrentTick();
     }
 
     public function setWorld(AbstractWorld $world): void
@@ -82,7 +82,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             self::SPAWN_BLUE  => [],
         ];
 
-        $this->mapStartTick = $this->tickHandler->get();
+        $this->mapStartTick = $this->tickHandler->getCurrentTick();
     }
 
     public function doTick(): void
@@ -93,7 +93,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     }
 
     /** Runs after entity movement and before player respawns. */
-    public function tickDeferred(): void {}
+    public function doTickDeferred(): void {}
 
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
     {
@@ -174,7 +174,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
 
         $threshold   = $this->inactiveKickTime * NetworkParams::TICKS_PER_SECOND * 60;
-        $currentTick = $this->tickHandler->get();
+        $currentTick = $this->tickHandler->getCurrentTick();
 
         foreach ($world->getTees() as $tee) {
             if (! $tee instanceof PlayerTee || $tee->team === GameConstants::TEAM_SPECTATORS) {
@@ -232,7 +232,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         }
     }
 
-    public function canSpawn(AbstractWorld $world, int $team): ?Vector2
+    public function selectSpawnPosition(AbstractWorld $world, int $team): ?Vector2
     {
         if ($team < 0) {
             return null;
@@ -295,7 +295,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
             $occupied = array_any($world->getEntities(), fn ($entity) => $entity instanceof AbstractCharacterEntity
                 && $entity->alive
-                && ! $entity->isToDestroy()
+                && ! $entity->isMarkedForDestruction()
                 && $pos->distance($entity->getPosition()) <= $entity->getHitBoxRadius());
             if (! $occupied) {
                 return $pos;
@@ -310,7 +310,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         $score = 0.0;
 
         foreach ($world->getEntities() as $character) {
-            if (! $character instanceof AbstractCharacterEntity || ! $character->alive || $character->isToDestroy()) {
+            if (! $character instanceof AbstractCharacterEntity || ! $character->alive || $character->isMarkedForDestruction()) {
                 continue;
             }
 

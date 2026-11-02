@@ -44,7 +44,7 @@ test('a laser reflects outside the wall and keeps its first segment for the snap
 
     $snap = $laser->doSnap($owner)[0];
     assert($snap instanceof ObjLaserItem);
-    expect($laser->isToDestroy())->toBeFalse();
+    expect($laser->isMarkedForDestruction())->toBeFalse();
     expect([$snap->fromX, $snap->fromY, $snap->x, $snap->y, $snap->startTick])->toBe([64, 64, 255, 64, 100]);
     expect($laser->direction->x)->toBe(-1.0);
     expect($laser->direction->y)->toEqual(0.0);
@@ -63,28 +63,28 @@ test('laser segments advance only after the configured bounce delay', function (
     $laser                                        = new PvpLaserEntity($world, new Vector2(64, 64), new Vector2(1, 0), 800, $owner->teeIndex);
     $initial                                      = $laser->doSnap($owner)[0];
     for ($i = 0; $i < intdiv($delayMs, 20); $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $laser->doTick();
         expect($laser->doSnap($owner)[0]->getInts())->toBe($initial->getInts());
-        expect($laser->isToDestroy())->toBeFalse();
+        expect($laser->isMarkedForDestruction())->toBeFalse();
     }
 
-    $clock->next();
+    $clock->advanceTick();
     $laser->doTick();
 
     $snap = $laser->doSnap($owner)[0];
     assert($snap instanceof ObjLaserItem);
-    expect($snap->startTick)->toBe($clock->get());
+    expect($snap->startTick)->toBe($clock->getCurrentTick());
     expect([$snap->fromX, $snap->x])->toBe([255, -354]);
-    expect($laser->isToDestroy())->toBeFalse();
+    expect($laser->isMarkedForDestruction())->toBeFalse();
     for ($i = 0; $i < intdiv($delayMs, 20); $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $laser->doTick();
-        expect($laser->isToDestroy())->toBeFalse();
+        expect($laser->isMarkedForDestruction())->toBeFalse();
     }
-    $clock->next();
+    $clock->advanceTick();
     $laser->doTick();
-    expect($laser->isToDestroy())->toBeTrue();
+    expect($laser->isMarkedForDestruction())->toBeTrue();
 })->with([0, 100, 150, 160]);
 
 test('a laser at its bounce limit remains visible until its segment expires', function () {
@@ -92,15 +92,15 @@ test('a laser at its bounce limit remains visible until its segment expires', fu
     $world->getTuneController()->laserBounceNum = 0;
     $laser                                      = new PvpLaserEntity($world, new Vector2(64, 64), new Vector2(1, 0), 800, $owner->teeIndex);
     for ($i = 0; $i < 7; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $laser->doTick();
-        expect($laser->isToDestroy())->toBeFalse();
+        expect($laser->isMarkedForDestruction())->toBeFalse();
     }
 
-    $clock->next();
+    $clock->advanceTick();
     $laser->doTick();
 
-    expect($laser->isToDestroy())->toBeTrue();
+    expect($laser->isMarkedForDestruction())->toBeTrue();
     $snap = $laser->doSnap($owner)[0];
     assert($snap instanceof ObjLaserItem);
     expect([$snap->fromX, $snap->x])->toBe([64, 255]);
@@ -110,18 +110,18 @@ test('a paused laser preserves the remaining bounce delay', function () {
     [$world, $clock, $owner] = createLaserBounceWorld();
     $laser                   = new PvpLaserEntity($world, new Vector2(64, 64), new Vector2(1, 0), 800, $owner->teeIndex);
     for ($i = 0; $i < 20; $i++) {
-        $clock->next();
-        $laser->tickPaused();
+        $clock->advanceTick();
+        $laser->doTickPaused();
     }
     for ($i = 0; $i < 7; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $laser->doTick();
     }
     $snap = $laser->doSnap($owner)[0];
     assert($snap instanceof ObjLaserItem);
     expect([$snap->fromX, $snap->x, $snap->startTick])->toBe([64, 255, 120]);
 
-    $clock->next();
+    $clock->advanceTick();
     $laser->doTick();
     $snap = $laser->doSnap($owner)[0];
     assert($snap instanceof ObjLaserItem);
@@ -143,7 +143,7 @@ test('a reflected laser skips its owner and uses the projected endpoint for anot
     }
     $laser = new PvpLaserEntity($world, new Vector2(64, 64), new Vector2(1, 0), 800, $owner->teeIndex);
     for ($i = 0; $i < 8; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $laser->doTick();
     }
 
@@ -172,11 +172,11 @@ test('a reflected laser cannot inherit the replacement players identity or team'
     $world->addTee($replacement);
     $replacement->team = $victimTee->team;
     expect($replacement->teeIndex)->toBe($owner->teeIndex);
-    expect($laser->isToDestroy())->toBeFalse();
+    expect($laser->isMarkedForDestruction())->toBeFalse();
     recordingServer($world)->clear();
 
     for ($i = 0; $i < 8; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $laser->doTick();
     }
 
@@ -202,15 +202,15 @@ test('a reflected laser damages a character only when the reflected segment is e
     $laser = new PvpLaserEntity($world, new Vector2(64, 64), new Vector2(1, 0), 800, $owner->teeIndex);
     expect($victim->health)->toBe(10);
     for ($i = 0; $i < 7; $i++) {
-        $clock->next();
+        $clock->advanceTick();
         $laser->doTick();
         expect($victim->health)->toBe(10);
     }
 
-    $clock->next();
+    $clock->advanceTick();
     $laser->doTick();
 
     expect($victim->health)->toBe(5);
-    expect($laser->isToDestroy())->toBeFalse();
+    expect($laser->isMarkedForDestruction())->toBeFalse();
     expect(soundsSentToTee($world, $owner->teeIndex))->toBe([GameConstants::SOUND_HIT]);
 });

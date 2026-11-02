@@ -70,11 +70,11 @@ test('projectiles retain attacker and weapon attribution independently of the ow
     }
     $victim->health = $lethal ? 1 : 10;
     recordingServer($world)->clear();
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
 
     $damage = $weapon === GameConstants::WEAPON_GRENADE ? 6 : 1;
-    expect($projectile->isToDestroy())->toBeTrue();
+    expect($projectile->isMarkedForDestruction())->toBeTrue();
     expect($victim->health)->toBe(($lethal ? 1 : 10) - $damage);
     expect($victim->alive)->toBe(! $lethal);
     expect($target->score)->toBe(0);
@@ -105,12 +105,12 @@ test('departed players projectiles cannot credit a replacement or use its team',
     expect($replacement->teeIndex)->toBe($owner->teeIndex);
     $victim->health = 1;
     recordingServer($world)->clear();
-    $clock->next();
+    $clock->advanceTick();
 
     $projectile->doTick();
 
     expect($projectile->owner)->toBe(-1);
-    expect($projectile->isToDestroy())->toBeTrue();
+    expect($projectile->isMarkedForDestruction())->toBeTrue();
     expect($victim->alive)->toBeFalse();
     expect($replacement->score)->toBe(0);
     expect($owner->score)->toBe(0);
@@ -136,11 +136,11 @@ test('replacement players can be hit by the previous slot owners projectiles wit
     $character->spawn(new Vector2(192, 64), $replacement);
     $world->addEntity($character);
     recordingServer($world)->clear();
-    $clock->next();
+    $clock->advanceTick();
 
     $projectile->doTick();
 
-    expect($projectile->isToDestroy())->toBeTrue();
+    expect($projectile->isMarkedForDestruction())->toBeTrue();
     expect($character->health)->toBe($weapon === GameConstants::WEAPON_GRENADE ? 4 : 9);
     expect($replacement->score)->toBe(0);
     expect(soundsSentToTee($world, $replacement->teeIndex))->toBeEmpty();
@@ -158,8 +158,8 @@ test('leaving clears only that players projectile ownership in that world', func
     expect($departingShot->owner)->toBe(-1);
     expect($remainingShot->owner)->toBe($otherOwner->teeIndex);
     expect($otherWorldShot->owner)->toBe($otherWorldOwner->teeIndex);
-    expect($departingShot->isToDestroy())->toBeFalse();
-    expect($remainingShot->isToDestroy())->toBeFalse();
+    expect($departingShot->isMarkedForDestruction())->toBeFalse();
+    expect($remainingShot->isMarkedForDestruction())->toBeFalse();
     expect($world->getEntities())->toContain($departingShot, $remainingShot);
 });
 
@@ -167,7 +167,7 @@ test('ownerless projectiles deal damage without blaming the victim', function (i
     [$world, $clock, , $victim, $owner, $target] = createProjectileDamageWorld();
     $projectile                                  = damageTestProjectile($world, $weapon, -1);
     $victim->health                              = 1;
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
 
     expect($victim->alive)->toBeFalse();
@@ -189,7 +189,7 @@ test('projectiles still obey team damage protection after their owner dies', fun
     $attacker->die();
     $world->removeEntity($attacker);
     recordingServer($world)->clear();
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
 
     expect($victim->health)->toBe(10);
@@ -204,10 +204,10 @@ test('projectile character collisions use the full proximity radius and a strict
     $projectile = new PvpProjectileEntity($world, new Vector2(160, 64), new Vector2(1, 0), $weapon, $owner->teeIndex);
     $projectile->setTuning(1600, 0, 100);
 
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
 
-    expect($projectile->isToDestroy())->toBe($hit);
+    expect($projectile->isMarkedForDestruction())->toBe($hit);
     expect($victim->health < 10)->toBe($hit);
     expect($projectile->getPosition()->x)->toBe(192.0);
     expect($projectile->getPosition()->y)->toBe(64.0);
@@ -235,7 +235,7 @@ test('a grenade recognizes its respawned owner for self damage', function (bool 
     $replacement->health       = $lethal ? 3 : 10;
     $world->addEntity($replacement);
     recordingServer($world)->clear();
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
 
     expect($replacement->health)->toBe($lethal ? 0 : 7);

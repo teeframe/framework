@@ -42,18 +42,18 @@ test('explicit snapshot sends preserve baseline selection across consecutive tic
         expect($chunk->currentTick)->toBe($tick);
         expect($chunk->currentTick - $chunk->deltaTick)->toBe(-1);
     }
-    $snaps->setLastAckedTick(14);
+    $snaps->handleSnapshotAck(14);
     $snaps->sendItems(15, [$item]);
     expect(lastRecoverySnapshot($connection))->toBeInstanceOf(SnapEmptyChunk::class);
 
-    $snaps->setLastAckedTick(999);
+    $snaps->handleSnapshotAck(999);
     foreach (range(16, 20) as $tick) {
         $snaps->sendItems($tick, [$item]);
         $chunk = lastRecoverySnapshot($connection);
         expect($chunk->currentTick)->toBe($tick);
         expect($chunk->currentTick - $chunk->deltaTick)->toBe(-1);
     }
-    $snaps->setLastAckedTick(20);
+    $snaps->handleSnapshotAck(20);
     $snaps->sendItems(21, [$item]);
     $chunk = lastRecoverySnapshot($connection);
     expect($chunk)->toBeInstanceOf(SnapEmptyChunk::class);
@@ -67,8 +67,8 @@ test('missing snapshot ACKs clear the old base and recover from a full snapshot'
     $old        = (new ObjProjectileItem(100, 200, 1, 2, 1, 10))->setId(0);
     $current    = (new ObjProjectileItem(101, 200, 1, 2, 1, 10))->setId(0);
     $snaps->sendItems(10, [$old]);
-    $snaps->setLastAckedTick(10);
-    $snaps->setLastAckedTick($missingTick);
+    $snaps->handleSnapshotAck(10);
+    $snaps->handleSnapshotAck($missingTick);
 
     $snaps->sendItems(11, [$current]);
     $full = lastRecoverySnapshot($connection);
@@ -77,7 +77,7 @@ test('missing snapshot ACKs clear the old base and recover from a full snapshot'
     expect($full->currentTick - $full->deltaTick)->toBe(-1);
     expect($full->snapPayload)->toBe([0, 1, 0, ...$current->encode()]);
 
-    $snaps->setLastAckedTick(11);
+    $snaps->handleSnapshotAck(11);
     $snaps->sendItems(12, [$current]);
     $unchanged = lastRecoverySnapshot($connection);
     expect($unchanged)->toBeInstanceOf(SnapEmptyChunk::class);
@@ -86,7 +86,7 @@ test('missing snapshot ACKs clear the old base and recover from a full snapshot'
 
 test('empty snapshots without an available ACK also advertise the empty base', function (int $missingTick) {
     $connection = new RecordingConnection(new TickHandler(10));
-    $connection->snaps()->setLastAckedTick($missingTick);
+    $connection->snaps()->handleSnapshotAck($missingTick);
     $connection->snaps()->sendItems(10, []);
 
     $chunk = lastRecoverySnapshot($connection);
@@ -105,8 +105,8 @@ test('fragmented recovery snapshots consistently advertise and encode the empty 
     }
     $snaps = $connection->snaps();
     $snaps->sendItems(10, $items);
-    $snaps->setLastAckedTick(10);
-    $snaps->setLastAckedTick(-1);
+    $snaps->handleSnapshotAck(10);
+    $snaps->handleSnapshotAck(-1);
     $previousPackets = count($connection->sentPackets);
     $snaps->sendItems(11, $items);
 
@@ -130,7 +130,7 @@ test('tick zero is a valid acknowledged snapshot base', function () {
     $item       = (new ObjProjectileItem(100, 200, 1, 2, 1, 0))->setId(0);
     $snaps      = $connection->snaps();
     $snaps->sendItems(0, [$item]);
-    $snaps->setLastAckedTick(0);
+    $snaps->handleSnapshotAck(0);
     $snaps->sendItems(1, [$item]);
 
     $chunk = lastRecoverySnapshot($connection);
@@ -144,9 +144,9 @@ test('a missing or out of order ACK does not destroy other retained snapshot bas
     $snaps      = $connection->snaps();
     $snaps->sendItems(10, [$item]);
     $snaps->sendItems(11, [$item]);
-    $snaps->setLastAckedTick(11);
-    $snaps->setLastAckedTick(999);
-    $snaps->setLastAckedTick(10);
+    $snaps->handleSnapshotAck(11);
+    $snaps->handleSnapshotAck(999);
+    $snaps->handleSnapshotAck(10);
     $snaps->sendItems(12, [$item]);
 
     $chunk = lastRecoverySnapshot($connection);
@@ -159,7 +159,7 @@ test('snapshot bases expire after the three second retention boundary even witho
     $item       = (new ObjProjectileItem(100, 200, 1, 2, 1, 10))->setId(0);
     $snaps      = $connection->snaps();
     $snaps->sendItems(10, [$item]);
-    $snaps->setLastAckedTick(10);
+    $snaps->handleSnapshotAck(10);
     $reference = WeakReference::create(array_values(recoverySnapshotHistory($snaps))[0]);
     $snaps->sendItems(160, [$item]);
     $boundary = lastRecoverySnapshot($connection);
@@ -174,7 +174,7 @@ test('snapshot bases expire after the three second retention boundary even witho
     expect($expired->snapPayload)->toBe([0, 1, 0, ...$item->encode()]);
     expect($reference->get())->toBeNull();
 
-    $snaps->setLastAckedTick(160);
+    $snaps->handleSnapshotAck(160);
     $snaps->sendItems(162, [$item]);
     $recovered = lastRecoverySnapshot($connection);
     expect($recovered)->toBeInstanceOf(SnapEmptyChunk::class);
@@ -187,7 +187,7 @@ test('snapshot history stays bounded when ACKs are absent stalled or invalid', f
     for ($tick = 1; $tick <= 1000; $tick++) {
         $snaps->sendItems($tick, []);
         if ($ackMode !== 'absent') {
-            $snaps->setLastAckedTick(match ($ackMode) {
+            $snaps->handleSnapshotAck(match ($ackMode) {
                 'stalled' => 1,
                 'reset'   => -1,
                 default   => 1_000_000,
@@ -217,8 +217,8 @@ test('flushing snapshot history also releases the delta base', function () {
     $item       = (new ObjProjectileItem(100, 200, 1, 2, 1, 10))->setId(0);
     $snaps      = $connection->snaps();
     $snaps->sendItems(10, [$item]);
-    $snaps->setLastAckedTick(10);
-    $snaps->flushSentList();
+    $snaps->handleSnapshotAck(10);
+    $snaps->clearHistory();
     $snaps->sendItems(11, [$item]);
 
     $chunk = lastRecoverySnapshot($connection);

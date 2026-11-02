@@ -93,7 +93,7 @@ test('repeated resends do not duplicate retained entries and acknowledged chunks
     $connection->chunks()->add(new QueueEncodingTestChunk(vital: true))->send();
     $connection->chunks()->resend();
     $connection->chunks()->resend();
-    $connection->chunks()->flushSentList(1);
+    $connection->chunks()->removeAcknowledgedChunks(1);
     $connection->chunks()->resend();
 
     expect($connection->sentPackets)->toHaveCount(3);
@@ -111,7 +111,7 @@ test('acknowledgment cleanup preserves pending sequences across wraparound', fun
         $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
     }
     $connection->chunks()->send();
-    $connection->chunks()->flushSentList(0);
+    $connection->chunks()->removeAcknowledgedChunks(0);
     $connection->chunks()->resend();
 
     expect($connection->sentPackets)->toHaveCount(2);
@@ -137,7 +137,7 @@ test('ACK cleanup stops at the first unacknowledged chunk even if later numbers 
     expect(NetworkBase::isSequenceInBackroom($expected[3], $ack))->toBeTrue();
 
     // Exercise cleanup directly; transport validation rejects these out-of-range ACKs.
-    $connection->chunks()->flushSentList($ack);
+    $connection->chunks()->removeAcknowledgedChunks($ack);
     $connection->sentPackets = [];
     $connection->chunks()->resend();
 
@@ -159,7 +159,7 @@ test('ACK cleanup releases only the acknowledged prefix and preserves queued vit
     }
     $connection->chunks()->send();
     $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
-    $connection->chunks()->flushSentList(2);
+    $connection->chunks()->removeAcknowledgedChunks(2);
     $connection->peerAck = 2;
     $connection->chunks()->send();
     $connection->sentPackets = [];
@@ -173,7 +173,7 @@ test('ACK cleanup releases only the acknowledged prefix and preserves queued vit
         expect($packet->getChunks()[0]->getSequence())->toBe($index + 3);
     }
 
-    $connection->chunks()->flushSentList(4);
+    $connection->chunks()->removeAcknowledgedChunks(4);
     $connection->peerAck     = 4;
     $connection->sentPackets = [];
     $connection->chunks()->resend();
@@ -302,7 +302,7 @@ test('new vital sequences stay within the peer ACK range while resends and non-v
     $nextSequence = ($connection->sequence + 1) % NetworkParams::MAXIMUM_ACK_NUMBER;
     expect(NetworkBase::isSequenceInBackroom($connection->peerAck, $nextSequence))->toBeFalse();
 
-    $connection->chunks()->flushSentList($previousSequence);
+    $connection->chunks()->removeAcknowledgedChunks($previousSequence);
     $connection->sentPackets = [];
     expect($connection->chunks()->resend())->toBeTrue();
     expect(array_sum(array_map(fn ($packet) => $packet->getNumChunks(), $connection->sentPackets)))->toBe($windowSize);
@@ -311,7 +311,7 @@ test('new vital sequences stay within the peer ACK range while resends and non-v
 
     $released = intdiv($windowSize, 2);
     $ack      = ($previousSequence + $released) % NetworkParams::MAXIMUM_ACK_NUMBER;
-    $connection->chunks()->flushSentList($ack);
+    $connection->chunks()->removeAcknowledgedChunks($ack);
     $connection->peerAck = $ack;
     for ($i = 0; $i < $released; $i++) {
         $connection->chunks()->add(new QueueEncodingTestChunk($payloadSize, vital: true));
@@ -385,7 +385,7 @@ test('acknowledgments release resend capacity across sequence wraparound', funct
             $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
         }
         expect($connection->chunks()->send())->toBeTrue();
-        $connection->chunks()->flushSentList($connection->sequence);
+        $connection->chunks()->removeAcknowledgedChunks($connection->sequence);
         $connection->peerAck = $connection->sequence;
         expect($connection->chunks()->update())->toBeNull();
     }
@@ -403,7 +403,7 @@ test('acknowledgments release the byte budget and non-vital data does not consum
     $connection->chunks()->send();
     $connection->chunks()->add(new QueueEncodingTestChunk(1020))->send();
     expect($connection->chunks()->update())->toBeNull();
-    $connection->chunks()->flushSentList(16);
+    $connection->chunks()->removeAcknowledgedChunks(16);
     $connection->peerAck = 16;
     for ($i = 0; $i < 16; $i++) {
         $connection->chunks()->add(new QueueEncodingTestChunk(1020, vital: true));
@@ -441,7 +441,7 @@ test('overflow remains a failure after later ACKs free the pending data', functi
     $connection->chunks()->add(new QueueEncodingTestChunk(vital: true));
     expect($connection->chunks()->update())->toBe('Too weak connection (out of buffer)');
 
-    $connection->chunks()->flushSentList($connection->sequence);
+    $connection->chunks()->removeAcknowledgedChunks($connection->sequence);
     $connection->peerAck     = $connection->sequence;
     $connection->sentPackets = [];
     $rejected                = new QueueEncodingTestChunk(vital: true);

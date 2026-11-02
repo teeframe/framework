@@ -45,7 +45,7 @@ class TestWorld extends AbstractWorld
         $this->gameController = new TestGameController($this->tickHandler);
     }
 
-    protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity
+    protected function createCharacterEntity(Vector2 $position): AbstractCharacterEntity
     {
         return new PvpCharacterEntity($this, $position);
     }
@@ -74,7 +74,7 @@ class TestWorldWithController extends AbstractWorld
         // Controller already set in __construct.
     }
 
-    protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity
+    protected function createCharacterEntity(Vector2 $position): AbstractCharacterEntity
     {
         return new PvpCharacterEntity($this, $position);
     }
@@ -144,5 +144,5 @@ function feedInput(AbstractCharacterEntity $character, PlayerInput $input): void
     $character->onPredictedInput($input);
     $character->onDirectInput($input);
     $character->doTick();
-    $character->tickDeferred();
+    $character->doTickDeferred();
 }

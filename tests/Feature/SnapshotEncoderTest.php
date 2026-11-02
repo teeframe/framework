@@ -115,10 +115,10 @@ test('snapshot bookkeeping selects the acknowledged base and reset restores full
     $current    = (new ObjProjectileItem(101, 200, 1, 2, 1, 10))->setId(0);
     $snaps      = $connection->snaps();
     $snaps->sendItems(100, [$old]);
-    $snaps->setLastAckedTick(100);
+    $snaps->handleSnapshotAck(100);
     $snaps->sendItems(101, [$current]);
     $snaps->sendItems(102, [$current]);
-    $snaps->setLastAckedTick(101);
+    $snaps->handleSnapshotAck(101);
     $snaps->sendItems(103, [$current]);
     $snaps->reset();
     $snaps->sendItems(104, [$current]);

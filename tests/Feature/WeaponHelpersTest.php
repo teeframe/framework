@@ -149,7 +149,7 @@ test('shotgun pellet snapshots and physics use the same tuned trajectories', fun
         $dx          = cos($pelletAngle) * $speedFactors[$index];
         $dy          = sin($pelletAngle) * $speedFactors[$index];
         $start       = $pellet->getPosition();
-        $position    = (new ReflectionMethod($pellet, 'getPos'))->invoke($pellet, $time);
+        $position    = (new ReflectionMethod($pellet, 'calculatePositionAtTime'))->invoke($pellet, $time);
         assert($position instanceof Vector2);
         $drop = ($tune->shotgunCurvature / 100 / 10000) * $distance ** 2;
         expect($position->x)->toEqualWithDelta($start->x + $dx * $distance, 0.000000001);

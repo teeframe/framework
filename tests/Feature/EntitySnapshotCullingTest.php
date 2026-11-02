@@ -167,9 +167,9 @@ test('spectators still receive distant point entities lasers and characters with
     expect(array_filter($snapshots, fn ($item) => $item instanceof ObjCharacterItem))->toHaveCount(1);
     expect(array_filter($snapshots, fn ($item) => $item instanceof ObjPickupItem))->toHaveCount(1);
 
-    $laser->markToDestroy();
+    $laser->markForDestruction();
     $character->die();
-    $pickup->markToDestroy();
+    $pickup->markForDestruction();
     $snapshots = $world->doSnap($viewer);
     expect(array_filter($snapshots, fn ($item) => $item instanceof ObjLaserItem || $item instanceof ObjCharacterItem || $item instanceof ObjPickupItem))->toBeEmpty();
 });

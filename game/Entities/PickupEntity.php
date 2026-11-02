@@ -55,7 +55,7 @@ class PickupEntity extends AbstractEntity
         }
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         if ($this->spawnTick !== null && $this->spawnTick >= 0) {
             $this->spawnTick++;

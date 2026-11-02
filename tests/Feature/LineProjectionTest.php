@@ -13,7 +13,7 @@ test('line projection clamps to the segment and does not mutate its inputs', fun
     $originalStart = clone $start;
     $originalEnd   = clone $end;
     $originalPoint = clone $point;
-    $projected     = $point->closestPointOnLine($start, $end);
+    $projected     = $point->closestPointOnSegment($start, $end);
 
     expect($projected->x)->toEqualWithDelta($expected->x, 0.000000001);
     expect($projected->y)->toEqualWithDelta($expected->y, 0.000000001);
@@ -40,10 +40,10 @@ test('vector and laser projections retain their distinct short segment cutoffs',
     $end       = new Vector2($length, 0);
     $point     = new Vector2($length, 1);
     $laser     = new PvpLaserEntity(createWorld(new Map), clone $start, new Vector2(1, 0), 0, -1);
-    $projected = (new ReflectionMethod($laser, 'closestPointOnLine'))->invoke($laser, $start, $end, $point);
+    $projected = (new ReflectionMethod($laser, 'closestPointOnSegment'))->invoke($laser, $start, $end, $point);
     assert($projected instanceof Vector2);
 
-    expect($point->closestPointOnLine($start, $end)->x)->toEqualWithDelta($vectorX, 0.000000000001);
+    expect($point->closestPointOnSegment($start, $end)->x)->toEqualWithDelta($vectorX, 0.000000000001);
     expect($projected->x)->toEqualWithDelta($laserX, 0.000000000001);
     expect($projected)->not->toBe($start);
 })->with([

@@ -153,7 +153,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return [];
     }
 
-    abstract protected function getNewCharacterEntity(Vector2 $position): AbstractCharacterEntity;
+    abstract protected function createCharacterEntity(Vector2 $position): AbstractCharacterEntity;
 
     protected function bootCommands(): void
     {
@@ -223,7 +223,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function getCurrentTick(): int
     {
-        return $this->tickHandler->get();
+        return $this->tickHandler->getCurrentTick();
     }
 
     /**
@@ -295,7 +295,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
 
         foreach ($this->entities as $entity) {
-            $entity->markToDestroy();
+            $entity->markForDestruction();
         }
 
         foreach ($this->tees as $tee) {
@@ -474,7 +474,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $this->resetRequested;
     }
 
-    public function resetGame(): void
+    public function requestRoundReset(): void
     {
         $this->resetRequested = true;
     }
@@ -487,7 +487,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             }
             $entity->reset();
 
-            if ($entity->isToDestroy()) {
+            if ($entity->isMarkedForDestruction()) {
                 $this->removeEntityAt($index, $entity);
             }
         }
@@ -746,7 +746,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
             foreach ($this->tees as $tee) {
                 if ($tee instanceof PlayerTee) {
-                    $tee->tickPaused();
+                    $tee->doTickPaused();
                 }
             }
 
@@ -754,7 +754,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
 
         $this->tickEntities();
-        $this->getGameController()->tickDeferred();
+        $this->getGameController()->doTickDeferred();
         $this->tickPlayers($currentTick);
         $this->updateSpectatorViews();
     }
@@ -791,7 +791,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected function tickPausedEntities(): void
     {
         foreach ($this->entities as $entity) {
-            $entity->tickPaused();
+            $entity->doTickPaused();
         }
     }
 
@@ -805,7 +805,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
             $entity->doTick();
 
-            if ($entity->isToDestroy()) {
+            if ($entity->isMarkedForDestruction()) {
                 $this->removeEntityAt($index, $entity);
             }
         }
@@ -815,10 +815,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             if (($this->entities[$index] ?? null) !== $entity) {
                 continue;
             }
-            if (! $entity->isToDestroy()) {
-                $entity->tickDeferred();
+            if (! $entity->isMarkedForDestruction()) {
+                $entity->doTickDeferred();
             }
-            if ($entity->isToDestroy()) {
+            if ($entity->isMarkedForDestruction()) {
                 $this->removeEntityAt($index, $entity);
             }
         }
@@ -831,7 +831,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 continue;
             }
             if ($this->paused) {
-                $tee->tickPaused();
+                $tee->doTickPaused();
 
                 continue;
             }
@@ -947,7 +947,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             && $requestingTee->team === GameConstants::TEAM_SPECTATORS;
 
         foreach ($this->entities as $entity) {
-            if ($entity->isToDestroy()) {
+            if ($entity->isMarkedForDestruction()) {
                 continue;
             }
 
@@ -982,14 +982,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected function tryRespawnTee(PlayerTee $tee): bool
     {
-        $spawnPos = $this->getGameController()->canSpawn($this, $tee->team);
+        $spawnPos = $this->getGameController()->selectSpawnPosition($this, $tee->team);
         if ($spawnPos === null) {
             return false;
         }
 
         $tee->spawning = false;
 
-        $character = $this->getNewCharacterEntity(clone $spawnPos);
+        $character = $this->createCharacterEntity(clone $spawnPos);
         $character->spawn($spawnPos, $tee);
         $this->addEntity($character);
 

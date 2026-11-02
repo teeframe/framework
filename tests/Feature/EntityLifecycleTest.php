@@ -62,13 +62,13 @@ class LifecycleTestEntity extends AbstractEntity
         $this->onTick?->__invoke();
     }
 
-    public function tickDeferred(): void
+    public function doTickDeferred(): void
     {
         $this->deferredTicks++;
         $this->onDeferred?->__invoke();
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         $this->pausedTicks++;
     }
@@ -105,16 +105,16 @@ test('custom entities can survive round resets through their reset hook', functi
     $world->addEntity($persistent);
     expect(lifecycleSnapshotIds($world, $tee))->toBe([0, 1, 2, 3]);
 
-    $world->resetGame();
+    $world->requestRoundReset();
     $world->doTick();
 
     expect($world->getEntities())->toBe([$persistent]);
     expect($transient->resets)->toBe(1);
-    expect($transient->isToDestroy())->toBeTrue();
+    expect($transient->isMarkedForDestruction())->toBeTrue();
     expect($transient->ticks)->toBe(0);
     expect($persistent->resets)->toBe(1);
     expect($persistent->ticks)->toBe(1);
-    expect($persistent->isToDestroy())->toBeFalse();
+    expect($persistent->isMarkedForDestruction())->toBeFalse();
     expect(lifecycleSnapshotIds($world, $tee))->toBe([2, 3]);
 
     $replacement = new LifecycleTestEntity($world, snapCount: 2);
@@ -134,7 +134,7 @@ test('destroying many entities during a tick preserves survivor keys and release
         $entity = new LifecycleTestEntity($world);
         $world->addEntity($entity);
         if ($i % 2 === 0) {
-            $entity->onTick = $entity->markToDestroy(...);
+            $entity->onTick = $entity->markForDestruction(...);
         } else {
             $survivors[$i] = $entity;
         }
@@ -161,7 +161,7 @@ test('entities spawned during ticking survive cleanup and start ticking on the n
     $spawned         = new LifecycleTestEntity($world);
     $spawner->onTick = function () use ($world, $spawner, $spawned): void {
         $world->addEntity($spawned);
-        $spawner->markToDestroy();
+        $spawner->markForDestruction();
     };
     $world->addEntity($spawner);
     $world->addEntity($survivor);
@@ -192,7 +192,7 @@ test('entities spawned by reset hooks are retained without resetting them in the
     $world->addEntity($persistent);
     expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
 
-    $world->resetGame();
+    $world->requestRoundReset();
     $world->doTick();
 
     expect($world->getEntities())->toBe([$persistent, $spawned]);
@@ -210,7 +210,7 @@ test('explicit removal during entity hooks does not free snapshot ids twice', fu
     $entity   = new LifecycleTestEntity($world);
     $survivor = new LifecycleTestEntity($world, persistent: true);
     $remove   = function () use ($world, $entity): void {
-        $entity->markToDestroy();
+        $entity->markForDestruction();
         $world->removeEntity($entity);
     };
     if ($duringReset) {
@@ -222,7 +222,7 @@ test('explicit removal during entity hooks does not free snapshot ids twice', fu
     $world->addEntity($survivor);
     expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
     if ($duringReset) {
-        $world->resetGame();
+        $world->requestRoundReset();
     }
 
     $world->doTick();
@@ -249,7 +249,7 @@ test('entities removed by another entity are not processed later in the same pas
     $world->addEntity($removed);
     expect(lifecycleSnapshotIds($world, new PlayerTee))->toBe([0, 1]);
     if ($duringReset) {
-        $world->resetGame();
+        $world->requestRoundReset();
     }
 
     $world->doTick();
@@ -295,7 +295,7 @@ test('deferred cleanup frees snapshot ids once when hooks destroy or remove enti
     $entity             = new LifecycleTestEntity($world);
     $survivor           = new LifecycleTestEntity($world);
     $entity->onDeferred = function () use ($world, $entity, $removeDirectly): void {
-        $entity->markToDestroy();
+        $entity->markForDestruction();
         if ($removeDirectly) {
             $world->removeEntity($entity);
         }

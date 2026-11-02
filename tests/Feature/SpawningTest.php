@@ -81,7 +81,7 @@ test('first two snapshots include the local character so the scoreboard does not
         );
         expect($characters)->toHaveCount(1);
 
-        $tickHandler->next();
+        $tickHandler->advanceTick();
     }
 });
 
@@ -250,7 +250,7 @@ test('world with custom game controller still collects spawn points', function (
     $world->doTick();
 
     // The tee must have spawned — if collectSpawnPoints() didn't run against
-    // the custom controller, canSpawn() would return null and the tee would
+    // the custom controller, selectSpawnPosition() would return null and the tee would
     // stay dead forever.
     expect($tee->spawning)->toBeFalse();
     $character = $tee->character;

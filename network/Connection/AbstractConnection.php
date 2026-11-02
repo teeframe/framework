@@ -151,7 +151,7 @@ abstract class AbstractConnection
         $this->lastRecvTime = $this->tickHandler->getTime();
         $this->peerAck      = $packet->getAck();
 
-        $this->chunks()->flushSentList($this->peerAck);
+        $this->chunks()->removeAcknowledgedChunks($this->peerAck);
 
         if (! ($packet instanceof DefaultPacket)) {
             return;

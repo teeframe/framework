@@ -265,10 +265,10 @@ test('world transfers and disconnects detach shots before the departed tee index
 
     expect($replacement->playerTee()->teeIndex)->toBe($departedIndex);
     expect($shot->owner)->toBe(-1);
-    expect($shot->isToDestroy())->toBeFalse();
+    expect($shot->isMarkedForDestruction())->toBeFalse();
     expect($server->dm->getEntities())->toContain($shot);
     expect($otherShot->owner)->toBe($resident->playerTee()->teeIndex);
-    expect($otherShot->isToDestroy())->toBeFalse();
+    expect($otherShot->isMarkedForDestruction())->toBeFalse();
 })->with([false, true]);
 
 test('the ready handshake sends only the destination worlds vote with its remaining timeout', function (bool $transfer) {
@@ -698,7 +698,7 @@ test('a passed map vote reloads only its world and restarts map loading without 
     $character            = $oldTee->character;
     $oldTee->inputs[2000] = input(['direction' => 1]);
     $oldTee->score        = 15;
-    $slot->snaps()->setLastAckedTick(1000);
+    $slot->snaps()->handleSnapshotAck(1000);
     $otherTee               = $other->playerTee();
     $otherCharacter         = $otherTee->character;
     $otherTee->inputs[2000] = input(['direction' => -1]);

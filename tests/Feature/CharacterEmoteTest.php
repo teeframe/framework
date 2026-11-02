@@ -37,9 +37,9 @@ test('a temporary character emote expires after its deadline tick', function () 
     [, $clock, , $character] = createCharacterEmoteWorld();
     $character->setEmote(GameConstants::EMOTE_HAPPY, 101);
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_HAPPY);
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_HAPPY);
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
     expect($character->emote)->toBe(GameConstants::EMOTE_NORMAL);
 });
@@ -47,13 +47,13 @@ test('a temporary character emote expires after its deadline tick', function () 
 test('replacing an emote also replaces its expiration deadline', function () {
     [, $clock, , $character] = createCharacterEmoteWorld();
     $character->setEmote(GameConstants::EMOTE_HAPPY, 101);
-    $clock->next();
+    $clock->advanceTick();
     $character->setEmote(GameConstants::EMOTE_ANGRY, 103);
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_ANGRY);
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_ANGRY);
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
 });
 
@@ -63,17 +63,17 @@ test('paused time preserves the remaining duration of a character emote', functi
     $world->setPaused(true);
     for ($i = 0; $i < 20; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
         expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_HAPPY);
     }
 
     $world->setPaused(false);
     for ($i = 0; $i < 2; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
         expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_HAPPY);
     }
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
 });
 
@@ -82,7 +82,7 @@ test('chat-selected expressions do not expire after the previous duration limit'
     $world->onMessage($tee, new ClSayChunk(false, '/emote '.$name));
     expect(characterSnapshotEmote($character))->toBe($emote);
     for ($i = 0; $i <= 60 * NetworkParams::TICKS_PER_SECOND; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     expect(characterSnapshotEmote($character))->toBe($emote);
 })->with([
@@ -98,7 +98,7 @@ test('a permanent expression can be changed back to normal through chat', functi
     [$world, $clock, $tee, $character] = createCharacterEmoteWorld();
     $character->setEmote(GameConstants::EMOTE_HAPPY);
     $world->onMessage($tee, new ClSayChunk(false, '/emote normal'));
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
 });
 
@@ -108,10 +108,10 @@ test('an explicit emote duration replaces a permanent expression and expires at 
     $world->onMessage($tee, new ClSayChunk(false, '/emote angry '.$seconds));
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_ANGRY);
     for ($i = 0; $i < $seconds * NetworkParams::TICKS_PER_SECOND; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_ANGRY);
-    $clock->next();
+    $clock->advanceTick();
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
 })->with([1, 10, 60]);
 

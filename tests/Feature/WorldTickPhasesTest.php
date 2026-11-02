@@ -29,10 +29,10 @@ class WorldTickPhaseTestWorld extends TestWorld
                 parent::doTick();
             }
 
-            public function tickDeferred(): void
+            public function doTickDeferred(): void
             {
                 $this->testWorld->phases[] = 'controller-deferred';
-                parent::tickDeferred();
+                parent::doTickDeferred();
             }
         };
     }
@@ -41,7 +41,7 @@ class WorldTickPhaseTestWorld extends TestWorld
     {
         $this->phases[] = 'controller';
         if ($this->resetOnControllerTick) {
-            $this->resetGame();
+            $this->requestRoundReset();
         }
         if ($this->pauseOnControllerTick !== null) {
             $this->setPaused($this->pauseOnControllerTick);
@@ -131,7 +131,7 @@ test('pause changes during entity ticks do not switch the chosen tick phases mid
             $this->world->setPaused(true);
         }
 
-        public function tickPaused(): void
+        public function doTickPaused(): void
         {
             $this->world->setPaused(false);
         }

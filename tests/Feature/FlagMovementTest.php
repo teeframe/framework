@@ -62,7 +62,7 @@ test('carried flags and their snapshots use the position after character movemen
         $snaps = array_values(array_filter($world->doSnap($tee), fn ($item) => $item instanceof ObjFlagItem && $item->team === GameConstants::TEAM_RED));
         expect($snaps)->toHaveCount(1);
         expect(array_slice($snaps[0]->getInts(), 0, 2))->toBe([(int) $character->getPosition()->x, 144]);
-        $clock->next();
+        $clock->advanceTick();
     }
 });
 
@@ -98,7 +98,7 @@ test('moving into enemy flag range grabs it in the same tick', function (int $te
     $flag                              = $world->getGameController()->getFlag($team ^ 1);
     assert($flag !== null);
     $flag->atStand  = ! $dropped;
-    $flag->dropTick = $clock->get();
+    $flag->dropTick = $clock->getCurrentTick();
     $character->setPosition($flag->getPosition()->add(new Vector2(50, 0)));
     $character->vel->x = -10;
     $character->onPredictedInput(input(['direction' => -1]));
@@ -134,7 +134,7 @@ test('a ninja carrier killed after moving drops the flag at its death position',
     $projectile   = new PvpProjectileEntity($world, new Vector2(432, 144), new Vector2(1, 0), GameConstants::WEAPON_GUN, $killer->teeIndex);
     $projectile->setTuning(1600, 0, NetworkParams::TICKS_PER_SECOND);
     $world->addEntity($projectile);
-    $clock->next();
+    $clock->advanceTick();
 
     $world->doTick();
 
@@ -143,7 +143,7 @@ test('a ninja carrier killed after moving drops the flag at its death position',
     expect($character->getPosition()->y)->toBe(144.0);
     expect($flag->carryingCharacter)->toBeNull();
     expect($flag->atStand)->toBeFalse();
-    expect($flag->dropTick)->toBe($clock->get());
+    expect($flag->dropTick)->toBe($clock->getCurrentTick());
     expect($flag->vel)->toEqual(new Vector2(0, 0));
     expect($flag->getPosition())->toEqual($character->getPosition());
     expect($flag->getPosition())->not->toBe($character->getPosition());
@@ -157,7 +157,7 @@ test('moving into dropped friendly flag range returns it in the same tick', func
     $flag                              = $world->getGameController()->getFlag(GameConstants::TEAM_RED);
     assert($flag !== null);
     $flag->atStand  = false;
-    $flag->dropTick = $clock->get();
+    $flag->dropTick = $clock->getCurrentTick();
     $flag->setPosition(new Vector2(400, 144));
     $character->setPosition(new Vector2(450, 144));
     $character->vel->x = -10;
@@ -209,7 +209,7 @@ test('round resets clear carried flags before the deferred flag phase', function
 
     $world->doTick();
 
-    expect($character->isToDestroy())->toBeTrue();
+    expect($character->isMarkedForDestruction())->toBeTrue();
     expect($flag->carryingCharacter)->toBeNull();
     expect($flag->atStand)->toBeTrue();
     expect($tee->score)->toBe(0);
@@ -220,7 +220,7 @@ test('CTF wins from captures pause due respawns in the same tick', function () {
     [$world, $clock, $tee, $character] = flagMovementFixture(scoreLimit: 100);
     $waiting                           = new PlayerTee;
     $world->addTee($waiting);
-    $waiting->respawnTick = $clock->get();
+    $waiting->respawnTick = $clock->getCurrentTick();
     $controller           = $world->getGameController();
     $flag                 = $controller->getFlag(GameConstants::TEAM_RED);
     $ownFlag              = $controller->getFlag(GameConstants::TEAM_BLUE);
@@ -238,6 +238,6 @@ test('CTF wins from captures pause due respawns in the same tick', function () {
     expect($world->isPaused())->toBeTrue();
     expect($tee->score)->toBe(5);
     expect($waiting->character)->toBeNull();
-    expect($waiting->respawnTick)->toBe($clock->get() + 1);
-    expect($tee->lastActionTick)->toBe($clock->get() + 1);
+    expect($waiting->respawnTick)->toBe($clock->getCurrentTick() + 1);
+    expect($tee->lastActionTick)->toBe($clock->getCurrentTick() + 1);
 });

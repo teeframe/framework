@@ -320,9 +320,9 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
-        parent::tickPaused();
+        parent::doTickPaused();
 
         $this->damageTakenTick++;
 

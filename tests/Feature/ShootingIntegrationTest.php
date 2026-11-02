@@ -36,7 +36,7 @@ function setupCharacter(Map $map): array
     $world->addEntity($character);
     $tune = $world->getTuneController();
     $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
     return [$character, $world];
@@ -135,7 +135,7 @@ test('hammer hit creates hammer hit snap event for nearby target', function () u
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
     $attacker->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->move($collision, $tune);
 
     // Create target tee and character right in front of attacker (within hammer range)
@@ -183,7 +183,7 @@ test('hammer hits target at edge of reach range', function () use ($mapPath, $ma
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
     $attacker->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->move($collision, $tune);
 
     // ProjStartPos = spawnPos + right * PHYS_SIZE * 0.75 = spawnPos + right * 21
@@ -229,7 +229,7 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     $world->addEntity($attacker);
     $tune = $world->getTuneController();
     $attacker->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $attacker->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $attacker->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $attacker->move($collision, $tune);
 
     // Place target beyond max range (max reach = 21 + 42 = 63 from spawnPos)
@@ -250,7 +250,7 @@ test('hammer does not hit target beyond reach range', function () use ($mapPath,
     expect($target->health)->toBe(10);
 });
 
-test('projectile getPos returns forward displacement', function () use ($mapPath, $mapExists) {
+test('projectile calculatePositionAtTime returns forward displacement', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -267,7 +267,7 @@ test('projectile getPos returns forward displacement', function () use ($mapPath
     $startX     = $projectile->getPosition()->x;
 
     $projRef   = new ReflectionClass($projectile);
-    $getPosRef = $projRef->getMethod('getPos');
+    $getPosRef = $projRef->getMethod('calculatePositionAtTime');
 
     $curPos = $getPosRef->invoke($projectile, 0.04);
     expect($curPos->x)->toBeGreaterThan($startX + 1);
@@ -374,7 +374,7 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
     // Tick once to set up angle, then shoot through the character
     $tune = $world->getTuneController();
     $character->onDirectInput(input(['targetX' => 100, 'targetY' => 0]));
-    $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+    $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
     $character->move($collision, $tune);
 
     $ref    = new ReflectionClass($character);
@@ -385,15 +385,15 @@ test('gun projectile survives 0.5 seconds without collision', function () use ($
 
     // Advance 5 ticks (0.1 seconds) — projectile should survive in open spawn area
     for ($i = 0; $i < 5; $i++) {
-        $tickHandler->next();
+        $tickHandler->advanceTick();
         $proj->doTick();
-        if ($proj->isToDestroy()) {
+        if ($proj->isMarkedForDestruction()) {
             break;
         }
     }
 
     // Projectile should still be alive
-    expect($proj->isToDestroy())->toBeFalse();
+    expect($proj->isMarkedForDestruction())->toBeFalse();
 
     // Position should have moved forward
     // At 2200 units/s, after 0.1s: ~220 units forward
@@ -563,7 +563,7 @@ test('character death sets respawn on tee and notifies game controller', functio
 
     // Tee should be set to respawn
     expect($victimTee->spawning)->toBeTrue();
-    expect($victimTee->respawnTick)->toBe($tickHandler->get() + 25); // 0.5s = 25 ticks
+    expect($victimTee->respawnTick)->toBe($tickHandler->getCurrentTick() + 25); // 0.5s = 25 ticks
 });
 
 test('tee index is reused on reconnect and snap id matches', function () use ($mapPath, $mapExists) {

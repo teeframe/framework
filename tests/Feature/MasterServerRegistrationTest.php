@@ -408,7 +408,7 @@ test('master registration is opt-in and absent registrations do not affect serve
     }
     assert(is_string($output));
 
-    expect($server->clock->get())->toBe(1);
+    expect($server->clock->getCurrentTick())->toBe(1);
     expect($server->httpClient->requests)->toBe([]);
     expect($socket->shutdowns)->toBe(1);
     expect($output)->toContain('Master server registration: disabled');

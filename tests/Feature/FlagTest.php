@@ -256,7 +256,7 @@ test('a defender does not prevent a later enemy from grabbing a flag', function 
     $attackingCharacter->spawn(clone $flag->getPosition(), $attacker);
     $world->addEntity($attackingCharacter);
 
-    $controller->tickDeferred();
+    $controller->doTickDeferred();
 
     expect($flag->atStand)->toBeFalse();
     expect($flag->carryingCharacter)->toBe($attackingCharacter);
@@ -492,14 +492,14 @@ test('dropped flags apply gravity in world units', function (int $gravity) {
     $flag                                = $controller->getFlag(GameConstants::TEAM_RED);
     assert($flag !== null);
     $flag->atStand  = false;
-    $flag->dropTick = $clock->get();
+    $flag->dropTick = $clock->getCurrentTick();
     $start          = clone $flag->getPosition();
 
     $world->doTick();
 
     expect($flag->vel->y)->toEqualWithDelta($gravity / 100, 0.000000001);
     expect($flag->getPosition()->y)->toEqualWithDelta($start->y + $gravity / 100, 0.000000001);
-    $clock->next();
+    $clock->advanceTick();
     $world->doTick();
     expect($flag->vel->y)->toEqualWithDelta(2 * $gravity / 100, 0.000000001);
     expect($flag->getPosition()->y)->toEqualWithDelta($start->y + 3 * $gravity / 100, 0.000000001);

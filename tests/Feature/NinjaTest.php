@@ -23,7 +23,7 @@ function advanceWorldTick(AbstractWorld $world): void
 {
     $ref  = new ReflectionClass($world);
     $prop = $ref->getProperty('tickHandler');
-    $prop->getValue($world)->next();
+    $prop->getValue($world)->advanceTick();
 }
 
 test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, $mapExists) {

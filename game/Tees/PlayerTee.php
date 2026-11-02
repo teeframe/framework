@@ -117,7 +117,7 @@ class PlayerTee extends AbstractTee
         return $input;
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         $this->respawnTick++;
         $this->dieTick++;

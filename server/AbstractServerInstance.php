@@ -264,9 +264,9 @@ abstract class AbstractServerInstance
 
         $this->doSnap();
 
-        $this->tickHandler->next();
+        $this->tickHandler->advanceTick();
 
-        if ($this->tickHandler->get() >= NetworkParams::MAXIMUM_TICK) {
+        if ($this->tickHandler->getCurrentTick() >= NetworkParams::MAXIMUM_TICK) {
             $this->shutdown();
         }
 
@@ -282,7 +282,7 @@ abstract class AbstractServerInstance
 
     protected function doSnap(): void
     {
-        $currentTick = $this->tickHandler->get();
+        $currentTick = $this->tickHandler->getCurrentTick();
 
         foreach ($this->connectionHandler->getConnections() as $connection) {
             if ($connection->state !== ConnectionSlot::STATE_INGAME || ! $connection->snaps()->shouldSend($currentTick)) {

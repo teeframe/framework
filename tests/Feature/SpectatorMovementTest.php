@@ -61,7 +61,7 @@ test('spectator follow snapshots use this ticks quantized character position', f
         $spectatorInfo = array_find($snaps, fn ($item) => $item instanceof ObjSpectatorInfoItem);
         assert($characterInfo instanceof ObjCharacterItem && $spectatorInfo instanceof ObjSpectatorInfoItem);
         expect([$spectatorInfo->x, $spectatorInfo->y])->toBe([$characterInfo->x, $characterInfo->y]);
-        $clock->next();
+        $clock->advanceTick();
     }
 })->with([
     'horizontal movement'              => [10.0, 0.0, 1, 0],
@@ -90,7 +90,7 @@ test('spectator following remains frozen while paused and resumes with the curre
     $world->doTick();
     $pausedPosition = clone $character->getPosition();
     $world->setPaused(true);
-    $clock->next();
+    $clock->advanceTick();
 
     $world->doTick();
 
@@ -98,7 +98,7 @@ test('spectator following remains frozen while paused and resumes with the curre
     expect($player->viewPosition)->toEqual($pausedPosition);
     expect($spectator->viewPosition)->toEqual($pausedPosition);
     $world->setPaused(false);
-    $clock->next();
+    $clock->advanceTick();
     $world->doTick();
     expect($character->getPosition()->x)->toBeGreaterThan($pausedPosition->x);
     expect($player->viewPosition)->toEqual($character->getPosition());
@@ -108,8 +108,8 @@ test('spectator following remains frozen while paused and resumes with the curre
 test('spectator following uses the respawn position before the new characters first tick', function () {
     [$world, $clock, $player, $spectator, $character] = spectatorMovementFixture();
     $character->die();
-    while ($clock->get() < $player->respawnTick) {
-        $clock->next();
+    while ($clock->getCurrentTick() < $player->respawnTick) {
+        $clock->advanceTick();
     }
 
     $world->doTick();

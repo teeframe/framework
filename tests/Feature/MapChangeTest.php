@@ -63,7 +63,7 @@ test('map reload replaces entities spawns flags and round state while preserving
     $oldPool     = (new ReflectionClass($world))->getProperty('snapIdPool')->getValue($world);
     $world->addEvent(new ObjEventSoundWorldItem(0, 0, 1), excludedTeeIndex: 0);
     $controller->endRound();
-    $world->resetGame();
+    $world->requestRoundReset();
 
     $world->changeMap('dm1');
     expect($world->getMap())->toBe($oldMap);
@@ -89,7 +89,7 @@ test('map reload replaces entities spawns flags and round state while preserving
     expect($controller->getFlags())->toBe([null, null]);
     expect($world->getTees())->toBeEmpty();
     foreach ($oldEntities as $entity) {
-        expect($entity->isToDestroy())->toBeTrue();
+        expect($entity->isMarkedForDestruction())->toBeTrue();
         expect($world->getEntities())->not()->toContain($entity);
     }
     $reflection = new ReflectionClass($world);
@@ -195,7 +195,7 @@ test('a plain reload re-reads the current map file and a failed reload keeps the
         expect($world->isPaused())->toBeFalse();
         expect($world->getCurrentTick())->toBe(1000);
         foreach ($oldEntities as $entity) {
-            expect($entity->isToDestroy())->toBeTrue();
+            expect($entity->isMarkedForDestruction())->toBeTrue();
             expect($world->getEntities())->not()->toContain($entity);
         }
 

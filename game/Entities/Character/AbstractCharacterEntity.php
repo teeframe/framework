@@ -173,7 +173,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             return parent::getSnapDistance($viewPosition);
         }
 
-        $closest = $viewPosition->closestPointOnLine($this->position, $this->hookPos);
+        $closest = $viewPosition->closestPointOnSegment($this->position, $this->hookPos);
 
         return $viewPosition->distance($closest);
     }
@@ -192,7 +192,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         }
 
         $tune = $this->world->getTuneController();
-        $this->tick(
+        $this->tickCore(
             $this->input->direction,
             $this->input->targetX,
             $this->input->targetY,
@@ -217,7 +217,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         $this->handleWeapons();
     }
 
-    public function tickDeferred(): void
+    public function doTickDeferred(): void
     {
         if (! $this->alive) {
             return;
@@ -260,7 +260,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
         }
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         $this->attackTick++;
         $this->ninjaActivationTick++;
@@ -331,7 +331,7 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         $characters = [];
         foreach ($this->world->getEntities() as $entity) {
-            if ($entity instanceof AbstractCharacterEntity && $entity !== $this && $entity->alive && ! $entity->isToDestroy() && $entity->tee !== null) {
+            if ($entity instanceof AbstractCharacterEntity && $entity !== $this && $entity->alive && ! $entity->isMarkedForDestruction() && $entity->tee !== null) {
                 $characters[$entity->tee->teeIndex] = $entity;
             }
         }

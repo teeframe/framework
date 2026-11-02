@@ -115,7 +115,7 @@ test('tee movement respects collision tuning and ignores dead or destroyed chara
     } elseif ($state === 'dead') {
         $target->alive = false;
     } else {
-        $target->markToDestroy();
+        $target->markForDestruction();
     }
     $mover->vel = new Vector2(80, 0);
     $collision  = $world->getMap()->getCollision();
@@ -172,7 +172,7 @@ test('every completed world tick retains the same core state that it sends to cl
         expect([$character->vel->x, $character->vel->y])->toBe([$snap->velX / 256.0, $snap->velY / 256.0]);
         expect([$character->hookPos->x, $character->hookPos->y])->toBe([(float) $snap->hookX, (float) $snap->hookY]);
         expect([$character->hookDir->x, $character->hookDir->y])->toBe([$snap->hookDx / 256.0, $snap->hookDy / 256.0]);
-        $clock->next();
+        $clock->advanceTick();
     }
 });
 

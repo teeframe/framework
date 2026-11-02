@@ -51,7 +51,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         }
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         $this->evalTick++;
     }
@@ -61,7 +61,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         $this->evalTick = $this->world->getCurrentTick();
 
         if ($this->energy < 0) {
-            $this->markToDestroy();
+            $this->markForDestruction();
 
             return;
         }
@@ -126,7 +126,7 @@ class PvpLaserEntity extends AbstractLaserEntity
             }
 
             $radius    = $entity->getHitBoxRadius();
-            $projected = $this->closestPointOnLine($from, $to, $entity->getPosition());
+            $projected = $this->closestPointOnSegment($from, $to, $entity->getPosition());
 
             $dist = $projected->distance($entity->getPosition());
             if ($dist <= $radius) {
@@ -151,7 +151,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         return false;
     }
 
-    protected function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd, Vector2 $point): Vector2
+    protected function closestPointOnSegment(Vector2 $lineStart, Vector2 $lineEnd, Vector2 $point): Vector2
     {
         $line = $lineEnd->diff($lineStart);
         // Lasers use a squared-length cutoff; hooks and projectiles use length.
@@ -159,12 +159,12 @@ class PvpLaserEntity extends AbstractLaserEntity
             return clone $lineStart;
         }
 
-        return $point->closestPointOnLine($lineStart, $lineEnd);
+        return $point->closestPointOnSegment($lineStart, $lineEnd);
     }
 
     public function getSnapDistance(Vector2 $viewPosition): float
     {
-        $closest = $viewPosition->closestPointOnLine($this->from, $this->position);
+        $closest = $viewPosition->closestPointOnSegment($this->from, $this->position);
 
         return $viewPosition->distance($closest);
     }

@@ -45,7 +45,7 @@ class PvpGameController extends AbstractGameController
     ) {
         parent::__construct($tickHandler, $inactiveKickTime, $inactiveKick, $spectatorSlots);
 
-        $this->roundStartTick = $tickHandler->get();
+        $this->roundStartTick = $tickHandler->getCurrentTick();
     }
 
     public function getGameType(): string
@@ -89,7 +89,7 @@ class PvpGameController extends AbstractGameController
         }
 
         if ($this->gameOverTick !== -1) {
-            if ($this->tickHandler->get() > $this->gameOverTick + NetworkParams::TICKS_PER_SECOND * 10) {
+            if ($this->tickHandler->getCurrentTick() > $this->gameOverTick + NetworkParams::TICKS_PER_SECOND * 10) {
                 $this->cycleMap();
                 $this->startRound();
                 $this->roundCount++;
@@ -111,7 +111,7 @@ class PvpGameController extends AbstractGameController
                 $this->unbalancedTick++;
             }
         } elseif ($this->isTeamMode && $this->teamBalanceTime > 0 && $this->unbalancedTick !== -1
-            && $this->tickHandler->get() > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
+            && $this->tickHandler->getCurrentTick() > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
         ) {
             $this->balanceTeams();
             $this->unbalancedTick = -1;
@@ -120,7 +120,7 @@ class PvpGameController extends AbstractGameController
         parent::doTick();
     }
 
-    public function tickDeferred(): void
+    public function doTickDeferred(): void
     {
         $world = $this->world;
         if ($this->isCaptureTheFlag && $world !== null && ! $world->isResetRequested() && ! $world->isPaused()) {
@@ -162,7 +162,7 @@ class PvpGameController extends AbstractGameController
             return;
         }
 
-        $elapsed          = $this->tickHandler->get() - $this->roundStartTick;
+        $elapsed          = $this->tickHandler->getCurrentTick() - $this->roundStartTick;
         $timeLimitReached = $this->timeLimit > 0 && $elapsed >= $this->timeLimit * NetworkParams::TICKS_PER_SECOND * 60;
 
         if ($this->isTeamMode) {
@@ -264,10 +264,10 @@ class PvpGameController extends AbstractGameController
     {
         $world = $this->world;
         if ($world !== null) {
-            $world->resetGame();
+            $world->requestRoundReset();
         }
 
-        $this->roundStartTick = $this->tickHandler->get();
+        $this->roundStartTick = $this->tickHandler->getCurrentTick();
         $this->suddenDeath    = 0;
         $this->gameOverTick   = -1;
         if ($world !== null) {
@@ -286,7 +286,7 @@ class PvpGameController extends AbstractGameController
 
         $this->teamScores     = [0, 0];
         $this->flags          = [null, null];
-        $this->roundStartTick = $this->tickHandler->get();
+        $this->roundStartTick = $this->tickHandler->getCurrentTick();
         $this->gameOverTick   = -1;
         $this->suddenDeath    = 0;
         $this->warmup         = 0;
@@ -310,7 +310,7 @@ class PvpGameController extends AbstractGameController
             $scores = $this->getTeamScores();
             $world->consoleInfo('game', 'Round ended Gametype='.$this->getGameType().($this->isTeamMode ? ' ScoreRed='.$scores[0].' ScoreBlue='.$scores[1] : ''));
         }
-        $this->gameOverTick = $this->tickHandler->get();
+        $this->gameOverTick = $this->tickHandler->getCurrentTick();
         $this->suddenDeath  = 0;
     }
 
@@ -457,7 +457,7 @@ class PvpGameController extends AbstractGameController
 
         if (abs($teamSizes[0] - $teamSizes[1]) >= 2) {
             if ($this->unbalancedTick === -1) {
-                $this->unbalancedTick = $this->tickHandler->get();
+                $this->unbalancedTick = $this->tickHandler->getCurrentTick();
                 $world->consoleDebug('game', 'Teams unbalanced Red='.$teamSizes[0].' Blue='.$teamSizes[1]);
             }
 
@@ -488,7 +488,7 @@ class PvpGameController extends AbstractGameController
                 continue;
             }
             $teamSizes[$tee->team]++;
-            $elapsed                          = $this->tickHandler->get() - $tee->scoreStartTick;
+            $elapsed                          = $this->tickHandler->getCurrentTick() - $tee->scoreStartTick;
             $playerScoreRates[$tee->teeIndex] = $elapsed > 0
                 ? $tee->score * NetworkParams::TICKS_PER_SECOND * 60.0 / $elapsed
                 : 0.0;
@@ -700,7 +700,7 @@ class PvpGameController extends AbstractGameController
         }
 
         $collision   = $world->getMap()->getCollision();
-        $currentTick = $this->tickHandler->get();
+        $currentTick = $this->tickHandler->getCurrentTick();
 
         for ($fi = 0; $fi < 2; $fi++) {
             $flag = $this->flags[$fi];
@@ -762,7 +762,7 @@ class PvpGameController extends AbstractGameController
         }
 
         if ($this->world !== null) {
-            $this->world->consoleDebug('ctf', 'Flag captured Team='.$flag->team.' TeeIdx='.($carrierTee->teeIndex ?? -1).' Duration='.(($this->tickHandler->get() - $flag->grabTick) / NetworkParams::TICKS_PER_SECOND).'s');
+            $this->world->consoleDebug('ctf', 'Flag captured Team='.$flag->team.' TeeIdx='.($carrierTee->teeIndex ?? -1).' Duration='.(($this->tickHandler->getCurrentTick() - $flag->grabTick) / NetworkParams::TICKS_PER_SECOND).'s');
         }
         $flag->reset();
         $this->getFlag($fi ^ 1)?->reset();
@@ -881,7 +881,7 @@ class PvpGameController extends AbstractGameController
             if ($flag->carryingCharacter === $victim) {
                 $flag->setPosition(clone $victim->getPosition());
                 $world->createSoundGlobal(GameConstants::SOUND_CTF_DROP);
-                $flag->dropTick          = $this->tickHandler->get();
+                $flag->dropTick          = $this->tickHandler->getCurrentTick();
                 $flag->carryingCharacter = null;
                 $flag->vel               = new Vector2(0, 0);
                 $world->consoleDebug('ctf', 'Flag dropped Team='.$flag->team.' TeeIdx='.($victim->tee->teeIndex ?? -1));

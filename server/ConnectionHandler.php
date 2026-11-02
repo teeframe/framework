@@ -30,7 +30,7 @@ class ConnectionHandler
 
     public function startNew(AbstractSocket $socket, AbstractWorld $world): ConnectionSlot|false
     {
-        $this->clearConnections();
+        $this->removeClosedConnections();
 
         if ($this->isWorldFull($world)) {
             return false;
@@ -105,7 +105,7 @@ class ConnectionHandler
             }
         }
 
-        $this->clearConnections();
+        $this->removeClosedConnections();
     }
 
     public function startConnectionHandshake(ConnectionSlot $connection, string $address, int $port): void
@@ -285,7 +285,7 @@ class ConnectionHandler
         $connection->queueWorldInfoUpdate();
     }
 
-    protected function clearConnections(): void
+    protected function removeClosedConnections(): void
     {
         foreach ($this->slots as $i => $connection) {
             if ($connection->state === ConnectionSlot::STATE_CLOSED) {

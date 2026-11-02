@@ -87,7 +87,7 @@ test('chat throttling counts UTF-8 characters instead of their encoded bytes', f
     $world->onMessage($tee, new ClSayChunk(false, str_repeat('é', 16)));
     recordingServer($world)->clear();
     for ($i = 0; $i < 100; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
 
     $world->onMessage($tee, new ClSayChunk(false, str_repeat('é', 16)));

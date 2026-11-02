@@ -35,8 +35,8 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         $pt = ($currentTick - $this->startTick - 1) / $tickSpeed;
         $ct = ($currentTick - $this->startTick) / $tickSpeed;
 
-        $prevPos = $this->getPos($pt);
-        $curPos  = $this->getPos($ct);
+        $prevPos = $this->calculatePositionAtTime($pt);
+        $curPos  = $this->calculatePositionAtTime($ct);
 
         // Check map collision
         $collision  = $this->world->getMap()->getCollision();
@@ -74,7 +74,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
                 );
             }
 
-            $this->markToDestroy();
+            $this->markForDestruction();
 
             return;
         }
@@ -104,7 +104,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
                 continue;
             }
 
-            $intersectPos = $entity->getPosition()->closestPointOnLine($pos0, $pos1);
+            $intersectPos = $entity->getPosition()->closestPointOnSegment($pos0, $pos1);
             $len          = $entity->getPosition()->distance($intersectPos);
 
             if ($len < $entity->getHitBoxRadius() + $this->getHitBoxRadius()) {
@@ -174,7 +174,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
      * Uses startPos (initial spawn position), matching original Teeworlds m_Pos.
      * Velocity is normalized direction, Time is multiplied by Speed.
      */
-    protected function getPos(float $time): Vector2
+    protected function calculatePositionAtTime(float $time): Vector2
     {
         $t = $time * $this->speed;
 

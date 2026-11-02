@@ -440,7 +440,7 @@ test('character dies when a sampled corner touches a death tile', function () {
     $tee       = new PlayerTee;
     $character->spawn($position, $tee);
     $character->doTick();
-    expect($character->alive)->toBeFalse()->and($character->isToDestroy())->toBeTrue();
+    expect($character->alive)->toBeFalse()->and($character->isMarkedForDestruction())->toBeTrue();
     expect($tee->character)->toBeNull()->and($tee->spawning)->toBeTrue();
 });
 
@@ -464,9 +464,9 @@ test('projectiles are destroyed outside the game layer clipping margin', functio
     $world      = new TestWorld($clock, mapRegressionLoad(mapRegressionGameFile(str_repeat("\0", 36))));
     $projectile = new PvpProjectileEntity($world, new Vector2(204 * 32, 48), new Vector2(1, 0), GameConstants::WEAPON_GUN);
     $projectile->setTuning(2200.0, 1.25, 100);
-    $clock->next();
+    $clock->advanceTick();
     $projectile->doTick();
-    expect($projectile->isToDestroy())->toBeTrue();
+    expect($projectile->isMarkedForDestruction())->toBeTrue();
 });
 
 test('flags return when they leave the game layer clipping margin', function () {

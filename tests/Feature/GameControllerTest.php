@@ -801,13 +801,13 @@ test('paused character snapshots disable dead reckoning until play resumes', fun
         $world->setPaused(false);
     }
 
-    $tickHandler->next();
+    $tickHandler->advanceTick();
     $world->doTick();
 
     $character = $tee->character;
     assert($character instanceof PvpCharacterEntity);
     expect($world->isPaused())->toBeFalse();
-    expect($character->doSnap($tee)[0]->getInts()[0])->toBe($tickHandler->get());
+    expect($character->doSnap($tee)[0]->getInts()[0])->toBe($tickHandler->getCurrentTick());
 })->with([
     'manual pause'   => [false],
     'match finished' => [true],
@@ -1075,7 +1075,7 @@ test('self-damage is halved', function () use ($mapPath, $mapExists) {
 |--------------------------------------------------------------------------
 */
 
-test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath, $mapExists) {
+test('tryRespawnTee passes the tee team to selectSpawnPosition', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -1083,7 +1083,7 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
     $map         = new Map($mapPath);
     $tickHandler = new TickHandler(100);
 
-    // A controller that records the team argument passed to canSpawn
+    // A controller that records the team argument passed to selectSpawnPosition
     $controller = new class($tickHandler, true) extends PvpGameController
     {
         public int $lastSpawnTeam = -99;
@@ -1098,11 +1098,11 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
             return 0;
         }
 
-        public function canSpawn(AbstractWorld $world, int $team): ?Vector2
+        public function selectSpawnPosition(AbstractWorld $world, int $team): ?Vector2
         {
             $this->lastSpawnTeam = $team;
 
-            return parent::canSpawn($world, $team);
+            return parent::selectSpawnPosition($world, $team);
         }
     };
     $world = createWorldWithController($map, $tickHandler, $controller);
@@ -1114,7 +1114,7 @@ test('tryRespawnTee passes the tee team to canSpawn', function () use ($mapPath,
 
     $world->doTick();
 
-    // canSpawn should have been called with TEAM_BLUE (1), not TEAM_RED (0)
+    // selectSpawnPosition should have been called with TEAM_BLUE (1), not TEAM_RED (0)
     expect($controller->lastSpawnTeam)->toBe(GameConstants::TEAM_BLUE);
 });
 

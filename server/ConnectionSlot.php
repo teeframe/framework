@@ -127,7 +127,7 @@ class ConnectionSlot extends AbstractConnection
     {
         // The client polls gameplay before its contact socket. Wait for a snapshot
         // sent after the browser reply, so the world info arrives on a later poll.
-        $this->worldInfoUpdateTick = $this->tickHandler->get() + 1;
+        $this->worldInfoUpdateTick = $this->tickHandler->getCurrentTick() + 1;
     }
 
     public function feedConnection(AbstractPacket $packet): bool
@@ -211,7 +211,7 @@ class ConnectionSlot extends AbstractConnection
             }
 
             if ($chunk instanceof InputChunk) {
-                $this->snaps()->setLastAckedTick($chunk->ackGameTick);
+                $this->snaps()->handleSnapshotAck($chunk->ackGameTick);
 
                 $this->playerTee()->latency = $this->snaps()->getLatency();
 
@@ -244,10 +244,10 @@ class ConnectionSlot extends AbstractConnection
 
                 // Between callbacks, the clock already points to the next unprocessed tick.
                 // Keep the client's original tick in INPUTTIMING.
-                $this->playerTee()->bufferInput(max($chunk->predictionTick, $this->tickHandler->get()), $input);
+                $this->playerTee()->bufferInput(max($chunk->predictionTick, $this->tickHandler->getCurrentTick()), $input);
 
                 if (! $this->world()->isPaused()) {
-                    $this->playerTee()->onDirectInput($input, $this->tickHandler->get());
+                    $this->playerTee()->onDirectInput($input, $this->tickHandler->getCurrentTick());
                 }
             }
 

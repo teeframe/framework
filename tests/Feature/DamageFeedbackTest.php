@@ -58,10 +58,10 @@ test('surviving hits use post-armor damage for pain sounds and set a half-second
     expect(damageFeedbackEmote($victim, $target))->toBe(GameConstants::EMOTE_PAIN);
 
     for ($i = 0; $i < intdiv(NetworkParams::TICKS_PER_SECOND, 2); $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     expect(damageFeedbackEmote($victim, $target))->toBe(GameConstants::EMOTE_PAIN);
-    $clock->next();
+    $clock->advanceTick();
     expect(damageFeedbackEmote($victim, $target))->toBe(GameConstants::EMOTE_NORMAL);
 })->with([
     'armor absorbs everything'         => [1, 1, 10, 0, GameConstants::SOUND_PLAYER_PAIN_SHORT],
@@ -86,10 +86,10 @@ test('lethal hits emit death without pain and give the killer a one-second happy
     expect(damageFeedbackEmote($attacker, $owner))->toBe(GameConstants::EMOTE_HAPPY);
 
     for ($i = 0; $i < NetworkParams::TICKS_PER_SECOND; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     expect(damageFeedbackEmote($attacker, $owner))->toBe(GameConstants::EMOTE_HAPPY);
-    $clock->next();
+    $clock->advanceTick();
     expect(damageFeedbackEmote($attacker, $owner))->toBe(GameConstants::EMOTE_NORMAL);
 })->with([
     'unarmored death'    => [1, 0, 1],

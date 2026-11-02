@@ -204,7 +204,7 @@ test('vote call cooldown uses its configured duration independently of attempt s
     $world->onMessage($tee, new ClCallVoteChunk('option', 'Example', ''));
 
     expect($votes->isVoteRunning())->toBe($allowed);
-    expect($tee->lastVoteCall)->toBe($allowed ? $clock->get() : 100);
+    expect($tee->lastVoteCall)->toBe($allowed ? $clock->getCurrentTick() : 100);
 })->with([
     'default before deadline'                       => [null, 60 * NetworkParams::TICKS_PER_SECOND - 1, false],
     'default at deadline'                           => [null, 60 * NetworkParams::TICKS_PER_SECOND, true],

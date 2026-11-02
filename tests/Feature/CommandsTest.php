@@ -177,11 +177,11 @@ test('emote command defaults to no expiration and cannot change expressions duri
     $world->addTee($tee);
     $character = new PvpCharacterEntity($world, new Vector2(64, 64));
     $character->spawn(new Vector2(64, 64), $tee);
-    $character->setEmote(GameConstants::EMOTE_PAIN, $clock->get() + 1);
+    $character->setEmote(GameConstants::EMOTE_PAIN, $clock->getCurrentTick() + 1);
     $world->onMessage($tee, new ClSayChunk(false, '/emote happy'));
     expect($character->emote)->toBe(GameConstants::EMOTE_HAPPY);
     for ($i = 0; $i <= NetworkParams::TICKS_PER_SECOND; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     $character->doSnap($tee);
     expect($character->emote)->toBe(GameConstants::EMOTE_HAPPY);

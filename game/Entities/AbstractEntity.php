@@ -39,12 +39,12 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
     abstract public function doTick(): void;
 
     /* Used for characters */
-    public function tickDeferred(): void {}
+    public function doTickDeferred(): void {}
 
     /** Transient entities are removed on round reset; persistent entities override this hook. */
     public function reset(): void
     {
-        $this->markToDestroy();
+        $this->markForDestruction();
     }
 
     /** Called before a departing tee's index can be reused. */
@@ -56,7 +56,7 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
         return null;
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         // no-op by default
     }
@@ -75,12 +75,12 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
             || $tileY < -200 || $tileY > $collision->getHeight() + 200;
     }
 
-    public function isToDestroy(): bool
+    public function isMarkedForDestruction(): bool
     {
         return $this->toDestroy;
     }
 
-    public function markToDestroy(): void
+    public function markForDestruction(): void
     {
         $this->toDestroy = true;
     }

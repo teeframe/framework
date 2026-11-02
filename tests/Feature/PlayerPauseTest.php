@@ -69,7 +69,7 @@ test('paused ticks preserve player deadlines for living dead and spectator playe
 
     for ($i = 0; $i < 20; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
 
     expect([$tee->respawnTick, $tee->dieTick, $tee->scoreStartTick, $tee->lastActionTick, $tee->teamChangeTick])
@@ -90,7 +90,7 @@ test('paused time never triggers inactivity removal and the remaining timeout re
 
     for ($i = 0; $i < 6000; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
 
     expect($tee->team)->toBe(GameConstants::TEAM_RED);
@@ -100,7 +100,7 @@ test('paused time never triggers inactivity removal and the remaining timeout re
     $world->setPaused(false);
     for ($i = 0; $i < 2; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
         expect($tee->team)->toBe(GameConstants::TEAM_RED);
         expect(recordingServer($world)->kickedTees)->toBeEmpty();
     }
@@ -122,7 +122,7 @@ test('team balancing preserves living tees and its remaining delay during manual
     [$world, $players] = teamBalancePauseFixture($clock, $mode);
     $controller        = $world->getGameController();
     $balanceStart      = new ReflectionProperty($controller, 'unbalancedTick');
-    $startedTick       = $clock->get() - NetworkParams::TICKS_PER_SECOND * 60 + 1;
+    $startedTick       = $clock->getCurrentTick() - NetworkParams::TICKS_PER_SECOND * 60 + 1;
     $balanceStart->setValue($controller, $startedTick);
     if ($gameOver) {
         $controller->endRound();
@@ -134,7 +134,7 @@ test('team balancing preserves living tees and its remaining delay during manual
 
     for ($i = 0; $i < $pauseTicks; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
 
     expect($world->isPaused())->toBeTrue();
@@ -155,7 +155,7 @@ test('team balancing preserves living tees and its remaining delay during manual
     }
     for ($i = 0; $i < 2; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
         expect(array_map(fn (PlayerTee $tee) => $tee->team, $players))->toBe([0, 0, 0, 1]);
     }
     $world->doTick();
@@ -169,12 +169,12 @@ test('an overdue balance waits through game over and runs on the automatic round
     [$world, $players] = teamBalancePauseFixture($clock);
     $controller        = $world->getGameController();
     $balanceStart      = new ReflectionProperty($controller, 'unbalancedTick');
-    $balanceStart->setValue($controller, $clock->get() - NetworkParams::TICKS_PER_SECOND * 60 - 1);
+    $balanceStart->setValue($controller, $clock->getCurrentTick() - NetworkParams::TICKS_PER_SECOND * 60 - 1);
     $controller->endRound();
 
     for ($i = 0; $i <= NetworkParams::TICKS_PER_SECOND * 10; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
     expect($world->isPaused())->toBeTrue();
     expect($controller->isGameOver())->toBeTrue();
@@ -201,7 +201,7 @@ test('pauses do not create a pending team balance when teams are already balance
 
     for ($i = 0; $i < 4 * NetworkParams::TICKS_PER_SECOND; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
 
     expect((new ReflectionProperty($controller, 'unbalancedTick'))->getValue($controller))->toBe(-1);
@@ -215,7 +215,7 @@ test('pausing one world does not delay another worlds team balancing', function 
     $clock                         = new TickHandler(5000);
     [$pausedWorld, $pausedPlayers] = teamBalancePauseFixture($clock);
     [$activeWorld, $activePlayers] = teamBalancePauseFixture($clock);
-    $startedTick                   = $clock->get() - NetworkParams::TICKS_PER_SECOND * 60 + 1;
+    $startedTick                   = $clock->getCurrentTick() - NetworkParams::TICKS_PER_SECOND * 60 + 1;
     foreach ([$pausedWorld, $activeWorld] as $world) {
         (new ReflectionProperty($world->getGameController(), 'unbalancedTick'))->setValue($world->getGameController(), $startedTick);
     }
@@ -224,7 +224,7 @@ test('pausing one world does not delay another worlds team balancing', function 
     for ($i = 0; $i < 3; $i++) {
         $pausedWorld->doTick();
         $activeWorld->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
 
     expect(array_map(fn (PlayerTee $tee) => $tee->team, $pausedPlayers))->toBe([0, 0, 0, 1]);
@@ -242,7 +242,7 @@ test('death respawn delays retain their remaining ticks across a pause', functio
     $tee   = new PlayerTee;
     $world->addTee($tee);
     $world->doTick();
-    $clock->next();
+    $clock->advanceTick();
     $character = $tee->character;
     assert($character instanceof PvpCharacterEntity);
     $character->die($tee->teeIndex, $weapon);
@@ -250,15 +250,15 @@ test('death respawn delays retain their remaining ticks across a pause', functio
 
     for ($i = 0; $i < 200; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
         expect($tee->character)->toBeNull();
     }
-    expect($tee->respawnTick - $clock->get())->toBe($delay);
+    expect($tee->respawnTick - $clock->getCurrentTick())->toBe($delay);
 
     $world->setPaused(false);
     for ($i = 0; $i < $delay; $i++) {
         $world->doTick();
-        $clock->next();
+        $clock->advanceTick();
         expect($tee->character)->toBeNull();
     }
     $world->doTick();
@@ -283,7 +283,7 @@ test('pausing one world does not freeze another worlds player timers', function 
     for ($i = 0; $i < 20; $i++) {
         $pausedWorld->doTick();
         $activeWorld->doTick();
-        $clock->next();
+        $clock->advanceTick();
     }
 
     expect([$pausedTee->lastActionTick, $pausedTee->scoreStartTick])->toBe([120, 120]);

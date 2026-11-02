@@ -428,7 +428,7 @@ test('CTF grab drop and return logs are emitted for actual flag transitions', fu
     $world->addEntity($character);
 
     $lines = captureGameLogs(function () use ($controller, $character, $attacker) {
-        $controller->tickDeferred();
+        $controller->doTickDeferred();
         $character->die($attacker->teeIndex, GameConstants::WEAPON_SELF);
     });
     expect($lines)->toContain(
@@ -443,6 +443,6 @@ test('CTF grab drop and return logs are emitted for actual flag transitions', fu
     $defenderCharacter->spawn(clone $redFlag->getPosition(), $defender);
     $world->addEntity($defenderCharacter);
 
-    $lines = captureGameLogs(fn () => $controller->tickDeferred());
+    $lines = captureGameLogs(fn () => $controller->doTickDeferred());
     expect($lines)->toBe(['[DEBUG] [ctf]: World=test Flag returned Team=0 TeeIdx=1']);
 });

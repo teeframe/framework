@@ -53,7 +53,7 @@ class Vector2
         return $this->x * $other->x + $this->y * $other->y;
     }
 
-    public function closestPointOnLine(Vector2 $lineStart, Vector2 $lineEnd): Vector2
+    public function closestPointOnSegment(Vector2 $lineStart, Vector2 $lineEnd): Vector2
     {
         $line       = $lineEnd->diff($lineStart);
         $lineLength = $line->length();

@@ -118,7 +118,7 @@ class SnapshotRateTestServer extends AbstractServerInstance
     public function ack(ConnectionSlot $slot, int $tick): void
     {
         expect($slot->feedConnection(new DefaultPacket([
-            new InputChunk($tick, $this->clock->get(), 40, 0, 0, -1, false, 0, false, GameConstants::PLAYERFLAG_PLAYING, 0, 0, 0),
+            new InputChunk($tick, $this->clock->getCurrentTick(), 40, 0, 0, -1, false, 0, false, GameConstants::PLAYERFLAG_PLAYING, 0, 0, 0),
         ], ack: $slot->sequence)))->toBeTrue();
     }
 

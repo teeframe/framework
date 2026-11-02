@@ -57,9 +57,9 @@ test('projectile kills resolve DM and TDM wins before respawns in the same tick'
     [$world, $clock, $owner, $target] = winTimingFixture($mode, $scoreLimit);
     $waiting                          = new PlayerTee;
     $world->addTee($waiting);
-    $waiting->respawnTick = $clock->get();
+    $waiting->respawnTick = $clock->getCurrentTick();
     addWinTimingProjectile($world, $owner);
-    $clock->next();
+    $clock->advanceTick();
 
     $world->doTick();
 
@@ -86,7 +86,7 @@ test('simultaneous projectile kills enter sudden death using both scores from th
     [$world, $clock, $owner, $target] = winTimingFixture($mode);
     addWinTimingProjectile($world, $owner);
     addWinTimingProjectile($world, $target, -1);
-    $clock->next();
+    $clock->advanceTick();
 
     $world->doTick();
 
@@ -124,10 +124,10 @@ test('team sudden death resolves by points in TDM and captures in CTF', function
 test('a kill on the time-limit tick is included before resolving the round', function (string $mode) {
     [$world, $clock, $owner, $target] = winTimingFixture($mode, scoreLimit: 0, timeLimit: 1);
     for ($i = 0; $i < NetworkParams::TICKS_PER_SECOND * 60 - 1; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
     addWinTimingProjectile($world, $owner);
-    $clock->next();
+    $clock->advanceTick();
 
     $world->doTick();
 
@@ -142,7 +142,7 @@ test('DM time-limit resolution counts negative scores and only enters sudden dea
     $first->score                     = $firstScore;
     $second->score                    = $secondScore;
     for ($i = 0; $i < NetworkParams::TICKS_PER_SECOND * 60; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
 
     $world->doTick();
@@ -189,7 +189,7 @@ test('a DM world without active players does not declare a winner or sudden deat
     $first->setTeam(GameConstants::TEAM_SPECTATORS);
     $second->setTeam(GameConstants::TEAM_SPECTATORS);
     for ($i = 0; $i < NetworkParams::TICKS_PER_SECOND * 60; $i++) {
-        $clock->next();
+        $clock->advanceTick();
     }
 
     $world->doTick();
@@ -205,7 +205,7 @@ test('warmup still prevents a projectile kill from ending the round', function (
     [$world, $clock, $owner] = winTimingFixture($mode);
     $world->getGameController()->doWarmup(10);
     addWinTimingProjectile($world, $owner);
-    $clock->next();
+    $clock->advanceTick();
 
     $world->doTick();
 

@@ -38,7 +38,7 @@ class RegisteredTestServer extends AbstractServerInstance
         // Bound the subprocess even if the test master never accepts registration.
         $this->shutdownTimer = swoole_timer_after(($_SERVER['argv'][2] ?? '') === 'signal' ? 3000 : 1000, function (): void {
             $this->shutdownTimer = false;
-            echo 'registration-test-ticks='.$this->tickHandler->get().PHP_EOL;
+            echo 'registration-test-ticks='.$this->tickHandler->getCurrentTick().PHP_EOL;
             $this->shutdown();
         });
     }

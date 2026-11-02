@@ -157,7 +157,7 @@ class ChunkHandler
         return null;
     }
 
-    public function flushSentList(int $sequence): void
+    public function removeAcknowledgedChunks(int $sequence): void
     {
         $acknowledged = 0;
         foreach ($this->sentList as $entry) {

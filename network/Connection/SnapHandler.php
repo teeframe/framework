@@ -47,10 +47,10 @@ class SnapHandler
         $this->minimumLatency     = 1000;
         $this->latencyWindowStart = $this->tickHandler->getTime() / 1_000_000_000;
 
-        $this->flushSentList();
+        $this->clearHistory();
     }
 
-    public function flushSentList(): void
+    public function clearHistory(): void
     {
         $this->sentList = [];
     }
@@ -70,7 +70,7 @@ class SnapHandler
         return $this->latency;
     }
 
-    public function setLastAckedTick(int $tick): void
+    public function handleSnapshotAck(int $tick): void
     {
         $this->lastAckedTick = $tick;
         $snap                = $this->sentList[$tick] ?? null;

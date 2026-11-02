@@ -88,12 +88,12 @@ test('player requests enforce reserved capacity while forced moves bypass reques
     expect($messages[0]->text)->toBe('Only 1 active players are allowed');
 
     $world->setPaused(true);
-    $spectator->lastSetTeam    = $clock->get();
-    $spectator->teamChangeTick = $clock->get() + 1000;
+    $spectator->lastSetTeam    = $clock->getCurrentTick();
+    $spectator->teamChangeTick = $clock->getCurrentTick() + 1000;
     $spectator->setTeam(GameConstants::TEAM_BLUE);
     expect($spectator->team)->toBe(GameConstants::TEAM_BLUE);
     expect($spectator->spawning)->toBeTrue();
-    expect($spectator->teamChangeTick)->toBe($clock->get() + 1000);
+    expect($spectator->teamChangeTick)->toBe($clock->getCurrentTick() + 1000);
 });
 
 test('already active players may switch teams when all world slots are occupied', function () {
@@ -166,9 +166,9 @@ test('all spectator transition paths share character cleanup respawn state and f
             break;
         case 'inactivity':
             for ($i = 0; $i < 3001; $i++) {
-                $clock->next();
+                $clock->advanceTick();
             }
-            $caller->lastActionTick = $witness->lastActionTick = $clock->get();
+            $caller->lastActionTick = $witness->lastActionTick = $clock->getCurrentTick();
             $controller->doTick();
             break;
         case 'vote':
@@ -185,8 +185,8 @@ test('all spectator transition paths share character cleanup respawn state and f
     expect($target->spawning)->toBeFalse();
     expect($target->spectatorId)->toBe(GameConstants::SPEC_FREEVIEW);
     expect($spectator->spectatorId)->toBe(GameConstants::SPEC_FREEVIEW);
-    expect($target->respawnTick)->toBe($clock->get() + 25);
-    expect($target->lastActionTick)->toBe($clock->get());
+    expect($target->respawnTick)->toBe($clock->getCurrentTick() + 25);
+    expect($target->lastActionTick)->toBe($clock->getCurrentTick());
     expect($controller->balanceChecks)->toBe($balanceChecks + 1);
 })->with(['request', 'forced', 'inactivity', 'vote']);
 
@@ -214,7 +214,7 @@ test('forced spectator transitions refresh an active vote and returning players 
     expect($statuses)->toHaveCount(3);
     expect($statuses[0]->total)->toBe(3);
     expect($player->spawning)->toBeTrue();
-    expect($player->respawnTick)->toBe($clock->get() + 25);
+    expect($player->respawnTick)->toBe($clock->getCurrentTick() + 25);
 });
 
 test('spectator follower cleanup never affects a different world with the same local tee index', function () {
@@ -244,9 +244,9 @@ test('player-request cooldowns and pause restrictions do not apply to forced tra
     if ($restriction === 'paused') {
         $world->setPaused(true);
     } elseif ($restriction === 'spam cooldown') {
-        $tee->lastSetTeam = $clock->get();
+        $tee->lastSetTeam = $clock->getCurrentTick();
     } else {
-        $tee->teamChangeTick = $clock->get() + 1000;
+        $tee->teamChangeTick = $clock->getCurrentTick() + 1000;
     }
 
     $world->onMessage($tee, new ClSetTeamChunk(GameConstants::TEAM_SPECTATORS));

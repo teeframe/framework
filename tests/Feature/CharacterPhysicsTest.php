@@ -44,7 +44,7 @@ test('character spawns and survives physics ticks at spawn position', function (
     $tune = $world->getTuneController();
 
     for ($tick = 0; $tick < 100; $tick++) {
-        $character->tick(0, 0, 0, false, false, $collision, $tune, []);
+        $character->tickCore(0, 0, 0, false, false, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -86,7 +86,7 @@ test('character with walk input survives physics ticks', function () use ($mapPa
 
     // walking right, aiming right
     for ($tick = 0; $tick < 100; $tick++) {
-        $character->tick(1, 100, 0, false, false, $collision, $tune, []);
+        $character->tickCore(1, 100, 0, false, false, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -127,7 +127,7 @@ test('character with hook input survives physics ticks', function () use ($mapPa
 
     // hook input, aiming right
     for ($tick = 0; $tick < 50; $tick++) {
-        $character->tick(0, 100, 0, false, true, $collision, $tune, []);
+        $character->tickCore(0, 100, 0, false, true, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -167,7 +167,7 @@ test('character with firing input survives physics ticks', function () use ($map
 
     // aiming up-right, firing
     for ($tick = 0; $tick < 50; $tick++) {
-        $character->tick(0, 100, -50, false, false, $collision, $tune, []);
+        $character->tickCore(0, 100, -50, false, false, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -208,7 +208,7 @@ test('character snap output is valid', function () use ($mapPath, $mapExists) {
 
     // aiming up-right, jumping, firing, hooking
     for ($tick = 0; $tick < 10; $tick++) {
-        $character->tick(0, 100, -100, true, true, $collision, $tune, []);
+        $character->tickCore(0, 100, -100, true, true, $collision, $tune, []);
         $character->move($collision, $tune);
     }
 
@@ -311,9 +311,9 @@ test('players push each other apart when overlapping', function () use ($mapPath
     // Run one physics tick for both — they should push apart
     $tune = $world->getTuneController();
 
-    $char1->tick(0, 0, 0, false, false, $collision, $tune, [$tee2->teeIndex => $char2]);
+    $char1->tickCore(0, 0, 0, false, false, $collision, $tune, [$tee2->teeIndex => $char2]);
     $char1->move($collision, $tune);
-    $char2->tick(0, 0, 0, false, false, $collision, $tune, [$tee1->teeIndex => $char1]);
+    $char2->tickCore(0, 0, 0, false, false, $collision, $tune, [$tee1->teeIndex => $char1]);
     $char2->move($collision, $tune);
 
     // After collision resolution, velocities should push them apart

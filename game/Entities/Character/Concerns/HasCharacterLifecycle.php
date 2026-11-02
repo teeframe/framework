@@ -55,7 +55,7 @@ trait HasCharacterLifecycle
     public function die(int $killerTeeIndex = -1, int $weapon = GameConstants::WEAPON_WORLD): void
     {
         $this->alive = false;
-        $this->markToDestroy();
+        $this->markForDestruction();
 
         if ($this->tee !== null) {
             $this->tee->character = null;

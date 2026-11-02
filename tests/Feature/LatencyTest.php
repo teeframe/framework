@@ -238,9 +238,9 @@ test('advancing the tick preserves its deadline rather than pretending no time h
     $ticks = new LatencyTestTickHandler(100);
     $ticks->startTick();
     $ticks->now += 7_000_000;
-    $ticks->next();
+    $ticks->advanceTick();
 
-    expect($ticks->get())->toBe(101);
+    expect($ticks->getCurrentTick())->toBe(101);
     expect($ticks->getTimeUntilTick(101))->toBe(13);
     expect($ticks->getTimeUntilTick(102))->toBe(33);
 });
@@ -264,7 +264,7 @@ test('the server records each tick start before processing worlds and snapshots'
     $ticks->now += 7_000_000;
     $server->advanceTick();
 
-    expect($ticks->get())->toBe(101);
+    expect($ticks->getCurrentTick())->toBe(101);
     expect($ticks->getTimeUntilTick(101))->toBe(20);
     $ticks->now += 5_000_000;
     expect($ticks->getTimeUntilTick(101))->toBe(15);

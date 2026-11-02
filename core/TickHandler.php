@@ -31,12 +31,12 @@ class TickHandler
         return hrtime(true);
     }
 
-    public function get(): int
+    public function getCurrentTick(): int
     {
         return $this->currentTick;
     }
 
-    public function next(): void
+    public function advanceTick(): void
     {
         $this->currentTick++;
         $this->currentTickStartTime += intdiv(1_000_000_000, NetworkParams::TICKS_PER_SECOND);

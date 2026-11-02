@@ -52,7 +52,7 @@ test('gamemode changes are deferred and rebuild round and flag state without rep
         $oldType       = $oldController->getGameType();
         $oldFlags      = $oldController->getFlags();
         $oldController->endRound();
-        $world->resetGame();
+        $world->requestRoundReset();
         $world->changeGameMode($mode);
 
         expect($world->getGameController())->toBe($oldController);
@@ -80,7 +80,7 @@ test('gamemode changes are deferred and rebuild round and flag state without rep
 
         foreach ($oldFlags as $flag) {
             if ($flag !== null) {
-                expect($flag->isToDestroy())->toBeTrue();
+                expect($flag->isMarkedForDestruction())->toBeTrue();
                 expect($world->getEntities())->not()->toContain($flag);
             }
         }

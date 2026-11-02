@@ -51,7 +51,7 @@ class FlagEntity extends AbstractEntity
         $this->grabTick          = 0;
     }
 
-    public function tickPaused(): void
+    public function doTickPaused(): void
     {
         $this->dropTick++;
         if ($this->grabTick !== 0) {
