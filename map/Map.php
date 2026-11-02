@@ -22,15 +22,13 @@ class Map
 
     protected ?Collision $collision = null;
 
-    protected ?MapReader $reader = null;
+    protected string $rawData = '';
 
     protected string $name = '';
 
     protected string $path = '';
 
     protected int $crc = 0;
-
-    protected int $size = 0;
 
     /**
      * @param  string  $mapPath  Path to the .map file (e.g., "maps/dm1.map")
@@ -55,14 +53,14 @@ class Map
         $path              = realpath($mapPath) ?: $mapPath;
 
         // Publish only after every parsing/validation stage succeeds.
-        $this->reader    = $reader;
+        $this->rawData   = $rawContent;
         $this->groups    = $groups;
         $this->layers    = $layers;
         $this->gameLayer = $gameLayer;
         $this->collision = $collision;
         // Teeworlds packs the CRC as a signed 32-bit integer.
-        $this->crc  = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
-        $this->size = strlen($rawContent);
+        $this->crc = ($crc & 0x80000000) ? $crc - 0x100000000 : $crc;
+
         $this->name = basename($mapPath, '.map');
         $this->path = $path;
     }
@@ -189,11 +187,11 @@ class Map
 
     public function getSize(): int
     {
-        return $this->size;
+        return strlen($this->rawData);
     }
 
     public function getRawData(): string
     {
-        return $this->reader?->getRawContent() ?? '';
+        return $this->rawData;
     }
 }

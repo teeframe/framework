@@ -8,11 +8,12 @@ class ConnectionSnap
 {
     /**
      * @param  array<int, AbstractSnapItem>  $snapItems
+     * @param  int  $sendTime  Monotonic timestamp in nanoseconds.
      */
     public function __construct(
         protected int $tick,
         protected array $snapItems,
-        protected float $sendTime,
+        protected int $sendTime,
     ) {}
 
     public function getTick(): int
@@ -20,7 +21,7 @@ class ConnectionSnap
         return $this->tick;
     }
 
-    public function getSendTime(): float
+    public function getSendTime(): int
     {
         return $this->sendTime;
     }

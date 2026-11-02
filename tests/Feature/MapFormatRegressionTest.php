@@ -176,7 +176,6 @@ test('failed reader reloads preserve the last validated content and parsed secti
 function mapRegressionState(Map $map): array
 {
     return [
-        'reader'    => (new ReflectionProperty(Map::class, 'reader'))->getValue($map),
         'name'      => $map->getName(),
         'path'      => $map->getPath(),
         'crc'       => $map->getCrc(),

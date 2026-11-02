@@ -88,22 +88,53 @@ function latencyTestPlayerInfo(PlayerTee $tee, PlayerTee $requestingTee): ObjPla
     throw new RuntimeException('Missing player info snapshot');
 }
 
-test('snapshot ACK latency uses elapsed send time and truncates milliseconds like 0.6', function (float $elapsed, int $expected) {
+test('snapshot ACK latency uses elapsed send time and truncates milliseconds like 0.6', function (int $elapsedNanoseconds, int $expected, int $startTime) {
     [, $ticks, $connection] = createLatencyTestWorld();
     $snaps                  = $connection->snaps();
+    $ticks->now             = $startTime;
+    $snaps->reset();
     $ticks->now += 1_000_000_000;
     $snaps->sendItems(100, []);
-    $ticks->now += (int) round($elapsed * 1_000_000_000);
+    $ticks->now += $elapsedNanoseconds;
 
     $connection->feedConnection(new DefaultPacket([latencyTestInput(100, 101)], ack: 0));
 
     expect($snaps->getLatency())->toBe($expected);
     expect($connection->playerTee()->latency)->toBe($expected);
 })->with([
-    'sub-millisecond localhost ACK'                     => [0.0009765625, 0],
-    'fractional milliseconds'                           => [0.015625, 15],
-    'remote ACK without an artificial tick subtraction' => [0.125, 125],
+    'sub-millisecond localhost ACK'                     => [976_563, 0],
+    'fractional milliseconds'                           => [15_625_000, 15],
+    'remote ACK without an artificial tick subtraction' => [125_000_000, 125],
+    'one nanosecond before a millisecond'               => [999_999, 0],
+    'exactly one millisecond'                           => [1_000_000, 1],
+    'one nanosecond after a millisecond'                => [1_000_001, 1],
+    'exactly ten milliseconds'                          => [10_000_000, 10],
+    'one nanosecond before sixteen milliseconds'        => [15_999_999, 15],
+    'exactly sixteen milliseconds'                      => [16_000_000, 16],
+])->with([
+    'short uptime' => 1_000_000_000_000,
+    'long uptime'  => 8_000_000_000_000_000,
 ]);
+
+test('snapshot latency publishes its minimum exactly at the one-second boundary', function () {
+    [, $ticks, $connection] = createLatencyTestWorld();
+    $snaps                  = $connection->snaps();
+    $startTime              = $ticks->now;
+    $snaps->sendItems(100, []);
+    $ticks->now += 10_000_000;
+    $snaps->handleSnapshotAck(100);
+    expect($snaps->getLatency())->toBe(0);
+
+    $ticks->now = $startTime + 994_999_999;
+    $snaps->sendItems(101, []);
+    $ticks->now += 5_000_000;
+    $snaps->handleSnapshotAck(101);
+    expect($snaps->getLatency())->toBe(0);
+
+    $ticks->now++;
+    $snaps->handleSnapshotAck(101);
+    expect($snaps->getLatency())->toBe(5);
+});
 
 test('unknown snapshot ACKs leave latency unchanged and connection reset clears it', function () {
     [, $ticks, $connection] = createLatencyTestWorld();

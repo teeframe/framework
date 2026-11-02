@@ -2,6 +2,7 @@
 
 use TeeFrame\Map\Map;
 use TeeFrame\Map\MapLayers\GameLayer;
+use TeeFrame\Map\MapReader;
 use TeeFrame\Network\NetworkBase;
 
 class SingleReadMapStream
@@ -98,6 +99,26 @@ test('map parsing crc size and download data use a single file read', function (
     }
 });
 
+test('loaded maps release their parser while retaining download data', function () use ($mapPath) {
+    $map = new class($mapPath) extends Map
+    {
+        /** @var WeakReference<MapReader>|null */
+        public ?WeakReference $readerReference = null;
+
+        protected function parseItems(MapReader $reader): array
+        {
+            $this->readerReference = WeakReference::create($reader);
+
+            return parent::parseItems($reader);
+        }
+    };
+
+    expect($map->readerReference)->not->toBeNull();
+    expect($map->readerReference?->get())->toBeNull();
+    expect($map->getRawData())->toBe(file_get_contents($mapPath));
+    expect($map->getSize())->toBe(filesize($mapPath));
+});
+
 test('dm1 map has a game layer with correct dimensions', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
@@ -135,7 +156,10 @@ test('dm1 map collision is initialized', function () use ($mapPath, $mapExists) 
 });
 
 test('an unloaded map exposes empty binary download data', function () {
-    expect((new Map)->getRawData())->toBe('');
+    $map = new Map;
+
+    expect($map->getRawData())->toBe('');
+    expect($map->getSize())->toBe(0);
 });
 
 test('dm1 map raw data is available for download', function () use ($mapPath, $mapExists) {

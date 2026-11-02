@@ -99,18 +99,34 @@ test('weapon firing preserves aim muzzle positions sounds and cooldowns', functi
     'ninja'   => ['shootNinja', 0, GameConstants::SOUND_NINJA_FIRE, 40],
 ])->with([0, 402, -603]);
 
-test('projectile lifetimes convert tuned seconds to whole ticks without rounding up', function (string $method, int $lifetime, int $expectedTicks) {
-    [$world, $character]   = createWeaponHelpersWorld();
-    $tune                  = $world->getTuneController();
-    $tune->gunLifetime     = $lifetime;
-    $tune->shotgunLifetime = $lifetime;
-    $tune->grenadeLifetime = $lifetime;
+test('projectile setup preserves weapon tuning and truncates lifetimes to whole ticks', function (string $method, int $lifetime, int $expectedTicks) {
+    [$world, $character, $tee] = createWeaponHelpersWorld();
+    $tune                      = $world->getTuneController();
+    $tune->gunSpeed            = 167500;
+    $tune->gunCurvature        = 175;
+    $tune->shotgunSpeed        = 289900;
+    $tune->shotgunCurvature    = 225;
+    $tune->grenadeSpeed        = 86500;
+    $tune->grenadeCurvature    = 975;
+    $tune->gunLifetime         = $lifetime;
+    $tune->shotgunLifetime     = $lifetime;
+    $tune->grenadeLifetime     = $lifetime;
     (new ReflectionMethod($character, $method))->invoke($character);
     $projectiles = array_filter($world->getEntities(), fn ($entity) => $entity instanceof PvpProjectileEntity);
+
+    [$speed, $curvature] = match ($method) {
+        'shootGun'     => [1675.0, 1.75],
+        'shootShotgun' => [2899.0, 2.25],
+        'shootGrenade' => [865.0, 9.75],
+        default        => throw new LogicException('Unexpected projectile weapon: '.$method),
+    };
 
     expect($projectiles)->not->toBeEmpty();
     foreach ($projectiles as $projectile) {
         expect((new ReflectionProperty($projectile, 'lifeSpan'))->getValue($projectile))->toBe($expectedTicks);
+        expect((new ReflectionProperty($projectile, 'speed'))->getValue($projectile))->toBe($speed);
+        expect((new ReflectionProperty($projectile, 'curvature'))->getValue($projectile))->toBe($curvature);
+        expect($projectile->owner)->toBe($tee->teeIndex);
     }
 })->with(['shootGun', 'shootShotgun', 'shootGrenade'])->with([
     'fractional tick'    => [201, 100],

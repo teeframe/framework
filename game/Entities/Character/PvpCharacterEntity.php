@@ -90,20 +90,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $tune = $this->world->getTuneController();
 
-        $proj = new PvpProjectileEntity(
-            world: $this->world,
+        $this->spawnProjectile(
+            weapon: GameConstants::WEAPON_GUN,
             position: $this->getProjectileStartPosition($dir),
             direction: $dir,
-            type: GameConstants::WEAPON_GUN,
-            owner: $this->tee->teeIndex,
+            speed: $tune->gunSpeed,
+            curvature: $tune->gunCurvature,
+            lifetime: $tune->gunLifetime,
         );
-        $proj->setTuning(
-            $tune->gunSpeed / 100.0,
-            $tune->gunCurvature / 100.0,
-            intdiv($tune->gunLifetime * NetworkParams::TICKS_PER_SECOND, 100),
-        );
-
-        $this->world->addEntity($proj);
 
         $this->createSound(GameConstants::SOUND_GUN_FIRE);
 
@@ -130,19 +124,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             $speed     = $speedDiff + (1.0 - $speedDiff) * $v; // mix(speeddiff, 1.0, v)
             $bulletDir = new Vector2(cos($a) * $speed, sin($a) * $speed);
 
-            $proj = new PvpProjectileEntity($this->world,
+            $this->spawnProjectile(
+                weapon: GameConstants::WEAPON_SHOTGUN,
                 position: clone $projStartPos,
                 direction: $bulletDir,
-                type: GameConstants::WEAPON_SHOTGUN,
-                owner: $this->tee->teeIndex,
+                speed: $tune->shotgunSpeed,
+                curvature: $tune->shotgunCurvature,
+                lifetime: $tune->shotgunLifetime,
             );
-            $proj->setTuning(
-                $tune->shotgunSpeed / 100.0,
-                $tune->shotgunCurvature / 100.0,
-                intdiv($tune->shotgunLifetime * NetworkParams::TICKS_PER_SECOND, 100),
-            );
-
-            $this->world->addEntity($proj);
         }
 
         $this->createSound(GameConstants::SOUND_SHOTGUN_FIRE);
@@ -160,19 +149,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $tune = $this->world->getTuneController();
 
-        $proj = new PvpProjectileEntity($this->world,
+        $this->spawnProjectile(
+            weapon: GameConstants::WEAPON_GRENADE,
             position: $this->getProjectileStartPosition($dir),
             direction: $dir,
-            type: GameConstants::WEAPON_GRENADE,
-            owner: $this->tee->teeIndex,
+            speed: $tune->grenadeSpeed,
+            curvature: $tune->grenadeCurvature,
+            lifetime: $tune->grenadeLifetime,
         );
-        $proj->setTuning(
-            $tune->grenadeSpeed / 100.0,
-            $tune->grenadeCurvature / 100.0,
-            intdiv($tune->grenadeLifetime * NetworkParams::TICKS_PER_SECOND, 100),
-        );
-
-        $this->world->addEntity($proj);
 
         $this->createSound(GameConstants::SOUND_GRENADE_FIRE);
 
@@ -501,5 +485,29 @@ class PvpCharacterEntity extends AbstractCharacterEntity
     protected function getProjectileStartPosition(Vector2 $direction): Vector2
     {
         return $this->position->add($direction->mul(self::PHYS_SIZE * 0.75));
+    }
+
+    protected function spawnProjectile(
+        int $weapon,
+        Vector2 $position,
+        Vector2 $direction,
+        int $speed,
+        int $curvature,
+        int $lifetime,
+    ): void {
+        $projectile = new PvpProjectileEntity(
+            world: $this->world,
+            position: $position,
+            direction: $direction,
+            type: $weapon,
+            owner: $this->tee->teeIndex ?? -1,
+        );
+        $projectile->setTuning(
+            $speed / 100.0,
+            $curvature / 100.0,
+            intdiv($lifetime * NetworkParams::TICKS_PER_SECOND, 100),
+        );
+
+        $this->world->addEntity($projectile);
     }
 }
