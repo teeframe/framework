@@ -57,6 +57,10 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         return $this->world;
     }
 
+    abstract public function onWorldReady(): void;
+
+    abstract public function onConfigChanged(string $name, int|string $value): void;
+
     abstract public function getGameType(): string;
 
     public function setGameMode(string $gameMode): void

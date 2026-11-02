@@ -105,17 +105,14 @@ class VoteController
 
     public function addVoteOption(string $description, string $command): void
     {
-        if (trim($description) === '' || strlen($description) > 63 || str_contains($description, "\0")) {
-            throw new \InvalidArgumentException('Vote descriptions must be non-blank, at most 63 bytes long, and contain no null bytes');
-        }
-
-        $key = strtolower($description);
+        $option = new VoteOption($description, $command);
+        $key    = strtolower($description);
 
         if (isset($this->voteOptions[$key])) {
             return;
         }
 
-        $this->voteOptions[$key] = new VoteOption($description, $command);
+        $this->voteOptions[$key] = $option;
     }
 
     public function getVoteOption(string $description): ?VoteOption

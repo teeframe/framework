@@ -17,6 +17,10 @@ use TeeFrame\Server\Config\Config;
 
 class NeutralTestGameController extends AbstractGameController
 {
+    public function onWorldReady(): void {}
+
+    public function onConfigChanged(string $name, int|string $value): void {}
+
     public function getGameType(): string
     {
         return 'Custom';

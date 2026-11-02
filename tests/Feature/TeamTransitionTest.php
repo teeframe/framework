@@ -5,6 +5,7 @@ use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
@@ -295,6 +296,10 @@ test('custom game controllers own team normalization and player-request admissio
     $clock      = new TickHandler(100);
     $controller = new class($clock) extends AbstractGameController
     {
+        public function onWorldReady(): void {}
+
+        public function onConfigChanged(string $name, int|string $value): void {}
+
         public function getGameType(): string
         {
             return 'Custom';
@@ -318,4 +323,54 @@ test('custom game controllers own team normalization and player-request admissio
     expect($tee->team)->toBe(0);
     $tee->setTeam(99);
     expect($tee->team)->toBe(7);
+});
+
+test('PvP balance settings leave an asymmetric custom controller policy untouched', function () {
+    $clock      = new TickHandler(100);
+    $controller = new class($clock) extends AbstractGameController
+    {
+        public int $balanceChecks = 0;
+
+        public function onWorldReady(): void {}
+
+        public function onConfigChanged(string $name, int|string $value): void {}
+
+        public function getGameType(): string
+        {
+            return 'Asymmetric';
+        }
+
+        public function clampTeam(int $team): int
+        {
+            return $team < 0 ? GameConstants::TEAM_SPECTATORS : $team & 1;
+        }
+
+        public function getAutoTeam(int $notThisTeeIndex): int
+        {
+            return array_any($this->getWorld()?->getTees() ?? [], fn (AbstractTee $tee): bool => $tee instanceof PlayerTee && $tee->team === GameConstants::TEAM_RED)
+                ? GameConstants::TEAM_BLUE
+                : GameConstants::TEAM_RED;
+        }
+
+        public function checkTeamBalance(): bool
+        {
+            $this->balanceChecks++;
+
+            return true;
+        }
+    };
+    $world   = new TestWorldWithController($clock, new Map, $controller);
+    $players = [];
+
+    foreach (range(1, 5) as $_) {
+        $player = new PlayerTee;
+        $world->addTee($player);
+        $players[] = $player;
+    }
+
+    $world->setConfig('sv_world_pvp_team_balance_time', 1);
+    $world->doTick();
+
+    expect($controller->balanceChecks)->toBe(0);
+    expect(array_map(fn (PlayerTee $tee): int => $tee->team, $players))->toBe([0, 1, 1, 1, 1]);
 });

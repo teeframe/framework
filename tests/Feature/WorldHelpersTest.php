@@ -151,7 +151,7 @@ test('worlds register framework chat and server commands once without adding vot
     foreach ([AbstractCommand::TYPE_CHAT, AbstractCommand::TYPE_SERVER] as $type) {
         $names = array_map(fn (AbstractCommand $command): string => $command->getName(), array_values(array_filter($commands, fn (AbstractCommand $command): bool => (bool) ($command->getType() & $type))));
         expect($names)->toBe(array_values(array_unique($names)));
-        expect($names)->toContain(...($type === AbstractCommand::TYPE_CHAT ? ['whisper', 'ping', 'help', 'list', 'converse', 'info', 'rules', 'settings', 'emote'] : ['sv_world_map', 'sv_world_game_type', 'reload', 'pause', 'restart', 'tune', 'set_team', 'kick', 'ban', 'shutdown']));
+        expect($names)->toContain(...($type === AbstractCommand::TYPE_CHAT ? ['whisper', 'ping', 'help', 'list', 'converse', 'info', 'rules', 'settings', 'emote'] : ['sv_world_map', 'sv_world_game_type', 'reload', 'pause', 'tune', 'kick', 'ban', 'shutdown']));
     }
     expect($world->getVoteController()->getVoteChunks(new PlayerTee))->toBeEmpty();
 });

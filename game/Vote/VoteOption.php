@@ -11,5 +11,9 @@ class VoteOption
         public string $description,
         public string $command,
         public ?VoteOption $next = null,
-    ) {}
+    ) {
+        if (trim($description) === '' || strlen($description) > 63 || str_contains($description, "\0")) {
+            throw new \InvalidArgumentException('Vote descriptions must be non-blank, at most 63 bytes long, and contain no null bytes');
+        }
+    }
 }

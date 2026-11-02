@@ -23,6 +23,7 @@ use TeeFrame\Server\Rcon\Rcon;
 use TeeFrame\Server\Sockets\AbstractSocket;
 use TeeFrame\Server\Sockets\UdpSocket;
 
+/** @phpstan-import-type Definition from Config */
 abstract class AbstractServerInstance
 {
     /**
@@ -53,8 +54,10 @@ abstract class AbstractServerInstance
     public function __construct(
         protected TickHandler $tickHandler,
         #[\SensitiveParameter] Config|string $config = new Config,
+        public readonly bool $activatePvpSettings = false,
     ) {
         $this->config = is_string($config) ? Config::fromFile($config) : $config;
+        $this->validateConfig($this->config);
 
         $logFile = $this->config->getString('sv_log_file');
         Console::setLogFile($logFile === '' ? null : $logFile, $this->config->getInt('sv_log_file_output_level') + 2);
@@ -112,6 +115,8 @@ abstract class AbstractServerInstance
             throw new \InvalidArgumentException('World already exists: '.$config->identifier);
         }
 
+        $this->validateConfig($config->settings);
+
         $world          = $this->createWorld($config);
         $this->worlds[] = $world;
 
@@ -133,15 +138,34 @@ abstract class AbstractServerInstance
         return $this->config;
     }
 
+    /** @return array<string, Definition> */
+    public function getConfigDefinitions(): array
+    {
+        return $this->config::definitions($this->activatePvpSettings);
+    }
+
+    /** @return Definition */
+    public function getConfigDefinition(string $name): array
+    {
+        return $this->config::definition($name, $this->activatePvpSettings);
+    }
+
+    public function validateConfig(Config $config): void
+    {
+        $config->assertPvpSettingsEnabled($this->activatePvpSettings);
+    }
+
     public function getConfigValue(string $name): int|string
     {
+        $this->getConfigDefinition($name);
+
         return $this->config->get($name);
     }
 
     public function setConfig(string $name, #[\SensitiveParameter] int|string $value): void
     {
         $name       = strtolower($name);
-        $definition = $this->config::definition($name);
+        $definition = $this->getConfigDefinition($name);
         $value      = $this->config::validate($name, $value);
 
         if ($this->started && ($definition['restart'] ?? false)) {

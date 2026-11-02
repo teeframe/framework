@@ -96,7 +96,7 @@ test('argument-bearing vote commands require an invocation with arguments', func
 
     expect($world->getVoteController()->getVoteOption('Invalid invocation'))->toBeNull();
     expect($world->getVoteController()->resolveCommands($world, $name))->toBeNull();
-})->with(['echo', 'say', 'set_team']);
+})->with(['echo', 'say', 'broadcast']);
 
 test('duplicate add_vote names do not replace options or send duplicate menu entries', function () {
     $server = new RconTestServer;

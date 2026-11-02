@@ -3,13 +3,14 @@
 namespace TeeFrame\Server\Config;
 
 use TeeFrame\Game\Commands\CommandLine;
+use TeeFrame\Game\Vote\VoteOption;
 
 class ConfigFile
 {
     /**
      * @param  list<string>  $including
      * @param  class-string<Config>  $configClass
-     * @return list<array{name: string, value: int|string}|WorldConfig>
+     * @return list<array{name: string, value: int|string}|WorldConfig|VoteOption>
      */
     public static function read(string $path, array $including = [], bool $worldOnly = false, string $configClass = Config::class): array
     {
@@ -43,6 +44,13 @@ class ConfigFile
                         [$included]  = CommandLine::parseArguments($arguments, 's[file]');
                         $includePath = self::resolvePath($resolved, $included);
                         $entries     = [...$entries, ...self::read($includePath, $including, $worldOnly, $configClass)];
+
+                        continue;
+                    }
+
+                    if ($name === 'add_vote') {
+                        [$description, $voteCommand] = CommandLine::parseArguments($arguments, 's[name] r[command]');
+                        $entries[]                   = new VoteOption($description, $voteCommand);
 
                         continue;
                     }

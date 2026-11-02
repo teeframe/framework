@@ -322,70 +322,32 @@ test('chat mutes block public team and private messages across reconnects until 
     expect($server->socket($admin)->chunks(SvChatChunk::class)[0]->text)->toBe('allowed');
 })->with([['public text', false], ['team text', true], ['/w Admin secret', false], ['/c secret', false]]);
 
-test('team commands preserve world boundaries spectators and team-change deadlines', function () {
-    [$server, $admin] = commandTestServer();
-    $world            = $server->entryWorld;
-    $world->getGameController()->setGameMode('TDM');
-    $guest     = $server->addClient(address: '192.0.2.2');
-    $spectator = $server->addClient(address: '192.0.2.3');
-    $spectator->playerTee()->setTeam(GameConstants::TEAM_SPECTATORS);
-    $other = $server->addClient($server->addWorld('other'), '192.0.2.4');
-    $server->send($admin, new RconCmdChunk('set_team 1 -1 2'));
-    expect($guest->playerTee()->team)->toBe(-1);
-    expect($guest->playerTee()->teamChangeTick)->toBe($world->getCurrentTick() + 2 * 60 * NetworkParams::TICKS_PER_SECOND);
-    $server->send($admin, new RconCmdChunk('set_team 1 1; swap_teams'));
-    expect($guest->playerTee()->team)->toBe(0);
-    expect($admin->playerTee()->team)->toBe(1);
-    expect($spectator->playerTee()->team)->toBe(-1);
-    $server->send($admin, new RconCmdChunk('shuffle_teams'));
-    expect([$guest->playerTee()->team, $admin->playerTee()->team])->toContain(0, 1);
-    expect($spectator->playerTee()->team)->toBe(-1);
-    $server->send($admin, new RconCmdChunk('set_team_all -1'));
-    foreach ($world->getTees() as $player) {
-        assert($player instanceof PlayerTee);
-        expect($player->team)->toBe(-1);
-    }
-    expect($other->playerTee()->team)->toBe(0);
-});
-
-test('locked teams prevent joining but allow spectating and administrator team changes', function () {
-    [$server, $admin] = commandTestServer();
-    $guest            = $server->addClient(address: '192.0.2.2');
-    $server->send($admin, new RconCmdChunk('lock_teams'));
+test('locked teams reject player requests but allow spectating and forced transitions', function () {
+    [$server, $admin]                                     = commandTestServer();
+    $guest                                                = $server->addClient(address: '192.0.2.2');
+    $server->entryWorld->getGameController()->teamsLocked = true;
     $server->send($guest, new ClSetTeamChunk(-1));
     expect($guest->playerTee()->team)->toBe(-1);
     $guest->playerTee()->lastSetTeam = 0;
     $server->send($guest, new ClSetTeamChunk(0));
     expect($guest->playerTee()->team)->toBe(-1);
-    $server->send($admin, new RconCmdChunk('set_team 1 0'));
+    $guest->playerTee()->setTeam(GameConstants::TEAM_RED);
     expect($guest->playerTee()->team)->toBe(0);
-    $server->send($admin, new RconCmdChunk('lock_teams'));
-    expect($server->entryWorld->getGameController()->teamsLocked)->toBeFalse();
 });
 
-test('pause respects the end-of-round freeze and restart supports delayed and canceled round resets', function () {
+test('pause toggles active play but respects the end-of-round freeze', function () {
     [$server, $admin] = commandTestServer();
     $world            = $server->entryWorld;
     $controller       = $world->getGameController();
     assert($controller instanceof PvpGameController);
     $server->send($admin, new RconCmdChunk('pause'));
     expect($world->isPaused())->toBeTrue();
-    $server->send($admin, new RconCmdChunk('pause_game; restart 1; restart 0'));
+    $server->send($admin, new RconCmdChunk('pause_game'));
     expect($world->isPaused())->toBeFalse();
-    for ($i = 0; $i < NetworkParams::TICKS_PER_SECOND; $i++) {
-        $server->tick();
-    }
-    $admin->playerTee()->score = 5;
-    $server->send($admin, new RconCmdChunk('restart 1'));
-    for ($i = 0; $i < NetworkParams::TICKS_PER_SECOND; $i++) {
-        $server->tick();
-    }
-    expect($admin->playerTee()->score)->toBe(0);
+
     $controller->endRound();
     $server->send($admin, new RconCmdChunk('pause'));
     expect($world->isPaused())->toBeTrue();
-    $server->send($admin, new RconCmdChunk('restart'));
-    expect($world->isPaused())->toBeFalse();
 });
 
 test('clear_votes updates ingame and already initialized ready menus without changing another world', function () {
@@ -506,16 +468,6 @@ test('new server commands are not implicit callable vote options', function (str
     expect($server->shutdownRequested)->toBeFalse();
     expect($server->entryWorld->getVoteController()->isVoteRunning())->toBeFalse();
 })->with(['shutdown', 'clear_votes', 'unban_all', 'pause', 'bans', 'status', 'reload']);
-
-test('explicit set_team vote options use the command arguments instead of the spectate-vote shortcut', function () {
-    [$server, $admin] = commandTestServer();
-    $world            = $server->entryWorld;
-    $world->getGameController()->setGameMode('TDM');
-    $world->getVoteController()->addVoteOption('Join blue', 'set_team 0 1');
-    $server->send($admin, new ClCallVoteChunk('option', 'Join blue', ''));
-    $world->getVoteController()->tick($world);
-    expect($admin->playerTee()->team)->toBe(1);
-});
 
 test('unresolved vote commands report execution failure without executing any part of the option', function (string $line) {
     [$server, $admin] = commandTestServer();

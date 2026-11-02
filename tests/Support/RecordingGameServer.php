@@ -24,7 +24,7 @@ class RecordingGameServer extends AbstractServerInstance
 
     public function __construct(TickHandler $tickHandler)
     {
-        parent::__construct($tickHandler, new Config(['sv_name' => 'Recording server']));
+        parent::__construct($tickHandler, new Config(['sv_name' => 'Recording server']), activatePvpSettings: true);
     }
 
     protected function boot(): void {}

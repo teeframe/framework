@@ -29,19 +29,13 @@ use TeeFrame\Game\Commands\Server\ExecCommand;
 use TeeFrame\Game\Commands\Server\HelpCommand as ServerHelpCommand;
 use TeeFrame\Game\Commands\Server\KickCommand;
 use TeeFrame\Game\Commands\Server\KillPlayerCommand;
-use TeeFrame\Game\Commands\Server\LockTeamsCommand;
 use TeeFrame\Game\Commands\Server\MuteCommand;
 use TeeFrame\Game\Commands\Server\MutesCommand;
 use TeeFrame\Game\Commands\Server\PauseCommand;
 use TeeFrame\Game\Commands\Server\ReloadCommand;
-use TeeFrame\Game\Commands\Server\RestartCommand;
 use TeeFrame\Game\Commands\Server\SayCommand;
-use TeeFrame\Game\Commands\Server\SetTeamAllCommand;
-use TeeFrame\Game\Commands\Server\SetTeamCommand;
-use TeeFrame\Game\Commands\Server\ShuffleTeamsCommand;
 use TeeFrame\Game\Commands\Server\ShutdownCommand;
 use TeeFrame\Game\Commands\Server\StatusCommand;
-use TeeFrame\Game\Commands\Server\SwapTeamsCommand;
 use TeeFrame\Game\Commands\Server\ToggleTuneCommand;
 use TeeFrame\Game\Commands\Server\TuneCommand;
 use TeeFrame\Game\Commands\Server\TuneDumpCommand;
@@ -57,6 +51,7 @@ use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Game\Vote\VoteController;
+use TeeFrame\Game\Vote\VoteOption;
 use TeeFrame\Game\World\ClientMessageHandler;
 use TeeFrame\Game\World\SnapIdPool;
 use TeeFrame\Game\World\TuneController;
@@ -67,6 +62,7 @@ use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
@@ -138,6 +134,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $this->config->loadFile($configFile, worldOnly: true);
         }
 
+        $server->validateConfig($this->config);
+
         $this->snapIdPool           = new SnapIdPool;
         $this->clientMessageHandler = new ClientMessageHandler($this);
 
@@ -149,7 +147,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->bootGameController();
 
         if ($this->config->has('sv_world_game_type')) {
-            $this->gameController->setGameMode($this->config->getString('sv_world_game_type'));
+            $this->getGameController()->setGameMode($this->config->getString('sv_world_game_type'));
         }
 
         if ($this->config->has('sv_world_map') && $this->config->getString('sv_world_map') !== $this->map->getName()) {
@@ -159,14 +157,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->getGameController()->setWorld($this);
 
         if ($spectatorSlots !== null) {
-            $this->gameController->setSpectatorSlots($spectatorSlots);
+            $this->getGameController()->setSpectatorSlots($spectatorSlots);
         }
 
         $this->bootMap();
-
-        if ($this->config->has('sv_world_warmup') && $this->gameController instanceof PvpGameController) {
-            $this->gameController->setWarmup($this->config->getInt('sv_world_warmup'));
-        }
+        $this->getGameController()->onWorldReady();
     }
 
     protected function bootMap(): void
@@ -229,16 +224,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->registerCommand(new SayCommand);
         $this->registerCommand(new BroadcastCommand);
         $this->registerCommand(new PauseCommand);
-        $this->registerCommand(new RestartCommand);
         $this->registerCommand(new TuneCommand);
         $this->registerCommand(new ToggleTuneCommand);
         $this->registerCommand(new TuneResetCommand);
         $this->registerCommand(new TuneDumpCommand);
-        $this->registerCommand(new SetTeamCommand);
-        $this->registerCommand(new SetTeamAllCommand);
-        $this->registerCommand(new SwapTeamsCommand);
-        $this->registerCommand(new ShuffleTeamsCommand);
-        $this->registerCommand(new LockTeamsCommand);
         $this->registerCommand(new KillPlayerCommand);
         $this->registerCommand(new ClearVotesCommand);
         $this->registerCommand(new VoteCommand);
@@ -250,7 +239,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $configClass = $this->server->getConfig()::class;
 
-        foreach (array_keys($configClass::definitions()) as $name) {
+        foreach (array_keys($this->server->getConfigDefinitions()) as $name) {
             $this->registerCommand(new ConfigCommand($name, $configClass));
         }
     }
@@ -263,7 +252,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function setConfig(string $name, #[\SensitiveParameter] int|string $value): void
     {
         $name       = strtolower($name);
-        $definition = $this->server->getConfig()::definition($name);
+        $definition = $this->server->getConfigDefinition($name);
 
         if ($definition['scope'] === 'server') {
             $this->server->setConfig($name, $value);
@@ -287,19 +276,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
                 $this->consoleWarn('world', 'Gamemode change failed: '.$exception->getMessage());
                 throw new \RuntimeException('Unable to change gamemode to '.strtoupper((string) $value), previous: $exception);
             }
-        } elseif ($name === 'sv_world_warmup') {
-            if (! $this->gameController instanceof PvpGameController) {
-                throw new \InvalidArgumentException('This controller does not support round warmup');
-            }
-
-            $this->gameController->setWarmup((int) $value);
         }
 
         $this->config->set($name, $value);
-
-        if ($name === 'sv_world_team_balance_time') {
-            $this->gameController->checkTeamBalance();
-        }
+        $this->gameController->onConfigChanged($name, $value);
 
         if ($name === 'sv_world_motd') {
             $this->server->sendToWorld($this, new SvMotdChunk(str_replace('\\n', "\n", (string) $value)), includeReady: true);
@@ -310,7 +290,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     {
         $name = strtolower($name);
 
-        if ($this->server->getConfig()::definition($name)['scope'] === 'server') {
+        if ($this->server->getConfigDefinition($name)['scope'] === 'server') {
             return $this->server->getConfigValue($name);
         }
 
@@ -328,6 +308,18 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         foreach (ConfigFile::read($path, configClass: $this->server->getConfig()::class) as $entry) {
             if ($entry instanceof WorldConfig) {
                 $this->server->addWorldFromConfig($entry);
+            } elseif ($entry instanceof VoteOption) {
+                if ($this->voteController->getVoteOption($entry->description) !== null) {
+                    continue;
+                }
+
+                if ($this->voteController->resolveCommands($this, $entry->command) === null) {
+                    throw new \InvalidArgumentException('Vote options must use registered server commands');
+                }
+
+                $this->voteController->addVoteOption($entry->description, $entry->command);
+                $this->server->sendToWorld($this, new SvVoteOptionAddChunk($entry->description), includeReady: true);
+                $this->consoleInfo('vote', 'Vote option added Description="'.$entry->description.'"');
             } else {
                 $this->setConfig($entry['name'], $entry['value']);
             }
@@ -342,6 +334,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected function bootVoteController(): void
     {
         $this->voteController = new VoteController;
+
+        foreach ($this->config->getVoteOptions() as $option) {
+            $this->voteController->addVoteOption($option->description, $option->command);
+        }
     }
 
     protected function bootTuneController(): void
