@@ -15,6 +15,7 @@ use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Server\AbstractServerInstance;
 use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionSlot;
+use TeeFrame\Server\Console;
 use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Master\MasterServerHttpClient;
 use TeeFrame\Server\Master\MasterServerRegistration;
@@ -374,6 +375,42 @@ test('shutdown contains delete failures and does not delete unaccepted listings'
     $registration->shutdown();
     expect($http->requests)->toHaveCount(2);
 });
+
+test('listing deletion reports HTTP failures without blocking shutdown or retrying', function (int $status, string $body, bool $failed) {
+    [$clock, $http, $registration] = registrationFixture();
+    $registration->update('{}');
+    $http->responses[] = ['status' => $status, 'body' => $body];
+    $warnings          = [];
+    $listener          = function (string $line) use (&$warnings): void {
+        $warnings[] = $line;
+    };
+    Console::listen($listener, Console::LEVEL_WARN);
+
+    try {
+        $registration->shutdown();
+        $registration->shutdown();
+        $clock->now = 60_000_000_000;
+        $registration->update('{}');
+    } finally {
+        Console::unlisten($listener);
+    }
+
+    expect($http->requests)->toHaveCount(2);
+    expect($http->requests[1]['headers']['Action'])->toBe('delete');
+    expect($http->requests[1]['timeout'])->toBe(1.0);
+    expect($warnings)->toHaveCount($failed ? 1 : 0);
+
+    if ($failed) {
+        expect($warnings[0])->toContain('Could not remove master server listing', 'HTTP '.$status);
+    }
+})->with([
+    'success'                     => [200, '{"status":"success"}', false],
+    'empty success'               => [204, '', false],
+    'redirect'                    => [302, '', true],
+    'rejected delete'             => [400, '{"status":"error","message":"Delete failed"}', true],
+    'server error'                => [500, '<html>Unavailable</html>', true],
+    'HTTP failure overrides body' => [503, '{"status":"success"}', true],
+]);
 
 test('an in-flight registration accepted during shutdown is deleted before completion', function () {
     [, $http, $registration] = registrationFixture();

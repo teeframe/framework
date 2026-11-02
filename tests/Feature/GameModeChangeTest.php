@@ -8,9 +8,27 @@ use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
+use TeeFrame\Network\Chunks\System\RconAuthChunk;
+use TeeFrame\Network\Chunks\System\RconCmdChunk;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
 use TeeFrame\Server\Config\Config;
+use Tests\Support\RconTestCommand;
+use Tests\Support\RconTestServer;
+
+require_once __DIR__.'/../Support/RconTestServer.php';
+
+class ReloadStateTestController extends PvpGameController
+{
+    /** @var array<string, int|string> */
+    public array $configChanges = [];
+
+    public function onConfigChanged(string $name, int|string $value): void
+    {
+        parent::onConfigChanged($name, $value);
+        $this->configChanges[$name] = $value;
+    }
+}
 
 function createGameModeChangeWorld(): TestPvpWorldWithController
 {
@@ -99,6 +117,50 @@ test('gamemode changes are deferred and rebuild round and flag state without rep
         assert($info instanceof ObjGameInfoItem);
         expect([$info->scoreLimit, $info->timeLimit, $info->roundStartTick, $info->roundCurrent])->toBe([10, 15, 1000, 1]);
     }
+});
+
+test('queued gamemode changes retain subsequent RCON team-lock changes', function (bool $initiallyLocked) {
+    $server                  = new RconTestServer;
+    $world                   = $server->entryWorld;
+    $controller              = $world->getGameController();
+    $controller->teamsLocked = $initiallyLocked;
+    $world->registerCommand(new RconTestCommand('lock_teams', handler: function (AbstractWorld $world): void {
+        $controller              = $world->getGameController();
+        $controller->teamsLocked = ! $controller->teamsLocked;
+    }));
+    $admin = $server->addClient();
+    $server->send($admin, new RconAuthChunk('', 'test-secret', false));
+
+    $server->send($admin, new RconCmdChunk('sv_world_game_type tdm; lock_teams'));
+    expect($world->getGameController())->toBe($controller);
+    expect($controller->getGameType())->toBe('DM');
+    expect($controller->teamsLocked)->toBe(! $initiallyLocked);
+
+    $server->tick();
+
+    expect($world->getGameController())->not->toBe($controller);
+    expect($world->getGameController()->getGameType())->toBe('TDM');
+    expect($world->getGameController()->teamsLocked)->toBe(! $initiallyLocked);
+})->with([false, true]);
+
+test('queued mode and map changes preserve later custom controller callbacks', function () {
+    $clock      = new TickHandler(100);
+    $controller = new ReloadStateTestController($clock);
+    $world      = new TestWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller);
+    $world->changeGameMode('ctf');
+    $world->setConfig('sv_world_welcome', 'First update');
+    $world->changeMap('dm1');
+    $world->changeGameMode('tdm');
+    $world->setConfig('sv_world_welcome', 'Latest update');
+    $world->doTick();
+
+    $current = $world->getGameController();
+    expect($current)->toBeInstanceOf(ReloadStateTestController::class);
+    assert($current instanceof ReloadStateTestController);
+    expect($current)->not->toBe($controller);
+    expect($current->getGameType())->toBe('TDM');
+    expect($world->getMap()->getName())->toBe('dm1');
+    expect($current->configChanges)->toBe(['sv_world_welcome' => 'Latest update']);
 });
 
 test('invalid gamemodes do not alter the active controller or queue a reload', function (string $mode) {

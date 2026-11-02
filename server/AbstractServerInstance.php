@@ -8,6 +8,9 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
+use TeeFrame\Network\Chunks\Game\SvMotdChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
+use TeeFrame\Network\Chunks\Game\SvVoteStatusChunk;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
@@ -37,6 +40,7 @@ abstract class AbstractServerInstance
     protected array $sockets = [];
 
     protected ConnectionHandler $connectionHandler;
+
     protected BanList $banList;
     protected MuteList $chatMutes;
     protected Rcon $rcon;
@@ -72,9 +76,10 @@ abstract class AbstractServerInstance
 
         $this->startTime         = $tickHandler->getTime();
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
-        $this->banList           = new BanList;
-        $this->chatMutes         = new MuteList;
-        $this->rcon              = new Rcon(
+
+        $this->banList   = new BanList;
+        $this->chatMutes = new MuteList;
+        $this->rcon      = new Rcon(
             $this->connectionHandler,
             $this->banList,
             $this->config->getString('sv_rcon_password'),
@@ -438,10 +443,14 @@ abstract class AbstractServerInstance
 
     public function sendToWorld(AbstractWorld $world, AbstractChunk $chunk, bool $includeReady = false): void
     {
+        // MOTD and running-vote state are sent at READY; vote options and tuning
+        // are initialized later, when the client's start info arrives.
         foreach ($this->getConnections() as $connection) {
             if ($connection->world() === $world
                 && ($connection->state === ConnectionSlot::STATE_INGAME
-                    || ($includeReady && $connection->state === ConnectionSlot::STATE_READY && $connection->readyToEnter))
+                    || ($includeReady && $connection->state === ConnectionSlot::STATE_READY
+                        && ($connection->readyToEnter || $chunk instanceof SvMotdChunk
+                                                    || $chunk instanceof SvVoteSetChunk || $chunk instanceof SvVoteStatusChunk)))
             ) {
                 $connection->chunks()->add(clone $chunk)->send();
             }
@@ -530,7 +539,7 @@ abstract class AbstractServerInstance
             return;
         }
 
-        if ($connectionSlot = $this->connectionHandler->findByEndpoint($clientInfo)) {
+        if ($connectionSlot = $this->connectionHandler->findByEndpoint($clientInfo, $socket)) {
             if ($connectionSlot->state !== ConnectionSlot::STATE_INGAME) {
                 $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet, $this->config->getString('sv_password'));
 
@@ -624,7 +633,7 @@ abstract class AbstractServerInstance
             return;
         }
 
-        $connection = $this->connectionHandler->findByEndpoint($clientInfo);
+        $connection = $this->connectionHandler->findByEndpoint($clientInfo, $socket);
         $worlds     = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
             ? [$connection->world()]
             : $this->worlds;
@@ -655,7 +664,7 @@ abstract class AbstractServerInstance
         // sharing an IP therefore all get a refresh, each for their own world.
         if (! $connection || $connection->state === ConnectionSlot::STATE_CLOSED) {
             foreach ($this->connectionHandler->getConnections() as $slot) {
-                if ($slot->destinationAddress === $clientInfo['address'] && $slot->state !== ConnectionSlot::STATE_CLOSED) {
+                if ($slot->socket() === $socket && $slot->destinationAddress === $clientInfo['address'] && $slot->state !== ConnectionSlot::STATE_CLOSED) {
                     $slot->queueWorldInfoUpdate();
                 }
             }

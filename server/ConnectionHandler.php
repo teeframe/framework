@@ -44,10 +44,11 @@ class ConnectionHandler
     /**
      * @param  array{address: string, port: int}  $clientInfo
      */
-    public function findByEndpoint(array $clientInfo): ConnectionSlot|false
+    public function findByEndpoint(array $clientInfo, AbstractSocket $socket): ConnectionSlot|false
     {
         foreach ($this->slots as $connection) {
             if ($connection->state === ConnectionSlot::STATE_CLOSED
+                || $connection->socket() !== $socket
                 || $connection->destinationAddress !== $clientInfo['address']
                 || $connection->destinationPort !== $clientInfo['port']
             ) {
@@ -242,6 +243,11 @@ class ConnectionHandler
 
         if ($runningVote = $connection->world()->getVoteController()->getRunningVote($connection->world())) {
             $connection->chunks()->add($runningVote);
+            $status = $connection->world()->getVoteController()->getRunningVoteStatus($connection->world());
+
+            if ($status !== null) {
+                $connection->chunks()->add($status);
+            }
         }
 
         $connection->chunks()->add(

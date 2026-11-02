@@ -180,11 +180,11 @@ class VoteController
             }
         }
 
-        $world->broadcast(new SvVoteSetChunk(
+        $world->getServer()->sendToWorld($world, new SvVoteSetChunk(
             timeout: (int) ceil($duration / NetworkParams::TICKS_PER_SECOND),
             description: $this->voteDescription,
             reason: $this->voteReason,
-        ));
+        ), includeReady: true);
     }
 
     public function endVote(AbstractWorld $world): void
@@ -195,11 +195,11 @@ class VoteController
 
         $this->voteCloseTime = 0;
         $this->voteCreator   = -1;
-        $world->broadcast(new SvVoteSetChunk(
+        $world->getServer()->sendToWorld($world, new SvVoteSetChunk(
             timeout: 0,
             description: '',
             reason: '',
-        ));
+        ), includeReady: true);
     }
 
     /**
@@ -452,12 +452,12 @@ class VoteController
             $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: 'Vote failed'));
         } elseif ($this->voteUpdate) {
             $this->voteUpdate = false;
-            $world->broadcast(new SvVoteStatusChunk(
+            $world->getServer()->sendToWorld($world, new SvVoteStatusChunk(
                 yes: $yes,
                 no: $no,
                 pass: $total - ($yes + $no),
                 total: $total,
-            ));
+            ), includeReady: true);
         }
     }
 

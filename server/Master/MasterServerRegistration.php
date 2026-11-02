@@ -206,7 +206,7 @@ class MasterServerRegistration
         $this->registered = false;
 
         try {
-            $this->httpClient->post(
+            $response = $this->httpClient->post(
                 self::URL,
                 $this->family,
                 ['Action' => 'delete', ...$this->getHeaders()],
@@ -214,6 +214,10 @@ class MasterServerRegistration
                 timeout: 1.0,
                 localAddress: $this->localAddress,
             );
+
+            if ($response['status'] < 200 || $response['status'] >= 300) {
+                throw new \RuntimeException('HTTP '.$response['status'].': Listing deletion rejected');
+            }
         } catch (\RuntimeException $exception) {
             Console::warn('register', 'Could not remove master server listing: '.$exception->getMessage());
         }

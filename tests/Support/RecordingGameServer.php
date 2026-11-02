@@ -41,6 +41,13 @@ class RecordingGameServer extends AbstractServerInstance
         $this->sentPairs[]      = ['world' => $world, 'teeIndex' => $teeIndex, 'chunk' => $chunk];
     }
 
+    public function sendToWorld(AbstractWorld $world, AbstractChunk $chunk, bool $includeReady = false): void
+    {
+        foreach ($world->getTees() as $tee) {
+            $this->sendToTee($world, $tee->teeIndex, clone $chunk);
+        }
+    }
+
     public function kick(AbstractWorld $world, int $teeIndex, string $reason, ?int $banDuration = null): void
     {
         $this->kickedTees[$teeIndex] = $reason;

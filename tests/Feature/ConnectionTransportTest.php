@@ -110,7 +110,7 @@ class TransportTestServer extends AbstractServerInstance
     public function connect(int $port = 8300): ConnectionSlot
     {
         $this->receive(new ControlMessage(NetworkMessages::CONTROL_CONNECT), $port);
-        $slot = $this->connectionHandler->findByEndpoint(['address' => '127.0.0.1', 'port' => $port]);
+        $slot = $this->connectionHandler->findByEndpoint(['address' => '127.0.0.1', 'port' => $port], $this->socket);
         if ($slot === false) {
             throw new RuntimeException('Test connection was not accepted');
         }
@@ -132,13 +132,13 @@ class TransportTestServer extends AbstractServerInstance
         return $slot;
     }
 
-    public function receive(AbstractPacket $packet, int $port = 8300): void
+    public function receive(AbstractPacket $packet, int $port = 8300, ?TransportTestSocket $socket = null): void
     {
         $decoded = PacketDecoder::decodeFromRaw($packet->encodeToSend());
         if ($decoded === false) {
             throw new RuntimeException('Test emitted an invalid transport packet');
         }
-        $this->onPacket($decoded, ['address' => '127.0.0.1', 'port' => $port], $this->socket);
+        $this->onPacket($decoded, ['address' => '127.0.0.1', 'port' => $port], $socket ?? $this->socket);
     }
 
     public function tick(): void
@@ -557,6 +557,25 @@ test('resend capacity exhaustion closes only the affected connection during main
     expect($server->connectionCount())->toBe(1);
     expect($server->socket->controls())->toHaveCount(1);
     expect($server->socket->controls()[0]->getControlMessageExtra())->toBe("Too weak connection (out of buffer)\0");
+});
+
+test('separate listeners keep identical client endpoints isolated', function () {
+    $server = new TransportTestServer;
+    $first  = $server->socket;
+    $second = new TransportTestSocket;
+
+    foreach ([$first, $second] as $socket) {
+        $server->receive(new ControlMessage(NetworkMessages::CONTROL_CONNECT), socket: $socket);
+    }
+
+    expect($server->getConnections())->toHaveCount(2);
+    expect($first->packets)->toHaveCount(1);
+    expect($second->packets)->toHaveCount(1);
+
+    $server->receive(new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'leaving'), socket: $second);
+
+    expect($server->getConnections())->toHaveCount(1);
+    expect($server->getConnections()[0]->socket())->toBe($first);
 });
 
 test('CONNECT from an existing in-game endpoint cannot allocate or reject another slot', function () {

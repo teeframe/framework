@@ -84,6 +84,11 @@ class ConnectionSlot extends AbstractConnection
         return true;
     }
 
+    public function socket(): AbstractSocket
+    {
+        return $this->socket;
+    }
+
     public function world(): AbstractWorld
     {
         return $this->world;

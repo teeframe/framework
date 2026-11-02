@@ -152,7 +152,7 @@ class WorldTransferTestServer extends AbstractServerInstance
     public function connect(int $port = 8300): ConnectionSlot
     {
         $this->receive(new ControlMessage(NetworkMessages::CONTROL_CONNECT), $port);
-        $slot = $this->connectionHandler->findByEndpoint(['address' => '127.0.0.1', 'port' => $port]);
+        $slot = $this->connectionHandler->findByEndpoint(['address' => '127.0.0.1', 'port' => $port], $this->socket);
         assert($slot instanceof ConnectionSlot);
 
         return $slot;

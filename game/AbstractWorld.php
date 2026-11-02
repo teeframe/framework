@@ -114,8 +114,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected bool $paused         = false;
     protected bool $resetRequested = false;
 
-    protected ?Map $pendingMap                               = null;
-    protected ?AbstractGameController $pendingGameController = null;
+    protected ?Map $pendingMap         = null;
+    protected ?string $pendingGameMode = null;
 
     public function __construct(
         public string $identifier,
@@ -368,13 +368,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     /** Queue a validated world reload, applied after vote processing. */
     public function reload(?string $mapName = null, ?string $gameMode = null): void
     {
-        $map        = $this->pendingMap ?? $this->map;
-        $controller = $this->pendingGameController;
+        $map             = $this->pendingMap ?? $this->map;
+        $pendingGameMode = $gameMode ?? $this->pendingGameMode;
+        $controller      = $this->gameController;
 
         // Prepare changes separately so a failure leaves the active/queued state intact.
-        if ($gameMode !== null) {
-            $controller = clone ($controller ?? $this->gameController);
-            $controller->setGameMode($gameMode);
+        if ($pendingGameMode !== null) {
+            $controller = clone $controller;
+            $controller->setGameMode($pendingGameMode);
         }
 
         // A mode-only change can reuse the map; a bare reload re-reads its file.
@@ -382,10 +383,10 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $map = $this->loadMap($mapName);
         }
 
-        $this->pendingMap            = $map;
-        $this->pendingGameController = $controller;
+        $this->pendingMap      = $map;
+        $this->pendingGameMode = $pendingGameMode;
 
-        $this->consoleDebug('world', 'Reload queued Map='.$map->getName().' Gametype='.($controller ?? $this->gameController)->getGameType());
+        $this->consoleDebug('world', 'Reload queued Map='.$map->getName().' Gametype='.$controller->getGameType());
     }
 
     protected function loadMap(?string $name): Map
@@ -412,6 +413,14 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     protected function performReload(Map $map): void
     {
+        $controller = $this->gameController;
+
+        if ($this->pendingGameMode !== null) {
+            // Keep controller state changed after the reload was queued.
+            $controller = clone $controller;
+            $controller->setGameMode($this->pendingGameMode);
+        }
+
         if ($this->voteController->isVoteRunning()) {
             $this->voteController->endVote($this);
         }
@@ -442,9 +451,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->map = $map;
 
-        if ($this->pendingGameController !== null) {
-            $this->gameController        = $this->pendingGameController;
-            $this->pendingGameController = null;
+        if ($this->pendingGameMode !== null) {
+            $this->gameController  = $controller;
+            $this->pendingGameMode = null;
             $this->gameController->setWorld($this);
             $this->config->set('sv_world_game_type', strtolower($this->gameController->getGameType()));
         }

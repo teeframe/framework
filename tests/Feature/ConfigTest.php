@@ -18,12 +18,15 @@ use TeeFrame\Network\Chunks\Game\ClChangeInfoChunk;
 use TeeFrame\Network\Chunks\Game\ClKillChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\ClSetTeamChunk;
+use TeeFrame\Network\Chunks\Game\ClStartInfoChunk;
 use TeeFrame\Network\Chunks\Game\ClVoteChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
+use TeeFrame\Network\Chunks\Game\SvTuneParamsChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteOptionAddChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteOptionListAddChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteSetChunk;
+use TeeFrame\Network\Chunks\System\EnterGameChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
 use TeeFrame\Network\Chunks\System\RconAuthChunk;
 use TeeFrame\Network\Chunks\System\RconCmdAddChunk;
@@ -361,6 +364,38 @@ test('configured motd is sent during the handshake and live updates reach the wo
         expect($server->socket($loading)->chunks(SvMotdChunk::class)[1]->text)->toBe("Updated\nMOTD");
     });
 });
+
+test('live MOTD changes reach clients before start info without sending premature vote or tuning updates', function (string $motd) {
+    $server  = new RconTestServer(config: new Config(['sv_world_motd' => 'Old MOTD']));
+    $world   = $server->entryWorld;
+    $joining = $server->addClient(state: ConnectionSlot::STATE_LOADING);
+    $loading = $server->addClient(port: 8301, state: ConnectionSlot::STATE_LOADING);
+    $other   = $server->addClient($server->addWorld('other'), port: 8302);
+    $server->send($joining, new ReadyChunk);
+    expect($joining->state)->toBe(ConnectionSlot::STATE_READY);
+    expect($joining->readyToEnter)->toBeFalse();
+
+    $world->getVoteController()->addLiveVoteOption($world, 'Example', 'echo example');
+    $server->sendToWorld($world, $world->getTuneController()->getTuneParamsChunk(), includeReady: true);
+    expect($server->socket($joining)->chunks(SvVoteOptionAddChunk::class))->toBeEmpty();
+    expect($server->socket($joining)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
+
+    $world->setConfig('sv_world_motd', $motd);
+    $expected = str_replace('\\n', "\n", $motd);
+    expect(array_map(fn (SvMotdChunk $chunk): string => $chunk->text, $server->socket($joining)->chunks(SvMotdChunk::class)))->toBe(['Old MOTD', $expected]);
+    expect($server->socket($loading)->chunks(SvMotdChunk::class))->toBeEmpty();
+    expect($server->socket($other)->chunks(SvMotdChunk::class))->toBeEmpty();
+
+    $server->send($joining, new ClStartInfoChunk('Player', '', 0, 'default', false, 0, 0));
+    $server->send($joining, new EnterGameChunk);
+    expect($joining->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect(array_map(fn (SvMotdChunk $chunk): string => $chunk->text, $server->socket($joining)->chunks(SvMotdChunk::class)))->toBe(['Old MOTD', $expected]);
+    expect($server->socket($joining)->chunks(SvTuneParamsChunk::class))->toHaveCount(1);
+    expect($server->socket($joining)->chunks(SvVoteOptionListAddChunk::class)[0]->descriptions)->toBe(['Example']);
+
+    $server->send($loading, new ReadyChunk);
+    expect($server->socket($loading)->chunks(SvMotdChunk::class)[0]->text)->toBe($expected);
+})->with(['Updated\\nMOTD', '']);
 
 test('info uses the configured world motd and skips empty lines', function (string $motd, array $expected) {
     $server = new RconTestServer(config: new Config(['sv_world_motd' => $motd]));
