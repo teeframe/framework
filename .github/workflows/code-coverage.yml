@@ -1,0 +1,41 @@
+name: Code Coverage
+
+on: ["push", "pull_request"]
+
+permissions:
+  contents: read
+
+jobs:
+  code-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP Version 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: swoole
+          coverage: pcov # Avoid Xdebug's SIGSEGV during Swoole test shutdown.
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Generate coverage via Pest
+        run: >-
+          vendor/bin/pest --parallel --coverage
+          --coverage-clover=build/coverage/clover.xml
+          --coverage-html=build/coverage/html
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: build/coverage/
+          retention-days: 14
