@@ -12,6 +12,10 @@ class IpAddress
 
         $packed = inet_pton($address);
 
+        if ($packed !== false && strlen($packed) === 16 && str_starts_with($packed, str_repeat("\0", 10)."\xff\xff")) {
+            $packed = substr($packed, 12);
+        }
+
         return $packed === false ? null : (inet_ntop($packed) ?: null);
     }
 }

@@ -245,7 +245,7 @@ class ConnectionHandler
         }
 
         $connection->chunks()->add(
-            new SvMotdChunk($connection->world()->getMotd($connection->playerTee()))
+            new SvMotdChunk(str_replace('\\n', "\n", $connection->world()->getConfig()->getString('sv_world_motd', $connection->world()->getMotd($connection->playerTee()))))
         )->add(
             new ConReadyChunk
         )->send();

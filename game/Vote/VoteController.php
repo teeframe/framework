@@ -161,9 +161,12 @@ class VoteController
             return;
         }
 
+        $duration = $world->getConfig()->has('sv_world_vote_duration')
+            ? $world->getConfig()->getInt('sv_world_vote_duration') * NetworkParams::TICKS_PER_SECOND
+            : $this->voteDurationTicks;
         $this->voteType        = 'option';
         $this->voteEnforce     = VoteEnforce::UNKNOWN;
-        $this->voteCloseTime   = $world->getCurrentTick() + $this->voteDurationTicks;
+        $this->voteCloseTime   = $world->getCurrentTick() + $duration;
         $this->voteDescription = Utf8::truncateBytes($description, 63);
         $this->voteCommand     = $command;
         $this->voteReason      = Utf8::truncateBytes($reason !== '' ? $reason : 'No reason given', 15);
@@ -178,7 +181,7 @@ class VoteController
         }
 
         $world->broadcast(new SvVoteSetChunk(
-            timeout: (int) ceil($this->voteDurationTicks / NetworkParams::TICKS_PER_SECOND),
+            timeout: (int) ceil($duration / NetworkParams::TICKS_PER_SECOND),
             description: $this->voteDescription,
             reason: $this->voteReason,
         ));
@@ -211,7 +214,7 @@ class VoteController
         $currentTick = $world->getCurrentTick();
 
         // Spam protection
-        if ($tee->lastVoteTry > 0 && $tee->lastVoteTry + $this->voteTrySpamTicks > $currentTick) {
+        if ($world->getConfig()->getInt('sv_world_spam_protection') && $tee->lastVoteTry > 0 && $tee->lastVoteTry + $this->voteTrySpamTicks > $currentTick) {
             return;
         }
 
@@ -230,8 +233,11 @@ class VoteController
         }
 
         // Per-player call delay (m_LastVoteCall).
+        $callDelay = $world->getConfig()->has('sv_world_vote_delay')
+            ? $world->getConfig()->getInt('sv_world_vote_delay') * NetworkParams::TICKS_PER_SECOND
+            : $this->voteCallDelayTicks;
         $timeLeft = $tee->lastVoteCall > 0
-            ? $tee->lastVoteCall + $this->voteCallDelayTicks - $currentTick
+            ? $tee->lastVoteCall + $callDelay - $currentTick
             : 0;
 
         if ($timeLeft > 0) {
@@ -289,6 +295,20 @@ class VoteController
 
     protected function resolvePlayerVote(AbstractWorld $world, PlayerTee $tee, string $type, string $value): ?VoteOption
     {
+        if (! $world->getConfig()->getInt($type === 'kick' ? 'sv_world_vote_kick' : 'sv_world_vote_spectate')) {
+            $this->sendChat($world, $tee, $type === 'kick' ? 'Kick voting is disabled.' : 'Spectate voting is disabled.');
+
+            return null;
+        }
+
+        $activePlayers = count(array_filter($world->getTees(), fn (AbstractTee $player): bool => $player instanceof PlayerTee && $player->team !== GameConstants::TEAM_SPECTATORS));
+
+        if ($type === 'kick' && $activePlayers < $world->getConfig()->getInt('sv_world_vote_kick_min_players')) {
+            $this->sendChat($world, $tee, 'Not enough players for a kick vote.');
+
+            return null;
+        }
+
         $targetIndex = (int) $value;
         $target      = $world->findTee($targetIndex);
         $action      = $type === 'kick' ? 'kick' : 'move';
@@ -532,7 +552,8 @@ class VoteController
                 throw new \InvalidArgumentException('Authenticated administrators cannot be kicked by vote');
             }
 
-            $world->getServer()->kick($world, $kickId, $reason);
+            $banDuration = $world->getConfig()->getInt('sv_world_vote_kick_ban_duration') * 60;
+            $world->getServer()->kick($world, $kickId, $reason, $banDuration);
 
             return;
         }
@@ -544,6 +565,7 @@ class VoteController
 
             if ($tee instanceof PlayerTee) {
                 $tee->setTeam(GameConstants::TEAM_SPECTATORS);
+                $tee->teamChangeTick = $world->getCurrentTick() + $world->getConfig()->getInt('sv_world_vote_spectate_rejoin_delay') * 60 * NetworkParams::TICKS_PER_SECOND;
             }
 
             return;

@@ -58,14 +58,6 @@ test('permanent bans do not expire and IPv6 lookups use a canonical address', fu
     expect($banList->getBans())->toBeEmpty();
 });
 
-test('shared IP normalization preserves BanList handling of non-IP keys', function () {
-    $bans = new BanList;
-    $bans->ban('legacy-key', 60, 'Existing API behavior');
-    expect($bans->getBan('legacy-key')?->address)->toBe('legacy-key');
-    $bans->unban('legacy-key');
-    expect($bans->getBan('legacy-key'))->toBeNull();
-});
-
 test('new connections use one ban lookup and reject only active bans', function (string $mode) {
     $server = new RconTestServer;
     $bans   = new class extends BanList

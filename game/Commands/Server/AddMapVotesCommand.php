@@ -55,7 +55,7 @@ class AddMapVotesCommand extends AbstractCommand
                 continue;
             }
 
-            $command = 'change_map "'.addcslashes($name, '\\"').'"';
+            $command = 'sv_world_map "'.addcslashes($name, '\\"').'"';
 
             if ($votes->resolveCommands($world, $command) === null) {
                 continue;

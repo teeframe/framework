@@ -7,9 +7,17 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Map\Map;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
+use TeeFrame\Server\Config\WorldConfig;
 use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Master\MasterServerHttpClient;
-use TeeFrame\Server\Sockets\UdpSocket;
+
+class LocalRegistrationConfig extends Config
+{
+    protected const DEFINITIONS = [
+        'sv_port' => ['default' => 0, 'min' => 0, 'max' => 65535, 'scope' => 'server', 'restart' => true, 'description' => 'Ephemeral UDP port for the local integration server'],
+    ] + parent::DEFINITIONS;
+}
 
 class LocalMasterServerHttpClient extends MasterServerHttpClient
 {
@@ -32,8 +40,7 @@ class RegisteredTestServer extends AbstractServerInstance
 
     protected function boot(): void
     {
-        $this->worlds[]  = new TestWorld($this->tickHandler, new Map(__DIR__.'/../dm1.map'), $this);
-        $this->sockets[] = new UdpSocket($_SERVER['argv'][3] ?? '127.0.0.1', 0);
+        parent::boot();
 
         // Bound the subprocess even if the test master never accepts registration.
         $this->shutdownTimer = swoole_timer_after(($_SERVER['argv'][2] ?? '') === 'signal' ? 3000 : 1000, function (): void {
@@ -41,6 +48,22 @@ class RegisteredTestServer extends AbstractServerInstance
             echo 'registration-test-ticks='.$this->tickHandler->getCurrentTick().PHP_EOL;
             $this->shutdown();
         });
+    }
+
+    protected function createWorld(WorldConfig $config): AbstractWorld
+    {
+        $world = new TestWorldWithController(
+            $this->tickHandler,
+            new Map(__DIR__.'/../'.$config->settings->getString('sv_world_map').'.map'),
+            new TestGameController($this->tickHandler),
+            $this,
+            slotsLimit: $config->slotsLimit,
+            config: $config->settings,
+            spectatorSlots: $config->spectatorSlots,
+        );
+        $world->identifier = $config->identifier;
+
+        return $world;
     }
 
     protected function stopTicking(): void
@@ -51,15 +74,13 @@ class RegisteredTestServer extends AbstractServerInstance
             $this->shutdownTimer = false;
         }
     }
-
-    protected function selectWorldForNewConnection(): AbstractWorld
-    {
-        return $this->worlds[0];
-    }
 }
 
 if (! isset($argv[1])) {
     throw new InvalidArgumentException('Missing local master server URL');
 }
 
-(new RegisteredTestServer(new TickHandler, 'Registration integration test', registerOnMasterServer: true))->start();
+$config = LocalRegistrationConfig::fromFile(__DIR__.'/registered-server.cfg');
+$config->set('sv_bind_address', $_SERVER['argv'][3] ?? '127.0.0.1');
+
+(new RegisteredTestServer(new TickHandler, config: $config))->start();

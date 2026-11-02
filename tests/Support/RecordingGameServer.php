@@ -6,6 +6,7 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 
 class RecordingGameServer extends AbstractServerInstance
 {
@@ -23,7 +24,7 @@ class RecordingGameServer extends AbstractServerInstance
 
     public function __construct(TickHandler $tickHandler)
     {
-        parent::__construct($tickHandler, name: 'Recording server');
+        parent::__construct($tickHandler, new Config(['sv_name' => 'Recording server']));
     }
 
     protected function boot(): void {}
@@ -40,7 +41,7 @@ class RecordingGameServer extends AbstractServerInstance
         $this->sentPairs[]      = ['world' => $world, 'teeIndex' => $teeIndex, 'chunk' => $chunk];
     }
 
-    public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
+    public function kick(AbstractWorld $world, int $teeIndex, string $reason, ?int $banDuration = null): void
     {
         $this->kickedTees[$teeIndex] = $reason;
     }

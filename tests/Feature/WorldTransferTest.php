@@ -3,8 +3,6 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
-use TeeFrame\Game\Commands\Server\ChangeMapCommand;
 use TeeFrame\Game\Commands\Server\ReloadCommand;
 use TeeFrame\Game\Entities\PvpProjectileEntity;
 use TeeFrame\Game\GameConstants;
@@ -41,6 +39,7 @@ use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -123,7 +122,7 @@ class WorldTransferTestServer extends AbstractServerInstance
 
     public function __construct(int $dmSlots = 64, int $ctfSlots = 64)
     {
-        parent::__construct(new TickHandler(1000), name: 'Multiworld test');
+        parent::__construct(new TickHandler(1000), new Config(['sv_name' => 'Multiworld test']));
         $this->socket  = new WorldTransferTestSocket;
         $dmController  = new PvpGameController($this->tickHandler);
         $ctfController = new PvpGameController($this->tickHandler, isTeamMode: true, isCaptureTheFlag: true);
@@ -705,9 +704,8 @@ test('a passed map vote reloads only its world and restarts map loading without 
     $otherTee->score        = 20;
     $otherMap               = $server->ctf->getMap();
     $otherFlags             = $server->ctf->getGameController()->getFlags();
-    $server->dm->registerCommand(new ChangeMapCommand);
-    $description = 'Change map to '.$mapName;
-    $server->dm->getVoteController()->addVoteOption($description, 'change_map '.$mapName.' "A different arena"');
+    $description            = 'Change map to '.$mapName;
+    $server->dm->getVoteController()->addVoteOption($description, 'sv_world_map '.$mapName);
     $server->send($slot, new ClCallVoteChunk('option', $description, ''));
     expect($server->dm->getVoteController()->isVoteRunning())->toBeTrue();
     $sequence                = $slot->sequence;
@@ -754,7 +752,7 @@ test('a passed map vote reloads only its world and restarts map loading without 
     expect(array_filter($chunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk))->toBeEmpty();
     $chats = array_values(array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk));
     expect(array_map(fn ($chunk) => $chunk->text, $chats))->toBe([
-        'Changing map to '.$mapName.' (A different arena)',
+        'sv_world_map = '.$mapName,
         'Vote passed',
     ]);
     $voteEnds   = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
@@ -842,8 +840,7 @@ test('a failed map vote reports the load failure and leaves players on the curre
     $tee       = $slot->playerTee();
     $character = $tee->character;
     $map       = $server->dm->getMap();
-    $server->dm->registerCommand(new ChangeMapCommand);
-    $server->dm->getVoteController()->addVoteOption('Missing map', 'change_map missing-map');
+    $server->dm->getVoteController()->addVoteOption('Missing map', 'sv_world_map missing-map');
     $server->send($slot, new ClCallVoteChunk('option', 'Missing map', ''));
     $server->socket->packets = [];
     $server->advance();
@@ -865,10 +862,9 @@ test('chat cannot execute a vote-only map command', function () {
     $server = new WorldTransferTestServer;
     $slot   = $server->connect();
     $server->enter($slot);
-    $map = $server->dm->getMap();
-    $server->dm->registerCommand(new ChangeMapCommand);
+    $map                     = $server->dm->getMap();
     $server->socket->packets = [];
-    $server->send($slot, new ClSayChunk(false, '/change_map ctf1'));
+    $server->send($slot, new ClSayChunk(false, '/sv_world_map ctf1'));
     $server->advance();
 
     expect($server->dm->getMap())->toBe($map);
@@ -892,10 +888,9 @@ test('gamemode votes reset only their world and players rejoin with the new team
     $otherController = $server->ctf->getGameController();
     $otherFlags      = $otherController->getFlags();
 
-    $server->dm->registerCommand(new ChangeGameModeCommand);
     foreach (['ctf', 'tdm', 'dm'] as $mode) {
         $description = 'Change gamemode to '.strtoupper($mode);
-        $server->dm->getVoteController()->addVoteOption($description, 'change_gamemode '.$mode.($mode === 'ctf' ? ' ctf1' : ' ""').' "Try another mode"');
+        $server->dm->getVoteController()->addVoteOption($description, ($mode === 'ctf' ? 'sv_world_map ctf1; ' : '').'sv_world_game_type '.$mode);
         $oldTee               = $first->playerTee();
         $oldCharacter         = $oldTee->character;
         $oldTee->score        = 15;
@@ -940,7 +935,7 @@ test('gamemode votes reset only their world and players rejoin with the new team
         expect(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk))->toHaveCount(2);
         expect(array_filter($chunks, fn ($chunk) => $chunk instanceof SvKillMsgChunk))->toBeEmpty();
         $chats = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
-        expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('Changing gamemode to '.strtoupper($mode).' (Try another mode)', 'Vote passed');
+        expect(array_map(fn ($chunk) => $chunk->text, $chats))->toContain('sv_world_game_type = '.$mode, 'Vote passed');
         $voteEnds   = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof SvVoteSetChunk && $chunk->timeout === 0));
         $mapChanges = array_keys(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk));
         assert($voteEnds !== [] && $mapChanges !== []);
@@ -975,7 +970,7 @@ test('gamemode votes reset only their world and players rejoin with the new team
     }
 });
 
-test('failed gamemode votes keep the active match and report the failure', function (string $mode, ?string $mapName) {
+test('failed gamemode votes keep the active match and report the failure', function (string $command, string $message) {
     $server = new WorldTransferTestServer;
     $slot   = $server->connect();
     $server->enter($slot);
@@ -984,8 +979,7 @@ test('failed gamemode votes keep the active match and report the failure', funct
     $character  = $tee->character;
     $map        = $server->dm->getMap();
     $controller = $server->dm->getGameController();
-    $server->dm->registerCommand(new ChangeGameModeCommand);
-    $server->dm->getVoteController()->addVoteOption('Invalid gamemode', 'change_gamemode '.$mode.($mapName !== null ? ' '.$mapName : ''));
+    $server->dm->getVoteController()->addVoteOption('Invalid gamemode', $command);
     $server->send($slot, new ClCallVoteChunk('option', 'Invalid gamemode', ''));
     $server->socket->packets = [];
     $server->advance();
@@ -1001,21 +995,20 @@ test('failed gamemode votes keep the active match and report the failure', funct
     expect(array_filter($chunks, fn ($chunk) => $chunk instanceof MapChangeChunk))->toBeEmpty();
     $chats    = array_filter($chunks, fn ($chunk) => $chunk instanceof SvChatChunk);
     $messages = array_map(fn ($chunk) => $chunk->text, $chats);
-    expect($messages)->toContain('Vote command failed: Unable to change gamemode to '.strtoupper($mode));
+    expect($messages)->toContain('Vote command failed: '.$message);
     expect($messages)->not->toContain('Vote passed');
 })->with([
-    'unsupported mode' => ['unknown', null],
-    'missing map'      => ['ctf', 'missing-map'],
+    'unsupported mode' => ['sv_world_game_type unknown', 'Unable to change gamemode to UNKNOWN'],
+    'missing map'      => ['sv_world_map missing-map; sv_world_game_type ctf', 'Unable to change map to missing-map'],
 ]);
 
-test('chat cannot execute a vote-only gamemode command', function () {
+test('chat cannot execute the server gametype configuration command', function () {
     $server = new WorldTransferTestServer;
     $slot   = $server->connect();
     $server->enter($slot);
-    $controller = $server->dm->getGameController();
-    $server->dm->registerCommand(new ChangeGameModeCommand);
+    $controller              = $server->dm->getGameController();
     $server->socket->packets = [];
-    $server->send($slot, new ClSayChunk(false, '/change_gamemode ctf'));
+    $server->send($slot, new ClSayChunk(false, '/sv_world_game_type ctf'));
     $server->advance();
 
     expect($server->dm->getGameController())->toBe($controller);

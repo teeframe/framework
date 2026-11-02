@@ -14,6 +14,7 @@ use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -81,7 +82,7 @@ class SnapshotRateTestServer extends AbstractServerInstance
     public function __construct()
     {
         $this->clock = new TickHandler(100);
-        parent::__construct($this->clock, name: 'Snapshot rate test');
+        parent::__construct($this->clock, new Config(['sv_name' => 'Snapshot rate test']));
         $this->world = $this->addWorld();
     }
 

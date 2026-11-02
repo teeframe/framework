@@ -6,6 +6,8 @@ test('IP normalization preserves IPv4 and canonicalizes equivalent IPv6 addresse
     expect(IpAddress::normalize($address))->toBe($expected);
 })->with([
     ['192.0.2.1', '192.0.2.1'],
+    ['::ffff:192.0.2.1', '192.0.2.1'],
+    ['0:0:0:0:0:ffff:c000:201', '192.0.2.1'],
     ['2001:0DB8:0000:0000:0000:0000:0000:0001', '2001:db8::1'],
     ['2001:db8::1', '2001:db8::1'],
     ['0:0:0:0:0:0:0:1', '::1'],

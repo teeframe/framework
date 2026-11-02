@@ -18,6 +18,7 @@ use TeeFrame\Network\Chunks\System\RconCmdChunk;
 use TeeFrame\Network\Chunks\System\RconCmdRemChunk;
 use TeeFrame\Network\Chunks\System\RconLineChunk;
 use TeeFrame\Network\NetworkBase;
+use TeeFrame\Network\NetworkParams;
 use TeeFrame\Server\Ban\BanList;
 use TeeFrame\Server\ConnectionHandler;
 use TeeFrame\Server\ConnectionSlot;
@@ -36,8 +37,8 @@ class Rcon
         protected int $banDuration = 300,
         int $outputLevel = Console::LEVEL_INFO,
     ) {
-        if ($maxTries < 1 || $banDuration < 0) {
-            throw new \InvalidArgumentException('RCON requires a positive attempt limit and a non-negative ban duration');
+        if ($maxTries < 0 || $banDuration < 0) {
+            throw new \InvalidArgumentException('RCON requires non-negative attempt and ban limits');
         }
 
         if (str_contains($password, "\0")) {
@@ -46,6 +47,26 @@ class Rcon
 
         $this->consoleListener = fn (string $line) => $this->broadcastLine($line);
         $this->setOutputLevel($outputLevel);
+    }
+
+    public function configureAuthentication(#[\SensitiveParameter] ?string $password = null, ?int $maxTries = null, ?int $banDuration = null): void
+    {
+        if (($maxTries !== null && $maxTries < 0) || ($banDuration !== null && $banDuration < 0) || ($password !== null && str_contains($password, "\0"))) {
+            throw new \InvalidArgumentException('Invalid RCON authentication settings');
+        }
+
+        if ($password !== null && $password !== $this->password) {
+            foreach ($this->connections->getConnections() as $connection) {
+                if ($connection->rcon()->authenticated) {
+                    $this->logout($connection);
+                }
+            }
+
+            $this->password = $password;
+        }
+
+        $this->maxTries    = $maxTries ?? $this->maxTries;
+        $this->banDuration = $banDuration ?? $this->banDuration;
     }
 
     public function setOutputLevel(int $level): void
@@ -98,10 +119,11 @@ class Rcon
         }
 
         $session->authTries++;
-        $connection->consoleWarn('rcon', 'RCON authentication failed Attempt='.$session->authTries.'/'.$this->maxTries);
-        $this->sendLine($connection, 'Wrong password '.$session->authTries.'/'.$this->maxTries.'.');
+        $attempts = $session->authTries.($this->maxTries > 0 ? '/'.$this->maxTries : '');
+        $connection->consoleWarn('rcon', 'RCON authentication failed Attempt='.$attempts);
+        $this->sendLine($connection, 'Wrong password '.$attempts.'.');
 
-        if ($session->authTries >= $this->maxTries) {
+        if ($this->maxTries > 0 && $session->authTries >= $this->maxTries) {
             $reason = 'Too many remote console authentication tries';
             $connection->consoleWarn('rcon', $reason);
 
@@ -154,7 +176,25 @@ class Rcon
         if ($name === 'cmdlist') {
             $connection->consoleInfo('rcon', 'RCON command=cmdlist');
 
-            foreach (AbstractCommand::formatList(array_keys($this->getCommandInfo($connection->world()))) as $line) {
+            $commands = [];
+            $settings = [];
+
+            foreach (array_keys($this->getCommandInfo($connection->world())) as $commandName) {
+                if (str_starts_with($commandName, 'sv_')) {
+                    $settings[] = $commandName;
+                } else {
+                    $commands[] = $commandName;
+                }
+            }
+
+            $lines = AbstractCommand::formatList($commands);
+
+            if ($settings !== []) {
+                $lines[] = '';
+                $lines   = [...$lines, ...AbstractCommand::formatList($settings)];
+            }
+
+            foreach ($lines as $line) {
                 $this->sendLine($connection, $line);
             }
 
@@ -270,7 +310,8 @@ class Rcon
             }
 
             $connection->consoleInfo('vote', 'Forced kick Target='.$index);
-            $world->getServer()->kick($world, $index, Utf8::truncateBytes($reason, 127));
+            $banDuration = $world->getConfig()->getInt('sv_world_vote_kick_ban_duration') * 60;
+            $world->getServer()->kick($world, $index, Utf8::truncateBytes($reason, 127), $banDuration);
 
             return;
         }
@@ -282,6 +323,7 @@ class Rcon
         }
 
         $tee->setTeam(GameConstants::TEAM_SPECTATORS);
+        $tee->teamChangeTick = $world->getCurrentTick() + $world->getConfig()->getInt('sv_world_vote_spectate_rejoin_delay') * 60 * NetworkParams::TICKS_PER_SECOND;
         $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: Utf8::truncateBytes("'{$tee->name}' was moved to spectators ({$reason})", 511)));
     }
 

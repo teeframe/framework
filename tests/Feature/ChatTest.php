@@ -373,7 +373,7 @@ test('unknown chat commands receive a private error instead of being broadcast',
     expect($chunk->team)->toBe(0);
     expect($chunk->clientId)->toBe(-1);
     expect($chunk->text)->toBe('Command not found');
-})->with(['/unknown private text', '/', '/change_map dm1', '/reload'])->with([false, true]);
+})->with(['/unknown private text', '/', '/sv_world_map dm1', '/reload'])->with([false, true]);
 
 test('invalid chat commands receive private usage errors instead of broadcasting their arguments', function (string $message) {
     $world  = createWorld(new Map);

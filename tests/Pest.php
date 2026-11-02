@@ -12,6 +12,7 @@ use TeeFrame\Game\World\Vector2;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use Tests\Support\RecordingGameServer;
 
 require_once __DIR__.'/Support/RecordingGameServer.php';
@@ -59,9 +60,12 @@ class TestWorldWithController extends AbstractWorld
         AbstractGameController $controller,
         ?AbstractServerInstance $server = null,
         int $slotsLimit = 64,
+        string $configFile = '',
+        ?Config $config = null,
+        ?int $spectatorSlots = null,
     ) {
         $this->gameController = $controller;
-        parent::__construct('test', $tickHandler, $map, $server ?? new RecordingGameServer($tickHandler), $slotsLimit);
+        parent::__construct('test', $tickHandler, $map, $server ?? new RecordingGameServer($tickHandler), $slotsLimit, $configFile, $config, $spectatorSlots);
     }
 
     public function getMotd(AbstractTee $requestingTee): string

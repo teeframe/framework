@@ -16,6 +16,7 @@ use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionHandler;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
@@ -74,16 +75,11 @@ class WorldHelpersTestServer extends AbstractServerInstance
 
     public function __construct()
     {
-        parent::__construct(new TickHandler(100), name: 'World helpers');
+        parent::__construct(new TickHandler(100), new Config(['sv_name' => 'World helpers']));
         $this->socket = new WorldHelpersTestSocket;
     }
 
     protected function boot(): void {}
-
-    protected function selectWorldForNewConnection(): AbstractWorld
-    {
-        return $this->worlds[0];
-    }
 
     public function addWorld(): TestWorld
     {
@@ -155,7 +151,7 @@ test('worlds register framework chat and server commands once without adding vot
     foreach ([AbstractCommand::TYPE_CHAT, AbstractCommand::TYPE_SERVER] as $type) {
         $names = array_map(fn (AbstractCommand $command): string => $command->getName(), array_values(array_filter($commands, fn (AbstractCommand $command): bool => (bool) ($command->getType() & $type))));
         expect($names)->toBe(array_values(array_unique($names)));
-        expect($names)->toContain(...($type === AbstractCommand::TYPE_CHAT ? ['whisper', 'ping', 'help', 'list', 'converse', 'info', 'rules', 'settings', 'emote'] : ['change_map', 'change_gamemode', 'reload', 'pause', 'restart', 'tune', 'set_team', 'kick', 'ban', 'shutdown']));
+        expect($names)->toContain(...($type === AbstractCommand::TYPE_CHAT ? ['whisper', 'ping', 'help', 'list', 'converse', 'info', 'rules', 'settings', 'emote'] : ['sv_world_map', 'sv_world_game_type', 'reload', 'pause', 'restart', 'tune', 'set_team', 'kick', 'ban', 'shutdown']));
     }
     expect($world->getVoteController()->getVoteChunks(new PlayerTee))->toBeEmpty();
 });

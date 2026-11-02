@@ -2,8 +2,6 @@
 
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\CommandLine;
-use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
-use TeeFrame\Game\Commands\Server\ChangeMapCommand;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\World\Vector2;
@@ -39,12 +37,11 @@ test('add_vote registers a world option and updates current and newly joining cl
     $admin      = $server->addClient();
     $guest      = $server->addClient(port: 8301);
     $other      = $server->addClient($otherWorld, port: 8302);
-    $world->registerCommand(new ChangeMapCommand);
     $server->send($admin, new RconAuthChunk('', 'test-secret'));
 
-    $server->send($admin, new RconCmdChunk('add_vote "CTF map" change_map ctf1'));
+    $server->send($admin, new RconCmdChunk('add_vote "CTF map" sv_world_map ctf1'));
 
-    expect($world->getVoteController()->getVoteOption('ctf MAP')?->command)->toBe('change_map ctf1');
+    expect($world->getVoteController()->getVoteOption('ctf MAP')?->command)->toBe('sv_world_map ctf1');
     expect($otherWorld->getVoteController()->getVoteOption('CTF map'))->toBeNull();
     foreach ([$admin, $guest] as $client) {
         expect($server->socket($client)->chunks(SvVoteOptionAddChunk::class)[0]->description)->toBe('CTF map');
@@ -75,32 +72,31 @@ test('multiple map vote presets share one command registration and execute their
     $admin  = $server->addClient();
     $world  = $server->entryWorld;
     $server->send($admin, new RconAuthChunk('', 'test-secret'));
-    $server->send($admin, new RconCmdChunk('add_vote "DM map" change_map dm1'));
-    $server->send($admin, new RconCmdChunk('add_vote "CTF map" change_map ctf1'));
+    $server->send($admin, new RconCmdChunk('add_vote "DM map" sv_world_map dm1'));
+    $server->send($admin, new RconCmdChunk('add_vote "CTF map" sv_world_map ctf1'));
 
-    expect($world->getVoteController()->getVoteOption('DM map')?->command)->toBe('change_map dm1');
-    expect($world->getVoteController()->getVoteOption('CTF map')?->command)->toBe('change_map ctf1');
+    expect($world->getVoteController()->getVoteOption('DM map')?->command)->toBe('sv_world_map dm1');
+    expect($world->getVoteController()->getVoteOption('CTF map')?->command)->toBe('sv_world_map ctf1');
     foreach (['CTF map' => 'ctf1', 'DM map' => 'dm1'] as $label => $mapName) {
         $server->send($admin, new RconCmdChunk('force_vote option "'.$label.'"'));
         $server->tick();
         expect($world->getMap()->getName())->toBe($mapName);
     }
-    expect(array_filter($world->getCommands(), fn (AbstractCommand $command): bool => $command instanceof ChangeMapCommand))->toHaveCount(1);
+    expect(array_filter($world->getCommands(), fn (AbstractCommand $command): bool => $command->getName() === 'sv_world_map'))->toHaveCount(1);
 });
 
 test('argument-bearing vote commands require an invocation with arguments', function (string $name) {
     $server = new RconTestServer;
     $admin  = $server->addClient();
     $world  = $server->entryWorld;
-    $world->registerCommand(new ChangeMapCommand);
-    $world->registerCommand(new ChangeGameModeCommand);
+
     $server->send($admin, new RconAuthChunk('', 'test-secret'));
 
     $server->send($admin, new RconCmdChunk('add_vote "Invalid invocation" '.$name));
 
     expect($world->getVoteController()->getVoteOption('Invalid invocation'))->toBeNull();
     expect($world->getVoteController()->resolveCommands($world, $name))->toBeNull();
-})->with(['change_map', 'change_gamemode']);
+})->with(['echo', 'say', 'set_team']);
 
 test('duplicate add_vote names do not replace options or send duplicate menu entries', function () {
     $server = new RconTestServer;

@@ -3,18 +3,19 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
+use TeeFrame\Game\Commands\Server\ConfigCommand;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 
 function createGameModeChangeWorld(): TestPvpWorldWithController
 {
     $clock  = new TickHandler(1000);
-    $server = new class($clock, name: 'Gamemode change test') extends AbstractServerInstance
+    $server = new class($clock, new Config(['sv_name' => 'Gamemode change test'])) extends AbstractServerInstance
     {
         protected function boot(): void {}
 
@@ -28,13 +29,15 @@ function createGameModeChangeWorld(): TestPvpWorldWithController
     return new TestPvpWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, slotsLimit: 12);
 }
 
-test('gamemode commands register the command name separately from runtime parameters', function () {
-    $command = new ChangeGameModeCommand;
+test('gametype configuration commands expose their description and optional value', function () {
+    $world   = createGameModeChangeWorld();
+    $command = $world->findCommand('sv_world_game_type', AbstractCommand::TYPE_SERVER);
 
-    expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
-    expect($command->getName())->toBe('change_gamemode');
-    expect($command->getDescription())->toBe('Change this world\'s gamemode, optionally loading another map');
-    expect($command->getParams())->toBe('s[mode] ?s[map] ?r[reason]');
+    expect($command)->toBeInstanceOf(ConfigCommand::class);
+    assert($command !== null);
+    expect($command->getDescription())->toBe('Game type supported by this world\'s controller');
+    expect($command->getParams())->toBe('?r[value]');
+
 });
 
 test('gamemode changes are deferred and rebuild round and flag state without replacing the map or configuration', function () {
@@ -43,9 +46,9 @@ test('gamemode changes are deferred and rebuild round and flag state without rep
     $votes           = $world->getVoteController();
     $tuning          = $world->getTuneController();
     $tuning->gravity = 30;
-    $command         = new ChangeGameModeCommand;
-    $world->registerCommand($command);
-    $votes->addVoteOption('Change gamemode to CTF', 'change_gamemode ctf');
+    $command         = $world->findCommand('sv_world_game_type', AbstractCommand::TYPE_SERVER);
+    assert($command !== null);
+    $votes->addVoteOption('Change gamemode to CTF', 'sv_world_game_type ctf');
 
     foreach (['ctf', 'tdm', 'dm', 'CTF'] as $mode) {
         $oldController = $world->getGameController();

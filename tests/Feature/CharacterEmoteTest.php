@@ -77,7 +77,7 @@ test('paused time preserves the remaining duration of a character emote', functi
     expect(characterSnapshotEmote($character))->toBe(GameConstants::EMOTE_NORMAL);
 });
 
-test('chat-selected expressions do not expire after the previous duration limit', function (string $name, int $emote) {
+test('chat-selected expressions without a duration remain active', function (string $name, int $emote) {
     [$world, $clock, $tee, $character] = createCharacterEmoteWorld();
     $world->onMessage($tee, new ClSayChunk(false, '/emote '.$name));
     expect(characterSnapshotEmote($character))->toBe($emote);

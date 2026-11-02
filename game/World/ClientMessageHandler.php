@@ -73,8 +73,9 @@ class ClientMessageHandler
         // Spam protection: max ~16 characters per second (CPlayer::m_LastChat).
         if ($tee instanceof PlayerTee) {
             $currentTick = $this->world->getCurrentTick();
+            $delay       = max($this->world->getConfig()->getInt('sv_world_chat_delay'), (15 + Utf8::length($message)) / 16);
 
-            if ($tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * ((15 + Utf8::length($message)) / 16)) > $currentTick) {
+            if ($this->world->getConfig()->getInt('sv_world_spam_protection') && $tee->lastChatTick > 0 && $tee->lastChatTick + (int) (NetworkParams::TICKS_PER_SECOND * $delay) > $currentTick) {
                 return;
             }
 
@@ -146,7 +147,7 @@ class ClientMessageHandler
 
         $currentTick = $this->world->getCurrentTick();
 
-        if ($tee->lastChangeInfo >= 0 && $tee->lastChangeInfo + 5 * NetworkParams::TICKS_PER_SECOND > $currentTick) {
+        if ($this->world->getConfig()->getInt('sv_world_spam_protection') && $tee->lastChangeInfo >= 0 && $tee->lastChangeInfo + $this->world->getConfig()->getInt('sv_world_info_change_delay') * NetworkParams::TICKS_PER_SECOND > $currentTick) {
             return;
         }
 
@@ -189,7 +190,7 @@ class ClientMessageHandler
 
         $currentTick = $this->world->getCurrentTick();
 
-        if ($tee->lastKillTick > 0 && $tee->lastKillTick + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick) {
+        if ($tee->lastKillTick > 0 && $tee->lastKillTick + NetworkParams::TICKS_PER_SECOND * $this->world->getConfig()->getInt('sv_world_self_kill_delay') > $currentTick) {
             return;
         }
 
@@ -209,7 +210,7 @@ class ClientMessageHandler
         $team        = $controller->clampTeam($chunk->team);
         $currentTick = $this->world->getCurrentTick();
 
-        if ($tee->team === $team || ($tee->lastSetTeam > 0 && $tee->lastSetTeam + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)) {
+        if ($tee->team === $team || ($this->world->getConfig()->getInt('sv_world_spam_protection') && $tee->lastSetTeam > 0 && $tee->lastSetTeam + NetworkParams::TICKS_PER_SECOND * $this->world->getConfig()->getInt('sv_world_team_change_delay') > $currentTick)) {
             return;
         }
 
@@ -262,7 +263,7 @@ class ClientMessageHandler
 
         if ($tee->spectatorId === $chunk->spectatorId
             || $tee->teeIndex === $chunk->spectatorId
-            || ($tee->lastSetSpectatorMode > 0 && $tee->lastSetSpectatorMode + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)
+            || ($this->world->getConfig()->getInt('sv_world_spam_protection') && $tee->lastSetSpectatorMode > 0 && $tee->lastSetSpectatorMode + NetworkParams::TICKS_PER_SECOND * 3 > $currentTick)
         ) {
             return;
         }

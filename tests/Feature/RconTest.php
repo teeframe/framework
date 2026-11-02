@@ -39,7 +39,7 @@ function rconCommandNames(RconTestSocket $socket): array
 /** @return list<string> */
 function rconListedNames(RconTestSocket $socket): array
 {
-    $lines = array_filter(rconLines($socket), fn (string $line): bool => ! str_starts_with($line, '[INFO] [rcon]: ') && ! str_starts_with($line, 'Authentication successful.'));
+    $lines = array_filter(rconLines($socket), fn (string $line): bool => $line !== '' && ! str_starts_with($line, '[INFO] [rcon]: ') && ! str_starts_with($line, 'Authentication successful.'));
 
     return $lines === [] ? [] : explode(', ', implode(', ', $lines));
 }
@@ -52,7 +52,7 @@ function finishRconAutocomplete(RconTestServer $server): void
     }
 }
 
-test('cmdlist lists only sorted RCON command names and aliases from the current world', function () {
+test('cmdlist separates sorted command names and sv settings with one blank line', function () {
     $server = new RconTestServer;
     $client = $server->addClient();
     $other  = $server->addWorld('other');
@@ -68,8 +68,17 @@ test('cmdlist lists only sorted RCON command names and aliases from the current 
     $lines    = rconLines($server->socket($client));
     $expected = array_keys($server->getRcon()->getCommandInfo($server->entryWorld));
     sort($expected, SORT_STRING | SORT_FLAG_CASE);
-    expect(rconListedNames($server->socket($client)))->toBe($expected);
-    expect(implode("\n", $lines))->not->toContain('Available RCON commands:', 's[value]', 'Echo a value', ' - ');
+    $commands  = array_values(array_filter($expected, fn (string $name): bool => ! str_starts_with($name, 'sv_')));
+    $settings  = array_values(array_filter($expected, fn (string $name): bool => str_starts_with($name, 'sv_')));
+    $listLines = array_values(array_filter($lines, fn (string $line): bool => ! str_starts_with($line, '[INFO] [rcon]: ')));
+    $separator = array_search('', $listLines, true);
+
+    expect($separator)->not->toBeFalse();
+    assert(is_int($separator));
+    expect(array_keys($listLines, '', true))->toHaveCount(1);
+    expect(explode(', ', implode(', ', array_slice($listLines, 0, $separator))))->toBe($commands);
+    expect(explode(', ', implode(', ', array_slice($listLines, $separator + 1))))->toBe($settings);
+    expect(implode("\n", $lines))->not->toContain('s[value]', 'Echo a value', ' - ');
     expect(implode("\n", $lines))->not->toContain('other_world_only', 'chat_only', 'whisper', 'ping');
 });
 
@@ -99,12 +108,14 @@ test('built-in RCON commands require authentication and cannot run through chat 
 test('cmdlist is available without registered server commands and ignores command casing', function (string $line) {
     $server = new RconTestServer;
     $client = $server->addClient();
+    (new ReflectionProperty(AbstractWorld::class, 'commands'))->setValue($server->entryWorld, []);
     $server->send($client, new RconAuthChunk('', 'test-secret'));
     $server->socket($client)->packets = [];
 
     $server->send($client, new RconCmdChunk($line));
 
-    expect(rconListedNames($server->socket($client)))->toContain('cmdlist');
+    expect(rconListedNames($server->socket($client)))->toBe(['add_vote', 'cmdlist', 'force_vote', 'logout', 'remove_vote']);
+    expect(rconLines($server->socket($client)))->not->toContain('');
 })->with(['cmdlist', 'CMDLIST']);
 
 test('cmdlist returns complete command lists across multiple reply lines only to the requester', function () {
@@ -126,9 +137,26 @@ test('cmdlist returns complete command lists across multiple reply lines only to
     $lines    = rconLines($server->socket($admin));
     $expected = array_keys($server->getRcon()->getCommandInfo($server->entryWorld));
     sort($expected, SORT_STRING | SORT_FLAG_CASE);
-    expect(rconListedNames($server->socket($admin)))->toBe($expected);
-    $listLines = array_filter($lines, fn (string $line): bool => ! str_starts_with($line, '[INFO] [rcon]: '));
-    expect(count($listLines))->toBeGreaterThan(1);
+    $listedNames = rconListedNames($server->socket($admin));
+    sort($listedNames, SORT_STRING | SORT_FLAG_CASE);
+    expect($listedNames)->toBe($expected);
+    $listLines = array_values(array_filter($lines, fn (string $line): bool => ! str_starts_with($line, '[INFO] [rcon]: ')));
+    $separator = array_search('', $listLines, true);
+    expect($separator)->toBeGreaterThan(1);
+    assert(is_int($separator));
+    expect(count($listLines) - $separator - 1)->toBeGreaterThan(1);
+    expect(array_keys($listLines, '', true))->toHaveCount(1);
+
+    foreach (array_slice($listLines, 0, $separator) as $line) {
+        foreach (explode(', ', $line) as $name) {
+            expect(str_starts_with($name, 'sv_'))->toBeFalse();
+        }
+    }
+    foreach (array_slice($listLines, $separator + 1) as $line) {
+        foreach (explode(', ', $line) as $name) {
+            expect(str_starts_with($name, 'sv_'))->toBeTrue();
+        }
+    }
     foreach ($lines as $line) {
         expect(strlen($line))->toBeLessThanOrEqual(511);
     }
@@ -165,7 +193,7 @@ test('registered commands cannot replace the built-in RCON cmdlist', function ()
     $server->send($client, new RconCmdChunk('cmdlist'));
 
     expect($command->executions)->toBeEmpty();
-    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'change_map', 'change_gamemode', 'reload']);
+    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'reload', 'help', 'status']);
     expect($server->socket($client)->chunks(RconCmdAddChunk::class)[0]->help)->toBe('List available RCON commands');
     expect(rconListedNames($server->socket($client)))->toContain('cmdlist');
 });
@@ -328,7 +356,7 @@ test('chat-only commands cannot run through RCON or an option vote', function ()
     $server->getRcon()->update();
     $server->getRcon()->update();
     expect($command->executions)->toBeEmpty();
-    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'change_map', 'change_gamemode', 'reload']);
+    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'reload', 'help', 'status']);
 
     $server->send($client, new ClSayChunk(false, '/record'));
     expect($command->executions)->toHaveCount(1);
@@ -416,7 +444,7 @@ test('RCON autocomplete incrementally advertises built-ins and registered server
     $server->getRcon()->update();
     expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote']);
     $server->getRcon()->update();
-    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'change_map', 'change_gamemode', 'reload']);
+    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'reload', 'help', 'status']);
     $server->getRcon()->update();
     expect(rconCommandNames($server->socket($client)))->toHaveCount(12);
     finishRconAutocomplete($server);
@@ -477,17 +505,17 @@ test('RCON autocomplete refreshes when command permissions or parameter hints ch
     expect(rconCommandNames($server->socket($client)))->toBeEmpty();
 });
 
-test('RCON leaves unsupported recording and file-execution commands unavailable', function () {
+test('unknown RCON commands report an error without changing authentication or server state', function () {
     $server = new RconTestServer;
     $client = $server->addClient();
-    $server->send($client, new RconAuthChunk('', 'test-secret'));
-    finishRconAutocomplete($server);
-    $server->send($client, new RconCmdChunk('record; stoprecord; exec autoexec.cfg'));
+    $server->send($client, new RconAuthChunk('', 'test-secret', false));
+    $server->socket($client)->packets = [];
+    $server->send($client, new RconCmdChunk('unknown_command'));
 
-    expect(rconCommandNames($server->socket($client)))->not->toContain('record', 'stoprecord', 'exec');
+    expect(rconLines($server->socket($client)))->toContain('Unknown command: unknown_command');
     expect($server->shutdownRequested)->toBeFalse();
     expect($client->rcon()->authenticated)->toBeTrue();
-    expect(rconLines($server->socket($client)))->toContain('Unknown command: record', 'Unknown command: stoprecord', 'Unknown command: exec');
+    expect($client->state)->toBe(ConnectionSlot::STATE_INGAME);
 });
 
 test('RCON forwards console output only to authenticated clients', function () {
@@ -669,18 +697,22 @@ test('default map and gamemode commands expose generic autocomplete and accept r
     $server->getRcon()->update();
     $server->getRcon()->update();
 
-    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'change_map', 'change_gamemode', 'reload']);
-    $mapInfo = array_find($server->socket($client)->chunks(RconCmdAddChunk::class), fn (RconCmdAddChunk $chunk): bool => $chunk->name === 'change_map');
+    expect(rconCommandNames($server->socket($client)))->toBe(['cmdlist', 'logout', 'add_vote', 'remove_vote', 'force_vote', 'reload', 'help', 'status']);
+    finishRconAutocomplete($server);
+    $mapInfo = array_find($server->socket($client)->chunks(RconCmdAddChunk::class), fn (RconCmdAddChunk $chunk): bool => $chunk->name === 'sv_world_map');
     assert($mapInfo instanceof RconCmdAddChunk);
-    expect($mapInfo->params)->toBe('s[name] ?r[reason]');
+    expect($mapInfo->params)->toBe('?r[value]');
+    $gametypeInfo = array_find($server->socket($client)->chunks(RconCmdAddChunk::class), fn (RconCmdAddChunk $chunk): bool => $chunk->name === 'sv_world_game_type');
+    assert($gametypeInfo instanceof RconCmdAddChunk);
+    expect($gametypeInfo->params)->toBe('?r[value]');
 
     foreach (['ctf1', 'dm1'] as $mapName) {
-        $server->send($client, new RconCmdChunk('change_map "'.$mapName.'"'));
+        $server->send($client, new RconCmdChunk('sv_world_map "'.$mapName.'"'));
         $server->tick();
         expect($server->entryWorld->getMap()->getName())->toBe($mapName);
     }
     foreach (['ctf', 'tdm', 'dm'] as $mode) {
-        $server->send($client, new RconCmdChunk('change_gamemode "'.$mode.'"'.($mode === 'ctf' ? ' ctf1' : '')));
+        $server->send($client, new RconCmdChunk(($mode === 'ctf' ? 'sv_world_map ctf1; ' : '').'sv_world_game_type "'.$mode.'"'));
         $server->tick();
         expect($server->entryWorld->getGameController()->getGameType())->toBe(strtoupper($mode));
     }
@@ -691,13 +723,13 @@ test('parameterized command registrations do not create callable vote presets', 
     $server = new RconTestServer;
     $client = $server->addClient();
     $votes  = $server->entryWorld->getVoteController();
-    $votes->addVoteOption('DM map', 'change_map dm1');
+    $votes->addVoteOption('DM map', 'sv_world_map dm1');
 
     $server->send($client, new ClCallVoteChunk('option', $value, ''));
 
     expect($votes->isVoteRunning())->toBeFalse();
     expect($server->entryWorld->getMap()->getName())->toBe('dm1');
-})->with(['change_map', 'Change map', 'change_map ctf1', 'change_gamemode', 'Change gamemode', 'change_gamemode ctf ctf1']);
+})->with(['sv_world_map', 'Change map', 'sv_world_map ctf1', 'sv_world_game_type', 'Change gamemode', 'sv_world_game_type ctf']);
 
 test('RCON dispatches map and gamemode commands with runtime arguments and leaves other worlds untouched', function () {
     $server = new RconTestServer;
@@ -705,7 +737,7 @@ test('RCON dispatches map and gamemode commands with runtime arguments and leave
     $client = $server->addClient();
     $server->send($client, new RconAuthChunk('', 'test-secret'));
 
-    $server->send($client, new RconCmdChunk('change_map ctf1; change_gamemode CTF'));
+    $server->send($client, new RconCmdChunk('sv_world_map ctf1; sv_world_game_type CTF'));
     $server->tick();
 
     expect($server->entryWorld->getMap()->getName())->toBe('ctf1');
@@ -873,7 +905,7 @@ test('RCON configuration and registered handlers are not kept alive by console l
 });
 
 test('RCON validates configuration', function () {
-    expect(fn () => new RconTestServer(maxTries: 0))->toThrow(InvalidArgumentException::class);
+    expect(fn () => new RconTestServer(maxTries: -1))->toThrow(InvalidArgumentException::class);
     expect(fn () => new RconTestServer(banDuration: -1))->toThrow(InvalidArgumentException::class);
     expect(fn () => new RconTestServer(password: "a\0b"))->toThrow(InvalidArgumentException::class);
 });

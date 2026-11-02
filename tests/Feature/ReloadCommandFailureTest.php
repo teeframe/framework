@@ -74,8 +74,8 @@ test('reload command failures stop execution and preserve the active world', fun
         rmdir($directory);
     }
 })->with([
-    ['change_map missing-map', 'Unable to change map to missing-map'],
-    ['change_gamemode unknown', 'Unable to change gamemode to UNKNOWN'],
-    ['change_gamemode ctf missing-map', 'Unable to change gamemode to CTF'],
+    ['sv_world_map missing-map', 'Unable to change map to missing-map'],
+    ['sv_world_game_type unknown', 'Unable to change gamemode to UNKNOWN'],
+    ['sv_world_map missing-map; sv_world_game_type ctf', 'Unable to change map to missing-map'],
     ['reload', 'Unable to reload world'],
 ])->with(['vote', 'rcon', 'forced vote']);

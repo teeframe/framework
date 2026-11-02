@@ -4,6 +4,7 @@ use Carbon\Carbon;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\Console;
 
 class ConsoleTestServer extends AbstractServerInstance
@@ -250,7 +251,7 @@ test('server constructor enables optional file logging before the server starts'
         throw new RuntimeException('Could not create the console test log');
     }
     try {
-        new ConsoleTestServer(new TickHandler, 'Logging test', logFile: $path);
+        new ConsoleTestServer(new TickHandler, new Config(['sv_name' => 'Logging test', 'sv_log_file' => $path]));
         captureConsoleOutput(fn () => Console::info('server', 'File logging enabled'));
         Console::setLogFile(null);
 
@@ -270,9 +271,9 @@ test('server constructor disables file logging when its path is omitted or empty
         Console::setLogFile($path);
         captureConsoleOutput(fn () => Console::info('server', 'Before construction'));
         if ($explicit) {
-            new ConsoleTestServer(new TickHandler, 'Logging test', logFile: '');
+            new ConsoleTestServer(new TickHandler, new Config(['sv_name' => 'Logging test', 'sv_log_file' => '']));
         } else {
-            new ConsoleTestServer(new TickHandler, 'Logging test');
+            new ConsoleTestServer(new TickHandler, new Config(['sv_name' => 'Logging test']));
         }
         $output = captureConsoleOutput(fn () => Console::info('server', 'After construction'));
 

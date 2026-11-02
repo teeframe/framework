@@ -329,7 +329,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
             return true;
         }
 
-        return $this->tee !== null
+        return ! $this->world->getConfig()->getInt('sv_world_hide_stats_from_spectators')
+            && $this->tee !== null
             && $this->tee->teeIndex >= 0
             && $requestingTee instanceof PlayerTee
             && $requestingTee->team === GameConstants::TEAM_SPECTATORS

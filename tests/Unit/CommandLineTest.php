@@ -57,7 +57,7 @@ test('invalid parameter declarations are configuration errors', function (string
     expect(fn () => CommandLine::parseArguments('', $params))->toThrow(LogicException::class);
 })->with(['unknown', 's[name', 's[]', '?', 's[name] extra', 'r[text] s[other]', 'x[name]', 's[name]?i[id]']);
 
-test('command matching uses exact names and aliases rather than regex patterns', function () {
+test('command matching uses exact names and aliases', function () {
     $command = new class extends AbstractCommand
     {
         public function getType(): int

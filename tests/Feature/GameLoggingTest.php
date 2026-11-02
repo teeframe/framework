@@ -228,7 +228,7 @@ test('world reloads are logged when queued and when applied rather than on each 
 test('failed reloads never log a successful reload', function () {
     $server  = new RconTestServer;
     $player  = $server->addClient();
-    $command = $server->entryWorld->findCommand('change_map', AbstractCommand::TYPE_SERVER);
+    $command = $server->entryWorld->findCommand('sv_world_map', AbstractCommand::TYPE_SERVER);
     assert($command !== null);
 
     $lines = captureGameLogs(function () use ($command, $server, $player): void {

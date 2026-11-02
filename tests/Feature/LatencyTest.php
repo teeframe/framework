@@ -11,6 +11,7 @@ use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Network\SnapItems\ObjPlayerInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -296,7 +297,7 @@ test('advancing the tick preserves its deadline rather than pretending no time h
 
 test('the server records each tick start before processing worlds and snapshots', function () {
     $ticks  = new LatencyTestTickHandler(100);
-    $server = new class($ticks, name: 'Latency test') extends AbstractServerInstance
+    $server = new class($ticks, new Config(['sv_name' => 'Latency test'])) extends AbstractServerInstance
     {
         protected function boot(): void {}
 

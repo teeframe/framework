@@ -23,6 +23,7 @@ use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -94,7 +95,7 @@ class TransportTestServer extends AbstractServerInstance
     {
         $this->clock  = new TransportTestClock;
         $this->socket = new TransportTestSocket;
-        parent::__construct($this->clock, 'Transport test');
+        parent::__construct($this->clock, new Config(['sv_name' => 'Transport test']));
         $this->entryWorld = $this->addWorld($slotsLimit);
     }
 

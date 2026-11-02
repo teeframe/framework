@@ -49,6 +49,21 @@ class PvpGameController extends AbstractGameController
         $this->roundStartTick = $tickHandler->getCurrentTick();
     }
 
+    /** @return array<string, int> */
+    public function getConfigDefaults(): array
+    {
+        return [
+            'sv_world_score_limit'       => $this->scoreLimit,
+            'sv_world_time_limit'        => $this->timeLimit,
+            'sv_world_team_balance_time' => $this->teamBalanceTime,
+        ] + parent::getConfigDefaults();
+    }
+
+    protected function getTeamBalanceTime(): int
+    {
+        return $this->world?->getConfig()->getInt('sv_world_team_balance_time', $this->teamBalanceTime) ?? $this->teamBalanceTime;
+    }
+
     public function getGameType(): string
     {
         return $this->isCaptureTheFlag ? 'CTF' : ($this->isTeamMode ? 'TDM' : 'DM');
@@ -113,8 +128,8 @@ class PvpGameController extends AbstractGameController
             if ($this->unbalancedTick !== -1) {
                 $this->unbalancedTick++;
             }
-        } elseif ($this->isTeamMode && $this->teamBalanceTime > 0 && $this->unbalancedTick !== -1
-            && $this->tickHandler->getCurrentTick() > $this->unbalancedTick + $this->teamBalanceTime * NetworkParams::TICKS_PER_SECOND * 60
+        } elseif ($this->isTeamMode && $this->getTeamBalanceTime() > 0 && $this->unbalancedTick !== -1
+            && $this->tickHandler->getCurrentTick() > $this->unbalancedTick + $this->getTeamBalanceTime() * NetworkParams::TICKS_PER_SECOND * 60
         ) {
             $this->balanceTeams();
             $this->unbalancedTick = -1;
@@ -168,15 +183,17 @@ class PvpGameController extends AbstractGameController
             return;
         }
 
+        $scoreLimit       = $world->getConfig()->getInt('sv_world_score_limit', $this->scoreLimit);
+        $timeLimit        = $world->getConfig()->getInt('sv_world_time_limit', $this->timeLimit);
         $elapsed          = $this->tickHandler->getCurrentTick() - $this->roundStartTick;
-        $timeLimitReached = $this->timeLimit > 0 && $elapsed >= $this->timeLimit * NetworkParams::TICKS_PER_SECOND * 60;
+        $timeLimitReached = $timeLimit > 0 && $elapsed >= $timeLimit * NetworkParams::TICKS_PER_SECOND * 60;
 
         if ($this->isTeamMode) {
             $teamScore = $this->getTeamScores();
 
-            $scoreLimitReached = $this->scoreLimit > 0
-                && ($teamScore[GameConstants::TEAM_RED] >= $this->scoreLimit
-                    || $teamScore[GameConstants::TEAM_BLUE] >= $this->scoreLimit);
+            $scoreLimitReached = $scoreLimit > 0
+                && ($teamScore[GameConstants::TEAM_RED] >= $scoreLimit
+                    || $teamScore[GameConstants::TEAM_BLUE] >= $scoreLimit);
 
             if (! $scoreLimitReached && ! $timeLimitReached) {
                 return;
@@ -227,7 +244,7 @@ class PvpGameController extends AbstractGameController
             return;
         }
 
-        $scoreLimitReached = $this->scoreLimit > 0 && $topScore >= $this->scoreLimit;
+        $scoreLimitReached = $scoreLimit > 0 && $topScore >= $scoreLimit;
 
         if (! $scoreLimitReached && ! $timeLimitReached) {
             return;
@@ -266,8 +283,11 @@ class PvpGameController extends AbstractGameController
                 return;
             }
 
-            $world->setPaused(false);
-            $this->unpauseTimer = 0;
+            $this->unpauseTimer = $world->getConfig()->getInt('sv_world_unpause_timer') * NetworkParams::TICKS_PER_SECOND;
+
+            if ($this->unpauseTimer === 0) {
+                $world->setPaused(false);
+            }
         } else {
             $world->setPaused(true);
             $this->unpauseTimer = 0;
@@ -307,7 +327,7 @@ class PvpGameController extends AbstractGameController
         $this->roundStartTick = $this->tickHandler->getCurrentTick();
         $this->gameOverTick   = -1;
         $this->suddenDeath    = 0;
-        $this->warmup         = 0;
+        $this->warmup         = ($this->world?->getConfig()->getInt('sv_world_warmup') ?? 0) * NetworkParams::TICKS_PER_SECOND;
         $this->unpauseTimer   = 0;
         $this->roundCount     = 0;
         $this->unbalancedTick = -1;
@@ -335,7 +355,37 @@ class PvpGameController extends AbstractGameController
         $this->suddenDeath  = 0;
     }
 
-    public function cycleMap(): void {}
+    public function cycleMap(): void
+    {
+        $world = $this->world;
+
+        if ($world === null) {
+            return;
+        }
+
+        if ($this->isTeamMode && $world->getConfig()->getInt('sv_world_swap_teams_between_rounds')) {
+            foreach ($world->getTees() as $tee) {
+                if ($tee instanceof PlayerTee && $tee->team !== GameConstants::TEAM_SPECTATORS) {
+                    $tee->setTeam($tee->team ^ 1);
+                }
+            }
+        }
+
+        $rotation = preg_split('/[;,\s]+/', trim($world->getConfig()->getString('sv_world_map_rotation')), flags: PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if ($rotation === [] || $this->roundCount + 1 < $world->getConfig()->getInt('sv_world_rounds_per_map')) {
+            return;
+        }
+
+        $index = array_search($world->getMap()->getName(), $rotation, true);
+        $next  = $rotation[$index === false ? 0 : ($index + 1) % count($rotation)];
+
+        try {
+            $world->changeMap($next);
+        } catch (\RuntimeException $exception) {
+            $world->consoleWarn('world', 'Map rotation failed: '.$exception->getMessage());
+        }
+    }
 
     public function isGameOver(): bool
     {
@@ -373,7 +423,7 @@ class PvpGameController extends AbstractGameController
     {
         $team = $this->clampTeam($team);
 
-        if (! $this->isTeamMode || $team === GameConstants::TEAM_SPECTATORS || $this->teamBalanceTime === 0 || $this->world === null) {
+        if (! $this->isTeamMode || $team === GameConstants::TEAM_SPECTATORS || $this->getTeamBalanceTime() === 0 || $this->world === null) {
             return true;
         }
 
@@ -466,7 +516,7 @@ class PvpGameController extends AbstractGameController
 
     public function checkTeamBalance(): bool
     {
-        if (! $this->isTeamMode || $this->teamBalanceTime === 0) {
+        if (! $this->isTeamMode || $this->getTeamBalanceTime() === 0) {
             return true;
         }
 
@@ -651,9 +701,9 @@ class PvpGameController extends AbstractGameController
             gameStateFlags: $gameStateFlags,
             roundStartTick: $this->roundStartTick,
             warmupTimer: $warmupTimer,
-            scoreLimit: $this->scoreLimit,
-            timeLimit: $this->timeLimit,
-            roundNum: 0,
+            scoreLimit: $this->world?->getConfig()->getInt('sv_world_score_limit', $this->scoreLimit) ?? $this->scoreLimit,
+            timeLimit: $this->world?->getConfig()->getInt('sv_world_time_limit', $this->timeLimit) ?? $this->timeLimit,
+            roundNum: $world !== null && $world->getConfig()->getString('sv_world_map_rotation') !== '' ? $world->getConfig()->getInt('sv_world_rounds_per_map') : 0,
             roundCurrent: $this->roundCount + 1,
         );
 

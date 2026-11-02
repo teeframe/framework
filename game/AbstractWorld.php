@@ -18,13 +18,14 @@ use TeeFrame\Game\Commands\Chat\RulesCommand;
 use TeeFrame\Game\Commands\Chat\SettingsCommand;
 use TeeFrame\Game\Commands\Chat\WhisperCommand;
 use TeeFrame\Game\Commands\Server\AddMapVotesCommand;
+use TeeFrame\Game\Commands\Server\AddWorldCommand;
 use TeeFrame\Game\Commands\Server\BanCommand;
 use TeeFrame\Game\Commands\Server\BansCommand;
 use TeeFrame\Game\Commands\Server\BroadcastCommand;
-use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
-use TeeFrame\Game\Commands\Server\ChangeMapCommand;
 use TeeFrame\Game\Commands\Server\ClearVotesCommand;
+use TeeFrame\Game\Commands\Server\ConfigCommand;
 use TeeFrame\Game\Commands\Server\EchoCommand;
+use TeeFrame\Game\Commands\Server\ExecCommand;
 use TeeFrame\Game\Commands\Server\HelpCommand as ServerHelpCommand;
 use TeeFrame\Game\Commands\Server\KickCommand;
 use TeeFrame\Game\Commands\Server\KillPlayerCommand;
@@ -64,12 +65,16 @@ use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvBroadcastChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
+use TeeFrame\Network\Chunks\Game\SvMotdChunk;
 use TeeFrame\Network\Chunks\Game\SvSoundGlobalChunk;
 use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\SnapItems\AbstractPositionedSnapItem;
 use TeeFrame\Network\SnapItems\AbstractSnapItem;
 use TeeFrame\Network\SnapItems\ObjEventSpawnItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
+use TeeFrame\Server\Config\ConfigFile;
+use TeeFrame\Server\Config\WorldConfig;
 use TeeFrame\Server\Console;
 
 abstract class AbstractWorld implements SnapableObject, TickableObject
@@ -109,6 +114,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     protected AbstractGameController $gameController;
     protected VoteController $voteController;
     protected TuneController $tuneController;
+    protected Config $config;
 
     protected bool $paused         = false;
     protected bool $resetRequested = false;
@@ -122,7 +128,16 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         protected Map $map,
         protected AbstractServerInstance $server,
         protected int $slotsLimit,
+        string $configFile = '',
+        ?Config $config = null,
+        ?int $spectatorSlots = null,
     ) {
+        $this->config = $config?->withParent($server->getConfig()) ?? new Config(parent: $server->getConfig());
+
+        if ($configFile !== '') {
+            $this->config->loadFile($configFile, worldOnly: true);
+        }
+
         $this->snapIdPool           = new SnapIdPool;
         $this->clientMessageHandler = new ClientMessageHandler($this);
 
@@ -133,9 +148,25 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
         $this->bootGameController();
 
+        if ($this->config->has('sv_world_game_type')) {
+            $this->gameController->setGameMode($this->config->getString('sv_world_game_type'));
+        }
+
+        if ($this->config->has('sv_world_map') && $this->config->getString('sv_world_map') !== $this->map->getName()) {
+            $this->map = $this->loadMap($this->config->getString('sv_world_map'));
+        }
+
         $this->getGameController()->setWorld($this);
 
+        if ($spectatorSlots !== null) {
+            $this->gameController->setSpectatorSlots($spectatorSlots);
+        }
+
         $this->bootMap();
+
+        if ($this->config->has('sv_world_warmup') && $this->gameController instanceof PvpGameController) {
+            $this->gameController->setWarmup($this->config->getInt('sv_world_warmup'));
+        }
     }
 
     protected function bootMap(): void
@@ -152,7 +183,17 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     /** @return list<string> */
     public function getRules(): array
     {
-        return [];
+        $rules = [];
+
+        for ($line = 1; $line <= 10; $line++) {
+            $text = $this->config->getString('sv_world_rules_line'.$line);
+
+            if ($text !== '') {
+                $rules[] = $text;
+            }
+        }
+
+        return $rules;
     }
 
     abstract protected function createCharacterEntity(Vector2 $position): AbstractCharacterEntity;
@@ -172,8 +213,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->registerCommand(new EmoteCommand);
 
         // Server
-        $this->registerCommand(new ChangeMapCommand);
-        $this->registerCommand(new ChangeGameModeCommand);
         $this->registerCommand(new ReloadCommand);
         $this->registerCommand(new ServerHelpCommand);
         $this->registerCommand(new StatusCommand);
@@ -206,6 +245,93 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->registerCommand(new VotesCommand);
         $this->registerCommand(new AddMapVotesCommand);
         $this->registerCommand(new EchoCommand);
+        $this->registerCommand(new ExecCommand);
+        $this->registerCommand(new AddWorldCommand);
+
+        $configClass = $this->server->getConfig()::class;
+
+        foreach (array_keys($configClass::definitions()) as $name) {
+            $this->registerCommand(new ConfigCommand($name, $configClass));
+        }
+    }
+
+    public function getConfig(): Config
+    {
+        return $this->config;
+    }
+
+    public function setConfig(string $name, #[\SensitiveParameter] int|string $value): void
+    {
+        $name       = strtolower($name);
+        $definition = $this->server->getConfig()::definition($name);
+
+        if ($definition['scope'] === 'server') {
+            $this->server->setConfig($name, $value);
+
+            return;
+        }
+
+        $value = $this->server->getConfig()::validate($name, $value);
+
+        if ($name === 'sv_world_map') {
+            try {
+                $this->changeMap((string) $value);
+            } catch (\RuntimeException $exception) {
+                $this->consoleWarn('world', 'Map change failed: '.$exception->getMessage());
+                throw new \RuntimeException('Unable to change map to '.$value, previous: $exception);
+            }
+        } elseif ($name === 'sv_world_game_type') {
+            try {
+                $this->changeGameMode((string) $value);
+            } catch (\RuntimeException $exception) {
+                $this->consoleWarn('world', 'Gamemode change failed: '.$exception->getMessage());
+                throw new \RuntimeException('Unable to change gamemode to '.strtoupper((string) $value), previous: $exception);
+            }
+        } elseif ($name === 'sv_world_warmup') {
+            if (! $this->gameController instanceof PvpGameController) {
+                throw new \InvalidArgumentException('This controller does not support round warmup');
+            }
+
+            $this->gameController->setWarmup((int) $value);
+        }
+
+        $this->config->set($name, $value);
+
+        if ($name === 'sv_world_team_balance_time') {
+            $this->gameController->checkTeamBalance();
+        }
+
+        if ($name === 'sv_world_motd') {
+            $this->server->sendToWorld($this, new SvMotdChunk(str_replace('\\n', "\n", (string) $value)), includeReady: true);
+        }
+    }
+
+    public function getConfigValue(string $name): int|string
+    {
+        $name = strtolower($name);
+
+        if ($this->server->getConfig()::definition($name)['scope'] === 'server') {
+            return $this->server->getConfigValue($name);
+        }
+
+        $defaults = [
+            'sv_world_map'       => $this->map->getName(),
+            'sv_world_game_type' => strtolower($this->gameController->getGameType()),
+
+        ] + $this->gameController->getConfigDefaults();
+
+        return $this->config->get($name, $defaults[$name] ?? null);
+    }
+
+    public function loadConfig(string $path): void
+    {
+        foreach (ConfigFile::read($path, configClass: $this->server->getConfig()::class) as $entry) {
+            if ($entry instanceof WorldConfig) {
+                $this->server->addWorldFromConfig($entry);
+            } else {
+                $this->setConfig($entry['name'], $entry['value']);
+            }
+        }
     }
 
     public function registerCommand(AbstractCommand $command): void
@@ -267,28 +393,37 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $controller->setGameMode($gameMode);
         }
 
-        if ($mapName !== null && ($mapName === '' || $mapName === '.' || $mapName === '..' || strpbrk($mapName, "/\\\0") !== false)) {
-            throw new \RuntimeException('Invalid map name');
-        }
-
         // A mode-only change can reuse the map; a bare reload re-reads its file.
         if ($mapName !== null || $gameMode === null) {
-            if ($map->getPath() === '') {
-                throw new \RuntimeException('Current map has no source path');
-            }
-
-            $path = $mapName === null ? $map->getPath() : dirname($map->getPath()).'/'.$mapName.'.map';
-            $map  = new Map($path);
-
-            if ($map->getGameLayer() === null) {
-                throw new \UnexpectedValueException('Map has no game layer');
-            }
+            $map = $this->loadMap($mapName);
         }
 
         $this->pendingMap            = $map;
         $this->pendingGameController = $controller;
 
         $this->consoleDebug('world', 'Reload queued Map='.$map->getName().' Gametype='.($controller ?? $this->gameController)->getGameType());
+    }
+
+    protected function loadMap(?string $name): Map
+    {
+        if ($name !== null && ($name === '' || $name === '.' || $name === '..' || strpbrk($name, "/\\\0") !== false)) {
+            throw new \RuntimeException('Invalid map name');
+        }
+
+        $source = $this->pendingMap ?? $this->map;
+
+        if ($source->getPath() === '') {
+            throw new \RuntimeException('Current map has no source path');
+        }
+
+        $path = $name === null ? $source->getPath() : dirname($source->getPath()).'/'.$name.'.map';
+        $map  = new Map($path);
+
+        if ($map->getGameLayer() === null) {
+            throw new \UnexpectedValueException('Map has no game layer');
+        }
+
+        return $map;
     }
 
     protected function performReload(Map $map): void
@@ -316,12 +451,18 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->snapIdPool     = new SnapIdPool;
         $this->paused         = false;
         $this->resetRequested = false;
-        $this->map            = $map;
+
+        if ($this->map !== $map) {
+            $this->config->set('sv_world_map', $map->getName());
+        }
+
+        $this->map = $map;
 
         if ($this->pendingGameController !== null) {
             $this->gameController        = $this->pendingGameController;
             $this->pendingGameController = null;
             $this->gameController->setWorld($this);
+            $this->config->set('sv_world_game_type', strtolower($this->gameController->getGameType()));
         }
 
         $this->gameController->resetMap();
@@ -621,7 +762,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
             // Select the initial team before registration so capacity checks see a new player.
             $controller = $this->getGameController();
-            $tee->team  = $controller->clampTeam($controller->getAutoTeam($index));
+            $tee->team  = $this->config->getInt('sv_world_join_as_spectator')
+                ? GameConstants::TEAM_SPECTATORS
+                : $controller->clampTeam($controller->getAutoTeam($index));
         }
 
         $this->tees[$index] = $tee;
@@ -640,6 +783,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             );
 
             $this->broadcast($chunk);
+
+            $welcome = $this->config->getString('sv_world_welcome');
+
+            if ($welcome !== '') {
+                $this->server->sendToTee($this, $index, new SvChatChunk(team: 0, clientId: -1, text: $welcome));
+            }
         }
     }
 

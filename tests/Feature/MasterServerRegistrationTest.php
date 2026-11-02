@@ -13,6 +13,7 @@ use TeeFrame\Network\NetworkParams;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Master\MasterServerHttpClient;
@@ -82,7 +83,7 @@ class RegistrationTestServer extends AbstractServerInstance
     {
         $this->clock      = new RegistrationTestClock;
         $this->httpClient = new RegistrationTestHttpClient;
-        parent::__construct($this->clock, 'Public server', password: 'secret', registerOnMasterServer: $registerOnMasterServer);
+        parent::__construct($this->clock, new Config(['sv_name' => 'Public server', 'sv_password' => 'secret', 'sv_register_on_master_server' => (int) $registerOnMasterServer]));
     }
 
     public function addWorld(string $map = 'dm1', int $slotsLimit = 12, int $spectatorSlots = 0): AbstractWorld
@@ -120,8 +121,8 @@ class RegistrationTestServer extends AbstractServerInstance
         $this->masterServer?->update(
             $this->worlds,
             $this->connectionHandler->getConnections(),
-            $this->name,
-            $this->password !== '',
+            $this->getName(),
+            $this->getConfig()->getString('sv_password') !== '',
         );
     }
 
@@ -141,11 +142,6 @@ class RegistrationTestServer extends AbstractServerInstance
     }
 
     protected function boot(): void {}
-
-    protected function selectWorldForNewConnection(): AbstractWorld
-    {
-        return $this->worlds[0];
-    }
 }
 
 /** @return array{RegistrationTestClock, RegistrationTestHttpClient, MasterServerRegistration} */

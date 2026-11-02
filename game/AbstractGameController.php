@@ -64,9 +64,28 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         throw new \RuntimeException('Unsupported gamemode: '.$gameMode);
     }
 
+    /** @return array<string, int> */
+    public function getConfigDefaults(): array
+    {
+        return [
+            'sv_world_inactivity_timeout' => $this->inactiveKickTime,
+            'sv_world_inactivity_action'  => $this->inactiveKick,
+
+        ];
+    }
+
     public function getSpectatorSlots(): int
     {
-        return $this->spectatorSlots;
+        return $this->world === null ? $this->spectatorSlots : min($this->spectatorSlots, $this->world->getSlotsLimit());
+    }
+
+    public function setSpectatorSlots(int $slots): void
+    {
+        if ($slots < 0 || ($this->world !== null && $slots > $this->world->getSlotsLimit())) {
+            throw new \InvalidArgumentException('Spectator slots must be between zero and the world client limit');
+        }
+
+        $this->spectatorSlots = $slots;
     }
 
     public function bootMap(GameLayer $gameLayer): void
@@ -87,7 +106,9 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
 
     public function doTick(): void
     {
-        if ($this->inactiveKickTime > 0 && $this->world !== null && ! $this->world->isPaused()) {
+        $inactiveKickTime = $this->world?->getConfig()->getInt('sv_world_inactivity_timeout', $this->inactiveKickTime) ?? $this->inactiveKickTime;
+
+        if ($inactiveKickTime > 0 && $this->world !== null && ! $this->world->isPaused()) {
             $this->checkInactivePlayers();
         }
     }
@@ -157,7 +178,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             }
         }
 
-        return $numPlayers < $world->getSlotsLimit() - $this->spectatorSlots;
+        return $numPlayers < $world->getSlotsLimit() - $this->getSpectatorSlots();
     }
 
     public function checkTeamBalance(): bool
@@ -178,7 +199,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
             return;
         }
 
-        $threshold   = $this->inactiveKickTime * NetworkParams::TICKS_PER_SECOND * 60;
+        $threshold   = $world->getConfig()->getInt('sv_world_inactivity_timeout', $this->inactiveKickTime) * NetworkParams::TICKS_PER_SECOND * 60;
         $currentTick = $this->tickHandler->getCurrentTick();
 
         foreach ($world->getTees() as $tee) {
@@ -190,7 +211,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 continue;
             }
 
-            switch ($this->inactiveKick) {
+            switch ($world->getConfig()->getInt('sv_world_inactivity_action', $this->inactiveKick)) {
                 case self::INACTIVE_KICK_TO_SPECTATOR:
                     $tee->setTeam(GameConstants::TEAM_SPECTATORS);
                     break;
@@ -204,7 +225,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                         }
                     }
 
-                    if ($spectators >= $this->spectatorSlots) {
+                    if ($spectators >= $this->getSpectatorSlots()) {
                         $world->getServer()->kick($world, $tee->teeIndex, 'Kicked for inactivity');
                     } else {
                         $tee->setTeam(GameConstants::TEAM_SPECTATORS);

@@ -4,8 +4,7 @@ use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\CommandLine;
-use TeeFrame\Game\Commands\Server\ChangeGameModeCommand;
-use TeeFrame\Game\Commands\Server\ChangeMapCommand;
+use TeeFrame\Game\Commands\Server\ConfigCommand;
 use TeeFrame\Game\Commands\Server\ReloadCommand;
 use TeeFrame\Game\Entities\PickupEntity;
 use TeeFrame\Game\GameConstants;
@@ -18,10 +17,11 @@ use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\SnapItems\ObjEventSoundWorldItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 
 function createMapChangeWorld(TickHandler $tickHandler, ?Map $map = null): TestPvpWorldWithController
 {
-    $server = new class($tickHandler, name: 'Map change test') extends AbstractServerInstance
+    $server = new class($tickHandler, new Config(['sv_name' => 'Map change test'])) extends AbstractServerInstance
     {
         protected function boot(): void {}
 
@@ -55,9 +55,9 @@ test('map reload replaces entities spawns flags and round state while preserving
     $votes           = $world->getVoteController();
     $tuning          = $world->getTuneController();
     $tuning->gravity = 30;
-    $command         = new ChangeMapCommand;
-    $world->registerCommand($command);
-    $votes->addVoteOption('Change map to dm1', 'change_map dm1');
+    $command         = $world->findCommand('sv_world_map', AbstractCommand::TYPE_SERVER);
+    assert($command !== null);
+    $votes->addVoteOption('Change map to dm1', 'sv_world_map dm1');
     $oldMap      = $world->getMap();
     $oldEntities = $world->getEntities();
     $oldPool     = (new ReflectionClass($world))->getProperty('snapIdPool')->getValue($world);
@@ -252,9 +252,8 @@ test('map commands handle malformed map data without resetting the running world
         rmdir($directory);
     }
 })->with([
-    'map change'      => [new ChangeMapCommand, 'change_map current', 'Unable to change map to current'],
-    'gamemode change' => [new ChangeGameModeCommand, 'change_gamemode ctf current', 'Unable to change gamemode to CTF'],
-    'reload'          => [new ReloadCommand, 'reload', 'Unable to reload world'],
+    'map change' => [new ConfigCommand('sv_world_map'), 'sv_world_map current', 'Unable to change map to current'],
+    'reload'     => [new ReloadCommand, 'reload', 'Unable to reload world'],
 ]);
 
 test('reload commands report a missing map without resetting the running world', function () {

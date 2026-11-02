@@ -61,7 +61,7 @@ test('name uniqueness checks the bounded UTF-8 name including generated prefixes
     expect($third->name)->toBe('(2)'.str_repeat('é', 6));
 });
 
-test('setClientName sets the name when no collision', function () use ($mapPath, $mapExists) {
+test('setTeeName sets the name when no collision', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -70,12 +70,12 @@ test('setClientName sets the name when no collision', function () use ($mapPath,
     $world = createWorld($map);
 
     $tee = new PlayerTee;
-    $world->getServer()->setClientName($world, $tee, 'Alice');
+    $world->setTeeName($tee, 'Alice');
 
     expect($tee->name)->toBe('Alice');
 });
 
-test('setClientName trims whitespace from the name', function () use ($mapPath, $mapExists) {
+test('setTeeName trims whitespace from the name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -84,12 +84,12 @@ test('setClientName trims whitespace from the name', function () use ($mapPath, 
     $world = createWorld($map);
 
     $tee = new PlayerTee;
-    $world->getServer()->setClientName($world, $tee, '  Bob  ');
+    $world->setTeeName($tee, '  Bob  ');
 
     expect($tee->name)->toBe('Bob');
 });
 
-test('setClientName rejects empty name and keeps it empty', function () use ($mapPath, $mapExists) {
+test('setTeeName generates a fallback name for blank input', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -98,12 +98,12 @@ test('setClientName rejects empty name and keeps it empty', function () use ($ma
     $world = createWorld($map);
 
     $tee = new PlayerTee;
-    $world->getServer()->setClientName($world, $tee, '   ');
+    $world->setTeeName($tee, '   ');
 
     expect($tee->name)->toBe('(1)');
 });
 
-test('setClientName auto-renames on duplicate to (1)name', function () use ($mapPath, $mapExists) {
+test('setTeeName auto-renames on duplicate to (1)name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -112,17 +112,17 @@ test('setClientName auto-renames on duplicate to (1)name', function () use ($map
     $world = createWorld($map);
 
     $first = new PlayerTee;
-    $world->getServer()->setClientName($world, $first, 'Alice');
+    $world->setTeeName($first, 'Alice');
     $world->addTee($first);
 
     $second = new PlayerTee;
-    $world->getServer()->setClientName($world, $second, 'Alice');
+    $world->setTeeName($second, 'Alice');
 
     expect($first->name)->toBe('Alice');
     expect($second->name)->toBe('(1)Alice');
 });
 
-test('setClientName auto-renames with incrementing suffix for multiple duplicates', function () use ($mapPath, $mapExists) {
+test('setTeeName uses incrementing prefixes for multiple duplicates', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -131,22 +131,22 @@ test('setClientName auto-renames with incrementing suffix for multiple duplicate
     $world = createWorld($map);
 
     $first = new PlayerTee;
-    $world->getServer()->setClientName($world, $first, 'Alice');
+    $world->setTeeName($first, 'Alice');
     $world->addTee($first);
 
     $second = new PlayerTee;
-    $world->getServer()->setClientName($world, $second, 'Alice');
+    $world->setTeeName($second, 'Alice');
     $world->addTee($second);
 
     $third = new PlayerTee;
-    $world->getServer()->setClientName($world, $third, 'Alice');
+    $world->setTeeName($third, 'Alice');
 
     expect($first->name)->toBe('Alice');
     expect($second->name)->toBe('(1)Alice');
     expect($third->name)->toBe('(2)Alice');
 });
 
-test('setClientName does not rename when the tee keeps its own name', function () use ($mapPath, $mapExists) {
+test('setTeeName does not rename when the tee keeps its own name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -155,16 +155,16 @@ test('setClientName does not rename when the tee keeps its own name', function (
     $world = createWorld($map);
 
     $tee = new PlayerTee;
-    $world->getServer()->setClientName($world, $tee, 'Alice');
+    $world->setTeeName($tee, 'Alice');
     $world->addTee($tee);
 
     // Re-setting the same name on the same tee should not trigger auto-rename.
-    $world->getServer()->setClientName($world, $tee, 'Alice');
+    $world->setTeeName($tee, 'Alice');
 
     expect($tee->name)->toBe('Alice');
 });
 
-test('setClientName cleans control characters from the name', function () use ($mapPath, $mapExists) {
+test('setTeeName cleans control characters from the name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -174,12 +174,12 @@ test('setClientName cleans control characters from the name', function () use ($
 
     $tee = new PlayerTee;
     // \x01 is a control character (< 32), should be replaced with space, then trimmed.
-    $world->getServer()->setClientName($world, $tee, "\x01Alice\x01");
+    $world->setTeeName($tee, "\x01Alice\x01");
 
     expect($tee->name)->toBe('Alice');
 });
 
-test('trySetClientName returns false for empty name', function () use ($mapPath, $mapExists) {
+test('trySetTeeName returns false for empty name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -189,11 +189,11 @@ test('trySetClientName returns false for empty name', function () use ($mapPath,
 
     $tee = new PlayerTee;
 
-    expect($world->getServer()->trySetClientName($world, $tee, ''))->toBeFalse();
-    expect($world->getServer()->trySetClientName($world, $tee, '   '))->toBeFalse();
+    expect($world->trySetTeeName($tee, ''))->toBeFalse();
+    expect($world->trySetTeeName($tee, '   '))->toBeFalse();
 });
 
-test('trySetClientName returns false when name is taken by another tee', function () use ($mapPath, $mapExists) {
+test('trySetTeeName returns false when name is taken by another tee', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -202,15 +202,15 @@ test('trySetClientName returns false when name is taken by another tee', functio
     $world = createWorld($map);
 
     $first = new PlayerTee;
-    $world->getServer()->setClientName($world, $first, 'Alice');
+    $world->setTeeName($first, 'Alice');
     $world->addTee($first);
 
     $second = new PlayerTee;
 
-    expect($world->getServer()->trySetClientName($world, $second, 'Alice'))->toBeFalse();
+    expect($world->trySetTeeName($second, 'Alice'))->toBeFalse();
 });
 
-test('trySetClientName returns true when tee reclaims its own name', function () use ($mapPath, $mapExists) {
+test('trySetTeeName returns true when tee reclaims its own name', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -219,8 +219,8 @@ test('trySetClientName returns true when tee reclaims its own name', function ()
     $world = createWorld($map);
 
     $tee = new PlayerTee;
-    $world->getServer()->setClientName($world, $tee, 'Alice');
+    $world->setTeeName($tee, 'Alice');
     $world->addTee($tee);
 
-    expect($world->getServer()->trySetClientName($world, $tee, 'Alice'))->toBeTrue();
+    expect($world->trySetTeeName($tee, 'Alice'))->toBeTrue();
 });

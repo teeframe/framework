@@ -13,6 +13,7 @@ use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Network\SnapItems\ObjGameDataItem;
 use TeeFrame\Network\SnapItems\ObjGameInfoItem;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 
 class NeutralTestGameController extends AbstractGameController
 {
@@ -24,7 +25,7 @@ class NeutralTestGameController extends AbstractGameController
 
 function createNeutralControllerWorld(TickHandler $clock, int $slotsLimit = 64, int $spectatorSlots = 0, int $inactiveKickTime = 0): TestWorldWithController
 {
-    $server = new class($clock, name: 'Neutral controller test') extends AbstractServerInstance
+    $server = new class($clock, new Config(['sv_name' => 'Neutral controller test'])) extends AbstractServerInstance
     {
         protected function boot(): void {}
 

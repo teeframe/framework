@@ -9,6 +9,7 @@ use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\PacketDecoder;
 use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\ServerInfoPacketBuilder;
 use TeeFrame\Server\Sockets\AbstractSocket;
@@ -37,7 +38,7 @@ class ServerInfoTestServer extends AbstractServerInstance
 
     public function __construct(string $name = 'Test server', string $password = '')
     {
-        parent::__construct(new TickHandler, name: $name, password: $password);
+        parent::__construct(new TickHandler, new Config(['sv_name' => $name, 'sv_password' => $password]));
     }
 
     public function addWorld(string $map = 'dm1', bool $teams = false, bool $ctf = false, int $spectatorSlots = 0, int $slotsLimit = 64): AbstractWorld
@@ -83,7 +84,7 @@ class ServerInfoTestServer extends AbstractServerInstance
     {
         $this->worldSelections++;
 
-        return $this->worlds[0];
+        return parent::selectWorldForNewConnection();
     }
 }
 
@@ -508,7 +509,7 @@ test('browser info sends all 128 clients across worlds with complete continuatio
 });
 
 test('server info limits strings and prevents embedded nulls from adding fields', function () {
-    $server                  = new ServerInfoTestServer(name: str_repeat('N', 400));
+    $server                  = new ServerInfoTestServer;
     $world                   = $server->addWorld();
     $socket                  = new ServerInfoTestSocket;
     $slot                    = $server->addClient($world, $socket, 8300);
@@ -516,7 +517,8 @@ test('server info limits strings and prevents embedded nulls from adding fields'
     $slot->playerTee()->clan = str_repeat('C', 50);
     $socket->sent            = [];
 
-    $server->receive(serverInfoRequest(), $socket);
+    $packets = (new ServerInfoPacketBuilder)->build([$world], [$slot], str_repeat('N', 400), false, 42);
+    $socket->sendto('127.0.0.1', 8300, $packets[0]->encodeToSend());
 
     $fields = serverInfoFields($socket);
     expect($fields)->toHaveCount(19);

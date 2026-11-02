@@ -16,9 +16,12 @@ use TeeFrame\Network\Packets\ConnectionlessPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Server\Ban\BanList;
 use TeeFrame\Server\Chat\MuteList;
+use TeeFrame\Server\Config\Config;
+use TeeFrame\Server\Config\WorldConfig;
 use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Rcon\Rcon;
 use TeeFrame\Server\Sockets\AbstractSocket;
+use TeeFrame\Server\Sockets\UdpSocket;
 
 abstract class AbstractServerInstance
 {
@@ -41,31 +44,79 @@ abstract class AbstractServerInstance
     protected int|false $tickTimer = false;
     protected bool $shuttingDown   = false;
     protected int $startTime;
+    protected Config $config;
+    protected bool $started        = false;
+    protected bool $hadConnections = false;
+    protected int $infoReplyWindow = 0;
+    protected int $infoReplies     = 0;
 
     public function __construct(
         protected TickHandler $tickHandler,
-        protected string $name,
-        protected string $password = '',
-        protected int $kickBanDuration = 600,
-        protected bool $registerOnMasterServer = false,
-        #[\SensitiveParameter] string $rconPassword = '',
-        int $rconMaxTries = 10,
-        int $rconBanDuration = 300,
-        int $rconOutputLevel = Console::LEVEL_INFO,
-        string $logFile = '',
+        #[\SensitiveParameter] Config|string $config = new Config,
     ) {
-        Console::setLogFile($logFile === '' ? null : $logFile);
+        $this->config = is_string($config) ? Config::fromFile($config) : $config;
+
+        $logFile = $this->config->getString('sv_log_file');
+        Console::setLogFile($logFile === '' ? null : $logFile, $this->config->getInt('sv_log_file_output_level') + 2);
+
+        if ($this->config->has('sv_console_output_level')) {
+            Console::setOutputLevel($this->config->getInt('sv_console_output_level') + 2);
+        }
+
+        if ($this->config->has('sv_console_colors')) {
+            Console::setColors($this->config->getInt('sv_console_colors') ? null : false);
+        }
 
         $this->startTime         = $tickHandler->getTime();
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
         $this->banList           = new BanList;
         $this->chatMutes         = new MuteList;
-        $this->rcon              = new Rcon($this->connectionHandler, $this->banList, $rconPassword, $rconMaxTries, $rconBanDuration, $rconOutputLevel);
+        $this->rcon              = new Rcon(
+            $this->connectionHandler,
+            $this->banList,
+            $this->config->getString('sv_rcon_password'),
+            $this->config->getInt('sv_rcon_max_tries'),
+            $this->config->getInt('sv_rcon_ban_duration') * 60,
+            $this->config->getInt('sv_rcon_output_level') + 2,
+        );
     }
 
-    abstract protected function boot(): void;
+    protected function boot(): void
+    {
+        $this->sockets[] = new UdpSocket(
+            $this->config->getString('sv_bind_address'),
+            $this->config->getInt('sv_port'),
+        );
+    }
 
-    abstract protected function selectWorldForNewConnection(): AbstractWorld;
+    protected function selectWorldForNewConnection(): AbstractWorld
+    {
+        return array_first($this->worlds) ?? throw new \RuntimeException('No worlds are available for new connections');
+    }
+
+    protected function createWorld(WorldConfig $config): AbstractWorld
+    {
+        throw new \RuntimeException('Implement createWorld() to load worlds from configuration');
+    }
+
+    protected function bootConfiguredWorlds(): void
+    {
+        foreach ($this->config->getWorlds() as $config) {
+            $this->addWorldFromConfig($config);
+        }
+    }
+
+    public function addWorldFromConfig(WorldConfig $config): AbstractWorld
+    {
+        if (array_any($this->worlds, fn (AbstractWorld $world): bool => $world->identifier === $config->identifier)) {
+            throw new \InvalidArgumentException('World already exists: '.$config->identifier);
+        }
+
+        $world          = $this->createWorld($config);
+        $this->worlds[] = $world;
+
+        return $world;
+    }
 
     public function getUptime(): int
     {
@@ -74,7 +125,52 @@ abstract class AbstractServerInstance
 
     public function getName(): string
     {
-        return $this->name;
+        return $this->config->getString('sv_name');
+    }
+
+    public function getConfig(): Config
+    {
+        return $this->config;
+    }
+
+    public function getConfigValue(string $name): int|string
+    {
+        return $this->config->get($name);
+    }
+
+    public function setConfig(string $name, #[\SensitiveParameter] int|string $value): void
+    {
+        $name       = strtolower($name);
+        $definition = $this->config::definition($name);
+        $value      = $this->config::validate($name, $value);
+
+        if ($this->started && ($definition['restart'] ?? false)) {
+            throw new \InvalidArgumentException($name.' requires a server restart; set it in the startup config');
+        }
+
+        if ($definition['scope'] === 'world' && $this->started) {
+            throw new \InvalidArgumentException('Change world settings through the world, not the server');
+        }
+
+        if ($name === 'sv_rcon_password') {
+            $this->rcon->configureAuthentication(password: (string) $value);
+        } elseif ($name === 'sv_rcon_max_tries') {
+            $this->rcon->configureAuthentication(maxTries: (int) $value);
+        } elseif ($name === 'sv_rcon_ban_duration') {
+            $this->rcon->configureAuthentication(banDuration: (int) $value * 60);
+        } elseif ($name === 'sv_rcon_output_level') {
+            $this->rcon->setOutputLevel((int) $value + 2);
+        } elseif ($name === 'sv_console_output_level') {
+            Console::setOutputLevel((int) $value + 2);
+        } elseif ($name === 'sv_console_colors') {
+            Console::setColors($value ? null : false);
+        } elseif ($name === 'sv_log_file' || $name === 'sv_log_file_output_level') {
+            $path  = $name === 'sv_log_file' ? (string) $value : $this->config->getString('sv_log_file');
+            $level = $name === 'sv_log_file_output_level' ? (int) $value : $this->config->getInt('sv_log_file_output_level');
+            Console::setLogFile($path === '' ? null : $path, $level + 2);
+        }
+
+        $this->config->set($name, $value);
     }
 
     public function getChatMutes(): MuteList
@@ -131,9 +227,11 @@ abstract class AbstractServerInstance
 
     public function start(): void
     {
-        Console::info('server', 'Starting server "'.$this->name.'" ('.NetworkParams::TICKS_PER_SECOND.' ticks/s)');
+        Console::info('server', 'Starting server "'.$this->getName().'" ('.NetworkParams::TICKS_PER_SECOND.' ticks/s)');
 
         $this->boot();
+        $this->bootConfiguredWorlds();
+        $this->started = true;
 
         if (empty($this->worlds)) {
             throw new \RuntimeException('No worlds were booted');
@@ -205,7 +303,7 @@ abstract class AbstractServerInstance
 
         $this->shuttingDown = true;
         $this->stopTicking();
-        Console::info('server', 'Shutting down server "'.$this->name.'"');
+        Console::info('server', 'Shutting down server "'.$this->getName().'"');
         $this->rcon->update();
         $this->rcon->stop();
 
@@ -234,9 +332,10 @@ abstract class AbstractServerInstance
 
     protected function bootMasterServerRegistration(): void
     {
-        Console::info('register', 'Master server registration: '.($this->registerOnMasterServer ? 'enabled' : 'disabled'));
+        $enabled = (bool) $this->config->getInt('sv_register_on_master_server');
+        Console::info('register', 'Master server registration: '.($enabled ? 'enabled' : 'disabled'));
 
-        if (! $this->registerOnMasterServer) {
+        if (! $enabled) {
             return;
         }
 
@@ -259,6 +358,12 @@ abstract class AbstractServerInstance
         $this->connectionHandler->update();
         $this->rcon->update();
 
+        if ($this->hadConnections && $this->config->getInt('sv_shutdown_when_empty') && $this->getConnections() === []) {
+            $this->shutdown();
+
+            return;
+        }
+
         foreach ($this->worlds as $world) {
             $world->doTick();
         }
@@ -275,8 +380,8 @@ abstract class AbstractServerInstance
             $this->masterServer?->update(
                 $this->worlds,
                 $this->connectionHandler->getConnections(),
-                $this->name,
-                $this->password !== '',
+                $this->getName(),
+                $this->config->getString('sv_password') !== '',
             );
         }
     }
@@ -369,7 +474,7 @@ abstract class AbstractServerInstance
         $world->setTeeName($tee, $name);
     }
 
-    public function kick(AbstractWorld $world, int $teeIndex, string $reason): void
+    public function kick(AbstractWorld $world, int $teeIndex, string $reason, ?int $banDuration = null): void
     {
         $connection = $this->connectionHandler->findByTee($world, $teeIndex);
 
@@ -378,7 +483,11 @@ abstract class AbstractServerInstance
         }
 
         // Ban the address so they can't reconnect immediately.
-        $this->banList->ban($connection->destinationAddress, $this->kickBanDuration, $reason);
+        $banDuration ??= $this->config->getInt('sv_kick_ban_duration') * 60;
+
+        if ($banDuration > 0) {
+            $this->banList->ban($connection->destinationAddress, $banDuration, $reason);
+        }
         $connection->closeConnection($reason);
     }
 
@@ -399,7 +508,7 @@ abstract class AbstractServerInstance
 
         if ($connectionSlot = $this->connectionHandler->findByEndpoint($clientInfo)) {
             if ($connectionSlot->state !== ConnectionSlot::STATE_INGAME) {
-                $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet, $this->password);
+                $this->connectionHandler->handleConnectionHandshake($connectionSlot, $packet, $this->config->getString('sv_password'));
 
                 return;
             }
@@ -432,6 +541,17 @@ abstract class AbstractServerInstance
             return;
         }
 
+        $address = IpAddress::normalize($clientInfo['address']) ?? $clientInfo['address'];
+        $sameIp  = array_filter($this->getConnections(), fn (ConnectionSlot $slot): bool => (IpAddress::normalize($slot->destinationAddress) ?? $slot->destinationAddress) === $address);
+
+        $perIpLimit = $this->config->getInt('sv_max_clients_per_ip');
+
+        if ($perIpLimit > 0 && count($sameIp) >= $perIpLimit) {
+            $socket->sendto($clientInfo['address'], $clientInfo['port'], (new ControlMessage(NetworkMessages::CONTROL_CLOSE, 'Too many clients from this IP address'))->encodeToSend());
+
+            return;
+        }
+
         // New connection...
         $slotConnection = $this->connectionHandler->startNew($socket, $this->selectWorldForNewConnection());
 
@@ -451,6 +571,7 @@ abstract class AbstractServerInstance
         }
 
         $this->connectionHandler->startConnectionHandshake($slotConnection, $clientInfo['address'], $clientInfo['port']);
+        $this->hadConnections = true;
     }
 
     /**
@@ -466,6 +587,19 @@ abstract class AbstractServerInstance
             return;
         }
 
+        $now = $this->tickHandler->getTime();
+
+        if ($now - $this->infoReplyWindow >= 1_000_000_000) {
+            $this->infoReplyWindow = $now;
+            $this->infoReplies     = 0;
+        }
+
+        $limit = $this->config->getInt('sv_server_info_replies_per_second');
+
+        if ($limit > 0 && $this->infoReplies >= $limit) {
+            return;
+        }
+
         $connection = $this->connectionHandler->findByEndpoint($clientInfo);
         $worlds     = $connection && $connection->state !== ConnectionSlot::STATE_CLOSED
             ? [$connection->world()]
@@ -478,6 +612,11 @@ abstract class AbstractServerInstance
         $token = ord($data[strlen($header)]) | ($extraToken << 8);
 
         foreach ($this->buildServerInfoPackets($worlds, $token) as $reply) {
+            if ($limit > 0 && $this->infoReplies >= $limit) {
+                break;
+            }
+
+            $this->infoReplies++;
             $socket->sendto($clientInfo['address'], $clientInfo['port'], $reply->encodeToSend());
         }
 
@@ -519,8 +658,8 @@ abstract class AbstractServerInstance
         return (new ServerInfoPacketBuilder)->build(
             worlds: $worlds,
             connections: $this->connectionHandler->getConnections(),
-            name: $this->name,
-            passwordProtected: $this->password !== '',
+            name: $this->getName(),
+            passwordProtected: $this->config->getString('sv_password') !== '',
             token: $token,
         );
     }

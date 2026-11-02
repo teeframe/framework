@@ -3,7 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
-use TeeFrame\Game\Commands\Server\ChangeMapCommand;
+use TeeFrame\Game\Commands\Server\ConfigCommand;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -163,7 +163,7 @@ test('callVote option starts a vote and broadcasts SvVoteSet', function () use (
     $tee2->name = 'Observer';
     $world->addTee($tee2);
 
-    $world->getVoteController()->addVoteOption('Change map to dm1', 'change_map dm1');
+    $world->getVoteController()->addVoteOption('Change map to dm1', 'sv_world_map dm1');
 
     $world->onMessage($tee1, new ClCallVoteChunk(
         type: 'option',
@@ -521,7 +521,7 @@ test('vote option lookup is case insensitive', function () use ($mapPath, $mapEx
     $tee1->name = 'Caller';
     $world->addTee($tee1);
 
-    $world->getVoteController()->addVoteOption('Change Map', 'change_map');
+    $world->getVoteController()->addVoteOption('Change Map', 'sv_world_map');
 
     // Call with different case
     $world->onMessage($tee1, new ClCallVoteChunk('option', 'change map', ''));
@@ -697,16 +697,16 @@ test('spectate vote kills the target character when it passes', function () use 
     expect($tee2->character)->toBeNull();
 });
 
-test('ChangeMapCommand is a server command', function () {
-    $command = new ChangeMapCommand;
+test('the world map setting is a server command', function () {
+    $command = new ConfigCommand('sv_world_map');
 
     expect($command->getType())->toBe(AbstractCommand::TYPE_SERVER);
-    expect($command->getName())->toBe('change_map');
-    expect($command->getDescription())->toBe('Load another map and restart this world');
-    expect($command->getParams())->toBe('s[name] ?r[reason]');
+    expect($command->getName())->toBe('sv_world_map');
+    expect($command->getDescription())->toBe('Map name, relative to the current map directory');
+    expect($command->getParams())->toBe('?r[value]');
 });
 
-test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists) {
+test('the world map setting executes via vote', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {
         throw new RuntimeException('Required map fixture is missing');
     }
@@ -715,9 +715,7 @@ test('ChangeMapCommand executes via vote', function () use ($mapPath, $mapExists
     $tickHandler = new TickHandler(100);
     $world       = createVoteWorld($map, $tickHandler);
 
-    // Register the ChangeMapCommand as a vote command
-    $world->registerCommand(new ChangeMapCommand);
-    $world->getVoteController()->addVoteOption('Change map to dm1', 'change_map dm1');
+    $world->getVoteController()->addVoteOption('Change map to dm1', 'sv_world_map dm1');
 
     $tee1       = new PlayerTee;
     $tee1->name = 'Caller';

@@ -15,6 +15,8 @@ use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Network\Packets\DefaultPacket;
 use TeeFrame\Server\AbstractServerInstance;
+use TeeFrame\Server\Config\Config;
+use TeeFrame\Server\Config\WorldConfig;
 use TeeFrame\Server\ConnectionSlot;
 use TeeFrame\Server\Sockets\AbstractSocket;
 
@@ -113,17 +115,41 @@ class RconTestServer extends AbstractServerInstance
 
     public bool $shutdownRequested = false;
 
-    public function __construct(string $password = 'test-secret', int $maxTries = 3, int $banDuration = 300)
+    public function __construct(string $password = 'test-secret', int $maxTries = 3, int $banDuration = 300, string $configFile = '', ?TickHandler $clock = null, ?Config $config = null)
     {
-        parent::__construct(new TickHandler, 'RCON test', rconPassword: $password, rconMaxTries: $maxTries, rconBanDuration: $banDuration);
-        $this->entryWorld = $this->addWorld('dm');
+        $config ??= new Config([
+            'sv_name'              => 'RCON test',
+            'sv_rcon_password'     => $password,
+            'sv_rcon_max_tries'    => $maxTries,
+            'sv_rcon_ban_duration' => (int) floor($banDuration / 60),
+        ]);
+
+        if ($configFile !== '') {
+            $config->loadFile($configFile);
+        }
+
+        parent::__construct($clock ?? new TickHandler, $config);
+        $this->bootConfiguredWorlds();
+        $this->entryWorld = $this->worlds[0] ?? $this->addWorld('dm');
     }
 
     public function addWorld(string $identifier, string $map = 'dm1'): AbstractWorld
     {
-        $world             = new \TestWorldWithController($this->tickHandler, new Map(__DIR__.'/../'.$map.'.map'), new \TestGameController($this->tickHandler), $this);
-        $world->identifier = $identifier;
-        $this->worlds[]    = $world;
+        return $this->addWorldFromConfig(new WorldConfig($identifier, $map, 64, 0));
+    }
+
+    protected function createWorld(WorldConfig $config): AbstractWorld
+    {
+        $world = new \TestWorldWithController(
+            $this->tickHandler,
+            new Map(__DIR__.'/../'.$config->settings->getString('sv_world_map').'.map'),
+            new \TestGameController($this->tickHandler),
+            $this,
+            slotsLimit: $config->slotsLimit,
+            config: $config->settings,
+            spectatorSlots: $config->spectatorSlots,
+        );
+        $world->identifier = $config->identifier;
 
         return $world;
     }

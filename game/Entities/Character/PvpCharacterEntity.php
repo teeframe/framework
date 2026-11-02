@@ -330,7 +330,7 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         // hits deal no damage. Self-damage is allowed (handled below).
         $victimTeeIndex = $this->tee !== null ? $this->tee->teeIndex : -1;
 
-        if ($this->world->getGameController()->isFriendlyFire($victimTeeIndex, $attackerTeeIndex)) {
+        if (! $this->world->getConfig()->getInt('sv_world_team_damage') && $this->world->getGameController()->isFriendlyFire($victimTeeIndex, $attackerTeeIndex)) {
             return;
         }
 
