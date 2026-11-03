@@ -221,7 +221,7 @@ test('onMessage handles whisper command via ClSayChunk', function () use ($mapPa
 
     $world->onMessage($from, new ClSayChunk(team: false, text: '/w targetplayer secret'));
 
-    expect(recordingServer($world)->sentTeeIndexes)->toBe([1, 0]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });
 
 test('WhisperCommand finds target by name case-insensitively', function () use ($mapPath, $mapExists) {
@@ -247,7 +247,7 @@ test('WhisperCommand finds target by name case-insensitively', function () use (
     $command = new WhisperCommand;
     $command->execute($world, $from, ['targetplayer', 'secret']);
 
-    expect(recordingServer($world)->sentTeeIndexes)->toBe([1, 0]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([0, 1]);
 });
 
 test('whispers prefer an exact name even after multiple case-insensitive matches', function (string $targetName, bool $reverseOrder) {
@@ -270,7 +270,7 @@ test('whispers prefer an exact name even after multiple case-insensitive matches
 
     $world->onMessage($sender, new ClSayChunk(false, '/w '.$targetName.' secret'));
 
-    expect(recordingServer($world)->sentTeeIndexes)->toBe([$target->teeIndex, $sender->teeIndex]);
+    expect(recordingServer($world)->sentTeeIndexes)->toBe([$sender->teeIndex, $target->teeIndex]);
     foreach (recordingServer($world)->sentChunks as $chunk) {
         assert($chunk instanceof SvChatChunk);
         expect($chunk->text)->toBe('secret');
@@ -317,7 +317,7 @@ test('case-insensitive whisper fallback considers only players in the same world
 
     $world->onMessage($sender, new ClSayChunk(false, '/w ALICE secret'));
 
-    expect($server->sentTeeIndexes)->toBe([$target->teeIndex, $sender->teeIndex]);
+    expect($server->sentTeeIndexes)->toBe([$sender->teeIndex, $target->teeIndex]);
     foreach ($server->sentPairs as $pair) {
         expect($pair['world'])->toBe($world);
     }
