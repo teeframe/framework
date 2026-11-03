@@ -53,9 +53,15 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         return $this->world;
     }
 
-    abstract public function onWorldReady(): void;
+    public function onWorldReady(): void
+    {
+        // no-op by default
+    }
 
-    abstract public function onConfigChanged(string $name, int|string $value): void;
+    public function onConfigChanged(string $name, int|string $value): void
+    {
+        // no-op by default
+    }
 
     abstract public function getGameType(): string;
 
@@ -90,7 +96,10 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     }
 
     /** Runs after entity movement and before player respawns. */
-    public function doTickDeferred(): void {}
+    public function doTickDeferred(): void
+    {
+        // no-op by default
+    }
 
     public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
     {
@@ -125,7 +134,10 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     }
 
     /** Normal team changes call this after bookkeeping; silent transitions bypass gameplay policy. */
-    public function onTeamChanged(PlayerTee $tee, int $previousTeam): void {}
+    public function onTeamChanged(PlayerTee $tee, int $previousTeam): void
+    {
+        // no-op by default
+    }
 
     public function isVoteEligible(PlayerTee $tee): bool
     {

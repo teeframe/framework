@@ -14,9 +14,7 @@ class ImageItem extends AbstractMapItem
         public int $imageName,
         public int $imageData,
         public int $format = 1,
-    ) {
-        parent::__construct();
-    }
+    ) {}
 
     public static function make(int $id, int $size, string $data): static
     {

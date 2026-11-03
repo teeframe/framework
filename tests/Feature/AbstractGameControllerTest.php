@@ -17,10 +17,6 @@ use TeeFrame\Server\Config\Config;
 
 class NeutralTestGameController extends AbstractGameController
 {
-    public function onWorldReady(): void {}
-
-    public function onConfigChanged(string $name, int|string $value): void {}
-
     public function getGameType(): string
     {
         return 'Custom';
@@ -42,6 +38,22 @@ function createNeutralControllerWorld(TickHandler $clock, int $slotsLimit = 64, 
 
     return new TestWorldWithController($clock, new Map(__DIR__.'/../ctf1.map'), $controller, $server, $slotsLimit, spectatorSlots: $spectatorSlots);
 }
+
+test('a base controller supports world setup and config changes without callback overrides', function (string $name, int|string $value) {
+    $world      = createNeutralControllerWorld(new TickHandler(100));
+    $controller = $world->getGameController();
+    $map        = $world->getMap();
+
+    $world->setConfig($name, $value);
+
+    expect($world->getConfigValue($name))->toBe($value);
+    expect($world->getGameController())->toBe($controller);
+    expect($world->getMap())->toBe($map);
+    expect($controller->getGameType())->toBe('Custom');
+})->with([
+    'integer setting' => ['sv_world_inactivity_timeout', 2],
+    'string setting'  => ['sv_world_rules_line1', 'Play fair.'],
+]);
 
 test('a base controller boots a map with flag stands without creating flags or team snapshots', function () {
     $world      = createNeutralControllerWorld(new TickHandler(100));

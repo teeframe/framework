@@ -413,10 +413,6 @@ test('custom game controllers own team normalization and player-request admissio
     $clock      = new TickHandler(100);
     $controller = new class($clock) extends AbstractGameController
     {
-        public function onWorldReady(): void {}
-
-        public function onConfigChanged(string $name, int|string $value): void {}
-
         public function getGameType(): string
         {
             return 'Custom';
@@ -447,10 +443,6 @@ test('PvP balance settings leave an asymmetric custom controller policy untouche
     $controller = new class($clock) extends AbstractGameController
     {
         public int $balanceChecks = 0;
-
-        public function onWorldReady(): void {}
-
-        public function onConfigChanged(string $name, int|string $value): void {}
 
         public function getGameType(): string
         {

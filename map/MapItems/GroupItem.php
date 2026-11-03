@@ -22,9 +22,7 @@ class GroupItem extends AbstractMapItem
         public int $clipH = 0,
 
         public string $name = '',
-    ) {
-        parent::__construct();
-    }
+    ) {}
 
     public static function make(int $id, int $size, string $data): static
     {

@@ -39,7 +39,10 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
     abstract public function doTick(): void;
 
     /* Used for characters */
-    public function doTickDeferred(): void {}
+    public function doTickDeferred(): void
+    {
+        // no-op by default
+    }
 
     /** Transient entities are removed on round reset; persistent entities override this hook. */
     public function reset(): void
@@ -48,7 +51,10 @@ abstract class AbstractEntity implements SnapableObject, TickableObject
     }
 
     /** Called before a departing tee's index can be reused. */
-    public function onTeeLeave(int $teeIndex): void {}
+    public function onTeeLeave(int $teeIndex): void
+    {
+        // no-op by default
+    }
 
     /** A fixed protocol ID, or null to use IDs allocated from the world pool. */
     public function getFixedSnapId(): ?int

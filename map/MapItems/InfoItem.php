@@ -12,9 +12,7 @@ class InfoItem extends AbstractMapItem
         public int $version,
         public int $credits,
         public int $license,
-    ) {
-        parent::__construct();
-    }
+    ) {}
 
     public static function make(int $id, int $size, string $data): static
     {

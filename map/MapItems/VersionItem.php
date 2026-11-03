@@ -8,9 +8,7 @@ class VersionItem extends AbstractMapItem
 {
     public function __construct(
         public int $version,
-    ) {
-        parent::__construct();
-    }
+    ) {}
 
     public static function make(int $id, int $size, string $data): static
     {

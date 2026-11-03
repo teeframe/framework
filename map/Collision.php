@@ -19,8 +19,6 @@ class Collision
     protected int $width  = 0;
     protected int $height = 0;
 
-    public function __construct() {}
-
     public function init(GameLayer $gameLayer): void
     {
         $this->width  = $gameLayer->width;

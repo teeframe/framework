@@ -1,7 +1,7 @@
 {
     "name": "teeframe/framework",
     "type": "project",
-    "description": "The TeeFrame project.",
+    "description": "A Teeworlds game server engine made from scratch in PHP.",
     "license": "MIT",
     "minimum-stability": "stable",
     "autoload": {

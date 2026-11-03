@@ -41,9 +41,7 @@ class LayerItem extends AbstractMapItem
         public int $numQuads = 0,
         public int $quadData = -1,
         public int $quadImage = -1,
-    ) {
-        parent::__construct();
-    }
+    ) {}
 
     public static function make(int $id, int $size, string $data): static
     {

@@ -11,9 +11,7 @@ class EnvPointsItem extends AbstractMapItem
      */
     public function __construct(
         public array $points,
-    ) {
-        parent::__construct();
-    }
+    ) {}
 
     /**
      * @param  int  $numPoints  Total number of envelope points across all envelopes

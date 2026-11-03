@@ -13,9 +13,7 @@ class EnvelopeItem extends AbstractMapItem
         public int $numPoints,
         public string $name = '',
         public bool $synchronized = false,
-    ) {
-        parent::__construct();
-    }
+    ) {}
 
     public static function make(int $id, int $size, string $data): static
     {

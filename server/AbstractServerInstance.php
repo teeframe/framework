@@ -72,6 +72,7 @@ abstract class AbstractServerInstance
         $this->validateConfig($this->config);
 
         $logFile = $this->config->getString('sv_log_file');
+
         try {
             Console::setLogFile($logFile === '' ? null : $logFile, $this->config->getInt('sv_log_file_output_level') + 2);
         } catch (\RuntimeException) {
@@ -106,8 +107,13 @@ abstract class AbstractServerInstance
         );
     }
 
-    /** Register application settings before reading startup configuration. */
-    protected function bootConfig(): void {}
+    protected function bootConfig(): void
+    {
+        // no-op by default
+
+        // NOTE: This is where you can register custom config options
+        // before the config file is loaded.
+    }
 
     public function registerConfigOption(ConfigOption $option): void
     {
