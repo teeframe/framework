@@ -10,9 +10,10 @@ class ConfigFile
     /**
      * @param  list<string>  $including
      * @param  class-string<Config>  $configClass
+     * @param  list<string>  $loadedFiles
      * @return list<array{name: string, value: int|string}|WorldConfig|VoteOption>
      */
-    public static function read(string $path, array $including = [], bool $worldOnly = false, string $configClass = Config::class): array
+    public static function read(string $path, array $including = [], bool $worldOnly = false, string $configClass = Config::class, array &$loadedFiles = []): array
     {
         $resolved = realpath($path);
 
@@ -27,6 +28,7 @@ class ConfigFile
         $including[] = $resolved;
         $file        = new \SplFileObject($resolved, 'rb');
         $entries     = [];
+        $files       = [$resolved];
 
         for ($lineNumber = 0; ! $file->eof(); $lineNumber++) {
             $line = $file->fgets();
@@ -43,7 +45,7 @@ class ConfigFile
                     if ($name === 'exec') {
                         [$included]  = CommandLine::parseArguments($arguments, 's[file]');
                         $includePath = self::resolvePath($resolved, $included);
-                        $entries     = [...$entries, ...self::read($includePath, $including, $worldOnly, $configClass)];
+                        $entries     = [...$entries, ...self::read($includePath, $including, $worldOnly, $configClass, $files)];
 
                         continue;
                     }
@@ -65,6 +67,7 @@ class ConfigFile
 
                         if (isset($arguments[5])) {
                             $world->settings->loadFile(self::resolvePath($resolved, $arguments[5]), worldOnly: true, including: $including);
+                            $files = [...$files, ...$world->settings->getLoadedFiles()];
                         }
 
                         $entries[] = $world;
@@ -86,6 +89,8 @@ class ConfigFile
                 throw new \UnexpectedValueException($resolved.':'.($lineNumber + 1).': '.$exception->getMessage(), previous: $exception);
             }
         }
+
+        $loadedFiles = [...$loadedFiles, ...$files];
 
         return $entries;
     }

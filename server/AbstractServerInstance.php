@@ -74,6 +74,10 @@ abstract class AbstractServerInstance
             Console::setColors($this->config->getInt('sv_console_colors') ? null : false);
         }
 
+        foreach ($this->config->getLoadedFiles() as $path) {
+            Console::info('config', 'Loaded configuration file: '.$path);
+        }
+
         $this->startTime         = $tickHandler->getTime();
         $this->connectionHandler = new ConnectionHandler(tickHandler: $tickHandler);
 

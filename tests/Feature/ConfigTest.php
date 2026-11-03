@@ -107,6 +107,72 @@ test('cfg files preserve quoting escaping comments includes BOM and CRLF', funct
     });
 });
 
+test('configuration tracks resolved files including nested and world includes without duplicates', function () {
+    withConfigFiles([
+        'server.cfg' => "exec extra.cfg\nexec extra.cfg\nsv_world_add dm dm1 4 0 dm world.cfg",
+        'extra.cfg'  => 'sv_name Included',
+        'world.cfg'  => 'exec empty.cfg',
+        'empty.cfg'  => '',
+    ], function (string $directory): void {
+        $config = Config::fromFile($directory.'/./server.cfg');
+        $files  = array_map(fn (string $name): string => $directory.'/'.$name, ['server.cfg', 'extra.cfg', 'world.cfg', 'empty.cfg']);
+
+        expect($config->getLoadedFiles())->toBe($files);
+        expect($config->getWorlds()[0]->settings->getLoadedFiles())->toBe(array_slice($files, 2));
+        expect($config->withParent(new SkeletonConfigTestConfig)->getLoadedFiles())->toBe($files);
+
+        $config->loadFile($directory.'/extra.cfg');
+        expect($config->getLoadedFiles())->toBe($files);
+    });
+});
+
+test('failed configuration loads do not record files that were not applied', function (string $contents) {
+    withConfigFiles([
+        'original.cfg' => 'sv_name Original',
+        'invalid.cfg'  => "exec included.cfg\n".$contents,
+        'included.cfg' => 'sv_name Changed',
+    ], function (string $directory): void {
+        $config = Config::fromFile($directory.'/original.cfg');
+
+        expect(fn () => $config->loadFile($directory.'/invalid.cfg'))->toThrow(UnexpectedValueException::class);
+        expect($config->getLoadedFiles())->toBe([$directory.'/original.cfg']);
+        expect($config->getString('sv_name'))->toBe('Original');
+    });
+})->with([
+    'invalid setting' => 'sv_unknown_setting 1',
+    'duplicate world' => "sv_world_add dm dm1 4 0 dm\nsv_world_add dm dm1 4 0 dm",
+]);
+
+test('startup logs configuration files after applying logging settings without exposing values', function (bool $preloaded) {
+    withConfigFiles([
+        'server.cfg' => '',
+        'shared.cfg' => 'sv_rcon_password do-not-print-this',
+        'world.cfg'  => 'exec votes.cfg',
+        'votes.cfg'  => 'add_vote "Rules" "info"',
+        'server.log' => '',
+    ], function (string $directory) use ($preloaded): void {
+        file_put_contents($directory.'/server.cfg', "sv_console_output_level -3\nsv_console_colors 0\nsv_log_file \"".$directory."/server.log\"\nexec shared.cfg\nsv_world_add dm dm1 4 0 dm world.cfg");
+        ob_start();
+        try {
+            $config = $preloaded ? Config::fromFile($directory.'/server.cfg') : $directory.'/server.cfg';
+            new class(new TickHandler, $config) extends AbstractServerInstance {};
+
+            expect(ob_get_contents())->toBe('');
+            $log = (string) file_get_contents($directory.'/server.log');
+            foreach (['server.cfg', 'shared.cfg', 'world.cfg', 'votes.cfg'] as $name) {
+                expect($log)->toContain('[INFO] [config]: Loaded configuration file: '.$directory.'/'.$name.PHP_EOL);
+            }
+            expect(substr_count($log, '[INFO] [config]:'))->toBe(4);
+            expect($log)->not->toContain('do-not-print-this');
+        } finally {
+            ob_end_clean();
+            Console::setLogFile(null);
+            Console::setOutputLevel(Console::LEVEL_INFO);
+            Console::setColors(null);
+        }
+    });
+})->with([false, true]);
+
 test('invalid cfg files leave existing values intact and report a location without passwords', function () {
     withConfigFiles(['server.cfg' => "sv_name \"New name\"\nsv_rcon_password \"do-not-print-this\" trailing\n"], function (string $directory): void {
         $config = new Config;

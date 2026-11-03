@@ -84,6 +84,9 @@ class Config
     /** @var array<string, VoteOption> */
     protected array $voteOptions = [];
 
+    /** @var list<string> */
+    protected array $loadedFiles = [];
+
     /** @param array<string, int|string> $values */
     public function __construct(#[\SensitiveParameter] array $values = [], protected ?self $parent = null)
     {
@@ -110,11 +113,18 @@ class Config
             $config              = new $configClass($this->values);
             $config->worlds      = $this->worlds;
             $config->voteOptions = $this->voteOptions;
+            $config->loadedFiles = $this->loadedFiles;
         }
 
         $config->parent = $parent;
 
         return $config;
+    }
+
+    /** @return list<string> */
+    public function getLoadedFiles(): array
+    {
+        return $this->loadedFiles;
     }
 
     /** @return list<WorldConfig> */
@@ -258,8 +268,9 @@ class Config
         $values      = $this->values;
         $worlds      = $this->worlds;
         $voteOptions = $this->voteOptions;
+        $loadedFiles = [];
 
-        foreach (ConfigFile::read($path, $including, $worldOnly, static::class) as $entry) {
+        foreach (ConfigFile::read($path, $including, $worldOnly, static::class, $loadedFiles) as $entry) {
             if ($entry instanceof VoteOption) {
                 $voteOptions[strtolower($entry->description)] ??= $entry;
 
@@ -282,5 +293,6 @@ class Config
         $this->values      = $values;
         $this->worlds      = $worlds;
         $this->voteOptions = $voteOptions;
+        $this->loadedFiles = array_values(array_unique([...$this->loadedFiles, ...$loadedFiles]));
     }
 }
