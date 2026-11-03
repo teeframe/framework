@@ -22,9 +22,9 @@ class SnapSingleChunk extends AbstractChunk
         parent::__construct(flags: 0, message: NetworkMessages::SNAPSINGLE, isSystem: true);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static(
+        return new self(
             $payload->extractInt(),
             $payload->extractInt(),
             $payload->extractInt(),

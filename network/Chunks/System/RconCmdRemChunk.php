@@ -15,9 +15,9 @@ class RconCmdRemChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::RCON_CMD_REM, isSystem: true);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static($payload->extractString());
+        return new self($payload->extractString());
     }
 
     public function getPayload(): RawPayload

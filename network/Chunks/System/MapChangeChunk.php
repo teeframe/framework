@@ -14,9 +14,9 @@ class MapChangeChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::MAP_CHANGE, isSystem: true);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static($payload->extractString(), $payload->extractInt(), $payload->extractInt());
+        return new self($payload->extractString(), $payload->extractInt(), $payload->extractInt());
     }
 
     public function getPayload(): RawPayload

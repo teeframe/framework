@@ -1,5 +1,6 @@
 <?php
 
+use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\ClCallVoteChunk;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\System\InfoChunk;
@@ -22,6 +23,36 @@ function decoderValidationPacket(array $payload, int $numChunks = 1, bool $compr
         ...($compressed ? NetworkBase::compressHuffman($payload) : $payload),
     ]);
 }
+
+test('chunk factories construct their defining class regardless of subclass constructors', function (AbstractChunk $chunk) {
+    $decoded = $chunk::make($chunk->getPayload());
+
+    expect($decoded::class)->toBe(get_parent_class($chunk));
+    expect($decoded)->not->toBe($chunk);
+    expect($decoded->encode())->toBe($chunk->encode());
+})->with([
+    'game message' => fn () => new class('Team chat') extends ClSayChunk
+    {
+        public function __construct(string $text)
+        {
+            parent::__construct(true, $text);
+        }
+    },
+    'system message' => fn () => new class('test-password') extends InfoChunk
+    {
+        public function __construct(string $password)
+        {
+            parent::__construct('0.6', $password);
+        }
+    },
+    'empty message' => fn () => new class(1) extends ReadyChunk
+    {
+        public function __construct(public int $marker)
+        {
+            parent::__construct();
+        }
+    },
+]);
 
 test('malformed chunk boundaries reject the whole packet', function (array $payload) {
     expect(PacketDecoder::decodeFromRaw(decoderValidationPacket($payload)))->toBeFalse();

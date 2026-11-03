@@ -10,11 +10,11 @@ class VersionItem extends AbstractMapItem
         public int $version,
     ) {}
 
-    public static function make(int $id, int $size, string $data): static
+    public static function make(int $id, int $size, string $data): self
     {
         $reader = new MapBufferReader($data);
 
-        return new static(
+        return new self(
             $reader->readInt(),
         );
     }

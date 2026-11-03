@@ -17,9 +17,9 @@ class SvChatChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::SV_CHAT);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static(
+        return new self(
             $payload->extractInt(),
             $payload->extractInt(),
             $payload->extractString(),

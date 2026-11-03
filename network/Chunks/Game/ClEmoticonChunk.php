@@ -14,9 +14,9 @@ class ClEmoticonChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::CL_EMOTICON);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static($payload->extractInt());
+        return new self($payload->extractInt());
     }
 
     public function getPayload(): RawPayload

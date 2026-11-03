@@ -14,6 +14,7 @@ use TeeFrame\Map\MapItems\EnvelopeItem;
 use TeeFrame\Map\MapItems\GroupItem;
 use TeeFrame\Map\MapItems\ImageItem;
 use TeeFrame\Map\MapItems\InfoItem;
+use TeeFrame\Map\MapItems\LayerItem;
 use TeeFrame\Map\MapLayers\GameLayer;
 use TeeFrame\Map\MapLayers\TileLayer;
 use TeeFrame\Map\MapReader;
@@ -115,6 +116,26 @@ function mapRegressionLoad(string $bytes): Map
         unlink($path);
     }
 }
+
+test('map layer factories construct their defining class regardless of subclass constructors', function (array $integers, int $type, int $flags) {
+    $prototype = new class('Custom layer') extends LayerItem
+    {
+        public function __construct(public string $label)
+        {
+            parent::__construct(0, 0);
+        }
+    };
+    $data  = mapRegressionInts($integers);
+    $layer = $prototype::make(0, strlen($data), $data);
+
+    expect($layer::class)->toBe(LayerItem::class);
+    expect($layer->type)->toBe($type);
+    expect($layer->flags)->toBe($flags);
+})->with([
+    'unknown layer' => [[0, 0, 1], 0, 1],
+    'tilemap layer' => [[0, 2, 0, 2, 4, 3, 1, 255, 255, 255, 255, -1, 0, -1, 7], 2, 0],
+    'quad layer'    => [[0, 3, 1, 1, 2, 4, -1], 3, 1],
+]);
 
 test('failed map reads throw without warnings and restore the previous error handler', function () {
     $path = tempnam(sys_get_temp_dir(), 'teeframe-map-');

@@ -14,7 +14,7 @@ abstract class AbstractChunk
 
     abstract public function getPayload(): RawPayload;
 
-    abstract public static function make(RawPayload $payload): static;
+    abstract public static function make(RawPayload $payload): self;
 
     public function addResendFlag(): static
     {

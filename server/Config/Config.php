@@ -101,9 +101,10 @@ class Config
         }
     }
 
-    public static function fromFile(string $path): static
+    public static function fromFile(string $path): self
     {
-        $config = new static;
+        $config = new self;
+
         $config->loadFile($path);
 
         return $config;

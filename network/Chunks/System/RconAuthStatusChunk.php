@@ -14,9 +14,9 @@ class RconAuthStatusChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::RCON_AUTH_STATUS, isSystem: true);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static($payload->extractBool(), $payload->extractBool());
+        return new self($payload->extractBool(), $payload->extractBool());
     }
 
     public function getPayload(): RawPayload

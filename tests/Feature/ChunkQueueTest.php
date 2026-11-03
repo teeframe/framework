@@ -21,9 +21,9 @@ class QueueEncodingTestChunk extends AbstractChunk
         parent::__construct($vital ? NetworkBase::CHUNK_FLAG_VITAL : 0, NetworkMessages::CL_VOTE);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static;
+        return new self;
     }
 
     public function getPayload(): RawPayload

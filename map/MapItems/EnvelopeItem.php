@@ -15,7 +15,7 @@ class EnvelopeItem extends AbstractMapItem
         public bool $synchronized = false,
     ) {}
 
-    public static function make(int $id, int $size, string $data): static
+    public static function make(int $id, int $size, string $data): self
     {
         $reader = new MapBufferReader($data);
 
@@ -35,6 +35,6 @@ class EnvelopeItem extends AbstractMapItem
             $synchronized = $reader->readInt() !== 0;
         }
 
-        return new static($version, $channels, $startPoint, $numPoints, $name, $synchronized);
+        return new self($version, $channels, $startPoint, $numPoints, $name, $synchronized);
     }
 }

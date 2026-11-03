@@ -274,6 +274,56 @@ test('createLayer copies the schema but not explicit values parents worlds votes
     });
 });
 
+test('instance file loading preserves custom zero-argument configuration initialization', function () {
+    $config = new class extends RegistrationLegacyConfig
+    {
+        public bool $initialized = false;
+
+        public function __construct()
+        {
+            parent::__construct(['sv_name' => 'Constructed']);
+            $this->registerOption(new ConfigOption('constructor_option', 1, 'Constructor option'));
+            $this->initialized = true;
+        }
+    };
+
+    withRegistrationConfigFiles([
+        'server.cfg' => "constructor_option 9\nlegacy_option 8",
+    ], function (string $directory) use ($config): void {
+        $config->loadFile($directory.'/server.cfg');
+
+        expect($config)->toBeInstanceOf(RegistrationLegacyConfig::class);
+        expect($config->initialized)->toBeTrue();
+        expect($config->getString('sv_name'))->toBe('Constructed');
+        expect($config->getInt('constructor_option'))->toBe(9);
+        expect($config->getInt('legacy_option'))->toBe(8);
+    });
+});
+
+test('file factories return the base config regardless of subclass constructors', function () {
+    $config = new class('Custom config') extends RegistrationLegacyConfig
+    {
+        public function __construct(public string $label)
+        {
+            parent::__construct(['sv_name' => $label]);
+        }
+    };
+
+    withRegistrationConfigFiles(['server.cfg' => 'sv_world_chat_delay 2'], function (string $directory) use ($config): void {
+        $loaded = $config::fromFile($directory.'/server.cfg');
+
+        expect($loaded::class)->toBe(Config::class);
+        expect($loaded->getInt('sv_world_chat_delay'))->toBe(2);
+        expect($loaded->getString('sv_name'))->toBe('TeeFrame');
+
+        $config->loadFile($directory.'/server.cfg');
+
+        expect($config->getInt('sv_world_chat_delay'))->toBe(2);
+        expect($config->getString('sv_name'))->toBe('Custom config');
+        expect($config->label)->toBe('Custom config');
+    });
+});
+
 test('WorldConfig accepts registered schemas without copying server values and retains its legacy constructor', function () {
     $config = new Config;
     $config->registerOption(new ConfigOption('app_limit', 5, 'Application limit'));

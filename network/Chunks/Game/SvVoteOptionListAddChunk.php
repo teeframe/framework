@@ -25,7 +25,7 @@ class SvVoteOptionListAddChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::SV_VOTEOPTIONLISTADD);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
         $numOptions = $payload->extractInt();
 
@@ -35,7 +35,7 @@ class SvVoteOptionListAddChunk extends AbstractChunk
             $descriptions[] = $payload->extractString();
         }
 
-        return new static(array_slice($descriptions, 0, max(1, $numOptions)));
+        return new self(array_slice($descriptions, 0, max(1, $numOptions)));
     }
 
     public function getPayload(): RawPayload

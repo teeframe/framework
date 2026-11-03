@@ -80,7 +80,8 @@ if (! isset($argv[1])) {
     throw new InvalidArgumentException('Missing local master server URL');
 }
 
-$config = LocalRegistrationConfig::fromFile(__DIR__.'/registered-server.cfg');
+$config = new LocalRegistrationConfig;
+$config->loadFile(__DIR__.'/registered-server.cfg');
 $config->set('sv_bind_address', $_SERVER['argv'][3] ?? '127.0.0.1');
 
 (new RegisteredTestServer(new TickHandler, config: $config))->start();

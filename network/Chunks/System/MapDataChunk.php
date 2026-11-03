@@ -22,7 +22,7 @@ class MapDataChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::MAP_DATA, isSystem: true);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
         $last      = $payload->extractInt();
         $crc       = $payload->extractInt();
@@ -30,7 +30,7 @@ class MapDataChunk extends AbstractChunk
         $chunkSize = $payload->extractInt();
         $data      = $payload->extractBytes($chunkSize);
 
-        return new static($last, $crc, $chunk, $chunkSize, $data);
+        return new self($last, $crc, $chunk, $chunkSize, $data);
     }
 
     public function getPayload(): RawPayload

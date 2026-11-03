@@ -16,7 +16,7 @@ class EnvPointsItem extends AbstractMapItem
     /**
      * @param  int  $numPoints  Total number of envelope points across all envelopes
      */
-    public static function make(int $id, int $size, string $data, int $numPoints = 0): static
+    public static function make(int $id, int $size, string $data, int $numPoints = 0): self
     {
         $reader = new MapBufferReader($data);
         $points = [];
@@ -34,6 +34,6 @@ class EnvPointsItem extends AbstractMapItem
             ];
         }
 
-        return new static($points);
+        return new self($points);
     }
 }

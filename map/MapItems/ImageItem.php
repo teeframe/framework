@@ -16,7 +16,7 @@ class ImageItem extends AbstractMapItem
         public int $format = 1,
     ) {}
 
-    public static function make(int $id, int $size, string $data): static
+    public static function make(int $id, int $size, string $data): self
     {
         $reader = new MapBufferReader($data);
 
@@ -33,6 +33,6 @@ class ImageItem extends AbstractMapItem
             $format = $reader->readInt();
         }
 
-        return new static($version, $width, $height, $external, $imageName, $imageData, $format);
+        return new self($version, $width, $height, $external, $imageName, $imageData, $format);
     }
 }

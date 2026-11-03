@@ -14,9 +14,9 @@ class ClSetSpectatorModeChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::CL_SET_SPECTATOR_MODE);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static($payload->extractInt());
+        return new self($payload->extractInt());
     }
 
     public function getPayload(): RawPayload

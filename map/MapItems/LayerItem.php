@@ -43,7 +43,7 @@ class LayerItem extends AbstractMapItem
         public int $quadImage = -1,
     ) {}
 
-    public static function make(int $id, int $size, string $data): static
+    public static function make(int $id, int $size, string $data): self
     {
         $reader = new MapBufferReader($data);
 
@@ -59,10 +59,10 @@ class LayerItem extends AbstractMapItem
             return self::makeQuads($reader, $type, $flags);
         }
 
-        return new static($type, $flags);
+        return new self($type, $flags);
     }
 
-    protected static function makeTilemap(MapBufferReader $reader, int $type, int $flags): static
+    protected static function makeTilemap(MapBufferReader $reader, int $type, int $flags): self
     {
         $version   = $reader->readInt();
         $width     = $reader->readInt();
@@ -85,7 +85,7 @@ class LayerItem extends AbstractMapItem
             $name = GroupItem::readI32String($reader, 3);
         }
 
-        return new static(
+        return new self(
             type: $type,
             flags: $flags,
             version: $version,
@@ -104,7 +104,7 @@ class LayerItem extends AbstractMapItem
         );
     }
 
-    protected static function makeQuads(MapBufferReader $reader, int $type, int $flags): static
+    protected static function makeQuads(MapBufferReader $reader, int $type, int $flags): self
     {
         $version   = $reader->readInt();
         $numQuads  = $reader->readInt();
@@ -117,7 +117,7 @@ class LayerItem extends AbstractMapItem
             $name = GroupItem::readI32String($reader, 3);
         }
 
-        return new static(
+        return new self(
             type: $type,
             flags: $flags,
             version: $version,

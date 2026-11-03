@@ -15,9 +15,9 @@ class RconLineChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::RCON_LINE, isSystem: true);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static($payload->extractString());
+        return new self($payload->extractString());
     }
 
     public function getPayload(): RawPayload

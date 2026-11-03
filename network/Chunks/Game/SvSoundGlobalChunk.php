@@ -15,9 +15,9 @@ class SvSoundGlobalChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::SV_SOUNDGLOBAL);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static(
+        return new self(
             $payload->extractInt(),
         );
     }

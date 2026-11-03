@@ -785,7 +785,8 @@ test('skeleton configuration files and includes use their own definitions', func
         'server.cfg' => "app_option 12\nexec \"extra.cfg\"\nsv_world_add dm dm1 8 2 dm",
         'extra.cfg'  => 'app_label "Local setting"',
     ], function (string $directory): void {
-        $config = SkeletonConfigTestConfig::fromFile($directory.'/server.cfg');
+        $config = new SkeletonConfigTestConfig;
+        $config->loadFile($directory.'/server.cfg');
         expect($config)->toBeInstanceOf(SkeletonConfigTestConfig::class);
         expect($config->getInt('app_option'))->toBe(12);
         expect($config->getString('app_label'))->toBe('Local setting');
@@ -883,7 +884,8 @@ test('startup world declarations preserve custom schemas through nested world in
         'world.cfg'  => 'exec "extra.cfg"',
         'extra.cfg'  => 'app_world_option 16',
     ], function (string $directory): void {
-        $config = SkeletonConfigTestConfig::fromFile($directory.'/server.cfg');
+        $config = new SkeletonConfigTestConfig;
+        $config->loadFile($directory.'/server.cfg');
         expect($config->getWorlds()[0]->settings)->toBeInstanceOf(SkeletonConfigTestConfig::class);
         $server = new RconTestServer(config: $config);
         expect($server->entryWorld->getConfigValue('app_world_option'))->toBe(16);

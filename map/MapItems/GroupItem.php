@@ -24,7 +24,7 @@ class GroupItem extends AbstractMapItem
         public string $name = '',
     ) {}
 
-    public static function make(int $id, int $size, string $data): static
+    public static function make(int $id, int $size, string $data): self
     {
         $reader = new MapBufferReader($data);
 
@@ -53,7 +53,7 @@ class GroupItem extends AbstractMapItem
             $name = self::readI32String($reader, 3);
         }
 
-        return new static($version, $offsetX, $offsetY, $parallaxX, $parallaxY, $startLayer, $numLayers, $useClipping, $clipX, $clipY, $clipW, $clipH, $name);
+        return new self($version, $offsetX, $offsetY, $parallaxX, $parallaxY, $startLayer, $numLayers, $useClipping, $clipX, $clipY, $clipW, $clipH, $name);
     }
 
     public static function readI32String(MapBufferReader $reader, int $length): string

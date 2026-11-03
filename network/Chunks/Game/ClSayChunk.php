@@ -16,9 +16,9 @@ class ClSayChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::CL_SAY);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static(
+        return new self(
             $payload->extractBool(),
             $payload->extractString(),
         );

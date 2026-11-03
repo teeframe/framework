@@ -14,9 +14,9 @@ class EnterGameChunk extends AbstractChunk
         parent::__construct(flags: NetworkBase::CHUNK_FLAG_VITAL, message: NetworkMessages::ENTERGAME, isSystem: true);
     }
 
-    public static function make(RawPayload $payload): static
+    public static function make(RawPayload $payload): self
     {
-        return new static;
+        return new self;
     }
 
     public function getPayload(): RawPayload
