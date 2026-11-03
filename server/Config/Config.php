@@ -5,6 +5,7 @@ namespace TeeFrame\Server\Config;
 use TeeFrame\Core\Utf8;
 use TeeFrame\Game\Vote\VoteOption;
 use TeeFrame\Network\NetworkParams;
+use TeeFrame\Server\Console;
 
 /** @phpstan-type Definition array{default: int|string, description: string, scope: 'server'|'world', min?: int, max?: int, bytes?: int, restart?: bool, secret?: bool} */
 class Config
@@ -75,6 +76,9 @@ class Config
         'sv_world_pvp_team_balance_time'         => ['default' => 0, 'min' => 0, 'max' => 1000, 'scope' => 'world', 'description' => 'Minutes before automatically balancing teams (0 disables balancing)'],
     ];
 
+    /** @var array<string, Definition> */
+    protected array $schema;
+
     /** @var array<string, int|string> */
     protected array $values = [];
 
@@ -90,6 +94,8 @@ class Config
     /** @param array<string, int|string> $values */
     public function __construct(#[\SensitiveParameter] array $values = [], protected ?self $parent = null)
     {
+        $this->schema = static::DEFINITIONS;
+
         foreach ($values as $name => $value) {
             $this->set($name, $value);
         }
@@ -106,19 +112,77 @@ class Config
     public function withParent(self $parent): self
     {
         if (is_a($this, $parent::class)) {
-            $config = clone $this;
+            $config         = clone $this;
+            $config->schema = $this->getDefinitions() + $parent->getDefinitions();
         } else {
-            // Inherit the parent's schema, but keep only this layer's explicit settings.
-            $configClass         = $parent::class;
-            $config              = new $configClass($this->values);
+            // Inherit the parent's legacy subclass defaults without losing locally registered options.
+            $config = $parent->createLayer();
+            $config->schema += $this->getDefinitions();
             $config->worlds      = $this->worlds;
             $config->voteOptions = $this->voteOptions;
             $config->loadedFiles = $this->loadedFiles;
+
+            foreach ($this->values as $name => $value) {
+                $config->set($name, $value);
+            }
         }
 
         $config->parent = $parent;
 
         return $config;
+    }
+
+    public function createLayer(): static
+    {
+        $config              = clone $this;
+        $config->schema      = $this->getDefinitions();
+        $config->values      = [];
+        $config->worlds      = [];
+        $config->voteOptions = [];
+        $config->loadedFiles = [];
+        $config->parent      = null;
+
+        return $config;
+    }
+
+    public function registerOption(#[\SensitiveParameter] ConfigOption $option): void
+    {
+        $name = strtolower($option->name);
+
+        if (preg_match('/^[a-z_][a-z0-9_]*$/D', $name) !== 1) {
+            throw new \InvalidArgumentException('Configuration option names must be ASCII identifiers');
+        }
+
+        if (isset(self::DEFINITIONS[$name]) || isset($this->getDefinitions()[$name])) {
+            throw new \LogicException('Configuration option already defined: '.$name);
+        }
+
+        /** @var string $scope */
+        $scope = $option->scope;
+
+        if (! in_array($scope, ['server', 'world'], true)) {
+            throw new \InvalidArgumentException('Invalid configuration scope for '.$name);
+        }
+
+        if (trim($option->description) === '' || ! mb_check_encoding($option->description, 'UTF-8') || str_contains($option->description, "\0")) {
+            throw new \InvalidArgumentException('Expected a non-blank UTF-8 description without zero bytes for '.$name);
+        }
+
+        if (is_int($option->default)) {
+            if ($option->bytes !== null || ($option->min ?? 0) > ($option->max ?? PHP_INT_MAX)) {
+                throw new \InvalidArgumentException('Invalid integer constraints for '.$name);
+            }
+        } elseif ($option->min !== null || $option->max !== null || ($option->bytes !== null && $option->bytes < 0)) {
+            throw new \InvalidArgumentException('Invalid string constraints for '.$name);
+        }
+
+        $definition = $option->getDefinition();
+
+        if (self::validateDefinitionValue($name, $option->default, $definition) !== $option->default) {
+            throw new \InvalidArgumentException('Default value exceeds the byte limit for '.$name);
+        }
+
+        $this->schema[$name] = $definition;
     }
 
     /** @return list<string> */
@@ -168,6 +232,32 @@ class Config
         return $definition;
     }
 
+    /** @return array<string, Definition> */
+    public function getDefinitions(bool $activatePvpSettings = true): array
+    {
+        $definitions = $this->schema + ($this->parent?->getDefinitions() ?? []);
+
+        return $activatePvpSettings ? $definitions : array_filter(
+            $definitions,
+            fn (string $name): bool => ! str_starts_with($name, 'sv_world_pvp_'),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /** @return Definition */
+    public function getDefinition(string $name, bool $activatePvpSettings = true): array
+    {
+        $name       = strtolower($name);
+        $definition = $this->schema[$name] ?? $this->parent?->getDefinition($name)
+            ?? throw new \InvalidArgumentException('Unknown configuration variable: '.$name);
+
+        if (! $activatePvpSettings && str_starts_with($name, 'sv_world_pvp_')) {
+            throw new \InvalidArgumentException('PvP settings are disabled: '.$name);
+        }
+
+        return $definition;
+    }
+
     public function assertPvpSettingsEnabled(bool $activatePvpSettings): void
     {
         if ($activatePvpSettings) {
@@ -175,7 +265,7 @@ class Config
         }
 
         foreach (array_keys($this->values) as $name) {
-            static::definition($name, activatePvpSettings: false);
+            $this->getDefinition($name, activatePvpSettings: false);
         }
 
         $this->parent?->assertPvpSettingsEnabled(false);
@@ -215,11 +305,11 @@ class Config
         }
 
         // Inherit explicit values, but keep defaults from the nearest schema defining the setting.
-        if ($this->parent !== null && ($this->parent->has($name) || ! isset(static::DEFINITIONS[$name]))) {
+        if ($this->parent !== null && ($this->parent->has($name) || ! isset($this->schema[$name]))) {
             return $this->parent->get($name, $fallback);
         }
 
-        $definition = static::definition($name);
+        $definition = $this->getDefinition($name);
 
         return $fallback ?? $definition['default'];
     }
@@ -227,14 +317,22 @@ class Config
     public function set(string $name, #[\SensitiveParameter] int|string $value): void
     {
         $name                = strtolower($name);
-        $this->values[$name] = static::validate($name, $value);
+        $this->values[$name] = $this->validateValue($name, $value);
+    }
+
+    public function validateValue(string $name, #[\SensitiveParameter] int|string $value): int|string
+    {
+        return self::validateDefinitionValue(strtolower($name), $value, $this->getDefinition($name));
     }
 
     public static function validate(string $name, #[\SensitiveParameter] int|string $value): int|string
     {
-        $name       = strtolower($name);
-        $definition = static::definition($name);
+        return self::validateDefinitionValue(strtolower($name), $value, static::definition($name));
+    }
 
+    /** @param Definition $definition */
+    protected static function validateDefinitionValue(string $name, #[\SensitiveParameter] int|string $value, #[\SensitiveParameter] array $definition): int|string
+    {
         if (is_int($definition['default'])) {
             $integer = filter_var($value, FILTER_VALIDATE_INT);
 
@@ -263,14 +361,14 @@ class Config
     }
 
     /** @param list<string> $including */
-    public function loadFile(string $path, bool $worldOnly = false, array $including = []): void
+    public function loadFile(string $path, bool $worldOnly = false, array $including = [], bool $activatePvpSettings = true): void
     {
         $values      = $this->values;
         $worlds      = $this->worlds;
         $voteOptions = $this->voteOptions;
         $loadedFiles = [];
 
-        foreach (ConfigFile::read($path, $including, $worldOnly, static::class, $loadedFiles) as $entry) {
+        foreach (ConfigFile::read($path, $including, $worldOnly, static::class, $loadedFiles, config: $this, activatePvpSettings: $activatePvpSettings) as $entry) {
             if ($entry instanceof VoteOption) {
                 $voteOptions[strtolower($entry->description)] ??= $entry;
 
@@ -279,7 +377,9 @@ class Config
 
             if ($entry instanceof WorldConfig) {
                 if (isset($worlds[$entry->identifier])) {
-                    throw new \UnexpectedValueException('World already configured: '.$entry->identifier);
+                    Console::error('config', 'Cannot load configuration at '.$path.': duplicate world declaration');
+
+                    continue;
                 }
 
                 $worlds[$entry->identifier] = $entry;

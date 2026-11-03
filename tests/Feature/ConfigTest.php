@@ -1,6 +1,5 @@
 <?php
 
-use PHPUnit\Framework\Assert;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractGameController;
 use TeeFrame\Game\AbstractWorld;
@@ -85,6 +84,24 @@ function withConfigFiles(array $files, Closure $test): void
 }
 
 /** @return list<string> */
+function configFileErrors(Closure $load): array
+{
+    $errors   = [];
+    $listener = function (string $line) use (&$errors): void {
+        $errors[] = $line;
+    };
+    Console::listen($listener, Console::LEVEL_ERROR);
+
+    try {
+        $load();
+    } finally {
+        Console::unlisten($listener);
+    }
+
+    return $errors;
+}
+
+/** @return list<string> */
 function configRconLines(RconTestSocket $socket): array
 {
     return array_map(fn (RconLineChunk $chunk): string => $chunk->line, $socket->chunks(RconLineChunk::class));
@@ -126,7 +143,7 @@ test('configuration tracks resolved files including nested and world includes wi
     });
 });
 
-test('failed configuration loads do not record files that were not applied', function (string $contents) {
+test('partially valid configuration loads record files whose valid content was applied', function (string $contents) {
     withConfigFiles([
         'original.cfg' => 'sv_name Original',
         'invalid.cfg'  => "exec included.cfg\n".$contents,
@@ -134,9 +151,11 @@ test('failed configuration loads do not record files that were not applied', fun
     ], function (string $directory): void {
         $config = Config::fromFile($directory.'/original.cfg');
 
-        expect(fn () => $config->loadFile($directory.'/invalid.cfg'))->toThrow(UnexpectedValueException::class);
-        expect($config->getLoadedFiles())->toBe([$directory.'/original.cfg']);
-        expect($config->getString('sv_name'))->toBe('Original');
+        $errors = configFileErrors(fn () => $config->loadFile($directory.'/invalid.cfg'));
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('[ERROR] [config]:');
+        expect($config->getLoadedFiles())->toBe([$directory.'/original.cfg', $directory.'/invalid.cfg', $directory.'/included.cfg']);
+        expect($config->getString('sv_name'))->toBe('Changed');
     });
 })->with([
     'invalid setting' => 'sv_unknown_setting 1',
@@ -173,41 +192,47 @@ test('startup logs configuration files after applying logging settings without e
     });
 })->with([false, true]);
 
-test('invalid cfg files leave existing values intact and report a location without passwords', function () {
+test('invalid cfg entries preserve valid prefix settings and report a location without passwords', function () {
     withConfigFiles(['server.cfg' => "sv_name \"New name\"\nsv_rcon_password \"do-not-print-this\" trailing\n"], function (string $directory): void {
         $config = new Config;
         $config->set('sv_name', 'Original');
 
-        try {
-            $config->loadFile($directory.'/server.cfg');
-            Assert::fail('Expected invalid configuration to be rejected');
-        } catch (UnexpectedValueException $exception) {
-            expect($exception->getMessage())->toContain('server.cfg:2:');
-            expect($exception->getMessage())->not->toContain('do-not-print-this');
-        }
+        $errors = configFileErrors(fn () => $config->loadFile($directory.'/server.cfg'));
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('[ERROR] [config]: Cannot load', 'server.cfg:2:');
+        expect($errors[0])->not->toContain('do-not-print-this');
 
-        expect($config->getString('sv_name'))->toBe('Original');
+        expect($config->getString('sv_name'))->toBe('New name');
         expect($config->has('sv_rcon_password'))->toBeFalse();
     });
 });
 
-test('cfg includes reject cycles and missing files', function () {
+test('cfg includes log and skip cycles and missing files', function () {
     withConfigFiles([
         'first.cfg'   => 'exec "second.cfg"',
         'second.cfg'  => 'exec "first.cfg"',
         'missing.cfg' => 'exec "not-found.cfg"',
     ], function (string $directory): void {
-        expect(fn () => ConfigFile::read($directory.'/first.cfg'))->toThrow(UnexpectedValueException::class, 'Recursive configuration include');
-        expect(fn () => ConfigFile::read($directory.'/missing.cfg'))->toThrow(UnexpectedValueException::class, 'Cannot read configuration file');
-        expect(fn () => ConfigFile::read($directory.'/absent.cfg'))->toThrow(RuntimeException::class);
+        $errors = configFileErrors(function () use ($directory): void {
+            expect(ConfigFile::read($directory.'/first.cfg'))->toBeEmpty();
+            expect(ConfigFile::read($directory.'/missing.cfg'))->toBeEmpty();
+            expect(ConfigFile::read($directory.'/absent.cfg'))->toBeEmpty();
+        });
+        expect($errors)->toHaveCount(3);
+        expect($errors[0])->toContain('second.cfg:1:', 'recursive configuration include');
+        expect($errors[1])->toContain('missing.cfg:1:', 'missing or unreadable');
+        expect($errors[2])->toBe('[ERROR] [config]: Cannot load configuration file "'.$directory.'/absent.cfg": file is missing or unreadable');
     });
 });
 
-test('world configs reject server settings without applying preceding values', function () {
+test('world configs skip server settings while applying preceding world values', function () {
     withConfigFiles(['world.cfg' => "sv_world_pvp_score_limit 10\nsv_name \"Not world scoped\""], function (string $directory): void {
         $config = new Config;
-        expect(fn () => $config->loadFile($directory.'/world.cfg', worldOnly: true))->toThrow(UnexpectedValueException::class);
-        expect($config->has('sv_world_pvp_score_limit'))->toBeFalse();
+        $errors = configFileErrors(fn () => $config->loadFile($directory.'/world.cfg', worldOnly: true));
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('world.cfg:2:', 'server settings cannot be changed in a world config');
+        expect($config->getInt('sv_world_pvp_score_limit'))->toBe(10);
+        expect($config->has('sv_name'))->toBeFalse();
     });
 });
 
@@ -233,7 +258,11 @@ test('unknown configuration settings are rejected', function () {
     expect(fn () => (new Config)->set('sv_unknown_setting', 1))->toThrow(InvalidArgumentException::class, 'Unknown configuration variable');
 
     withConfigFiles(['server.cfg' => 'sv_unknown_setting 1'], function (string $directory): void {
-        expect(fn () => Config::fromFile($directory.'/server.cfg'))->toThrow(UnexpectedValueException::class, 'Unknown configuration variable');
+        $errors = configFileErrors(function () use ($directory): void {
+            expect(Config::fromFile($directory.'/server.cfg')->has('sv_unknown_setting'))->toBeFalse();
+        });
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('server.cfg:1:', 'unknown or unavailable configuration setting');
     });
 });
 
@@ -343,18 +372,22 @@ test('world vote files override shared defaults without sharing live menus betwe
     });
 });
 
-test('invalid vote declarations report their config line and preserve existing settings and votes', function (string $line) {
+test('invalid vote declarations report their config line and preserve valid settings and votes', function (string $line) {
     withConfigFiles([
         'server.cfg'  => "sv_name Original\nadd_vote Existing \"echo existing\"\n",
         'invalid.cfg' => "sv_name Changed\nadd_vote New reload\n".$line,
     ], function (string $directory): void {
         $config = Config::fromFile($directory.'/server.cfg');
-        expect(fn () => $config->loadFile($directory.'/invalid.cfg'))->toThrow(UnexpectedValueException::class, 'invalid.cfg:3:');
-        expect($config->getString('sv_name'))->toBe('Original');
+        $errors = configFileErrors(fn () => $config->loadFile($directory.'/invalid.cfg'));
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('invalid.cfg:3:');
+        expect($config->getString('sv_name'))->toBe('Changed');
         $options = $config->getVoteOptions();
-        expect($options)->toHaveCount(1);
+        expect($options)->toHaveCount(2);
         expect($options[0]->description)->toBe('Existing');
         expect($options[0]->command)->toBe('echo existing');
+        expect($options[1]->description)->toBe('New');
+        expect($options[1]->command)->toBe('reload');
     });
 })->with([
     'missing arguments' => 'add_vote',
@@ -393,12 +426,13 @@ test('runtime config votes require registered server commands before updating th
         $server = new RconTestServer;
         $admin  = $server->addClient();
         $server->send($admin, new RconAuthChunk('', 'test-secret', false));
-        $server->send($admin, new RconCmdChunk('exec "'.$directory.'/votes.cfg"'));
+        $errors = configFileErrors(fn () => $server->send($admin, new RconCmdChunk('exec "'.$directory.'/votes.cfg"')));
 
-        expect(configRconLines($server->socket($admin)))->toContain('Vote options must use registered server commands');
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('[ERROR] [config]:', 'Cannot load configuration vote declaration');
         expect($server->entryWorld->getVoteController()->getVoteOptions())->toBeEmpty();
         expect($server->socket($admin)->chunks(SvVoteOptionAddChunk::class))->toBeEmpty();
-        expect($server->getName())->toBe('RCON test');
+        expect($server->getName())->toBe('Changed');
     });
 });
 
@@ -545,25 +579,37 @@ test('world declarations reject invalid limits identifiers and map names', funct
     ['dm', '../dm1', 4, 0], ['dm', '', 4, 0], ['dm', '..', 4, 0],
 ]);
 
-test('world configuration includes retain their scope and detect recursion', function (string $contents, string $error) {
+test('world configuration includes log scope violations and recursion without discarding the world', function (string $contents, string $error) {
     withConfigFiles([
         'server.cfg' => 'sv_world_add dm dm1 4 1 dm "world.cfg"',
         'world.cfg'  => $contents,
     ], function (string $directory) use ($error): void {
-        expect(fn () => Config::fromFile($directory.'/server.cfg'))->toThrow(UnexpectedValueException::class, $error);
+        $errors = configFileErrors(function () use ($directory): void {
+            $config = Config::fromFile($directory.'/server.cfg');
+            expect($config->getWorlds())->toHaveCount(1);
+            expect($config->getWorlds()[0]->identifier)->toBe('dm');
+            expect($config->getWorlds()[0]->settings->has('sv_name'))->toBeFalse();
+            expect($config->getWorlds()[0]->settings->getWorlds())->toBeEmpty();
+        });
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('world.cfg:1:', $error);
     });
 })->with([
-    ['sv_name "Not world scoped"', 'Server setting cannot be changed in a world config'],
-    ['sv_world_add nested dm1 4 0 dm', 'World configs cannot add other worlds'],
-    ['exec "server.cfg"', 'Recursive configuration include'],
+    ['sv_name "Not world scoped"', 'server settings cannot be changed in a world config'],
+    ['sv_world_add nested dm1 4 0 dm', 'world configs cannot add other worlds'],
+    ['exec "server.cfg"', 'recursive configuration include'],
 ]);
 
-test('duplicate world declarations leave the previous configuration intact', function () {
+test('duplicate world declarations are skipped while valid settings and the first world are applied', function () {
     withConfigFiles(['server.cfg' => "sv_name Changed\nsv_world_add dm dm1 4 0 dm\nsv_world_add dm ctf1 8 2 ctf"], function (string $directory): void {
         $config = new Config(['sv_name' => 'Original']);
-        expect(fn () => $config->loadFile($directory.'/server.cfg'))->toThrow(UnexpectedValueException::class, 'World already configured');
-        expect($config->getString('sv_name'))->toBe('Original');
-        expect($config->getWorlds())->toBeEmpty();
+        $errors = configFileErrors(fn () => $config->loadFile($directory.'/server.cfg'));
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('[ERROR] [config]: Cannot load', 'duplicate world declaration');
+        expect($config->getString('sv_name'))->toBe('Changed');
+        expect($config->getWorlds())->toHaveCount(1);
+        expect($config->getWorlds()[0]->settings->getString('sv_world_map'))->toBe('dm1');
+        expect($config->getWorlds()[0]->slotsLimit)->toBe(4);
     });
 });
 
@@ -744,7 +790,15 @@ test('skeleton configuration files and includes use their own definitions', func
         expect($config->getInt('app_option'))->toBe(12);
         expect($config->getString('app_label'))->toBe('Local setting');
         expect($config->getWorlds())->toHaveCount(1);
-        expect(fn () => Config::fromFile($directory.'/server.cfg'))->toThrow(UnexpectedValueException::class, 'Unknown configuration variable');
+        $errors = configFileErrors(function () use ($directory): void {
+            $base = Config::fromFile($directory.'/server.cfg');
+            expect($base->has('app_option'))->toBeFalse();
+            expect($base->has('app_label'))->toBeFalse();
+            expect($base->getWorlds())->toHaveCount(1);
+        });
+        expect($errors)->toHaveCount(2);
+        expect($errors[0])->toContain('server.cfg:1:', 'unknown or unavailable configuration setting');
+        expect($errors[1])->toContain('extra.cfg:1:', 'unknown or unavailable configuration setting');
     });
 });
 
@@ -1013,9 +1067,9 @@ test('disabled PvP settings cannot be queried or changed through server and worl
 
 test('startup configuration enforces PvP activation for server includes world files and preloaded objects', function (bool $activated, bool $worldFile, bool $preloaded) {
     withConfigFiles([
-        'server.cfg' => $worldFile ? 'sv_world_add arena dm1 8 0 dm "world.cfg"' : 'exec "pvp.cfg"',
+        'server.cfg' => ($worldFile ? 'sv_world_add arena dm1 8 0 dm "world.cfg"' : 'exec "pvp.cfg"').'; sv_name Applied',
         'world.cfg'  => 'exec "pvp.cfg"',
-        'pvp.cfg'    => 'sv_world_pvp_score_limit 12',
+        'pvp.cfg'    => 'sv_world_pvp_score_limit 12; sv_world_motd Applied',
     ], function (string $directory) use ($activated, $worldFile, $preloaded): void {
         $config = $preloaded ? Config::fromFile($directory.'/server.cfg') : $directory.'/server.cfg';
         $create = fn () => new class(new TickHandler, $config, $activated) extends AbstractServerInstance
@@ -1023,19 +1077,28 @@ test('startup configuration enforces PvP activation for server includes world fi
             protected function boot(): void {}
         };
 
-        if (! $activated) {
+        if (! $activated && $preloaded) {
             expect($create)->toThrow(InvalidArgumentException::class, 'PvP settings are disabled');
 
             return;
         }
 
-        $server   = $create();
-        $settings = $worldFile ? $server->getConfig()->getWorlds()[0]->settings : $server->getConfig();
-        expect($settings->getInt('sv_world_pvp_score_limit'))->toBe(12);
+        $errors = configFileErrors(function () use ($create, $worldFile, $activated): void {
+            $server   = $create();
+            $settings = $worldFile ? $server->getConfig()->getWorlds()[0]->settings : $server->getConfig();
+            expect($settings->getInt('sv_world_pvp_score_limit'))->toBe($activated ? 12 : 0);
+            expect($settings->has('sv_world_pvp_score_limit'))->toBe($activated);
+            expect($settings->getString('sv_world_motd'))->toBe('Applied');
+            expect($server->getName())->toBe('Applied');
+        });
+        expect($errors)->toHaveCount($activated ? 0 : 1);
+        if (! $activated) {
+            expect($errors[0])->toContain('[ERROR] [config]: Cannot load', 'pvp.cfg:1:', 'unknown or unavailable configuration setting');
+        }
     });
 })->with([false, true])->with(['server include' => false, 'world file' => true])->with(['file path' => false, 'preloaded object' => true]);
 
-test('disabled PvP settings reject direct world overrides before adding a world', function () {
+test('disabled PvP settings reject direct world overrides but skip unavailable file settings', function () {
     $clock  = new TickHandler(100);
     $server = new RconTestServer(clock: $clock, activatePvpSettings: false);
     $config = new WorldConfig('arena', 'dm1', 8, 0);
@@ -1046,9 +1109,16 @@ test('disabled PvP settings reject direct world overrides before adding a world'
     expect(fn () => new TestWorldWithController($clock, new Map, new PvpGameController($clock), $server, config: $config->settings))
         ->toThrow(InvalidArgumentException::class, 'PvP settings are disabled');
 
-    withConfigFiles(['world.cfg' => 'sv_world_pvp_score_limit 12'], function (string $directory) use ($clock, $server): void {
-        expect(fn () => new TestWorldWithController($clock, new Map, new PvpGameController($clock), $server, configFile: $directory.'/world.cfg'))
-            ->toThrow(InvalidArgumentException::class, 'PvP settings are disabled');
+    withConfigFiles(['world.cfg' => "sv_world_pvp_score_limit 12; sv_world_motd Applied\nsv_world_welcome Welcome"], function (string $directory) use ($clock, $server): void {
+        $errors = configFileErrors(function () use ($directory, $clock, $server): void {
+            $world = new TestWorldWithController($clock, new Map, new PvpGameController($clock), $server, configFile: $directory.'/world.cfg');
+            expect($world->getConfig()->has('sv_world_pvp_score_limit'))->toBeFalse();
+            expect($world->getConfigValue('sv_world_motd'))->toBe('Applied');
+            expect($world->getConfigValue('sv_world_welcome'))->toBe('Welcome');
+            expect(fn () => $world->getConfigValue('sv_world_pvp_score_limit'))->toThrow(InvalidArgumentException::class, 'PvP settings are disabled');
+        });
+        expect($errors)->toHaveCount(1);
+        expect($errors[0])->toContain('[ERROR] [config]: Cannot load', 'world.cfg:1:', 'unknown or unavailable configuration setting');
     });
 });
 
@@ -1060,12 +1130,14 @@ test('runtime RCON and exec apply PvP settings only when activated', function (b
         $server->send($admin, new RconCmdChunk('sv_world_pvp_score_limit 8'));
         expect($server->entryWorld->getConfig()->getInt('sv_world_pvp_score_limit'))->toBe($activated ? 8 : 0);
 
-        $server->send($admin, new RconCmdChunk('exec "'.$directory.'/runtime.cfg"'));
+        $errors = configFileErrors(fn () => $server->send($admin, new RconCmdChunk('exec "'.$directory.'/runtime.cfg"')));
         expect($server->entryWorld->getConfig()->getInt('sv_world_pvp_score_limit'))->toBe($activated ? 12 : 0);
-        expect($server->getName())->toBe($activated ? 'Applied' : 'RCON test');
+        expect($server->getName())->toBe('Applied');
+        expect($errors)->toHaveCount($activated ? 0 : 1);
 
         if (! $activated) {
-            expect(configRconLines($server->socket($admin)))->toContain('Unknown command: sv_world_pvp_score_limit', 'PvP settings are disabled: sv_world_pvp_score_limit');
+            expect(configRconLines($server->socket($admin)))->toContain('Unknown command: sv_world_pvp_score_limit');
+            expect($errors[0])->toContain('[ERROR] [config]: Cannot load');
         }
     });
 })->with([false, true]);

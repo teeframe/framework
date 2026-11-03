@@ -6,6 +6,7 @@ use Swoole\Coroutine;
 use TeeFrame\Core\IpAddress;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
+use TeeFrame\Game\Commands\Server\ConfigCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
@@ -20,6 +21,7 @@ use TeeFrame\Network\Packets\ControlMessage;
 use TeeFrame\Server\Ban\BanList;
 use TeeFrame\Server\Chat\MuteList;
 use TeeFrame\Server\Config\Config;
+use TeeFrame\Server\Config\ConfigOption;
 use TeeFrame\Server\Config\WorldConfig;
 use TeeFrame\Server\Master\MasterServer;
 use TeeFrame\Server\Rcon\Rcon;
@@ -60,11 +62,23 @@ abstract class AbstractServerInstance
         #[\SensitiveParameter] Config|string $config = new Config,
         public readonly bool $activatePvpSettings = false,
     ) {
-        $this->config = is_string($config) ? Config::fromFile($config) : $config;
+        $this->config = is_string($config) ? new Config : $config;
+
+        $this->bootConfig();
+
+        if (is_string($config)) {
+            $this->config->loadFile($config, activatePvpSettings: $this->activatePvpSettings);
+        }
+
         $this->validateConfig($this->config);
 
         $logFile = $this->config->getString('sv_log_file');
-        Console::setLogFile($logFile === '' ? null : $logFile, $this->config->getInt('sv_log_file_output_level') + 2);
+        try {
+            Console::setLogFile($logFile === '' ? null : $logFile, $this->config->getInt('sv_log_file_output_level') + 2);
+        } catch (\RuntimeException) {
+            Console::error('config', 'Cannot load configuration setting sv_log_file: cannot open log file');
+            $this->config->set('sv_log_file', '');
+        }
 
         if ($this->config->has('sv_console_output_level')) {
             Console::setOutputLevel($this->config->getInt('sv_console_output_level') + 2);
@@ -93,6 +107,21 @@ abstract class AbstractServerInstance
         );
     }
 
+    /** Register application settings before reading startup configuration. */
+    protected function bootConfig(): void {}
+
+    public function registerConfigOption(ConfigOption $option): void
+    {
+        $this->config->registerOption($option);
+        $name = strtolower($option->name);
+
+        if (isset($this->getConfigDefinitions()[$name])) {
+            foreach ($this->worlds as $world) {
+                $world->registerCommand(new ConfigCommand($name, $this->config));
+            }
+        }
+    }
+
     protected function boot(): void
     {
         $this->sockets[] = new UdpSocket(
@@ -114,7 +143,11 @@ abstract class AbstractServerInstance
     protected function bootConfiguredWorlds(): void
     {
         foreach ($this->config->getWorlds() as $config) {
-            $this->addWorldFromConfig($config);
+            try {
+                $this->addWorldFromConfig($config);
+            } catch (\InvalidArgumentException|\RuntimeException) {
+                Console::error('config', 'Cannot load configured world '.$config->identifier.': world creation failed');
+            }
         }
     }
 
@@ -142,6 +175,11 @@ abstract class AbstractServerInstance
         return $this->config->getString('sv_name');
     }
 
+    public function isStarted(): bool
+    {
+        return $this->started;
+    }
+
     public function getConfig(): Config
     {
         return $this->config;
@@ -150,18 +188,28 @@ abstract class AbstractServerInstance
     /** @return array<string, Definition> */
     public function getConfigDefinitions(): array
     {
-        return $this->config::definitions($this->activatePvpSettings);
+        return $this->config->getDefinitions($this->activatePvpSettings);
     }
 
     /** @return Definition */
     public function getConfigDefinition(string $name): array
     {
-        return $this->config::definition($name, $this->activatePvpSettings);
+        return $this->config->getDefinition($name, $this->activatePvpSettings);
     }
 
     public function validateConfig(Config $config): void
     {
         $config->assertPvpSettingsEnabled($this->activatePvpSettings);
+    }
+
+    public function assertConfigMutable(string $name): void
+    {
+        $name       = strtolower($name);
+        $definition = $this->getConfigDefinition($name);
+
+        if ($this->started && ($definition['restart'] ?? false)) {
+            throw new \InvalidArgumentException($name.' requires a server restart; set it in the startup config');
+        }
     }
 
     public function getConfigValue(string $name): int|string
@@ -175,11 +223,9 @@ abstract class AbstractServerInstance
     {
         $name       = strtolower($name);
         $definition = $this->getConfigDefinition($name);
-        $value      = $this->config::validate($name, $value);
+        $value      = $this->config->validateValue($name, $value);
 
-        if ($this->started && ($definition['restart'] ?? false)) {
-            throw new \InvalidArgumentException($name.' requires a server restart; set it in the startup config');
-        }
+        $this->assertConfigMutable($name);
 
         if ($definition['scope'] === 'world' && $this->started) {
             throw new \InvalidArgumentException('Change world settings through the world, not the server');
@@ -267,7 +313,10 @@ abstract class AbstractServerInstance
         $this->started = true;
 
         if (empty($this->worlds)) {
-            throw new \RuntimeException('No worlds were booted');
+            $this->started = false;
+            Console::error('server', 'Cannot start server: no valid worlds were loaded');
+
+            return;
         }
 
         if (empty($this->sockets)) {

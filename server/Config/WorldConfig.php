@@ -16,6 +16,7 @@ class WorldConfig
         public readonly int $spectatorSlots,
         ?string $gameType = null,
         string $configClass = Config::class,
+        ?Config $config = null,
     ) {
         if (trim($identifier) === '' || str_contains($identifier, "\0") || ! mb_check_encoding($identifier, 'UTF-8')) {
             throw new \InvalidArgumentException('World name must be non-blank UTF-8 without zero bytes');
@@ -25,7 +26,12 @@ class WorldConfig
             throw new \InvalidArgumentException('World client limit must be between 1 and 64, with spectator slots between 0 and the client limit');
         }
 
-        $this->settings = new $configClass(['sv_world_map' => $map]);
+        if ($config === null) {
+            $this->settings = new $configClass(['sv_world_map' => $map]);
+        } else {
+            $this->settings = $config->createLayer();
+            $this->settings->set('sv_world_map', $map);
+        }
 
         if ($gameType !== null) {
             $this->settings->set('sv_world_game_type', $gameType);
@@ -36,8 +42,8 @@ class WorldConfig
      * @param  list<string>  $arguments
      * @param  class-string<Config>  $configClass
      */
-    public static function fromArguments(array $arguments, string $configClass = Config::class): self
+    public static function fromArguments(array $arguments, string $configClass = Config::class, ?Config $config = null): self
     {
-        return new self($arguments[0], $arguments[1], (int) $arguments[2], (int) $arguments[3], $arguments[4] ?? null, $configClass);
+        return new self($arguments[0], $arguments[1], (int) $arguments[2], (int) $arguments[3], $arguments[4] ?? null, $configClass, $config);
     }
 }

@@ -7,12 +7,21 @@ use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Server\Config\Config;
 
+/** @phpstan-import-type Definition from Config */
 class ConfigCommand extends AbstractCommand
 {
-    /** @param class-string<Config> $configClass */
-    public function __construct(protected string $name, protected string $configClass = Config::class)
+    /** @param Config|class-string<Config> $configClass */
+    public function __construct(protected string $name, protected Config|string $configClass = Config::class)
     {
-        $configClass::definition($name);
+        $this->getDefinition();
+    }
+
+    /** @return Definition */
+    protected function getDefinition(): array
+    {
+        return $this->configClass instanceof Config
+            ? $this->configClass->getDefinition($this->name)
+            : ($this->configClass)::definition($this->name);
     }
 
     public function getType(): int
@@ -27,12 +36,12 @@ class ConfigCommand extends AbstractCommand
 
     public function getParams(): string
     {
-        return is_int(($this->configClass)::definition($this->name)['default']) ? '?i[value]' : '?r[value]';
+        return is_int($this->getDefinition()['default']) ? '?i[value]' : '?r[value]';
     }
 
     public function getDescription(): string
     {
-        $definition = ($this->configClass)::definition($this->name);
+        $definition = $this->getDefinition();
 
         return $definition['description'].(($definition['restart'] ?? false) ? ' (startup config only)' : '');
     }
@@ -43,7 +52,7 @@ class ConfigCommand extends AbstractCommand
             $world->setConfig($this->name, $arguments[0]);
         }
 
-        $value = (($this->configClass)::definition($this->name)['secret'] ?? false) ? '[hidden]' : $world->getConfigValue($this->name);
+        $value = ($this->getDefinition()['secret'] ?? false) ? '[hidden]' : $world->getConfigValue($this->name);
         $this->reply($world, $tee, $this->name.' = '.$value, $output);
     }
 }

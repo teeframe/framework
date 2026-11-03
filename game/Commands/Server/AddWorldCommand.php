@@ -31,10 +31,10 @@ class AddWorldCommand extends AbstractCommand
 
     public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?\Closure $output = null): void
     {
-        $config = WorldConfig::fromArguments($arguments, $world->getServer()->getConfig()::class);
+        $config = WorldConfig::fromArguments($arguments, config: $world->getServer()->getConfig());
 
         if (isset($arguments[5])) {
-            $config->settings->loadFile($arguments[5], worldOnly: true);
+            $config->settings->loadFile($arguments[5], worldOnly: true, activatePvpSettings: $world->getServer()->activatePvpSettings);
         }
 
         $world->getServer()->addWorldFromConfig($config);

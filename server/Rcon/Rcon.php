@@ -6,7 +6,6 @@ use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\CommandLine;
-use TeeFrame\Game\GameConstants;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\Chunks\Game\SvVoteOptionRemoveChunk;
@@ -310,11 +309,11 @@ class Rcon
 
         $tee = $target->playerTee();
 
-        if ($tee->team === GameConstants::TEAM_SPECTATORS) {
+        if (! $world->getGameController()->isVoteEligible($tee)) {
             throw new \InvalidArgumentException('The player is already a spectator');
         }
 
-        $tee->setTeam(GameConstants::TEAM_SPECTATORS);
+        $world->getGameController()->onVoteSpectate($tee);
         $tee->teamChangeTick = $world->getCurrentTick() + $world->getConfig()->getInt('sv_world_vote_spectate_rejoin_delay') * 60 * NetworkParams::TICKS_PER_SECOND;
         $world->broadcast(new SvChatChunk(team: 0, clientId: -1, text: Utf8::truncateBytes("'{$tee->name}' was moved to spectators ({$reason})", 511)));
     }

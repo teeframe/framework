@@ -134,7 +134,7 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->config = ($config ?? new Config)->withParent($server->getConfig());
 
         if ($configFile !== '') {
-            $this->config->loadFile($configFile, worldOnly: true);
+            $this->config->loadFile($configFile, worldOnly: true, activatePvpSettings: $server->activatePvpSettings);
         }
 
         $server->validateConfig($this->config);
@@ -234,10 +234,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->registerCommand(new ExecCommand);
         $this->registerCommand(new AddWorldCommand);
 
-        $configClass = $this->server->getConfig()::class;
-
         foreach (array_keys($this->server->getConfigDefinitions()) as $name) {
-            $this->registerCommand(new ConfigCommand($name, $configClass));
+            $this->registerCommand(new ConfigCommand($name, $this->config));
         }
     }
 
@@ -257,7 +255,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             return;
         }
 
-        $value = $this->server->getConfig()::validate($name, $value);
+        $this->server->assertConfigMutable($name);
+
+        $value = $this->config->validateValue($name, $value);
 
         if ($name === 'sv_world_map') {
             try {
@@ -301,15 +301,22 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function loadConfig(string $path): void
     {
-        foreach (ConfigFile::read($path, configClass: $this->server->getConfig()::class) as $entry) {
-            if ($entry instanceof WorldConfig) {
-                $this->server->addWorldFromConfig($entry);
-            } elseif ($entry instanceof VoteOption) {
-                if ($this->voteController->addLiveVoteOption($this, $entry->description, $entry->command)) {
-                    $this->consoleInfo('vote', 'Vote option added Description="'.$entry->description.'"');
+        foreach (ConfigFile::read($path, config: $this->config, activatePvpSettings: $this->server->activatePvpSettings) as $entry) {
+            $subject = $entry instanceof WorldConfig ? 'world declaration' : ($entry instanceof VoteOption ? 'vote declaration' : 'setting '.$entry['name']);
+
+            try {
+                if ($entry instanceof WorldConfig) {
+                    $this->server->addWorldFromConfig($entry);
+                } elseif ($entry instanceof VoteOption) {
+                    if ($this->voteController->addLiveVoteOption($this, $entry->description, $entry->command)) {
+                        $this->consoleInfo('vote', 'Vote option added Description="'.$entry->description.'"');
+                    }
+                } else {
+                    $this->setConfig($entry['name'], $entry['value']);
                 }
-            } else {
-                $this->setConfig($entry['name'], $entry['value']);
+            } catch (\InvalidArgumentException|\RuntimeException) {
+                // Application errors may contain secret values; report only the source and setting.
+                $this->consoleError('config', 'Cannot load configuration '.$subject.' from '.$path.': validation or application failed');
             }
         }
     }

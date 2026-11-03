@@ -6,7 +6,6 @@ use TeeFrame\Core\Utf8;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
 use TeeFrame\Game\Commands\CommandLine;
-use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
@@ -220,7 +219,7 @@ class VoteController
 
         $tee->lastVoteTry = $currentTick;
 
-        if ($tee->team === GameConstants::TEAM_SPECTATORS) {
+        if (! $world->getGameController()->isVoteEligible($tee)) {
             $this->sendChat($world, $tee, "Spectators aren't allowed to start a vote.");
 
             return;
@@ -245,9 +244,15 @@ class VoteController
         }
 
         $reason = Utf8::truncateBytes($reason, 15);
-        $reason = $reason !== '' ? $reason : 'No reason given';
-
         $type   = strtolower($type);
+
+        if ($world->getGameController()->isVoteReasonRequired($type) && trim($reason) === '') {
+            $this->sendChat($world, $tee, 'You must give a reason for this vote.');
+
+            return;
+        }
+
+        $reason = $reason !== '' ? $reason : 'No reason given';
         $option = match ($type) {
             'option'           => $this->resolveOptionVote($world, $tee, $value),
             'kick', 'spectate' => $this->resolvePlayerVote($world, $tee, $type, $value),
@@ -299,9 +304,7 @@ class VoteController
             return null;
         }
 
-        $activePlayers = count(array_filter($world->getTees(), fn (AbstractTee $player): bool => $player instanceof PlayerTee && $player->team !== GameConstants::TEAM_SPECTATORS));
-
-        if ($type === 'kick' && $activePlayers < $world->getConfig()->getInt('sv_world_vote_kick_min_players')) {
+        if ($type === 'kick' && $this->countVotes($world)[0] < $world->getConfig()->getInt('sv_world_vote_kick_min_players')) {
             $this->sendChat($world, $tee, 'Not enough players for a kick vote.');
 
             return null;
@@ -373,7 +376,7 @@ class VoteController
      */
     public function vote(AbstractWorld $world, AbstractTee $tee, int $vote): void
     {
-        if (! $tee instanceof PlayerTee) {
+        if (! $tee instanceof PlayerTee || ! $world->getGameController()->isVoteEligible($tee)) {
             return;
         }
 
@@ -512,12 +515,7 @@ class VoteController
         $no    = 0;
 
         foreach ($world->getTees() as $tee) {
-            if (! $tee instanceof PlayerTee) {
-                continue;
-            }
-
-            // Spectators don't count (mirrors CGameContext::OnTick vote counting)
-            if ($tee->team === GameConstants::TEAM_SPECTATORS) {
+            if (! $tee instanceof PlayerTee || ! $world->getGameController()->isVoteEligible($tee)) {
                 continue;
             }
 
@@ -562,7 +560,7 @@ class VoteController
             $tee   = $world->findTee((int) ($parts[1] ?? -1));
 
             if ($tee instanceof PlayerTee) {
-                $tee->setTeam(GameConstants::TEAM_SPECTATORS);
+                $world->getGameController()->onVoteSpectate($tee);
                 $tee->teamChangeTick = $world->getCurrentTick() + $world->getConfig()->getInt('sv_world_vote_spectate_rejoin_delay') * 60 * NetworkParams::TICKS_PER_SECOND;
             }
 
