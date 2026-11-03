@@ -2,6 +2,7 @@
 
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractGameController;
+use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
@@ -17,6 +18,14 @@ use TeeFrame\Server\Config\Config;
 class TeamTransitionTestController extends PvpGameController
 {
     public int $balanceChecks = 0;
+
+    /** @var list<array{PlayerTee, int, int}> */
+    public array $teamChanges = [];
+
+    public function onTeamChanged(PlayerTee $tee, int $previousTeam): void
+    {
+        $this->teamChanges[] = [$tee, $previousTeam, $tee->team];
+    }
 
     public function checkTeamBalance(): bool
     {
@@ -40,13 +49,15 @@ function createTeamTransitionWorld(string $mode = 'TDM', int $slotsLimit = 8, in
     return [$world, $clock, $controller];
 }
 
-test('player requests and forced transitions normalize teams through their game controller', function (string $mode, int $requested, int $expected, bool $request) {
+test('player requests forced and silent transitions normalize teams through their game controller', function (string $mode, int $requested, int $expected, string $source) {
     [$world] = createTeamTransitionWorld($mode);
     $tee     = new PlayerTee;
     $world->addTee($tee);
 
-    if ($request) {
+    if ($source === 'request') {
         $world->onMessage($tee, new ClSetTeamChunk($requested));
+    } elseif ($source === 'silent') {
+        $tee->setTeamSilently($requested);
     } else {
         $tee->setTeam($requested);
     }
@@ -61,7 +72,7 @@ test('player requests and forced transitions normalize teams through their game 
     'TDM normalizes even ids to red'            => ['TDM', 2, 0],
     'TDM normalizes negative ids to spectators' => ['TDM', -99, -1],
     'CTF uses the same team normalization'      => ['CTF', 99, 1],
-])->with(['player request' => true, 'forced transition' => false]);
+])->with(['request', 'forced', 'silent']);
 
 test('initial team selection reserves spectator capacity without requiring a pre-set spectator team', function (string $mode) {
     [$world] = createTeamTransitionWorld($mode, slotsLimit: 2, spectatorSlots: 1);
@@ -143,6 +154,7 @@ test('normalized no-op requests and forced moves do not kill characters or notif
     expect($tee->respawnTick)->toBe(29);
     expect($tee->lastSetTeam)->toBe(0);
     expect($controller->balanceChecks)->toBe($balanceChecks);
+    expect($controller->teamChanges)->toBeEmpty();
     expect(recordingServer($world)->sentChunks)->toBeEmpty();
 })->with([true, false]);
 
@@ -160,7 +172,8 @@ test('all spectator transition paths share character cleanup respawn state and f
     $character              = new PvpCharacterEntity($world, new Vector2(64, 64));
     $character->spawn(new Vector2(64, 64), $target);
     $world->addEntity($character);
-    $balanceChecks = $controller->balanceChecks;
+    $balanceChecks           = $controller->balanceChecks;
+    $controller->teamChanges = [];
 
     switch ($source) {
         case 'request':
@@ -193,7 +206,107 @@ test('all spectator transition paths share character cleanup respawn state and f
     expect($target->respawnTick)->toBe($clock->getCurrentTick() + 25);
     expect($target->lastActionTick)->toBe($clock->getCurrentTick());
     expect($controller->balanceChecks)->toBe($balanceChecks + 1);
+    expect($controller->teamChanges)->toBe([[$target, GameConstants::TEAM_RED, GameConstants::TEAM_SPECTATORS]]);
 })->with(['request', 'forced', 'inactivity', 'vote']);
+
+test('silent transitions share network bookkeeping without deaths announcements or gameplay policy callbacks', function (int $team) {
+    [$world, $clock, $controller] = createTeamTransitionWorld();
+    $player                       = new PlayerTee;
+    $other                        = new PlayerTee;
+    $follower                     = new PlayerTee;
+    foreach ([$player, $other, $follower] as $tee) {
+        $world->addTee($tee);
+    }
+    $follower->setTeam(GameConstants::TEAM_SPECTATORS);
+    $follower->spectatorId = $player->teeIndex;
+    $character             = new PvpCharacterEntity($world, new Vector2(64, 64));
+    $character->spawn(new Vector2(64, 64), $player);
+    $world->addEntity($character);
+    $player->spectatorId     = 42;
+    $player->lastActionTick  = 17;
+    $player->respawnTick     = 29;
+    $player->dieTick         = 31;
+    $player->teamChangeTick  = 47;
+    $balanceChecks           = $controller->balanceChecks;
+    $controller->teamChanges = [];
+    $votes                   = $world->getVoteController();
+    $votes->startVote($world, 'Example', 'noop', 'reason');
+    $votes->tick($world);
+    recordingServer($world)->clear();
+
+    $player->setTeamSilently($team);
+
+    expect($player->team)->toBe($team);
+    expect($player->character)->toBe($character);
+    expect($character->alive)->toBeTrue();
+    expect($character->isMarkedForDestruction())->toBeFalse();
+    expect($player->spawning)->toBe($team !== GameConstants::TEAM_SPECTATORS);
+    expect($player->spectatorId)->toBe(GameConstants::SPEC_FREEVIEW);
+    expect($follower->spectatorId)->toBe($team === GameConstants::TEAM_SPECTATORS ? GameConstants::SPEC_FREEVIEW : $player->teeIndex);
+    expect($player->respawnTick)->toBe($clock->getCurrentTick() + 25);
+    expect($player->lastActionTick)->toBe($clock->getCurrentTick());
+    expect([$player->dieTick, $player->teamChangeTick, $player->lastSetTeam])->toBe([31, 47, 0]);
+    expect($controller->teamChanges)->toBeEmpty();
+    expect($controller->balanceChecks)->toBe($balanceChecks);
+    expect(recordingServer($world)->sentChunks)->toBeEmpty();
+
+    $votes->tick($world);
+    $statuses = array_values(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteStatusChunk));
+    expect($statuses)->toHaveCount(3);
+    expect($statuses[0]->total)->toBe($team === GameConstants::TEAM_SPECTATORS ? 1 : 2);
+    recordingServer($world)->clear();
+
+    $player->spectatorId = 42;
+    $player->spawning    = ! $player->spawning;
+    $clock->advanceTick();
+    $player->setTeamSilently($team);
+    $votes->tick($world);
+    expect($player->spectatorId)->toBe(GameConstants::SPEC_FREEVIEW);
+    expect($player->spawning)->toBe($team !== GameConstants::TEAM_SPECTATORS);
+    expect($player->respawnTick)->toBe(125);
+    expect($player->lastActionTick)->toBe(100);
+    expect($controller->teamChanges)->toBeEmpty();
+    expect(recordingServer($world)->sentChunks)->toBeEmpty();
+})->with([GameConstants::TEAM_BLUE, GameConstants::TEAM_SPECTATORS]);
+
+test('a death callback can silently capture a player without the death tail re-enabling spawning', function () {
+    $clock      = new TickHandler(100);
+    $controller = new class($clock) extends TeamTransitionTestController
+    {
+        public function onCharacterDeath(AbstractCharacterEntity $victim, int $killerTeeIndex, int $weapon): int
+        {
+            if ($victim->tee instanceof PlayerTee) {
+                $victim->tee->setTeamSilently(GameConstants::TEAM_SPECTATORS);
+            }
+
+            return parent::onCharacterDeath($victim, $killerTeeIndex, $weapon);
+        }
+    };
+    $world  = new TestWorldWithController($clock, new Map, $controller);
+    $player = new PlayerTee;
+    $world->addTee($player);
+    $character = new PvpCharacterEntity($world, new Vector2(64, 64));
+    $character->spawn(new Vector2(64, 64), $player);
+    $world->addEntity($character);
+
+    $character->die($player->teeIndex, GameConstants::WEAPON_GAME);
+
+    expect($player->team)->toBe(GameConstants::TEAM_SPECTATORS);
+    expect($player->spawning)->toBeFalse();
+    expect($player->character)->toBeNull();
+    expect($player->respawnTick)->toBe(125);
+    expect($controller->teamChanges)->toBeEmpty();
+});
+
+test('silent transitions normalize teams even before a player is attached to a world', function () {
+    $player = new PlayerTee;
+    $player->setTeamSilently(99);
+    expect($player->team)->toBe(GameConstants::TEAM_BLUE);
+    expect($player->spawning)->toBeTrue();
+    $player->setTeamSilently(-99);
+    expect($player->team)->toBe(GameConstants::TEAM_SPECTATORS);
+    expect($player->spawning)->toBeFalse();
+});
 
 test('forced spectator transitions refresh an active vote and returning players request a respawn', function () {
     [$world, $clock] = createTeamTransitionWorld();

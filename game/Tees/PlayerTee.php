@@ -160,21 +160,12 @@ class PlayerTee extends AbstractTee
             $this->character->die($this->teeIndex, GameConstants::WEAPON_GAME);
         }
 
-        $previousTeam      = $this->team;
-        $this->team        = $team;
-        $this->spectatorId = GameConstants::SPEC_FREEVIEW;
-        $this->spawning    = $team !== GameConstants::TEAM_SPECTATORS;
+        $previousTeam = $this->team;
+        $this->setTeamSilently($team);
 
         if ($world !== null) {
-            $world->getVoteController()->onTeamChange($this);
-
-            if ($team === GameConstants::TEAM_SPECTATORS) {
-                $world->resetSpectatorsFollowing($this->teeIndex);
-            }
-
-            // we got to wait 0.5 secs before respawning
-            $this->respawnTick    = $world->getCurrentTick() + (int) (NetworkParams::TICKS_PER_SECOND / 2);
-            $this->lastActionTick = $world->getCurrentTick();
+            $world->getGameController()->onTeamChanged($this, $previousTeam);
+            $team = $this->team;
 
             // Broadcast "'<name>' joined the <team>" (mirrors CPlayer::SetTeam)
             $teamName = $world->getGameController()->getTeamName($team);
@@ -190,5 +181,31 @@ class PlayerTee extends AbstractTee
             // Re-check team balance after a team change (IGameController::CheckTeamBalance)
             $world->getGameController()->checkTeamBalance();
         }
+    }
+
+    /** Apply team bookkeeping without killing a character, announcing, or running team-change policy. */
+    public function setTeamSilently(int $team): void
+    {
+        $world = $this->world;
+        $team  = $world?->getGameController()->clampTeam($team)
+            ?? max(GameConstants::TEAM_SPECTATORS, min(GameConstants::TEAM_BLUE, $team));
+        $previousTeam      = $this->team;
+
+        $this->team        = $team;
+        $this->spectatorId = GameConstants::SPEC_FREEVIEW;
+        $this->spawning    = $team !== GameConstants::TEAM_SPECTATORS;
+
+        if ($world === null || $previousTeam === $team) {
+            return;
+        }
+
+        $world->getVoteController()->onTeamChange($this);
+
+        if ($team === GameConstants::TEAM_SPECTATORS) {
+            $world->resetSpectatorsFollowing($this->teeIndex);
+        }
+
+        $this->respawnTick    = $world->getCurrentTick() + intdiv(NetworkParams::TICKS_PER_SECOND, 2);
+        $this->lastActionTick = $world->getCurrentTick();
     }
 }

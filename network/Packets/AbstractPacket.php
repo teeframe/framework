@@ -59,21 +59,11 @@ abstract class AbstractPacket
      */
     protected function encode(): array
     {
-        $encodedPayload = $this->payload;
-
-        // if (!($this->flags & NetworkBase::PACKET_FLAG_TYPE_CONTROL)) {
-        //     $this->flags |= NetworkBase::PACKET_FLAG_COMPRESSION;
-
-        //     $encodedPayload = NetworkBase::compressHuffman($encodedPayload);
-        // }
-
-        // TODO: Implement token support
-
         $header    = [];
         $header[0] = (($this->flags << 4) & 0xF0) | (($this->ack >> 8) & 0xF);
         $header[1] = $this->ack & 0xFF;
         $header[2] = $this->numChunks;
 
-        return [...$header, ...$encodedPayload];
+        return [...$header, ...$this->payload];
     }
 }

@@ -93,7 +93,8 @@ trait HasCharacterLifecycle
                 : intdiv(NetworkParams::TICKS_PER_SECOND, 2);
             $this->tee->respawnTick = $this->world->getCurrentTick() + $respawnDelay;
             $this->tee->dieTick     = $this->world->getCurrentTick();
-            $this->tee->spawning    = true;
+            // The death callback may have captured this player into the spectator team.
+            $this->tee->spawning = $this->tee->team !== GameConstants::TEAM_SPECTATORS;
         }
     }
 

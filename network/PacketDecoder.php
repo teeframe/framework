@@ -61,8 +61,6 @@ class PacketDecoder
         $numChunks      = $data[2];
         $requestsResend = (bool) ($flags & NetworkBase::PACKET_FLAG_RESEND);
 
-        // TODO: Implement token support
-
         // Connection-less Message
         if ($flags & NetworkBase::PACKET_FLAG_TYPE_CONNECTION_LESS) {
             if (strlen($rawBuffer) < NetworkParams::PACKET_HEADER_SIZE_CONNECTION_LESS) {

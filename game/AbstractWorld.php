@@ -74,25 +74,24 @@ use TeeFrame\Server\Console;
 
 abstract class AbstractWorld implements SnapableObject, TickableObject
 {
+    protected Config $config;
+
+    protected ClientMessageHandler $clientMessageHandler;
+
     /**
      * @var AbstractCommand[]
      */
     protected array $commands = [];
 
-    /**
-     * @var array<int, AbstractEntity>
-     */
-    protected array $entities = [];
+    protected AbstractGameController $gameController;
+    protected VoteController $voteController;
+    protected TuneController $tuneController;
 
-    /**
-     * @var AbstractPositionedSnapItem[]
-     */
-    protected array $pendingEvents = [];
+    protected ?Map $pendingMap         = null;
+    protected ?string $pendingGameMode = null;
 
-    /**
-     * @var array<int, int> Event index => excluded tee index (client-predicted events).
-     */
-    protected array $excludedEventTeeIndexes = [];
+    protected bool $paused         = false;
+    protected bool $resetRequested = false;
 
     /**
      * @var AbstractTee[]
@@ -104,18 +103,28 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
      */
     protected array $releasedTeeIndexes = [];
 
+    /**
+     * @var array<int, AbstractEntity>
+     */
+    protected array $entities = [];
+
     protected SnapIdPool $snapIdPool;
-    protected ClientMessageHandler $clientMessageHandler;
-    protected AbstractGameController $gameController;
-    protected VoteController $voteController;
-    protected TuneController $tuneController;
-    protected Config $config;
 
-    protected bool $paused         = false;
-    protected bool $resetRequested = false;
+    /**
+     * @var AbstractPositionedSnapItem[]
+     */
+    protected array $pendingEvents = [];
 
-    protected ?Map $pendingMap         = null;
-    protected ?string $pendingGameMode = null;
+    /**
+     * @var array<int, int> Event index => excluded tee index (client-predicted events).
+     */
+    protected array $excludedEventTeeIndexes = [];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Construction and bootstrapping
+    |--------------------------------------------------------------------------
+    */
 
     public function __construct(
         public string $identifier,
@@ -160,35 +169,9 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->getGameController()->setWorld($this);
 
         $this->bootMap();
+
         $this->getGameController()->onWorldReady();
     }
-
-    protected function bootMap(): void
-    {
-        if (($gameLayer = $this->getMap()->getGameLayer()) !== null) {
-            $this->getGameController()->bootMap($gameLayer);
-        }
-    }
-
-    abstract protected function bootGameController(): void;
-
-    /** @return list<string> */
-    public function getRules(): array
-    {
-        $rules = [];
-
-        for ($line = 1; $line <= 10; $line++) {
-            $text = $this->config->getString('sv_world_rules_line'.$line);
-
-            if ($text !== '') {
-                $rules[] = $text;
-            }
-        }
-
-        return $rules;
-    }
-
-    abstract protected function createCharacterEntity(Vector2 $position): AbstractCharacterEntity;
 
     protected function bootCommands(): void
     {
@@ -239,14 +222,80 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
-    public function registerConfigCommand(string $name): void
+    protected function bootVoteController(): void
     {
-        $this->registerCommand(new ConfigCommand(strtolower($name), $this->config));
+        $this->voteController = new VoteController;
+
+        foreach ($this->config->getVoteOptions() as $option) {
+            $this->voteController->addVoteOption($option->description, $option->command);
+        }
+    }
+
+    protected function bootTuneController(): void
+    {
+        $this->tuneController = new TuneController;
+    }
+
+    abstract protected function bootGameController(): void;
+
+    protected function bootMap(): void
+    {
+        if (($gameLayer = $this->getMap()->getGameLayer()) !== null) {
+            $this->getGameController()->bootMap($gameLayer);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | World context and configuration
+    |--------------------------------------------------------------------------
+    */
+
+    public function getServer(): AbstractServerInstance
+    {
+        return $this->server;
+    }
+
+    public function getCurrentTick(): int
+    {
+        return $this->tickHandler->getCurrentTick();
     }
 
     public function getConfig(): Config
     {
         return $this->config;
+    }
+
+    public function getConfigValue(string $name): int|string
+    {
+        $name = strtolower($name);
+
+        if ($this->server->getConfigDefinition($name)['scope'] === 'server') {
+            return $this->server->getConfigValue($name);
+        }
+
+        $defaults = [
+            'sv_world_map'       => $this->map->getName(),
+            'sv_world_game_type' => strtolower($this->gameController->getGameType()),
+        ];
+
+        return $this->config->get($name, $defaults[$name] ?? null);
+    }
+
+    /** @return list<string> */
+    public function getRules(): array
+    {
+        $rules = [];
+
+        for ($line = 1; $line <= 10; $line++) {
+            $text = $this->config->getString('sv_world_rules_line'.$line);
+
+            if ($text !== '') {
+                $rules[] = $text;
+            }
+        }
+
+        return $rules;
     }
 
     public function setConfig(string $name, #[\SensitiveParameter] int|string $value): void
@@ -288,22 +337,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
-    public function getConfigValue(string $name): int|string
-    {
-        $name = strtolower($name);
-
-        if ($this->server->getConfigDefinition($name)['scope'] === 'server') {
-            return $this->server->getConfigValue($name);
-        }
-
-        $defaults = [
-            'sv_world_map'       => $this->map->getName(),
-            'sv_world_game_type' => strtolower($this->gameController->getGameType()),
-        ];
-
-        return $this->config->get($name, $defaults[$name] ?? null);
-    }
-
     public function loadConfig(string $path): void
     {
         foreach (ConfigFile::read($path, config: $this->config, activatePvpSettings: $this->server->activatePvpSettings) as $entry) {
@@ -326,28 +359,123 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Commands and client messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * @return AbstractCommand[]
+     */
+    public function getCommands(): array
+    {
+        return $this->commands;
+    }
+
+    /** @return array<string, AbstractCommand> */
+    public function getCommandMap(int $type): array
+    {
+        $commands = [];
+
+        foreach ($this->commands as $command) {
+            if ($command->getType() & $type) {
+                $commands[strtolower($command->getName())] = $command;
+            }
+        }
+
+        $aliases = [];
+
+        foreach ($this->commands as $command) {
+            if (($commands[strtolower($command->getName())] ?? null) !== $command) {
+                continue;
+            }
+
+            foreach ($command->getAliases() as $alias) {
+                $aliases[strtolower($alias)] = $command;
+            }
+        }
+
+        // Canonical names always take precedence over aliases.
+        return $commands + $aliases;
+    }
+
+    public function findCommand(string $name, int $type): ?AbstractCommand
+    {
+        return $this->getCommandMap($type)[strtolower($name)] ?? null;
+    }
+
     public function registerCommand(AbstractCommand $command): void
     {
         $this->commands[] = $command;
     }
 
-    protected function bootVoteController(): void
+    public function registerConfigCommand(string $name): void
     {
-        $this->voteController = new VoteController;
-
-        foreach ($this->config->getVoteOptions() as $option) {
-            $this->voteController->addVoteOption($option->description, $option->command);
-        }
+        $this->registerCommand(new ConfigCommand(strtolower($name), $this->config));
     }
 
-    protected function bootTuneController(): void
+    public function onMessage(AbstractTee $tee, AbstractChunk $chunk): void
     {
-        $this->tuneController = new TuneController;
+        $this->clientMessageHandler->handle($tee, $chunk);
     }
 
-    public function getCurrentTick(): int
+    /*
+    |--------------------------------------------------------------------------
+    | Controllers and tuning
+    |--------------------------------------------------------------------------
+    */
+
+    public function getGameController(): AbstractGameController
     {
-        return $this->tickHandler->getCurrentTick();
+        return $this->gameController;
+    }
+
+    public function getVoteController(): VoteController
+    {
+        return $this->voteController;
+    }
+
+    public function getTuneController(): TuneController
+    {
+        return $this->tuneController;
+    }
+
+    public function setTuning(string $name, float $value): void
+    {
+        $name = strtolower($name);
+
+        $tuning = $this->getTuneController();
+        $tuning->set($name, $value);
+        $this->sendTuning();
+
+        $this->consoleInfo('tuning', $name.'='.$tuning->get($name));
+    }
+
+    public function resetTuning(?string $name = null): void
+    {
+        $name = $name === null ? null : strtolower($name);
+
+        $this->getTuneController()->reset($name);
+        $this->sendTuning();
+
+        $this->consoleInfo('tuning', 'Tuning reset Parameter='.($name ?? 'all'));
+    }
+
+    protected function sendTuning(): void
+    {
+        $this->server->sendToWorld($this, $this->getTuneController()->getTuneParamsChunk(), includeReady: true);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Maps and reloads
+    |--------------------------------------------------------------------------
+    */
+
+    public function getMap(): Map
+    {
+        return $this->map;
     }
 
     /**
@@ -360,11 +488,6 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
             $this->map->getCrc(),
             $this->map->getSize(),
         ];
-    }
-
-    public function getMap(): Map
-    {
-        return $this->map;
     }
 
     public function changeMap(string $mapName): void
@@ -477,142 +600,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->consoleInfo('world', 'Reloaded Map='.$this->map->getName().' Gametype='.$this->gameController->getGameType());
     }
 
-    /**
-     * @return AbstractTee[]
-     */
-    public function getTees(): array
-    {
-        return $this->tees;
-    }
-
-    public function findTee(int $teeIndex): ?AbstractTee
-    {
-        return $this->tees[$teeIndex] ?? null;
-    }
-
-    public function findCharacter(int $teeIndex): ?AbstractCharacterEntity
-    {
-        foreach ($this->getActiveCharacters() as $entity) {
-            if ($entity->tee?->teeIndex === $teeIndex) {
-                return $entity;
-            }
-        }
-
-        return null;
-    }
-
-    public function trySetTeeName(AbstractTee $tee, string $name): bool
-    {
-        $trimmed = trim(Utf8::truncateBytes(trim($name), NetworkParams::MAX_NAME_LENGTH - 1));
-
-        if ($trimmed === '') {
-            return false;
-        }
-
-        foreach ($this->tees as $existingTee) {
-            if ($existingTee !== $tee && $existingTee->name === $trimmed) {
-                return false;
-            }
-        }
-
-        $previousName = $tee->name;
-        $tee->name    = $trimmed;
-
-        if ($previousName !== $tee->name && ($this->tees[$tee->teeIndex] ?? null) === $tee) {
-            $this->consoleInfo('game', 'TeeIdx='.$tee->teeIndex.' Name changed from "'.$previousName.'" to "'.$tee->name.'"');
-        }
-
-        return true;
-    }
-
-    public function setTeeName(AbstractTee $tee, string $name): void
-    {
-        $cleanName = '';
-
-        for ($i = 0, $len = strlen($name); $i < $len; $i++) {
-            $cleanName .= $name[$i] < ' ' ? ' ' : $name[$i];
-        }
-
-        if ($this->trySetTeeName($tee, $cleanName)) {
-            return;
-        }
-
-        for ($i = 1; ; $i++) {
-            if ($this->trySetTeeName($tee, "({$i}){$cleanName}")) {
-                return;
-            }
-        }
-    }
-
-    public function getSlotsLimit(): int
-    {
-        return $this->slotsLimit;
-    }
-
-    public function getSpectatorSlots(): int
-    {
-        return $this->spectatorSlots;
-    }
-
-    public function getServer(): AbstractServerInstance
-    {
-        return $this->server;
-    }
-
-    public function getGameController(): AbstractGameController
-    {
-        return $this->gameController;
-    }
-
-    public function getVoteController(): VoteController
-    {
-        return $this->voteController;
-    }
-
-    /**
-     * @return AbstractCommand[]
-     */
-    public function getCommands(): array
-    {
-        return $this->commands;
-    }
-
-    /** @return array<string, AbstractCommand> */
-    public function getCommandMap(int $type): array
-    {
-        $commands = [];
-
-        foreach ($this->commands as $command) {
-            if ($command->getType() & $type) {
-                $commands[strtolower($command->getName())] = $command;
-            }
-        }
-
-        $aliases = [];
-
-        foreach ($this->commands as $command) {
-            if (($commands[strtolower($command->getName())] ?? null) !== $command) {
-                continue;
-            }
-
-            foreach ($command->getAliases() as $alias) {
-                $aliases[strtolower($alias)] = $command;
-            }
-        }
-
-        // Canonical names always take precedence over aliases.
-        return $commands + $aliases;
-    }
-
-    public function findCommand(string $name, int $type): ?AbstractCommand
-    {
-        return $this->getCommandMap($type)[strtolower($name)] ?? null;
-    }
-
-    public function getTuneController(): TuneController
-    {
-        return $this->tuneController;
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Pause and round lifecycle
+    |--------------------------------------------------------------------------
+    */
 
     public function isPaused(): bool
     {
@@ -672,6 +664,274 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Players and spawning
+    |--------------------------------------------------------------------------
+    */
+
+    public function getSlotsLimit(): int
+    {
+        return $this->slotsLimit;
+    }
+
+    public function getSpectatorSlots(): int
+    {
+        return $this->spectatorSlots;
+    }
+
+    /**
+     * @return AbstractTee[]
+     */
+    public function getTees(): array
+    {
+        return $this->tees;
+    }
+
+    public function findTee(int $teeIndex): ?AbstractTee
+    {
+        return $this->tees[$teeIndex] ?? null;
+    }
+
+    public function addTee(AbstractTee $tee): void
+    {
+        if (count($this->releasedTeeIndexes) > 0) {
+            $index = array_pop($this->releasedTeeIndexes);
+        } else {
+            $index = count($this->tees);
+        }
+
+        $tee->setWorld($this, $index);
+
+        if ($tee instanceof PlayerTee) {
+            $this->setTeeName($tee, $tee->name);
+
+            // Select the initial team before registration so capacity checks see a new player.
+            $controller = $this->getGameController();
+            $tee->team  = $this->config->getInt('sv_world_join_as_spectator')
+                ? GameConstants::TEAM_SPECTATORS
+                : $controller->clampTeam($controller->getAutoTeam($index));
+        }
+
+        $this->tees[$index] = $tee;
+        $this->voteController->requestUpdate();
+        $this->consoleDebug('game', 'TeeIdx='.$index.' Name="'.$tee->name.'" Entered game');
+
+        if ($tee instanceof PlayerTee) {
+            $tee->spawning       = $tee->team !== GameConstants::TEAM_SPECTATORS;
+            $tee->lastActionTick = $this->getCurrentTick();
+            $tee->scoreStartTick = $this->getCurrentTick();
+
+            $chunk = new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: "'{$tee->name}' entered and joined the game",
+            );
+
+            $this->broadcast($chunk);
+
+            $welcome = $this->config->getString('sv_world_welcome');
+
+            if ($welcome !== '') {
+                $this->server->sendToTee($this, $index, new SvChatChunk(team: 0, clientId: -1, text: $welcome));
+            }
+        }
+    }
+
+    public function removeTee(AbstractTee $tee, ?string $reason = null): void
+    {
+        $index = $tee->teeIndex;
+
+        if (($this->tees[$index] ?? null) !== $tee) {
+            return;
+        }
+
+        if ($tee->character !== null && $tee->character->alive) {
+            $tee->character->die();
+        }
+
+        if ($tee instanceof PlayerTee) {
+            $text = $reason !== null && $reason !== ''
+                ? "'{$tee->name}' has left the game ({$reason})"
+                : "'{$tee->name}' has left the game";
+
+            $chunk = new SvChatChunk(
+                team: 0,
+                clientId: -1,
+                text: $text,
+            );
+
+            $this->broadcast($chunk);
+        }
+
+        $this->voteController->abortVoteOnDisconnect($index);
+        $this->voteController->cancelVoteOnCreatorLeave($index);
+
+        $this->resetSpectatorsFollowing($index);
+
+        foreach ($this->entities as $entity) {
+            $entity->onTeeLeave($index);
+        }
+
+        $this->releasedTeeIndexes[] = $index;
+        unset($this->tees[$index]);
+        $this->consoleDebug('game', 'TeeIdx='.$index.' Name="'.$tee->name.'" Left game'.($reason !== null && $reason !== '' ? ' Reason='.$reason : ''));
+        $this->voteController->requestUpdate();
+
+        $this->getGameController()->checkTeamBalance();
+    }
+
+    public function setTeeName(AbstractTee $tee, string $name): void
+    {
+        $cleanName = '';
+
+        for ($i = 0, $len = strlen($name); $i < $len; $i++) {
+            $cleanName .= $name[$i] < ' ' ? ' ' : $name[$i];
+        }
+
+        if ($this->trySetTeeName($tee, $cleanName)) {
+            return;
+        }
+
+        for ($i = 1; ; $i++) {
+            if ($this->trySetTeeName($tee, "({$i}){$cleanName}")) {
+                return;
+            }
+        }
+    }
+
+    public function trySetTeeName(AbstractTee $tee, string $name): bool
+    {
+        $trimmed = trim(Utf8::truncateBytes(trim($name), NetworkParams::MAX_NAME_LENGTH - 1));
+
+        if ($trimmed === '') {
+            return false;
+        }
+
+        foreach ($this->tees as $existingTee) {
+            if ($existingTee !== $tee && $existingTee->name === $trimmed) {
+                return false;
+            }
+        }
+
+        $previousName = $tee->name;
+        $tee->name    = $trimmed;
+
+        if ($previousName !== $tee->name && ($this->tees[$tee->teeIndex] ?? null) === $tee) {
+            $this->consoleInfo('game', 'TeeIdx='.$tee->teeIndex.' Name changed from "'.$previousName.'" to "'.$tee->name.'"');
+        }
+
+        return true;
+    }
+
+    public function resetSpectatorsFollowing(int $teeIndex): void
+    {
+        foreach ($this->tees as $tee) {
+            if ($tee instanceof PlayerTee && $tee->spectatorId === $teeIndex) {
+                $tee->spectatorId = GameConstants::SPEC_FREEVIEW;
+            }
+        }
+    }
+
+    protected function tryRespawnTee(PlayerTee $tee): bool
+    {
+        $spawnPos = $this->getGameController()->selectSpawnPosition($this, $tee->team);
+
+        if ($spawnPos === null) {
+            return false;
+        }
+
+        $tee->spawning = false;
+
+        $character = $this->createCharacterEntity(clone $spawnPos);
+        $character->spawn($spawnPos, $tee);
+        $this->addEntity($character);
+
+        // CreatePlayerSpawn event (visual spawn effect)
+        $this->addEvent(new ObjEventSpawnItem(
+            x: (int) round($spawnPos->x),
+            y: (int) round($spawnPos->y),
+        ));
+
+        return true;
+    }
+
+    abstract protected function createCharacterEntity(Vector2 $position): AbstractCharacterEntity;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Entities and character queries
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * @return array<int, AbstractEntity>
+     */
+    public function getEntities(): array
+    {
+        return $this->entities;
+    }
+
+    /** @return iterable<int, AbstractCharacterEntity> */
+    public function getActiveCharacters(): iterable
+    {
+        $entities = $this->entities; // Damage callbacks can remove or destroy later characters between yields.
+
+        foreach ($entities as $index => $entity) {
+            if ($entity instanceof AbstractCharacterEntity
+                && $entity->alive
+                && ! $entity->isMarkedForDestruction()
+                && ($this->entities[$index] ?? null) === $entity
+            ) {
+                yield $index => $entity;
+            }
+        }
+    }
+
+    public function findCharacter(int $teeIndex): ?AbstractCharacterEntity
+    {
+        foreach ($this->getActiveCharacters() as $entity) {
+            if ($entity->tee?->teeIndex === $teeIndex) {
+                return $entity;
+            }
+        }
+
+        return null;
+    }
+
+    public function addEntity(AbstractEntity $entity): void
+    {
+        $this->entities[] = $entity;
+    }
+
+    public function removeEntity(AbstractEntity $entity): void
+    {
+        $index = array_search($entity, $this->entities, true);
+
+        if ($index !== false) {
+            $this->removeEntityAt($index, $entity);
+        }
+    }
+
+    protected function removeEntityAt(int $index, AbstractEntity $entity): void
+    {
+        if (($this->entities[$index] ?? null) !== $entity) {
+            return;
+        }
+
+        foreach ($entity->getAllocatedSnapIds() as $id) {
+            $this->snapIdPool->freeId($id);
+        }
+
+        unset($this->entities[$index]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Messages, sounds and events
+    |--------------------------------------------------------------------------
+    */
+
     public function broadcast(AbstractChunk $chunk): void
     {
         if ($chunk instanceof SvChatChunk && in_array($chunk->team, [0, 1], true)) {
@@ -722,188 +982,11 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->excludedEventTeeIndexes = [];
     }
 
-    public function addEntity(AbstractEntity $entity): void
-    {
-        $this->entities[] = $entity;
-    }
-
-    /**
-     * @return array<int, AbstractEntity>
-     */
-    public function getEntities(): array
-    {
-        return $this->entities;
-    }
-
-    /** @return iterable<int, AbstractCharacterEntity> */
-    public function getActiveCharacters(): iterable
-    {
-        $entities = $this->entities; // Damage callbacks can remove or destroy later characters between yields.
-
-        foreach ($entities as $index => $entity) {
-            if ($entity instanceof AbstractCharacterEntity
-                && $entity->alive
-                && ! $entity->isMarkedForDestruction()
-                && ($this->entities[$index] ?? null) === $entity
-            ) {
-                yield $index => $entity;
-            }
-        }
-    }
-
-    public function removeEntity(AbstractEntity $entity): void
-    {
-        $index = array_search($entity, $this->entities, true);
-
-        if ($index !== false) {
-            $this->removeEntityAt($index, $entity);
-        }
-    }
-
-    protected function removeEntityAt(int $index, AbstractEntity $entity): void
-    {
-        if (($this->entities[$index] ?? null) !== $entity) {
-            return;
-        }
-
-        foreach ($entity->getAllocatedSnapIds() as $id) {
-            $this->snapIdPool->freeId($id);
-        }
-
-        unset($this->entities[$index]);
-    }
-
-    public function addTee(AbstractTee $tee): void
-    {
-        if (count($this->releasedTeeIndexes) > 0) {
-            $index = array_pop($this->releasedTeeIndexes);
-        } else {
-            $index = count($this->tees);
-        }
-
-        $tee->setWorld($this, $index);
-
-        if ($tee instanceof PlayerTee) {
-            $this->setTeeName($tee, $tee->name);
-
-            // Select the initial team before registration so capacity checks see a new player.
-            $controller = $this->getGameController();
-            $tee->team  = $this->config->getInt('sv_world_join_as_spectator')
-                ? GameConstants::TEAM_SPECTATORS
-                : $controller->clampTeam($controller->getAutoTeam($index));
-        }
-
-        $this->tees[$index] = $tee;
-        $this->voteController->requestUpdate();
-        $this->consoleDebug('game', 'TeeIdx='.$index.' Name="'.$tee->name.'" Entered game');
-
-        if ($tee instanceof PlayerTee) {
-            $tee->spawning       = $tee->team !== GameConstants::TEAM_SPECTATORS;
-            $tee->lastActionTick = $this->getCurrentTick();
-            $tee->scoreStartTick = $this->getCurrentTick();
-
-            $chunk = new SvChatChunk(
-                team: 0,
-                clientId: -1,
-                text: "'{$tee->name}' entered and joined the game",
-            );
-
-            $this->broadcast($chunk);
-
-            $welcome = $this->config->getString('sv_world_welcome');
-
-            if ($welcome !== '') {
-                $this->server->sendToTee($this, $index, new SvChatChunk(team: 0, clientId: -1, text: $welcome));
-            }
-        }
-    }
-
-    public function resetSpectatorsFollowing(int $teeIndex): void
-    {
-        foreach ($this->tees as $tee) {
-            if ($tee instanceof PlayerTee && $tee->spectatorId === $teeIndex) {
-                $tee->spectatorId = GameConstants::SPEC_FREEVIEW;
-            }
-        }
-    }
-
-    public function removeTee(AbstractTee $tee, ?string $reason = null): void
-    {
-        $index = $tee->teeIndex;
-
-        if (($this->tees[$index] ?? null) !== $tee) {
-            return;
-        }
-
-        if ($tee->character !== null && $tee->character->alive) {
-            $tee->character->die();
-        }
-
-        if ($tee instanceof PlayerTee) {
-            $text = $reason !== null && $reason !== ''
-                ? "'{$tee->name}' has left the game ({$reason})"
-                : "'{$tee->name}' has left the game";
-
-            $chunk = new SvChatChunk(
-                team: 0,
-                clientId: -1,
-                text: $text,
-            );
-
-            $this->broadcast($chunk);
-        }
-
-        $this->voteController->abortVoteOnDisconnect($index);
-        $this->voteController->cancelVoteOnCreatorLeave($index);
-
-        $this->resetSpectatorsFollowing($index);
-
-        foreach ($this->entities as $entity) {
-            $entity->onTeeLeave($index);
-        }
-
-        $this->releasedTeeIndexes[] = $index;
-        unset($this->tees[$index]);
-        $this->consoleDebug('game', 'TeeIdx='.$index.' Name="'.$tee->name.'" Left game'.($reason !== null && $reason !== '' ? ' Reason='.$reason : ''));
-        $this->voteController->requestUpdate();
-
-        $this->getGameController()->checkTeamBalance();
-    }
-
-    public function onMessage(AbstractTee $tee, AbstractChunk $chunk): void
-    {
-        $this->clientMessageHandler->handle($tee, $chunk);
-    }
-
-    public function consoleError(string $system, string $message): void
-    {
-        Console::error($system, $this->generateConsoleMessage($message));
-    }
-
-    public function consoleWarn(string $system, string $message): void
-    {
-        Console::warn($system, $this->generateConsoleMessage($message));
-    }
-
-    public function consoleInfo(string $system, string $message): void
-    {
-        Console::info($system, $this->generateConsoleMessage($message));
-    }
-
-    public function consoleDebug(string $system, string $message): void
-    {
-        Console::debug($system, $this->generateConsoleMessage($message));
-    }
-
-    public function consoleTrace(string $system, string $message): void
-    {
-        Console::trace($system, $this->generateConsoleMessage($message));
-    }
-
-    protected function generateConsoleMessage(string $message): string
-    {
-        return 'World='.$this->identifier.' '.$message;
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Tick lifecycle
+    |--------------------------------------------------------------------------
+    */
 
     public function doTick(): void
     {
@@ -1057,6 +1140,12 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Snapshots
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * @return AbstractSnapItem[]
      */
@@ -1175,26 +1264,39 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         return $snaps;
     }
 
-    protected function tryRespawnTee(PlayerTee $tee): bool
+    /*
+    |--------------------------------------------------------------------------
+    | Console logging
+    |--------------------------------------------------------------------------
+    */
+
+    public function consoleError(string $system, string $message): void
     {
-        $spawnPos = $this->getGameController()->selectSpawnPosition($this, $tee->team);
+        Console::error($system, $this->generateConsoleMessage($message));
+    }
 
-        if ($spawnPos === null) {
-            return false;
-        }
+    public function consoleWarn(string $system, string $message): void
+    {
+        Console::warn($system, $this->generateConsoleMessage($message));
+    }
 
-        $tee->spawning = false;
+    public function consoleInfo(string $system, string $message): void
+    {
+        Console::info($system, $this->generateConsoleMessage($message));
+    }
 
-        $character = $this->createCharacterEntity(clone $spawnPos);
-        $character->spawn($spawnPos, $tee);
-        $this->addEntity($character);
+    public function consoleDebug(string $system, string $message): void
+    {
+        Console::debug($system, $this->generateConsoleMessage($message));
+    }
 
-        // CreatePlayerSpawn event (visual spawn effect)
-        $this->addEvent(new ObjEventSpawnItem(
-            x: (int) round($spawnPos->x),
-            y: (int) round($spawnPos->y),
-        ));
+    public function consoleTrace(string $system, string $message): void
+    {
+        Console::trace($system, $this->generateConsoleMessage($message));
+    }
 
-        return true;
+    protected function generateConsoleMessage(string $message): string
+    {
+        return 'World='.$this->identifier.' '.$message;
     }
 }

@@ -124,6 +124,9 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
         return true;
     }
 
+    /** Normal team changes call this after bookkeeping; silent transitions bypass gameplay policy. */
+    public function onTeamChanged(PlayerTee $tee, int $previousTeam): void {}
+
     public function isVoteEligible(PlayerTee $tee): bool
     {
         return $tee->team !== GameConstants::TEAM_SPECTATORS;

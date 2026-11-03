@@ -34,9 +34,7 @@ class ToggleTuneCommand extends AbstractCommand
         $name   = strtolower($arguments[0]);
         $first  = (float) $arguments[1];
         $second = (float) $arguments[2];
-        $tuning->set($name, round($tuning->get($name) * 100) === round($first * 100) ? $second : $first);
-        $world->getServer()->sendToWorld($world, $tuning->getTuneParamsChunk(), includeReady: true);
-        $world->consoleInfo('tuning', $name.'='.$tuning->get($name));
+        $world->setTuning($name, round($tuning->get($name) * 100) === round($first * 100) ? $second : $first);
         $this->reply($world, $tee, sprintf('%s %.2f', $name, $tuning->get($name)), $output);
     }
 }

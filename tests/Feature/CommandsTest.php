@@ -241,6 +241,8 @@ test('status tuning and help output goes only to the requesting RCON session', f
     expect($lines)->toContain('addr=192.0.2.2', 'gravity 0.50', 'kick i[id]', 'Uptime:');
     expect(implode("\n", commandReplyLines($server->socket($other))))->not->toContain('addr=', 'gravity 0.50', 'kick i[id]', 'Uptime:');
     expect($server->socket($other)->chunks(SvChatChunk::class))->toBeEmpty();
+    expect($server->socket($admin)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
+    expect($server->socket($other)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
 });
 
 test('tuning changes use normal units update clients including ready clients and leave other worlds unchanged', function () {
@@ -250,31 +252,102 @@ test('tuning changes use normal units update clients including ready clients and
     $ready->readyToEnter = true;
     $loading             = $server->addClient(address: '192.0.2.4', state: ConnectionSlot::STATE_LOADING);
     $other               = $server->addClient($server->addWorld('other'), '192.0.2.5');
+    $beforeStartInfo     = $server->addClient(address: '192.0.2.6', state: ConnectionSlot::STATE_READY);
+    $connecting          = $server->addClient(address: '192.0.2.7', state: ConnectionSlot::STATE_CONNECTING);
     $tuning              = $server->entryWorld->getTuneController();
 
-    $server->send($admin, new RconCmdChunk('tune gravity 0.75'));
-    expect($tuning->gravity)->toBe(75);
-    foreach ([$guest, $ready] as $client) {
-        expect($server->socket($client)->chunks(SvTuneParamsChunk::class)[0]->gravity)->toBe(75);
+    foreach ([
+        ['tune gravity 0.75', 75, 1000],
+        ['toggle_tune gravity 0.75 0.25', 25, 1000],
+        ['toggle_tune gravity 0.75 0.25', 75, 1000],
+        ['tune_reset gravity', 50, 1000],
+        ['tune ground_control_speed 12', 50, 1200],
+        ['tune_reset', 50, 1000],
+    ] as [$line, $gravity, $speed]) {
+        foreach ([$admin, $guest, $ready, $loading, $other, $beforeStartInfo, $connecting] as $client) {
+            $server->socket($client)->packets = [];
+        }
+        $server->send($admin, new RconCmdChunk($line));
+        expect([$tuning->gravity, $tuning->groundControlSpeed])->toBe([$gravity, $speed]);
+        foreach ([$admin, $guest, $ready] as $client) {
+            $updates = $server->socket($client)->chunks(SvTuneParamsChunk::class);
+            expect($updates)->toHaveCount(1);
+            expect($updates[0]->getPayload()->encode())->toBe($tuning->getTuneParamsChunk()->getPayload()->encode());
+        }
+        foreach ([$loading, $other, $beforeStartInfo, $connecting] as $client) {
+            expect($server->socket($client)->packets)->toBeEmpty();
+        }
+        expect($other->world()->getTuneController())->toEqual(new TuneController);
     }
-    expect($server->socket($loading)->packets)->toBeEmpty();
-    expect($server->socket($other)->packets)->toBeEmpty();
-    expect($other->world()->getTuneController()->gravity)->toBe(50);
-    $server->send($admin, new RconCmdChunk('toggle_tune gravity 0.75 0.25'));
-    expect($tuning->gravity)->toBe(25);
-    $server->send($admin, new RconCmdChunk('toggle_tune gravity 0.75 0.25; tune_reset gravity'));
-    expect($tuning->gravity)->toBe(50);
-    $server->send($admin, new RconCmdChunk('tune ground_control_speed 12; tune_reset; tunes'));
+
     expect($tuning)->toEqual(new TuneController);
+    $server->socket($admin)->packets = [];
+    $server->send($admin, new RconCmdChunk('tunes'));
     expect(commandReplyLines($server->socket($admin)))->toContain('ground_control_speed 10.00');
+    expect($server->socket($admin)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
 });
 
-test('invalid tuning commands leave the existing values intact', function (string $line) {
+test('world tuning methods validate normal units and publish sets and resets without command dispatch', function () {
+    $server              = new RconTestServer;
+    $world               = $server->entryWorld;
+    $client              = $server->addClient();
+    $ready               = $server->addClient(port: 8301, state: ConnectionSlot::STATE_READY);
+    $ready->readyToEnter = true;
+    $tuning              = $world->getTuneController();
+
+    $world->setTuning('GRAVITY', 0.755);
+    $world->setTuning('GROUND_CONTROL_SPEED', 12.0);
+    $world->resetTuning('GRAVITY');
+    expect([$tuning->gravity, $tuning->groundControlSpeed])->toBe([50, 1200]);
+    $world->resetTuning();
+
+    expect($world->getTuneController())->toBe($tuning);
+    expect($tuning)->toEqual(new TuneController);
+    foreach ([$client, $ready] as $recipient) {
+        $updates = $server->socket($recipient)->chunks(SvTuneParamsChunk::class);
+        expect(array_map(fn (SvTuneParamsChunk $chunk): array => [$chunk->gravity, $chunk->groundControlSpeed], $updates))
+            ->toBe([[76, 1000], [76, 1200], [50, 1200], [50, 1000]]);
+    }
+});
+
+test('invalid world tuning mutations preserve existing values without publishing updates', function () {
     [$server, $admin] = commandTestServer();
+    $world            = $server->entryWorld;
+    $world->setTuning('gravity', 0.75);
+    $before                          = clone $world->getTuneController();
+    $ready                           = $server->addClient(port: 8301, state: ConnectionSlot::STATE_READY);
+    $ready->readyToEnter             = true;
+    $server->socket($admin)->packets = [];
+
+    foreach ([
+        fn () => $world->setTuning('missing', 1.0),
+        fn () => $world->setTuning('gravity', INF),
+        fn () => $world->setTuning('gravity', NAN),
+        fn () => $world->setTuning('gravity', 21474836.48),
+        fn () => $world->setTuning('velramp_range', 0.0),
+        fn () => $world->setTuning('velramp_curvature', 0.004),
+        fn () => $world->resetTuning('missing'),
+    ] as $mutate) {
+        expect($mutate)->toThrow(InvalidArgumentException::class);
+        expect($world->getTuneController())->toEqual($before);
+        expect($server->socket($admin)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
+        expect($server->socket($ready)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
+    }
+});
+
+test('invalid tuning commands leave the existing values intact without publishing updates', function (string $line) {
+    [$server, $admin]    = commandTestServer();
+    $guest               = $server->addClient(port: 8301);
+    $ready               = $server->addClient(port: 8302, state: ConnectionSlot::STATE_READY);
+    $ready->readyToEnter = true;
     $server->send($admin, new RconCmdChunk($line));
+
     expect($server->entryWorld->getTuneController())->toEqual(new TuneController);
     expect(commandReplyLines($server->socket($admin)))->not->toBeEmpty();
-})->with(['tune missing 5', 'tune gravity 21474836.48', 'tune gravity -21474836.49', 'tune gravity NaN', 'tune_reset missing']);
+    foreach ([$admin, $guest, $ready] as $client) {
+        expect($server->socket($client)->chunks(SvTuneParamsChunk::class))->toBeEmpty();
+    }
+})->with(['tune missing 5', 'tune gravity 21474836.48', 'tune gravity -21474836.49', 'tune gravity NaN', 'tune_reset missing', 'toggle_tune missing 1 2', 'toggle_tune gravity 0.5 21474836.48']);
 
 test('invalid velocity ramp tuning is not broadcast and leaves moving characters usable', function (string $name, bool $toggle) {
     [$server, $admin]    = commandTestServer();
