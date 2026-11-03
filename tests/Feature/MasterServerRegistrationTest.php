@@ -467,6 +467,8 @@ test('public registration merges all worlds and refreshes client state slots map
     $server->addClient($dm, $socket, 8403, ConnectionSlot::STATE_CLOSED);
     $server->tick();
     $info = json_decode($server->httpClient->requests[0]['body'], true, flags: JSON_THROW_ON_ERROR);
+    assert(is_array($info));
+    assert(is_array($info['clients']));
 
     expect($info['name'])->toBe('Public server');
     expect($info['passworded'])->toBeTrue();
@@ -487,6 +489,9 @@ test('public registration merges all worlds and refreshes client state slots map
     $server->clock->now = 1_000_000_000;
     $server->updateRegistration();
     $info = json_decode($server->httpClient->requests[1]['body'], true, flags: JSON_THROW_ON_ERROR);
+    assert(is_array($info));
+    assert(is_array($info['clients']));
+    assert(is_array($info['clients'][0]));
     expect(array_column($info['clients'], 'name'))->toBe(['First', '(connecting)']);
     expect($info['clients'][0]['score'])->toBe(8);
     expect($loading->state)->toBe(ConnectionSlot::STATE_LOADING);
@@ -499,6 +504,7 @@ test('single-world registration uses the actual map and game type', function () 
     $server->initialize($socket);
     $server->updateRegistration();
     $info = json_decode($server->httpClient->requests[0]['body'], true, flags: JSON_THROW_ON_ERROR);
+    assert(is_array($info));
 
     expect($info['game_type'])->toBe('CTF');
     expect($info['map'])->toBe(['name' => 'ctf1', 'crc' => $world->getMap()->getCrc(), 'size' => $world->getMap()->getSize()]);
@@ -576,14 +582,14 @@ test('a real game socket registers through a UDP challenge and removes its listi
         try {
             for ($i = 0; $i < 3; $i++) {
                 $connection = $listener->accept(3.0);
-                if ($connection === false) {
+                if (! $connection instanceof Socket) {
                     throw new RuntimeException('Missing HTTP request from the game server');
                 }
                 try {
                     $raw = '';
                     do {
                         $part = $connection->recv(8192, 2.0);
-                        if ($part === false || $part === '') {
+                        if (! is_string($part) || $part === '') {
                             throw new RuntimeException('Incomplete HTTP request from the game server');
                         }
                         $raw .= $part;
@@ -642,6 +648,7 @@ test('a real game socket registers through a UDP challenge and removes its listi
         throw new RuntimeException($error->getMessage().PHP_EOL.$output, previous: $error);
     }
     expect($output)->not->toContain('worker exit timeout', 'forced termination');
+    assert(is_array($exitStatus));
     expect($exitStatus['code'] ?? null)->toBe(0, $output);
     expect($exitStatus['signal'] ?? null)->toBe(0, $output);
     expect($requests)->toHaveCount(3);
@@ -651,6 +658,8 @@ test('a real game socket registers through a UDP challenge and removes its listi
     expect($requests[2]['headers']['secret'])->toBe($requests[0]['headers']['secret']);
     expect($requests[2]['body'])->toBe('');
     $info = json_decode($requests[0]['body'], true, flags: JSON_THROW_ON_ERROR);
+    assert(is_array($info));
+    assert(is_array($info['map']));
     expect($info['name'])->toBe('Registration integration test');
     expect($info['map']['name'])->toBe('dm1');
     $host       = $family === AF_INET6 ? '::1' : '127.0.0.1';
@@ -692,13 +701,13 @@ test('HTTP registration performs a real nonblocking local POST with the expected
         }
         Coroutine::create(function () use ($listener, &$request): void {
             $connection = $listener->accept(2.0);
-            if ($connection === false) {
+            if (! $connection instanceof Socket) {
                 throw new RuntimeException('No local HTTP test connection received');
             }
             try {
                 while (! str_contains($request, "\r\n\r\n{}")) {
                     $part = $connection->recv(8192, 2.0);
-                    if ($part === false || $part === '') {
+                    if (! is_string($part) || $part === '') {
                         throw new RuntimeException('Incomplete local HTTP test request');
                     }
                     $request .= $part;

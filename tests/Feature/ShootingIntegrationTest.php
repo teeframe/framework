@@ -270,6 +270,7 @@ test('projectile calculatePositionAtTime returns forward displacement', function
     $getPosRef = $projRef->getMethod('calculatePositionAtTime');
 
     $curPos = $getPosRef->invoke($projectile, 0.04);
+    assert($curPos instanceof Vector2);
     expect($curPos->x)->toBeGreaterThan($startX + 1);
 });
 

@@ -115,20 +115,33 @@ function createWorld(Map $map): AbstractWorld
     };
 }
 
-/** @param array<string, mixed> $overrides */
+/**
+ * @param  array{
+ *     direction?: int,
+ *     targetX?: int,
+ *     targetY?: int,
+ *     jump?: bool,
+ *     fire?: int,
+ *     hook?: bool,
+ *     playerFlags?: int,
+ *     wantedWeapon?: int,
+ *     nextWeapon?: int,
+ *     prevWeapon?: int,
+ * }  $overrides
+ */
 function input(array $overrides = []): PlayerInput
 {
     return new PlayerInput(
-        direction: (int) ($overrides['direction'] ?? 0),
-        targetX: (int) ($overrides['targetX'] ?? 0),
-        targetY: (int) ($overrides['targetY'] ?? -1),
-        jump: (bool) ($overrides['jump'] ?? false),
-        fire: (int) ($overrides['fire'] ?? 0),
-        hook: (bool) ($overrides['hook'] ?? false),
-        playerFlags: (int) ($overrides['playerFlags'] ?? 0),
-        wantedWeapon: (int) ($overrides['wantedWeapon'] ?? 0),
-        nextWeapon: (int) ($overrides['nextWeapon'] ?? 0),
-        prevWeapon: (int) ($overrides['prevWeapon'] ?? 0),
+        direction: $overrides['direction'] ?? 0,
+        targetX: $overrides['targetX'] ?? 0,
+        targetY: $overrides['targetY'] ?? -1,
+        jump: $overrides['jump'] ?? false,
+        fire: $overrides['fire'] ?? 0,
+        hook: $overrides['hook'] ?? false,
+        playerFlags: $overrides['playerFlags'] ?? 0,
+        wantedWeapon: $overrides['wantedWeapon'] ?? 0,
+        nextWeapon: $overrides['nextWeapon'] ?? 0,
+        prevWeapon: $overrides['prevWeapon'] ?? 0,
     );
 }
 

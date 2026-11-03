@@ -223,8 +223,10 @@ test('collecting another ninja mid dash preserves movement and cannot hit the sa
     $world->addEntity($victim);
     $character->giveNinja();
     setWeaponTestAim($character, 0);
-    $character->vel         = new Vector2(3, 4);
-    $character->reloadTimer = (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
+    $character->vel = new Vector2(3, 4);
+    $reloadTimer    = (new ReflectionMethod($character, 'shootNinja'))->invoke($character);
+    assert(is_int($reloadTimer));
+    $character->reloadTimer = $reloadTimer;
     $handle                 = new ReflectionMethod($character, 'handleNinja');
     $handle->invoke($character);
     expect($victim->health)->toBe(1);

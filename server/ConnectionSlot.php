@@ -294,7 +294,7 @@ class ConnectionSlot extends AbstractConnection
 
     protected function handlePacketSending(AbstractPacket $packet): bool
     {
-        $sent = $this->socket->sendto($this->destinationAddress, $this->destinationPort, $packet->encodeToSend());
+        $sent = (bool) $this->socket->sendto($this->destinationAddress, $this->destinationPort, $packet->encodeToSend());
 
         if (! $sent) {
             $this->consoleWarn('network', 'Failed to send packet');

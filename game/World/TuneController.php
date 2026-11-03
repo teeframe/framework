@@ -48,6 +48,8 @@ class TuneController
         $values = [];
 
         foreach (get_object_vars($this) as $name => $value) {
+            assert(is_int($value));
+
             $key          = strtolower(preg_replace('/[A-Z]/', '_$0', $name) ?? $name);
             $values[$key] = $value / 100.0;
         }

@@ -35,15 +35,23 @@ class RegisteredTestServer extends AbstractServerInstance
 
     protected function createMasterServer(): MasterServer
     {
-        return new MasterServer($this->tickHandler, new LocalMasterServerHttpClient($_SERVER['argv'][1]));
+        $arguments = $_SERVER['argv'] ?? [];
+        assert(is_array($arguments));
+        $url = $arguments[1] ?? null;
+        assert(is_string($url));
+
+        return new MasterServer($this->tickHandler, new LocalMasterServerHttpClient($url));
     }
 
     protected function boot(): void
     {
         parent::boot();
 
+        $arguments = $_SERVER['argv'] ?? [];
+        assert(is_array($arguments));
+
         // Bound the subprocess even if the test master never accepts registration.
-        $this->shutdownTimer = swoole_timer_after(($_SERVER['argv'][2] ?? '') === 'signal' ? 3000 : 1000, function (): void {
+        $this->shutdownTimer = swoole_timer_after(($arguments[2] ?? '') === 'signal' ? 3000 : 1000, function (): void {
             $this->shutdownTimer = false;
             echo 'registration-test-ticks='.$this->tickHandler->getCurrentTick().PHP_EOL;
             $this->shutdown();
@@ -82,6 +90,6 @@ if (! isset($argv[1])) {
 
 $config = new LocalRegistrationConfig;
 $config->loadFile(__DIR__.'/registered-server.cfg');
-$config->set('sv_bind_address', $_SERVER['argv'][3] ?? '127.0.0.1');
+$config->set('sv_bind_address', $argv[3] ?? '127.0.0.1');
 
 (new RegisteredTestServer(new TickHandler, config: $config))->start();

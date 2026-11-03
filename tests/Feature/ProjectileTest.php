@@ -99,7 +99,10 @@ function getProjectilePos(PvpProjectileEntity $proj, float $time): Vector2
     $ref    = new ReflectionClass($proj);
     $method = $ref->getMethod('calculatePositionAtTime');
 
-    return $method->invoke($proj, $time);
+    $position = $method->invoke($proj, $time);
+    assert($position instanceof Vector2);
+
+    return $position;
 }
 
 test('character firing creates valid projectile snap', function () use ($mapPath, $mapExists) {
@@ -335,6 +338,7 @@ test('grenade creates explosion event on lifespan expiry', function () use ($map
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
+    assert(is_array($events));
 
     $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
     expect($explosionEvents)->toHaveCount(1);
@@ -461,6 +465,7 @@ test('non-grenade projectile does not create explosion event', function () use (
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
+    assert(is_array($events));
 
     $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
     expect($explosionEvents)->toHaveCount(0);
@@ -541,6 +546,7 @@ test('grenade collides with character and explodes', function () use ($mapPath, 
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
+    assert(is_array($events));
 
     $explosionEvents = array_filter($events, fn ($e) => $e instanceof ObjEventExplosionItem);
     expect($explosionEvents)->toHaveCount(1);
@@ -725,6 +731,7 @@ test('damage indicators are created on takeDamage', function () use ($mapPath, $
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
+    assert(is_array($events));
 
     $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
     expect($damageInds)->toHaveCount(3);
@@ -791,6 +798,7 @@ test('damage indicators group when damage taken in quick succession', function (
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
+    assert(is_array($events));
 
     $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
     expect($damageInds)->toHaveCount(5);
@@ -856,6 +864,7 @@ test('killing blow still emits damage indicators', function () use ($mapPath, $m
     $ref    = new ReflectionClass($world);
     $prop   = $ref->getProperty('pendingEvents');
     $events = $prop->getValue($world);
+    assert(is_array($events));
 
     $damageInds = array_values(array_filter($events, fn ($e) => $e instanceof ObjEventDamageIndItem));
     expect($damageInds)->toHaveCount(12); // 3 + 3 + 3 + 3

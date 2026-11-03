@@ -29,7 +29,17 @@ function lastRecoverySnapshot(RecordingConnection $connection): SnapEmptyChunk|S
 /** @return array<int, ConnectionSnap> */
 function recoverySnapshotHistory(SnapHandler $snaps): array
 {
-    return (new ReflectionProperty(SnapHandler::class, 'sentList'))->getValue($snaps);
+    $snapshots = (new ReflectionProperty(SnapHandler::class, 'sentList'))->getValue($snaps);
+    assert(is_array($snapshots));
+    $history = [];
+
+    foreach ($snapshots as $tick => $snapshot) {
+        assert(is_int($tick));
+        assert($snapshot instanceof ConnectionSnap);
+        $history[$tick] = $snapshot;
+    }
+
+    return $history;
 }
 
 test('explicit snapshot sends preserve baseline selection across consecutive ticks', function () {

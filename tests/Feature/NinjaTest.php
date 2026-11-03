@@ -21,9 +21,11 @@ function createNinjaWorld(Map $map): AbstractWorld
 
 function advanceWorldTick(AbstractWorld $world): void
 {
-    $ref  = new ReflectionClass($world);
-    $prop = $ref->getProperty('tickHandler');
-    $prop->getValue($world)->advanceTick();
+    $ref   = new ReflectionClass($world);
+    $prop  = $ref->getProperty('tickHandler');
+    $clock = $prop->getValue($world);
+    assert($clock instanceof TickHandler);
+    $clock->advanceTick();
 }
 
 test('ninja dash moves ~50 units per tick not ~800', function () use ($mapPath, $mapExists) {
@@ -275,6 +277,7 @@ test('ninja has 40 tick cooldown between shots', function () use ($mapPath, $map
 
     // First shot sets reload timer
     $reloadTimer = $shootMethod->invoke($character);
+    assert(is_int($reloadTimer));
     expect($reloadTimer)->toBe(40);
 
     // Simulate the reload timer being set (as handleWeapons would do)
