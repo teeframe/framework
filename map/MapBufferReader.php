@@ -36,6 +36,7 @@ class MapBufferReader
 
     public function readInt(): int
     {
+        /** @var array{1: int}|false $unpacked */
         $unpacked = unpack('V', $this->extractFromBuffer(4));
 
         $value = $unpacked ? $unpacked[1] : 0;
@@ -44,7 +45,7 @@ class MapBufferReader
     }
 
     /**
-     * @return int[]
+     * @return list<int>
      */
     public function readInts(int $count): array
     {

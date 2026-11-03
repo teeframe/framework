@@ -218,6 +218,7 @@ test('RCON chunks use the 0.6 message IDs and field order', function (AbstractCh
 ]);
 
 test('malformed RCON fields reject the whole packet', function (int $message, array $fields) {
+    /** @var int[] $fields */
     $size = count($fields) + 1;
     $raw  = NetworkBase::packBuffer([0, 0, 1, 0x40 | ($size >> 4), $size & 15, 1, ($message << 1) | 1, ...$fields]);
 

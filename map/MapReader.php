@@ -191,8 +191,8 @@ class MapReader
     }
 
     /**
-     * @param  int[]  $dataOffsets
-     * @param  int[]  $dataSizes
+     * @param  array<int, int>  $dataOffsets
+     * @param  array<int, int>  $dataSizes
      * @return array<int, string>
      */
     protected function readDataBlocks(string $rawData, array $dataOffsets, array $dataSizes, int $version): array

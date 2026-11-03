@@ -55,6 +55,7 @@ test('chunk factories construct their defining class regardless of subclass cons
 ]);
 
 test('malformed chunk boundaries reject the whole packet', function (array $payload) {
+    /** @var int[] $payload */
     expect(PacketDecoder::decodeFromRaw(decoderValidationPacket($payload)))->toBeFalse();
     expect(fn () => PacketDecoder::decodeChunksFromPayload($payload))->toThrow(UnexpectedValueException::class);
 })->with([
@@ -69,6 +70,7 @@ test('malformed chunk boundaries reject the whole packet', function (array $payl
 ]);
 
 test('truncated integer fields reject packets instead of fabricating input', function (array $bytes, bool $compressed) {
+    /** @var int[] $bytes */
     $payload = [0x40, count($bytes) + 1, 1, NetworkMessages::CL_VOTE << 1, ...$bytes];
 
     expect(PacketDecoder::decodeFromRaw(decoderValidationPacket($payload, compressed: $compressed)))->toBeFalse();
@@ -81,6 +83,7 @@ test('truncated integer fields reject packets instead of fabricating input', fun
 ])->with([false, true]);
 
 test('unterminated string fields reject packets', function (array $bytes, bool $compressed) {
+    /** @var int[] $bytes */
     $size    = count($bytes);
     $payload = [0x40 | ($size >> 4), $size & 0xF, 1, ...$bytes];
 
@@ -127,6 +130,7 @@ test('terminated empty strings remain valid in decoded messages', function (bool
 })->with([false, true]);
 
 test('raw string extraction requires a zero terminator', function (array $bytes) {
+    /** @var int[] $bytes */
     expect(fn () => (new RawPayload($bytes))->extractString())->toThrow(UnexpectedValueException::class, 'Unterminated string');
 })->with([
     'missing string'      => [[]],

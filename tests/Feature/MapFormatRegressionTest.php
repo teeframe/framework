@@ -118,6 +118,7 @@ function mapRegressionLoad(string $bytes): Map
 }
 
 test('map layer factories construct their defining class regardless of subclass constructors', function (array $integers, int $type, int $flags) {
+    /** @var int[] $integers */
     $prototype = new class('Custom layer') extends LayerItem
     {
         public function __construct(public string $label)

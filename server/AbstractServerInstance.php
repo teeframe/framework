@@ -356,6 +356,7 @@ abstract class AbstractServerInstance
             });
 
             $socket->on('packet', function (mixed $server, string $data, array $clientInfo) use ($socket): void {
+                /** @var array{address: string, port: int} $clientInfo */
                 $packet = PacketDecoder::decodeFromRaw($data);
 
                 if ($packet === false) {
@@ -364,7 +365,6 @@ abstract class AbstractServerInstance
                     return;
                 }
 
-                /** @var array{address: string, port: int} $clientInfo */
                 $this->onPacket($packet, $clientInfo, $socket);
             });
 

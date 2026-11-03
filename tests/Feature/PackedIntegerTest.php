@@ -5,6 +5,7 @@ use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\RawPayload;
 
 test('packed integers preserve signed values and consume only their own bytes', function (int $value, array $bytes) {
+    /** @var int[] $bytes */
     expect(NetworkBase::packInt($value))->toBe($bytes);
     expect(NetworkBase::unpackInt([...$bytes, 42]))->toBe([$value, count($bytes)]);
 })->with([
@@ -31,6 +32,7 @@ test('packed integers preserve signed values and consume only their own bytes', 
 ]);
 
 test('packed integer decoding rejects missing bytes without PHP warnings', function (array $bytes) {
+    /** @var int[] $bytes */
     expect(fn () => NetworkBase::unpackInt($bytes))->toThrow(UnexpectedValueException::class);
 })->with([
     'empty'                        => [[]],
@@ -43,6 +45,7 @@ test('packed integer decoding rejects missing bytes without PHP warnings', funct
 ]);
 
 test('packed integer decoding rejects values outside the signed 32 bit format', function (array $bytes) {
+    /** @var int[] $bytes */
     expect(fn () => NetworkBase::unpackInt($bytes))->toThrow(UnexpectedValueException::class);
 })->with([
     'positive overflow'          => [[0x80, 0x80, 0x80, 0x80, 0x10]],

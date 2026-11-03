@@ -74,8 +74,13 @@ class MasterServerHttpClient
             ]);
 
             if (! $client->post($path, $body)) {
+                assert(is_string($client->errMsg));
+
                 throw new \RuntimeException('Master server request failed: '.$client->errMsg);
             }
+
+            assert(is_int($client->statusCode));
+            assert(is_string($client->body));
 
             return ['status' => $client->statusCode, 'body' => $client->body];
         } finally {

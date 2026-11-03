@@ -70,6 +70,7 @@ class NetworkBase
      */
     public static function unpackBuffer(string $packet): array
     {
+        /** @var array<int, int>|false $result */
         $result = unpack('C*', $packet);
 
         if ($result === false) {

@@ -29,6 +29,7 @@ test('string extraction stops at the first zero and leaves subsequent zeroes int
 });
 
 test('unterminated strings still throw and consume the malformed payload', function (array $bytes) {
+    /** @var int[] $bytes */
     $payload = new RawPayload($bytes);
 
     expect(fn () => $payload->extractString())->toThrow(UnexpectedValueException::class, 'Unterminated string in payload');

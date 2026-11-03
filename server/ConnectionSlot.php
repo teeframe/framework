@@ -24,12 +24,12 @@ use TeeFrame\Server\Sockets\AbstractSocket;
 
 class ConnectionSlot extends AbstractConnection
 {
-    const STATE_WAITING_INIT = 0;
-    const STATE_CONNECTING   = 1;
-    const STATE_LOADING      = 2;
-    const STATE_READY        = 3;
-    const STATE_INGAME       = 4;
-    const STATE_CLOSED       = 5;
+    const int STATE_WAITING_INIT = 0;
+    const int STATE_CONNECTING   = 1;
+    const int STATE_LOADING      = 2;
+    const int STATE_READY        = 3;
+    const int STATE_INGAME       = 4;
+    const int STATE_CLOSED       = 5;
 
     protected PlayerTee $playerTee;
 

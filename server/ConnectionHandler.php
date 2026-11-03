@@ -14,6 +14,7 @@ use TeeFrame\Network\Chunks\System\MapChangeChunk;
 use TeeFrame\Network\Chunks\System\MapDataChunk;
 use TeeFrame\Network\Chunks\System\ReadyChunk;
 use TeeFrame\Network\Chunks\System\RequestMapDataChunk;
+use TeeFrame\Network\NetworkBase;
 use TeeFrame\Network\NetworkMessages;
 use TeeFrame\Network\Packets\AbstractPacket;
 use TeeFrame\Network\Packets\DefaultPacket;
@@ -228,7 +229,7 @@ class ConnectionHandler
             $last      = 1;
         }
 
-        $data = array_values(unpack('C*', substr($mapData, $offset, $chunkSize)) ?: []);
+        $data = NetworkBase::unpackBuffer(substr($mapData, $offset, $chunkSize));
 
         $connection->chunks()->add(
             new MapDataChunk($last, $mapCrc, $chunk->chunk, $chunkSize, $data)

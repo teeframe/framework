@@ -154,6 +154,7 @@ class PacketDecoder
         return $chunks;
     }
 
+    /** @return UnsupportedChunk|class-string<AbstractChunk> */
     protected static function matchDecodedChunk(int $flags, int $message, bool $isSystem): UnsupportedChunk|string
     {
         if ($isSystem) {

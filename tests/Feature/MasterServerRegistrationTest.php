@@ -563,7 +563,7 @@ test('a real game socket registers through a UDP challenge and removes its listi
             throw new RuntimeException('Could not create local master test listener');
         }
         $address = $listener->getsockname();
-        if ($address === false) {
+        if ($address === false || ! is_int($address['port'])) {
             throw new RuntimeException('Could not get the local master test port');
         }
         $process = proc_open([
@@ -696,7 +696,7 @@ test('HTTP registration performs a real nonblocking local POST with the expected
             throw new RuntimeException('Could not create local HTTP test listener');
         }
         $address = $listener->getsockname();
-        if ($address === false) {
+        if ($address === false || ! is_int($address['port'])) {
             throw new RuntimeException('Could not get the local HTTP test port');
         }
         Coroutine::create(function () use ($listener, &$request): void {
