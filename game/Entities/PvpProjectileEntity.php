@@ -99,11 +99,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         $closest    = null;
         $closestPos = $pos1;
 
-        foreach ($this->world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
-                continue;
-            }
-
+        foreach ($this->world->getActiveCharacters() as $entity) {
             if ($entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
                 continue;
             }
@@ -143,11 +139,7 @@ class PvpProjectileEntity extends AbstractProjectileEntity
         $radius      = 135.0;
         $innerRadius = 48.0;
 
-        foreach ($this->world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
-                continue;
-            }
-
+        foreach ($this->world->getActiveCharacters() as $entity) {
             $diff = new Vector2(
                 $entity->getPosition()->x - $pos->x,
                 $entity->getPosition()->y - $pos->y,

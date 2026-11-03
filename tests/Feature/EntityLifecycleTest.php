@@ -94,6 +94,79 @@ function lifecycleSnapshotIds(AbstractWorld $world, AbstractTee $tee): array
     ));
 }
 
+test('active character queries exclude dead destroyed non-character and other-world entities', function () {
+    $clock      = new TickHandler(100);
+    $world      = new TestWorld($clock, new Map);
+    $other      = new TestWorld($clock, new Map);
+    $players    = [];
+    $characters = [];
+    for ($i = 0; $i < 3; $i++) {
+        $player = new PlayerTee;
+        $world->addTee($player);
+        $character = new PvpCharacterEntity($world, new Vector2($i * 64, 64));
+        $character->spawn($character->getPosition(), $player);
+        $world->addEntity($character);
+        $players[]    = $player;
+        $characters[] = $character;
+    }
+    $characters[1]->markForDestruction();
+    $characters[2]->alive = false;
+    $orphan               = new PvpCharacterEntity($world, new Vector2(256, 64));
+    $orphan->spawn($orphan->getPosition());
+    $world->addEntity($orphan);
+    $world->addEntity(new LifecycleTestEntity($world));
+    $outsider = new PvpCharacterEntity($other, new Vector2(0, 64));
+    $outsider->spawn($outsider->getPosition());
+    $other->addEntity($outsider);
+
+    expect(array_values(iterator_to_array($world->getActiveCharacters())))->toBe([$characters[0], $orphan]);
+    expect($world->findCharacter($players[0]->teeIndex))->toBe($characters[0]);
+    expect($world->findCharacter($players[1]->teeIndex))->toBeNull();
+    expect($world->findCharacter($players[2]->teeIndex))->toBeNull();
+    expect((new ReflectionMethod($characters[0], 'getOtherCharacters'))->invoke($characters[0]))->toBeEmpty();
+    expect($world->getEntities())->toContain($characters[1], $characters[2]);
+});
+
+test('active character iteration rechecks eligibility before yielding the next character', function () {
+    $world      = new TestWorld(new TickHandler(100), new Map);
+    $characters = [];
+    for ($i = 0; $i < 4; $i++) {
+        $character = new PvpCharacterEntity($world, new Vector2($i * 64, 64));
+        $character->spawn($character->getPosition());
+        $world->addEntity($character);
+        $characters[] = $character;
+    }
+    $seen = [];
+    foreach ($world->getActiveCharacters() as $character) {
+        $seen[] = $character;
+        $characters[1]->markForDestruction();
+        $characters[2]->alive = false;
+        $world->removeEntity($characters[3]);
+    }
+
+    expect($seen)->toBe([$characters[0]]);
+});
+
+test('destroyed characters are ignored by melee and ninja targeting', function (string $attack, int $damage) {
+    $world    = new TestWorld(new TickHandler(100), new Map);
+    $attacker = new PvpCharacterEntity($world, new Vector2(64, 64));
+    $attacker->spawn($attacker->getPosition());
+    $world->addEntity($attacker);
+    $destroyed = new PvpCharacterEntity($world, new Vector2(64, 50));
+    $destroyed->spawn($destroyed->getPosition());
+    $destroyed->markForDestruction();
+    $world->addEntity($destroyed);
+    $active = new PvpCharacterEntity($world, new Vector2(64, 50));
+    $active->spawn($active->getPosition());
+    $world->addEntity($active);
+
+    (new ReflectionMethod($attacker, $attack))->invoke($attacker);
+
+    expect($destroyed->health)->toBe(10);
+    expect($active->health)->toBe(10 - $damage);
+    expect($attacker->health)->toBe(10);
+})->with(['hammer' => ['shootHammer', 3], 'ninja' => ['hitNinjaTargets', 9]]);
+
 test('custom entities can survive round resets through their reset hook', function () {
     $world      = new TestWorld(new TickHandler(100), new Map);
     $tee        = new PlayerTee;

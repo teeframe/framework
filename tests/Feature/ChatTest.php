@@ -3,13 +3,50 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\Commands\Chat\WhisperCommand;
 use TeeFrame\Game\Commands\CommandLine;
+use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\PvpGameController;
+use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\Tees\PlayerTee;
+use TeeFrame\Game\World\ClientMessageHandler;
 use TeeFrame\Map\Map;
 use TeeFrame\Network\Chunks\Game\ClSayChunk;
 use TeeFrame\Network\Chunks\Game\SvChatChunk;
 use TeeFrame\Network\RawPayload;
+use Tests\Support\RconTestServer;
 use Tests\Support\RecordingGameServer;
+
+require_once __DIR__.'/../Support/RconTestServer.php';
+
+class CustomTeamChatTestHandler extends ClientMessageHandler
+{
+    public int $routingChecks = 0;
+
+    protected function canReceiveTeamChat(AbstractTee $sender, AbstractTee $recipient): bool
+    {
+        $this->routingChecks++;
+
+        return ($sender->teeIndex & 1) === ($recipient->teeIndex & 1);
+    }
+}
+
+/** @return array{TestWorld, TickHandler, list<PlayerTee>, CustomTeamChatTestHandler} */
+function createCustomTeamChatWorld(): array
+{
+    $clock   = new TickHandler(100);
+    $world   = new TestWorld($clock, new Map);
+    $players = [];
+    foreach (['Sender', 'Peer', 'Other'] as $name) {
+        $player       = new PlayerTee;
+        $player->name = $name;
+        $world->addTee($player);
+        $players[] = $player;
+    }
+    $players[0]->team = $players[1]->team = GameConstants::TEAM_SPECTATORS;
+    $players[2]->team = GameConstants::TEAM_RED;
+    recordingServer($world)->clear();
+
+    return [$world, $clock, $players, new CustomTeamChatTestHandler($world)];
+}
 
 $mapPath   = __DIR__.'/../dm1.map';
 $mapExists = file_exists($mapPath);
@@ -198,6 +235,100 @@ test('chat recipients respect team privacy and world boundaries', function (stri
     'public player chat'    => ['TDM', 0, false],
     'public spectator chat' => ['CTF', -1, false],
 ]);
+
+test('team chat recipient hooks override network teams without crossing world boundaries', function () {
+    [$world, $clock, $players, $handler] = createCustomTeamChatWorld();
+    $server                              = recordingServer($world);
+    $otherWorld                          = new TestWorld($clock, new Map, $server);
+    $otherWorld->addTee(new PlayerTee);
+    $server->clear();
+
+    $handler->handle($players[0], new ClSayChunk(true, 'Custom group'));
+
+    expect($server->sentTeeIndexes)->toBe([0, 2]);
+    expect($handler->routingChecks)->toBe(3);
+    foreach ($server->sentPairs as $pair) {
+        expect($pair['world'])->toBe($world);
+        $chat = $pair['chunk'];
+        assert($chat instanceof SvChatChunk);
+        expect([$chat->team, $chat->clientId, $chat->text])->toBe([1, 0, 'Custom group']);
+    }
+    expect($server->sentChunks[0])->not->toBe($server->sentChunks[1]);
+});
+
+test('custom team routing retains Unicode normalization spam protection and chat timestamps', function () {
+    [$world, $clock, $players, $handler] = createCustomTeamChatWorld();
+    $server                              = recordingServer($world);
+    $message                             = " \t".str_repeat('🎮', 128)." \n";
+    $handler->handle($players[0], new ClSayChunk(true, $message));
+
+    expect($server->sentTeeIndexes)->toBe([0, 2]);
+    foreach ($server->sentChunks as $chat) {
+        assert($chat instanceof SvChatChunk);
+        expect($chat->text)->toBe(str_repeat('🎮', 127));
+    }
+    expect($players[0]->lastChatTick)->toBe(100);
+    $server->clear();
+    $handler->handle($players[0], new ClSayChunk(true, $message));
+    expect($server->sentChunks)->toBeEmpty();
+    expect($handler->routingChecks)->toBe(3);
+
+    for ($i = 0; $i < 442; $i++) {
+        $clock->advanceTick();
+    }
+    $handler->handle($players[0], new ClSayChunk(true, $message));
+    expect($server->sentChunks)->toBeEmpty();
+    expect($players[0]->lastChatTick)->toBe(100);
+    $clock->advanceTick();
+    $handler->handle($players[0], new ClSayChunk(true, $message));
+    expect($server->sentTeeIndexes)->toBe([0, 2]);
+    expect($players[0]->lastChatTick)->toBe(543);
+    expect($handler->routingChecks)->toBe(6);
+});
+
+test('team routing hooks do not intercept public chat whispers or command errors', function (bool $teamChat, string $message, array $recipients) {
+    [$world, , $players, $handler] = createCustomTeamChatWorld();
+    $handler->handle($players[0], new ClSayChunk($teamChat, $message));
+
+    expect(recordingServer($world)->sentTeeIndexes)->toBe($recipients);
+    expect($handler->routingChecks)->toBe(0);
+    expect($players[0]->lastChatTick)->toBe(100);
+})->with([
+    'public chat'         => [false, 'Public message', [0, 1, 2]],
+    'cross-group whisper' => [true, '/w Peer secret', [0, 1]],
+    'unknown command'     => [true, '/unknown secret', [0]],
+    'invalid command'     => [true, '/w Peer', [0]],
+]);
+
+test('empty chat never invokes custom team routing', function (bool $teamChat) {
+    [$world, , $players, $handler] = createCustomTeamChatWorld();
+    $handler->handle($players[0], new ClSayChunk($teamChat, " \t\n"));
+
+    expect(recordingServer($world)->sentChunks)->toBeEmpty();
+    expect($handler->routingChecks)->toBe(0);
+    expect($players[0]->lastChatTick)->toBe(0);
+})->with([false, true]);
+
+test('muting is checked before custom team routing and command dispatch', function (string $message) {
+    $server                           = new RconTestServer(clock: new TickHandler(100));
+    $sender                           = $server->addClient();
+    $peer                             = $server->addClient(port: 8301);
+    $peer->playerTee()->name          = 'Peer';
+    $handler                          = new CustomTeamChatTestHandler($server->entryWorld);
+    $server->socket($sender)->packets = [];
+    $server->socket($peer)->packets   = [];
+    $server->getChatMutes()->mute($sender->destinationAddress, 60, 'Test mute');
+
+    $handler->handle($sender->playerTee(), new ClSayChunk(true, $message));
+
+    expect($handler->routingChecks)->toBe(0);
+    expect($sender->playerTee()->lastChatTick)->toBe(0);
+    expect($server->socket($peer)->chunks(SvChatChunk::class))->toBeEmpty();
+    $replies = $server->socket($sender)->chunks(SvChatChunk::class);
+    expect($replies)->toHaveCount(1);
+    expect($replies[0]->text)->toStartWith('You are muted for ');
+    expect($replies[0]->text)->toEndWith('Test mute');
+})->with(['Team message', '/w Peer secret', '/unknown']);
 
 test('onMessage handles whisper command via ClSayChunk', function () use ($mapPath, $mapExists) {
     if (! $mapExists) {

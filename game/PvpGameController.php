@@ -834,7 +834,7 @@ class PvpGameController extends AbstractGameController
     {
         $carrier = $flag->carryingCharacter;
 
-        if ($carrier === null || ! $carrier->alive) {
+        if ($carrier === null || ! $carrier->alive || $carrier->isMarkedForDestruction()) {
             $flag->carryingCharacter = null;
             $flag->dropTick          = $currentTick;
 
@@ -886,11 +886,7 @@ class PvpGameController extends AbstractGameController
             return;
         }
 
-        foreach ($world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
-                continue;
-            }
-
+        foreach ($world->getActiveCharacters() as $entity) {
             $playerTee = $entity->tee;
 
             if (! $playerTee instanceof PlayerTee || $playerTee->team === GameConstants::TEAM_SPECTATORS) {

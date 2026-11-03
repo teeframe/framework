@@ -51,6 +51,51 @@ function damageTestProjectile(TestWorldWithController $world, int $weapon, int $
     return $projectile;
 }
 
+test('destroyed characters neither intercept projectiles nor receive splash damage', function (int $weapon) {
+    [$world, $clock, , $destroyed, $owner] = createProjectileDamageWorld();
+    $destroyed->markForDestruction();
+    $player = new PlayerTee;
+    $world->addTee($player);
+    $active = new PvpCharacterEntity($world, new Vector2(208, 64));
+    $active->spawn($active->getPosition(), $player);
+    $world->addEntity($active);
+    $projectile = damageTestProjectile($world, $weapon, $owner->teeIndex);
+    $clock->advanceTick();
+
+    $projectile->doTick();
+
+    expect($destroyed->health)->toBe(10);
+    expect($active->health)->toBe($weapon === GameConstants::WEAPON_GRENADE ? 4 : 9);
+    expect($projectile->isMarkedForDestruction())->toBeTrue();
+})->with([GameConstants::WEAPON_GUN, GameConstants::WEAPON_SHOTGUN, GameConstants::WEAPON_GRENADE]);
+
+test('explosions skip characters marked for destruction by an earlier damage callback', function () {
+    $world = new TestWorld(new TickHandler(100), new Map);
+    $first = new class($world, new Vector2(64, 64)) extends PvpCharacterEntity
+    {
+        public ?PvpCharacterEntity $next = null;
+
+        public function takeDamage(Vector2 $force, int $damage, int $attackerTeeIndex, int $weapon): void
+        {
+            $this->next?->markForDestruction();
+            parent::takeDamage($force, $damage, $attackerTeeIndex, $weapon);
+        }
+    };
+    $first->spawn($first->getPosition());
+    $world->addEntity($first);
+    $next = new PvpCharacterEntity($world, new Vector2(64, 64));
+    $next->spawn($next->getPosition());
+    $world->addEntity($next);
+    $first->next = $next;
+    $projectile  = new PvpProjectileEntity($world, new Vector2(64, 64), new Vector2(0, 0), GameConstants::WEAPON_GRENADE);
+
+    (new ReflectionMethod($projectile, 'explode'))->invoke($projectile, new Vector2(64, 64));
+
+    expect($first->health)->toBe(4);
+    expect($next->isMarkedForDestruction())->toBeTrue();
+    expect($next->health)->toBe(10);
+});
+
 test('projectiles retain attacker and weapon attribution independently of the owner character', function (int $weapon, string $ownerState, bool $lethal) {
     [$world, $clock, $attacker, $victim, $owner, $target] = createProjectileDamageWorld();
     $projectile                                           = damageTestProjectile($world, $weapon, $owner->teeIndex);

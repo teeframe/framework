@@ -27,6 +27,14 @@ class ClientMessageHandler
 {
     public function __construct(protected AbstractWorld $world) {}
 
+    protected function canReceiveTeamChat(AbstractTee $sender, AbstractTee $recipient): bool
+    {
+        $senderTeam    = $sender instanceof PlayerTee ? $sender->team : GameConstants::TEAM_RED;
+        $recipientTeam = $recipient instanceof PlayerTee ? $recipient->team : GameConstants::TEAM_RED;
+
+        return $recipientTeam === $senderTeam;
+    }
+
     public function handle(AbstractTee $tee, AbstractChunk $chunk): void
     {
         if ($chunk instanceof ClSayChunk) {
@@ -131,9 +139,7 @@ class ClientMessageHandler
         $this->world->consoleInfo('teamchat', 'Team='.$team.' TeeIdx='.$tee->teeIndex.' Name="'.$tee->name.'": '.$message);
 
         foreach ($this->world->getTees() as $recipient) {
-            $recipientTeam = $recipient instanceof PlayerTee ? $recipient->team : GameConstants::TEAM_RED;
-
-            if ($recipientTeam === $team) {
+            if ($this->canReceiveTeamChat($tee, $recipient)) {
                 $this->world->getServer()->sendToTee($this->world, $recipient->teeIndex, clone $chat);
             }
         }

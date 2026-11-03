@@ -317,14 +317,13 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
                 continue;
             }
 
-            $occupied = array_any($world->getEntities(), fn ($entity) => $entity instanceof AbstractCharacterEntity
-                && $entity->alive
-                && ! $entity->isMarkedForDestruction()
-                && $pos->distance($entity->getPosition()) <= $entity->getHitBoxRadius());
-
-            if (! $occupied) {
-                return $pos;
+            foreach ($world->getActiveCharacters() as $character) {
+                if ($pos->distance($character->getPosition()) <= $character->getHitBoxRadius()) {
+                    continue 2;
+                }
             }
+
+            return $pos;
         }
 
         return null;
@@ -334,11 +333,7 @@ abstract class AbstractGameController implements SnapableObject, TickableObject
     {
         $score = 0.0;
 
-        foreach ($world->getEntities() as $character) {
-            if (! $character instanceof AbstractCharacterEntity || ! $character->alive || $character->isMarkedForDestruction()) {
-                continue;
-            }
-
+        foreach ($world->getActiveCharacters() as $character) {
             $distance = $pos->distance($character->getPosition());
 
             if ($distance < 100) {

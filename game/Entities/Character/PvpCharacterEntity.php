@@ -29,12 +29,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
         $this->createSound(GameConstants::SOUND_HAMMER_FIRE);
 
-        foreach ($this->world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity) {
-                continue;
-            }
-
-            if ($entity === $this || ! $entity->alive) {
+        foreach ($this->world->getActiveCharacters() as $entity) {
+            if ($entity === $this) {
                 continue;
             }
 
@@ -457,8 +453,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
 
     protected function hitNinjaTargets(): void
     {
-        foreach ($this->world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || $entity === $this || ! $entity->alive) {
+        foreach ($this->world->getActiveCharacters() as $entity) {
+            if ($entity === $this) {
                 continue;
             }
 

@@ -492,8 +492,8 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
 
     public function findCharacter(int $teeIndex): ?AbstractCharacterEntity
     {
-        foreach ($this->entities as $entity) {
-            if ($entity instanceof AbstractCharacterEntity && $entity->alive && $entity->tee?->teeIndex === $teeIndex) {
+        foreach ($this->getActiveCharacters() as $entity) {
+            if ($entity->tee?->teeIndex === $teeIndex) {
                 return $entity;
             }
         }
@@ -733,6 +733,22 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
     public function getEntities(): array
     {
         return $this->entities;
+    }
+
+    /** @return iterable<int, AbstractCharacterEntity> */
+    public function getActiveCharacters(): iterable
+    {
+        $entities = $this->entities; // Damage callbacks can remove or destroy later characters between yields.
+
+        foreach ($entities as $index => $entity) {
+            if ($entity instanceof AbstractCharacterEntity
+                && $entity->alive
+                && ! $entity->isMarkedForDestruction()
+                && ($this->entities[$index] ?? null) === $entity
+            ) {
+                yield $index => $entity;
+            }
+        }
     }
 
     public function removeEntity(AbstractEntity $entity): void

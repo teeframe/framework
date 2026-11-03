@@ -3,7 +3,6 @@
 namespace TeeFrame\Game\Entities;
 
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Entities\Character\AbstractCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Game\World\Vector2;
@@ -117,11 +116,7 @@ class PvpLaserEntity extends AbstractLaserEntity
         $closestEntity   = null;
         $closestPosition = $to;
 
-        foreach ($this->world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
-                continue;
-            }
-
+        foreach ($this->world->getActiveCharacters() as $entity) {
             if ($entity->tee !== null && $entity->tee->teeIndex === $this->owner) {
                 continue;
             }

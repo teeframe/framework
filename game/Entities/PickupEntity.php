@@ -73,11 +73,7 @@ class PickupEntity extends AbstractEntity
         $closest         = null;
         $closestDistance = PHP_FLOAT_MAX;
 
-        foreach ($this->world->getEntities() as $entity) {
-            if (! $entity instanceof AbstractCharacterEntity || ! $entity->alive) {
-                continue;
-            }
-
+        foreach ($this->world->getActiveCharacters() as $entity) {
             $dist = $this->position->distance($entity->getPosition());
 
             if ($dist > self::PICKUP_PHYS_SIZE + $entity->getHitBoxRadius() || $dist >= $closestDistance) {

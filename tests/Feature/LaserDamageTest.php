@@ -65,6 +65,22 @@ function fireDamageTestLaser(TestWorldWithController $world, PvpCharacterEntity 
     ));
 }
 
+test('lasers pass through destroyed characters and hit the next active character', function () {
+    [$world, $attacker, $destroyed, $owner] = createLaserDamageWorld();
+    $destroyed->markForDestruction();
+    $active = new PvpCharacterEntity($world, new Vector2(320, 64));
+    $active->spawn($active->getPosition());
+    $world->addEntity($active);
+
+    $laser = new PvpLaserEntity($world, clone $attacker->getPosition(), new Vector2(1, 0), 800, $owner->teeIndex);
+
+    expect($destroyed->health)->toBe(10);
+    expect($active->health)->toBe(5);
+    $snap = $laser->doSnap($owner)[0];
+    assert($snap instanceof ObjLaserItem);
+    expect([$snap->x, $snap->y])->toBe([320, 64]);
+});
+
 test('laser deals full damage and sends the hit sound only to its owner', function (string $gameMode) {
     [$world, $attacker, $victim, $attackerTee, $victimTee] = createLaserDamageWorld($gameMode);
     $world->getTuneController()->laserDamage               = 700;

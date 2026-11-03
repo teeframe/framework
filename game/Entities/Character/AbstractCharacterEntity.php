@@ -333,13 +333,8 @@ abstract class AbstractCharacterEntity extends AbstractEntity
     {
         $characters = [];
 
-        foreach ($this->world->getEntities() as $entity) {
-            if ($entity instanceof AbstractCharacterEntity
-                && $entity !== $this
-                && $entity->alive
-                && ! $entity->isMarkedForDestruction()
-                && $entity->tee !== null
-            ) {
+        foreach ($this->world->getActiveCharacters() as $entity) {
+            if ($entity !== $this && $entity->tee !== null) {
                 $characters[$entity->tee->teeIndex] = $entity;
             }
         }

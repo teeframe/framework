@@ -41,6 +41,18 @@ function createPickupAvailabilityWorld(int $tick = 100): array
     return [$world, $clock, $character];
 }
 
+test('destroyed characters cannot collect pickups or block an active character from collecting them', function () {
+    [$world, $active, $destroyed] = createPickupSelectionWorld(nearerFirst: true);
+    $destroyed->markForDestruction();
+    $pickup = new PickupEntity($world, new Vector2(64, 64), GameConstants::POWERUP_HEALTH);
+
+    $pickup->doTick();
+
+    expect($destroyed->health)->toBe(5);
+    expect($active->health)->toBe(6);
+    expect($pickup->doSnap(new PlayerTee))->toBeEmpty();
+});
+
 test('a pickup configured never to respawn is consumed until the round resets', function (int $type) {
     [$world, $clock, $character] = createPickupAvailabilityWorld();
     $pickup                      = new PickupEntity($world, new Vector2(64, 64), $type, GameConstants::WEAPON_SHOTGUN);

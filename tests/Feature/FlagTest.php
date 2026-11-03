@@ -71,6 +71,35 @@ test('cloned PvP controllers keep their flag collections independent', function 
     expect($otherWorld->getEntities())->not->toContain($red);
 });
 
+test('destroyed characters cannot grab flags or remain their carriers', function () use ($ctfMapPath) {
+    $clock      = new TickHandler(100);
+    $controller = makeCtfGameController($clock);
+    $world      = createCtfWorld(new Map($ctfMapPath), $clock, $controller);
+    $flag       = $controller->getFlag(GameConstants::TEAM_RED);
+    assert($flag instanceof FlagEntity);
+    $player = new PlayerTee;
+    $world->addTee($player);
+    $player->team = GameConstants::TEAM_BLUE;
+    $destroyed    = new PvpCharacterEntity($world, clone $flag->getPosition());
+    $destroyed->spawn(clone $flag->getPosition(), $player);
+    $destroyed->markForDestruction();
+    $world->addEntity($destroyed);
+    $tickStand = new ReflectionMethod($controller, 'tickDroppedOrAtStandFlag');
+    $tickStand->invoke($controller, $flag, $world->getMap()->getCollision(), 100);
+
+    expect($flag->carryingCharacter)->toBeNull();
+    expect($flag->atStand)->toBeTrue();
+    $active = new PvpCharacterEntity($world, clone $flag->getPosition());
+    $active->spawn(clone $flag->getPosition(), $player);
+    $world->addEntity($active);
+    $tickStand->invoke($controller, $flag, $world->getMap()->getCollision(), 100);
+    expect($flag->carryingCharacter)->toBe($active);
+    $active->markForDestruction();
+    (new ReflectionMethod($controller, 'tickCarriedFlag'))->invoke($controller, $flag, GameConstants::TEAM_RED, 100);
+    expect($flag->carryingCharacter)->toBeNull();
+    expect($flag->dropTick)->toBe(100);
+});
+
 test('CTF controller creates flags from flag stand entities', function () use ($ctfMapPath, $ctfMapExists) {
     if (! $ctfMapExists) {
         throw new RuntimeException('Required CTF map fixture is missing');
