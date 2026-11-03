@@ -160,6 +160,62 @@ test('policy eligibility changes refresh a vote majority without a team change o
     expect($command->executions)->toHaveCount(1);
 });
 
+test('active-team eligibility changes refresh majorities and statuses without another ballot', function () {
+    $clock      = new TickHandler(100);
+    $controller = new class($clock) extends VotePolicyGameController
+    {
+        public function isVoteEligible(PlayerTee $tee): bool
+        {
+            return $tee->team === GameConstants::TEAM_RED;
+        }
+    };
+    $controller->setGameMode('TDM');
+    $world   = new TestWorldWithController($clock, new Map(__DIR__.'/../dm1.map'), $controller);
+    $command = new RconTestCommand(name: 'policy_test');
+    $world->registerCommand($command);
+    $votes = $world->getVoteController();
+    $votes->addVoteOption('Policy option', 'policy_test');
+    $players = [];
+    for ($i = 0; $i < 4; $i++) {
+        $player = new PlayerTee;
+        $world->addTee($player);
+        $player->setTeam(GameConstants::TEAM_RED);
+        $players[] = $player;
+    }
+
+    $world->onMessage($players[0], new ClCallVoteChunk('option', 'Policy option', ''));
+    $votes->tick($world);
+    recordingServer($world)->clear();
+
+    $players[2]->setTeam(GameConstants::TEAM_BLUE);
+    $votes->tick($world);
+    $statuses = array_values(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteStatusChunk));
+    expect($statuses)->not->toBeEmpty();
+    expect([$statuses[0]->yes, $statuses[0]->total])->toBe([1, 3]);
+    expect($votes->isVoteRunning())->toBeTrue();
+    recordingServer($world)->clear();
+
+    $players[2]->setTeam(GameConstants::TEAM_BLUE);
+    $votes->tick($world);
+    expect(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteStatusChunk))->toBeEmpty();
+
+    $players[2]->setTeam(GameConstants::TEAM_RED);
+    $votes->tick($world);
+    $statuses = array_values(array_filter(recordingServer($world)->sentChunks, fn ($chunk) => $chunk instanceof SvVoteStatusChunk));
+    expect($statuses)->not->toBeEmpty();
+    expect([$statuses[0]->yes, $statuses[0]->total])->toBe([1, 4]);
+
+    $world->onMessage($players[1], new ClVoteChunk(1));
+    $votes->tick($world);
+    expect($votes->isVoteRunning())->toBeTrue();
+    expect($command->executions)->toBeEmpty();
+
+    $players[2]->setTeam(GameConstants::TEAM_BLUE);
+    $votes->tick($world);
+    expect($votes->isVoteRunning())->toBeFalse();
+    expect($command->executions)->toHaveCount(1);
+});
+
 test('kick vote minimum players uses policy eligibility instead of network teams', function (bool $enoughPlayers) {
     [$world, $controller, $players] = createVotePolicyWorld(3);
     $world->setConfig('sv_world_vote_kick_min_players', 3);

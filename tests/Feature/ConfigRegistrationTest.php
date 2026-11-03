@@ -599,6 +599,43 @@ test('post-boot registration reaches existing worlds autocomplete and later worl
     expect((new Config)->getDefinitions())->not->toHaveKeys(['app_late_world', 'app_late_secret']);
 });
 
+test('config commands use effective world metadata at boot and after late server registration', function (bool $late) {
+    $server = new RconTestServer;
+    $local  = new Config;
+    $local->registerOption(new ConfigOption('app_local_secret', 'private-world-value', 'Local secret', secret: true));
+    $local->registerOption(new ConfigOption('app_local_number', 3, 'Local number', min: 0, max: 20));
+    $register = static function () use ($server): void {
+        $server->registerConfigOption(new ConfigOption('app_local_secret', '', 'Server label'));
+        $server->registerConfigOption(new ConfigOption('app_local_number', '', 'Server number label'));
+    };
+
+    if (! $late) {
+        $register();
+    }
+
+    $world = $server->addWorldFromConfig(new WorldConfig('local', 'dm1', 64, 0, config: $local));
+
+    if ($late) {
+        $register();
+    }
+
+    $info = $server->getRcon()->getCommandInfo($world);
+    expect($info['app_local_secret'])->toBe(['help' => 'Local secret', 'params' => '?r[value]']);
+    expect($info['app_local_number'])->toBe(['help' => 'Local number', 'params' => '?i[value]']);
+    expect($server->getRcon()->getCommandInfo($server->entryWorld)['app_local_number'])->toBe(['help' => 'Server number label', 'params' => '?r[value]']);
+
+    $admin = $server->addClient($world);
+    $server->send($admin, new RconAuthChunk('', 'test-secret', false));
+    $server->socket($admin)->packets = [];
+    $server->send($admin, new RconCmdChunk('app_local_secret; app_local_number 9'));
+    $lines = array_map(fn (RconLineChunk $chunk): string => $chunk->line, $server->socket($admin)->chunks(RconLineChunk::class));
+
+    expect($lines)->toContain('app_local_secret = [hidden]', 'app_local_number = 9');
+    expect(implode("\n", $lines))->not->toContain('private-world-value');
+    expect($world->getConfigValue('app_local_number'))->toBe(9);
+    expect($server->entryWorld->getConfigValue('app_local_number'))->toBe('');
+})->with(['at boot' => false, 'late registration' => true]);
+
 test('registered restart-only settings load at startup retain metadata and allow reads but not strict API mutations after start', function () {
     withRegistrationConfigFiles([
         'server.cfg' => "sv_registration_restart 7\nsv_world_registration_restart 9\nsv_world_add arena dm1 8 0 dm world.cfg\nsv_world_add other dm1 8 0 dm",

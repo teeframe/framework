@@ -235,8 +235,13 @@ abstract class AbstractWorld implements SnapableObject, TickableObject
         $this->registerCommand(new AddWorldCommand);
 
         foreach (array_keys($this->server->getConfigDefinitions()) as $name) {
-            $this->registerCommand(new ConfigCommand($name, $this->config));
+            $this->registerConfigCommand($name);
         }
+    }
+
+    public function registerConfigCommand(string $name): void
+    {
+        $this->registerCommand(new ConfigCommand(strtolower($name), $this->config));
     }
 
     public function getConfig(): Config

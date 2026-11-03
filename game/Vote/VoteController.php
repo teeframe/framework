@@ -34,6 +34,9 @@ class VoteController
     protected int $voteEnforce        = VoteEnforce::UNKNOWN;
     protected bool $voteUpdate        = false;
 
+    /** @var array<int, true> */
+    protected array $voteTargetIndexes = [];
+
     /**
      * @return AbstractChunk[]
      */
@@ -163,14 +166,27 @@ class VoteController
             return;
         }
 
-        $duration              = $world->getConfig()->getInt('sv_world_vote_duration') * NetworkParams::TICKS_PER_SECOND;
-        $this->voteType        = 'option';
-        $this->voteEnforce     = VoteEnforce::UNKNOWN;
-        $this->voteCloseTime   = $world->getCurrentTick() + $duration;
-        $this->voteDescription = Utf8::truncateBytes($description, 63);
-        $this->voteCommand     = $command;
-        $this->voteReason      = Utf8::truncateBytes($reason !== '' ? $reason : 'No reason given', 15);
-        $this->voteUpdate      = true;
+        $duration                = $world->getConfig()->getInt('sv_world_vote_duration') * NetworkParams::TICKS_PER_SECOND;
+        $this->voteType          = 'option';
+        $this->voteEnforce       = VoteEnforce::UNKNOWN;
+        $this->voteCloseTime     = $world->getCurrentTick() + $duration;
+        $this->voteDescription   = Utf8::truncateBytes($description, 63);
+        $this->voteCommand       = $command;
+        $this->voteReason        = Utf8::truncateBytes($reason !== '' ? $reason : 'No reason given', 15);
+        $this->voteUpdate        = true;
+        $this->voteTargetIndexes = [];
+
+        foreach ($this->resolveCommands($world, $command) ?? [] as $resolved) {
+            if (! in_array(strtolower($resolved['command']->getName()), ['kick', 'set_team'], true)) {
+                continue;
+            }
+
+            $target = filter_var($resolved['arguments'][0] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            if ($target !== false) {
+                $this->voteTargetIndexes[$target] = true;
+            }
+        }
+
         $world->consoleInfo('vote', 'Vote started Description="'.$this->voteDescription.'" Reason="'.$this->voteReason.'"');
 
         foreach ($world->getTees() as $tee) {
@@ -192,8 +208,9 @@ class VoteController
             $world->consoleDebug('vote', 'Vote ended Description="'.$this->voteDescription.'"');
         }
 
-        $this->voteCloseTime = 0;
-        $this->voteCreator   = -1;
+        $this->voteCloseTime     = 0;
+        $this->voteCreator       = -1;
+        $this->voteTargetIndexes = [];
         $world->getServer()->sendToWorld($world, new SvVoteSetChunk(
             timeout: 0,
             description: '',
@@ -275,6 +292,11 @@ class VoteController
 
         $this->startVote($world, $option->description, $option->command, $reason);
         $this->voteType = $type;
+
+        // Built-in player votes do not require registered server commands.
+        if ($type === 'kick' || $type === 'spectate') {
+            $this->voteTargetIndexes[(int) $value] = true;
+        }
 
         // The caller automatically votes yes
         $tee->vote = 1;
@@ -474,9 +496,7 @@ class VoteController
             return;
         }
 
-        if (str_starts_with($this->voteCommand, 'kick ') && (int) substr($this->voteCommand, 5) === $teeIndex) {
-            $this->voteEnforce = VoteEnforce::ABORT;
-        } elseif (str_starts_with($this->voteCommand, 'set_team ') && (int) substr($this->voteCommand, 9) === $teeIndex) {
+        if (isset($this->voteTargetIndexes[$teeIndex])) {
             $this->voteEnforce = VoteEnforce::ABORT;
         }
     }
@@ -488,11 +508,7 @@ class VoteController
         }
     }
 
-    /**
-     * Called when a player enters or leaves spectators — the vote count
-     * changes, so the next tick should recompute (mirrors m_VoteUpdate = true
-     * in OnSetTeamNetMessage).
-     */
+    /** Team-dependent eligibility policies may change the vote count after any transition. */
     public function onTeamChange(PlayerTee $tee): void
     {
         $this->requestUpdate();

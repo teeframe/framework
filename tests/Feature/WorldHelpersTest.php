@@ -3,6 +3,7 @@
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
 use TeeFrame\Game\Commands\AbstractCommand;
+use TeeFrame\Game\Commands\Server\KickCommand;
 use TeeFrame\Game\Entities\Character\PvpCharacterEntity;
 use TeeFrame\Game\GameConstants;
 use TeeFrame\Game\Tees\AbstractTee;
@@ -454,6 +455,89 @@ test('target disconnects abort votes before an index can be reused', function (s
     expect($replacement->playerTee()->team)->toBe(GameConstants::TEAM_RED);
     expect($server->socket->chatTexts())->toContain('Vote aborted');
 })->with(['kick', 'spectate']);
+
+test('option vote target disconnects use parsed canonical commands before an index is reused', function (string $line) {
+    $server    = new WorldHelpersTestServer;
+    $world     = $server->addWorld();
+    $caller    = $server->addClient($world, 8300)->playerTee();
+    $target    = $server->addClient($world, 8301);
+    $bystander = $server->addClient($world, 8302)->playerTee();
+    $world->registerCommand(new class extends KickCommand
+    {
+        public function getAliases(): array
+        {
+            return ['remove_player'];
+        }
+    });
+    $world->registerCommand(new class('set_team') extends WorldHelpersTestVoteCommand
+    {
+        public function getParams(): string
+        {
+            return 'i[id] i[team] ?i[delay]';
+        }
+
+        public function execute(AbstractWorld $world, AbstractTee $tee, array $arguments, ?Closure $output = null): void
+        {
+            $target = $world->findTee((int) $arguments[0]);
+            if ($target instanceof PlayerTee) {
+                $target->setTeam((int) $arguments[1]);
+            }
+        }
+    });
+    $votes = $world->getVoteController();
+    $votes->addLiveVoteOption($world, 'Player option', $line);
+    $votes->callVote($world, $caller, 'option', 'Player option', '');
+
+    $target->closeConnection('Leaving');
+    $replacement = $server->addClient($world, 8303);
+    expect($replacement->playerTee()->teeIndex)->toBe(1);
+    $votes->vote($world, $bystander, 1);
+    $votes->tick($world);
+
+    expect($votes->isVoteRunning())->toBeFalse();
+    expect($replacement->state)->toBe(ConnectionSlot::STATE_INGAME);
+    expect($replacement->playerTee()->team)->toBe(GameConstants::TEAM_RED);
+    expect($server->socket->chatTexts())->toContain('Vote aborted');
+    expect($server->socket->chatTexts())->not->toContain('Vote passed');
+})->with([
+    'plain kick'                 => 'kick 1 reason',
+    'uppercase kick'             => 'KICK 1 reason',
+    'quoted kick target'         => 'kick "1" reason',
+    'whitespace'                 => "  KiCk\t1 reason",
+    'aliased kick'               => 'REMOVE_PLAYER "1" reason',
+    'kick after another command' => 'echo before; kick 1 reason',
+    'second targeted command'    => 'kick 2 reason; kick 1 reason',
+    'quoted semicolon'           => 'echo "before; kick 2"; kick 1 reason',
+    'uppercase set team'         => 'SET_TEAM 1 -1 0',
+    'quoted set team target'     => 'set_team "1" -1 0',
+    'set team in sequence'       => 'echo before; set_team 1 -1 0',
+]);
+
+test('option vote targets are reset between votes and ignore command names in message text', function () {
+    $server    = new WorldHelpersTestServer;
+    $world     = $server->addWorld();
+    $caller    = $server->addClient($world, 8300)->playerTee();
+    $target    = $server->addClient($world, 8301);
+    $bystander = $server->addClient($world, 8302)->playerTee();
+    $command   = new WorldHelpersTestVoteCommand;
+    $world->registerCommand($command);
+    $votes = $world->getVoteController();
+    $votes->startVote($world, 'Old target', 'kick 1 reason', '');
+    $votes->endVote($world);
+    $votes->addLiveVoteOption($world, 'Unrelated option', 'record_vote; echo "kick 1 reason; set_team 1 -1"');
+    $votes->callVote($world, $caller, 'option', 'Unrelated option', '');
+
+    $target->closeConnection('Leaving');
+    $replacement = $server->addClient($world, 8303);
+    expect($replacement->playerTee()->teeIndex)->toBe(1);
+    $votes->vote($world, $bystander, 1);
+    $votes->tick($world);
+
+    expect($votes->isVoteRunning())->toBeFalse();
+    expect($command->executions)->toHaveCount(1);
+    expect($server->socket->chatTexts())->toContain('Vote passed');
+    expect($server->socket->chatTexts())->not->toContain('Vote aborted');
+});
 
 test('creator disconnects cancel execution and the next vote uses its own caller', function () {
     $server  = new WorldHelpersTestServer;

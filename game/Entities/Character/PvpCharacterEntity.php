@@ -233,8 +233,8 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         }
 
         if ($weaponAmmo === 0) {
-            // Repeated dry fires must not prevent the gun's regeneration window from starting.
-            if ($this->activeWeapon === GameConstants::WEAPON_GUN && $this->ammoRegenStart < 0) {
+            // A dry-fire cooldown must not prevent an eligible regeneration window from starting.
+            if ($this->ammoRegenInterval() > 0 && $this->ammoRegenStart < 0) {
                 $this->ammoRegenStart = $this->world->getCurrentTick();
             }
 
@@ -275,10 +275,23 @@ class PvpCharacterEntity extends AbstractCharacterEntity
         $this->ammoRegenStart = -1;
     }
 
+    /** Interval in ticks; zero disables regeneration for the active weapon. */
+    protected function ammoRegenInterval(): int
+    {
+        return $this->activeWeapon === GameConstants::WEAPON_GUN ? intdiv(NetworkParams::TICKS_PER_SECOND, 2) : 0;
+    }
+
+    protected function ammoLimit(): int
+    {
+        return 10;
+    }
+
     protected function tickAmmoRegen(): void
     {
-        // Only the gun regenerates ammo
-        if ($this->activeWeapon !== GameConstants::WEAPON_GUN) {
+        $interval = $this->ammoRegenInterval();
+        $state    = $this->weapons[$this->activeWeapon];
+
+        if ($interval <= 0 || ! $state->got || $state->ammo < 0 || $state->ammo >= $this->ammoLimit()) {
             $this->ammoRegenStart = -1;
 
             return;
@@ -289,23 +302,14 @@ class PvpCharacterEntity extends AbstractCharacterEntity
             return;
         }
 
-        $weaponAmmo = $this->weapons[$this->activeWeapon]->ammo;
-        $weaponGot  = $this->weapons[$this->activeWeapon]->got;
-
-        if (! $weaponGot || $weaponAmmo < 0 || $weaponAmmo >= 10) {
-            $this->ammoRegenStart = -1;
-
-            return;
-        }
-
+        $currentTick = $this->world->getCurrentTick();
         if ($this->ammoRegenStart < 0) {
-            $this->ammoRegenStart = $this->tick;
+            $this->ammoRegenStart = $currentTick;
         }
 
-        // Regenerate one bullet every 500ms.
-        if (($this->tick - $this->ammoRegenStart) >= intdiv(NetworkParams::TICKS_PER_SECOND, 2)) {
-            $this->weapons[$this->activeWeapon]->ammo = min(10, $weaponAmmo + 1);
-            $this->ammoRegenStart                     = -1;
+        if ($currentTick - $this->ammoRegenStart >= $interval) {
+            $state->ammo          = min($this->ammoLimit(), $state->ammo + 1);
+            $this->ammoRegenStart = -1;
         }
     }
 

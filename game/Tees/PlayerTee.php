@@ -161,15 +161,12 @@ class PlayerTee extends AbstractTee
         }
 
         $previousTeam      = $this->team;
-        $wasSpectator      = $this->team === GameConstants::TEAM_SPECTATORS;
         $this->team        = $team;
         $this->spectatorId = GameConstants::SPEC_FREEVIEW;
         $this->spawning    = $team !== GameConstants::TEAM_SPECTATORS;
 
         if ($world !== null) {
-            if ($wasSpectator !== ($team === GameConstants::TEAM_SPECTATORS)) {
-                $world->getVoteController()->onTeamChange($this);
-            }
+            $world->getVoteController()->onTeamChange($this);
 
             if ($team === GameConstants::TEAM_SPECTATORS) {
                 $world->resetSpectatorsFollowing($this->teeIndex);

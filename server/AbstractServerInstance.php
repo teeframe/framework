@@ -6,7 +6,6 @@ use Swoole\Coroutine;
 use TeeFrame\Core\IpAddress;
 use TeeFrame\Core\TickHandler;
 use TeeFrame\Game\AbstractWorld;
-use TeeFrame\Game\Commands\Server\ConfigCommand;
 use TeeFrame\Game\Tees\AbstractTee;
 use TeeFrame\Network\Chunks\AbstractChunk;
 use TeeFrame\Network\Chunks\Game\SvMotdChunk;
@@ -117,7 +116,7 @@ abstract class AbstractServerInstance
 
         if (isset($this->getConfigDefinitions()[$name])) {
             foreach ($this->worlds as $world) {
-                $world->registerCommand(new ConfigCommand($name, $this->config));
+                $world->registerConfigCommand($name);
             }
         }
     }
